@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'account_details_page.dart';
+
 enum BusinessType { supplier, butcher }
 
 class RegistrationTypePage extends StatefulWidget {
@@ -33,13 +35,10 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
       return;
     }
 
-    final selectedName = selectedBusinessType == BusinessType.supplier
-        ? 'Supplier'
-        : 'Butcher';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$selectedName business details will be added next.'),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            AccountDetailsPage(businessType: selectedBusinessType!),
       ),
     );
   }
