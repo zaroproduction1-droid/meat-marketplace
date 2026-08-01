@@ -2,29 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'features/authentication/presentation/registration_type_page.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
 
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabasePublishableKey =
-      dotenv.env['SUPABASE_PUBLISHABLE_KEY'];
+  final supabasePublishableKey = dotenv.env['SUPABASE_PUBLISHABLE_KEY'];
 
   if (supabaseUrl == null || supabaseUrl.isEmpty) {
     throw Exception('SUPABASE_URL is missing from the .env file.');
   }
 
-  if (supabasePublishableKey == null ||
-      supabasePublishableKey.isEmpty) {
-    throw Exception(
-      'SUPABASE_PUBLISHABLE_KEY is missing from the .env file.',
-    );
+  if (supabasePublishableKey == null || supabasePublishableKey.isEmpty) {
+    throw Exception('SUPABASE_PUBLISHABLE_KEY is missing from the .env file.');
   }
 
   await Supabase.initialize(
     url: supabaseUrl,
-    anonKey: supabasePublishableKey,
+    publishableKey: supabasePublishableKey,
   );
 
   runApp(const MeatMarketplaceApp());
@@ -86,10 +84,7 @@ class _NavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 18,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 800;
@@ -97,16 +92,12 @@ class _NavigationBar extends StatelessWidget {
           if (isMobile) {
             return Row(
               children: [
-                const Expanded(
-                  child: _Logo(),
-                ),
+                const Expanded(child: _Logo()),
                 IconButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text(
-                          'The mobile menu will be added later.',
-                        ),
+                        content: Text('The mobile menu will be added later.'),
                       ),
                     );
                   },
@@ -145,11 +136,7 @@ class _Logo extends StatelessWidget {
     return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.storefront_outlined,
-          color: LandingPage.darkRed,
-          size: 34,
-        ),
+        Icon(Icons.storefront_outlined, color: LandingPage.darkRed, size: 34),
         SizedBox(width: 10),
         Flexible(
           child: Text(
@@ -167,9 +154,7 @@ class _Logo extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.label,
-  });
+  const _NavItem({required this.label});
 
   final String label;
 
@@ -209,14 +194,13 @@ class _RegisterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton(
       onPressed: () {
-        _showComingSoon(context, 'Registration');
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const RegistrationTypePage()),
+        );
       },
       style: FilledButton.styleFrom(
         backgroundColor: LandingPage.darkRed,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 22,
-          vertical: 16,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       ),
       child: const Text('Register'),
     );
@@ -232,18 +216,12 @@ class _HeroSection extends StatelessWidget {
       width: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFF741C1C),
-            Color(0xFF9B2D2D),
-          ],
+          colors: [Color(0xFF741C1C), Color(0xFF9B2D2D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 90,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 90),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
@@ -253,25 +231,15 @@ class _HeroSection extends StatelessWidget {
 
               if (isMobile) {
                 return const Column(
-                  children: [
-                    _HeroText(),
-                    SizedBox(height: 40),
-                    _HeroCard(),
-                  ],
+                  children: [_HeroText(), SizedBox(height: 40), _HeroCard()],
                 );
               }
 
               return const Row(
                 children: [
-                  Expanded(
-                    flex: 6,
-                    child: _HeroText(),
-                  ),
+                  Expanded(flex: 6, child: _HeroText()),
                   SizedBox(width: 60),
-                  Expanded(
-                    flex: 4,
-                    child: _HeroCard(),
-                  ),
+                  Expanded(flex: 4, child: _HeroCard()),
                 ],
               );
             },
@@ -317,7 +285,13 @@ class _HeroText extends StatelessWidget {
           children: [
             FilledButton(
               onPressed: () {
-                _showComingSoon(context, 'Supplier registration');
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const RegistrationTypePage(
+                      initialBusinessType: BusinessType.supplier,
+                    ),
+                  ),
+                );
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -329,20 +303,22 @@ class _HeroText extends StatelessWidget {
               ),
               child: const Text(
                 'Join as a Supplier',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
             OutlinedButton(
               onPressed: () {
-                _showComingSoon(context, 'Butcher registration');
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const RegistrationTypePage(
+                      initialBusinessType: BusinessType.butcher,
+                    ),
+                  ),
+                );
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                side: const BorderSide(
-                  color: Colors.white,
-                ),
+                side: const BorderSide(color: Colors.white),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
                   vertical: 18,
@@ -350,9 +326,7 @@ class _HeroText extends StatelessWidget {
               ),
               child: const Text(
                 'Join as a Butcher',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -390,21 +364,11 @@ class _HeroCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const _CheckItem(
-              text: 'Public and private pricing',
-            ),
-            const _CheckItem(
-              text: 'Product specification comparison',
-            ),
-            const _CheckItem(
-              text: 'Catch-weight ordering support',
-            ),
-            const _CheckItem(
-              text: 'Supplier delivery rules',
-            ),
-            const _CheckItem(
-              text: 'Repeat orders and favourites',
-            ),
+            const _CheckItem(text: 'Public and private pricing'),
+            const _CheckItem(text: 'Product specification comparison'),
+            const _CheckItem(text: 'Catch-weight ordering support'),
+            const _CheckItem(text: 'Supplier delivery rules'),
+            const _CheckItem(text: 'Repeat orders and favourites'),
             const SizedBox(height: 20),
             Container(
               width: double.infinity,
@@ -415,10 +379,7 @@ class _HeroCard extends StatelessWidget {
               ),
               child: const Row(
                 children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: Color(0xFF287A38),
-                  ),
+                  Icon(Icons.check_circle_outline, color: Color(0xFF287A38)),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -440,9 +401,7 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _CheckItem extends StatelessWidget {
-  const _CheckItem({
-    required this.text,
-  });
+  const _CheckItem({required this.text});
 
   final String text;
 
@@ -452,19 +411,12 @@ class _CheckItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 13),
       child: Row(
         children: [
-          const Icon(
-            Icons.check,
-            size: 20,
-            color: LandingPage.darkRed,
-          ),
+          const Icon(Icons.check, size: 20, color: LandingPage.darkRed),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 16,
-                color: LandingPage.darkText,
-              ),
+              style: const TextStyle(fontSize: 16, color: LandingPage.darkText),
             ),
           ),
         ],
@@ -618,10 +570,7 @@ class _PilotSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: const Color(0xFF222222),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 70,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 70),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 850),
@@ -661,9 +610,7 @@ class _PilotSection extends StatelessWidget {
                 ),
                 child: const Text(
                   'Register Your Interest',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -682,16 +629,11 @@ class _Footer extends StatelessWidget {
     return Container(
       color: const Color(0xFF171717),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 30,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 30),
       child: const Center(
         child: Text(
           '© 2026 NSW Meat Marketplace. Pilot application.',
-          style: TextStyle(
-            color: Color(0xFFBDBDBD),
-          ),
+          style: TextStyle(color: Color(0xFFBDBDBD)),
         ),
       ),
     );
@@ -712,10 +654,7 @@ class _SectionContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 80,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 80),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
@@ -771,9 +710,7 @@ class _InformationCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(
-          color: Color(0xFFE0E0E0),
-        ),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
@@ -788,34 +725,22 @@ class _InformationCard extends StatelessWidget {
                   foregroundColor: LandingPage.darkRed,
                   child: Text(
                     number,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
                 const Spacer(),
-                Icon(
-                  icon,
-                  size: 38,
-                  color: LandingPage.darkRed,
-                ),
+                Icon(icon, size: 38, color: LandingPage.darkRed),
               ],
             ),
             const SizedBox(height: 24),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             Text(
               description,
-              style: const TextStyle(
-                height: 1.5,
-                color: Color(0xFF5E5E5E),
-              ),
+              style: const TextStyle(height: 1.5, color: Color(0xFF5E5E5E)),
             ),
           ],
         ),
@@ -842,25 +767,16 @@ class _RoleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFAFAF8),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE0E0E0),
-        ),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: LandingPage.darkRed,
-            size: 45,
-          ),
+          Icon(icon, color: LandingPage.darkRed, size: 45),
           const SizedBox(height: 20),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 20),
           ...items.map(
@@ -875,12 +791,7 @@ class _RoleCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 11),
                   Expanded(
-                    child: Text(
-                      item,
-                      style: const TextStyle(
-                        fontSize: 16,
-                      ),
-                    ),
+                    child: Text(item, style: const TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
@@ -892,15 +803,10 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-void _showComingSoon(
-  BuildContext context,
-  String feature,
-) {
+void _showComingSoon(BuildContext context, String feature) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(
-        '$feature will be built in the next development stages.',
-      ),
+      content: Text('$feature will be built in the next development stages.'),
     ),
   );
 }
