@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_type_page.dart';
+import 'business_details_page.dart';
+import 'sign_in_page.dart';
 
 class AccountDetailsPage extends StatefulWidget {
   const AccountDetailsPage({super.key, required this.businessType});
@@ -23,6 +25,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
 
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -41,21 +44,102 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
         : 'Butcher';
   }
 
-  void continueRegistration() {
+  Future<void> continueRegistration() async {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$businessTypeName account details are valid. '
-          'Business details will be added next.',
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        data: {
+          'first_name': _firstNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'business_type': widget.businessType.name,
+        },
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (response.user == null) {
+        throw Exception('The account could not be created.');
+      }
+
+      final session = response.session;
+
+      if (session == null) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Check your email'),
+              content: Text(
+                'Confirm the email sent to ${_emailController.text.trim()}, '
+                'then return and sign in to finish registration.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SignInPage(businessType: widget.businessType),
+                      ),
+                    );
+                  },
+                  child: const Text('Go to sign in'),
+                ),
+              ],
+            );
+          },
+        );
+
+        return;
+      }
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) =>
+              BusinessDetailsPage(businessType: widget.businessType),
         ),
-      ),
-    );
+      );
+    } on AuthException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong while creating the account.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   String? validateRequired(String? value, String fieldName) {
@@ -304,18 +388,27 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                       ),
                       const SizedBox(height: 28),
                       FilledButton(
-                        onPressed: continueRegistration,
+                        onPressed: _isLoading ? null : continueRegistration,
                         style: FilledButton.styleFrom(
                           backgroundColor: darkRed,
                           padding: const EdgeInsets.symmetric(vertical: 18),
                         ),
-                        child: const Text(
-                          'Continue',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Create account',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 12),
                       TextButton(

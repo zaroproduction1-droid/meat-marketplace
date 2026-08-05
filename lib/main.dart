@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'features/authentication/presentation/sign_in_page.dart';
 import 'features/authentication/presentation/registration_type_page.dart';
 
 Future<void> main() async {
@@ -180,7 +180,9 @@ class _SignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton(
       onPressed: () {
-        _showComingSoon(context, 'Sign in');
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (context) => const SignInPage()));
       },
       child: const Text('Sign In'),
     );
