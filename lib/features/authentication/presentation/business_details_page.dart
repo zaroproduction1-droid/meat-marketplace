@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'pending_verification_page.dart';
 import 'registration_type_page.dart';
 
 class BusinessDetailsPage extends StatefulWidget {
@@ -155,7 +155,12 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
         return;
       }
 
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const PendingVerificationPage(),
+        ),
+        (route) => route.isFirst,
+      );
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
