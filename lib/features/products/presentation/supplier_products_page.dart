@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'add_product_page.dart';
 
 class SupplierProductsPage extends StatefulWidget {
   const SupplierProductsPage({super.key});
@@ -88,12 +89,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
   }
 
-  void _showAddProductMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('The Add Product form will be built in the next step.'),
-      ),
+  Future<void> _openAddProductPage() async {
+    final productCreated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (context) => const AddProductPage()),
     );
+
+    if (productCreated == true) {
+      await _loadProducts();
+    }
   }
 
   @override
@@ -117,7 +120,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddProductMessage,
+        onPressed: _openAddProductPage,
         backgroundColor: const Color(0xFF741C1C),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -195,7 +198,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                 ),
                 const SizedBox(height: 26),
                 FilledButton.icon(
-                  onPressed: _showAddProductMessage,
+                  onPressed: _openAddProductPage,
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF741C1C),
                     padding: const EdgeInsets.symmetric(
