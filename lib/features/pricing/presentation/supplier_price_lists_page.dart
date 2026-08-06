@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'price_list_products_page.dart';
 
 class SupplierPriceListsPage extends StatefulWidget {
   const SupplierPriceListsPage({super.key});
@@ -411,10 +412,11 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
             ),
             trailing: Chip(label: Text(isActive ? 'Active' : 'Inactive')),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Product pricing will be added in the next step.',
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PriceListProductsPage(
+                    priceListId: priceList['id'] as String,
+                    priceListName: priceList['name'] as String? ?? 'Price List',
                   ),
                 ),
               );
