@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_product_page.dart';
+import 'edit_product_page.dart';
 
 class SupplierProductsPage extends StatefulWidget {
   const SupplierProductsPage({super.key});
@@ -47,15 +48,16 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           .from('products')
           .select('''
             id,
-            sku,
-            product_name,
-            brand,
-            temperature_state,
-            price_basis,
-            availability_status,
-            active,
-            animal_types(name),
-            cuts(name)
+sku,
+product_name,
+brand,
+temperature_state,
+price_basis,
+available_quantity,
+availability_status,
+active,
+animal_types(name),
+cuts(name)
             ''')
           .eq('supplier_business_id', businessId)
           .order('created_at', ascending: false);
@@ -239,6 +241,17 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.all(18),
+              onTap: () async {
+                final updated = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (context) => EditProductPage(product: product),
+                  ),
+                );
+
+                if (updated == true) {
+                  await _loadProducts();
+                }
+              },
               leading: Container(
                 width: 52,
                 height: 52,
