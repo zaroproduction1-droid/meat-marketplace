@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pending_verification_page.dart';
 import 'business_details_page.dart';
 import 'registration_type_page.dart';
+import '../../dashboard/presentation/business_dashboard_page.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key, this.businessType});
@@ -132,13 +133,10 @@ class _SignInPageState extends State<SignInPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Your business account has been approved.'),
-        ),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const BusinessDashboardPage()),
+        (route) => route.isFirst,
       );
-
-      Navigator.of(context).popUntil((route) => route.isFirst);
     } on AuthException catch (error) {
       if (!mounted) {
         return;
