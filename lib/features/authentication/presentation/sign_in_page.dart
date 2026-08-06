@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'pending_verification_page.dart';
 import 'business_details_page.dart';
 import 'registration_type_page.dart';
 
@@ -72,20 +72,71 @@ class _SignInPageState extends State<SignInPage> {
         return;
       }
 
-      if (widget.businessType != null) {
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        throw Exception('Unable to find the signed-in user.');
+      }
+
+      final memberships = await Supabase.instance.client
+          .from('business_memberships')
+          .select('business_id, businesses(verification_status)')
+          .eq('user_id', user.id)
+          .limit(1);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (memberships.isEmpty) {
+        BusinessType? selectedBusinessType = widget.businessType;
+
+        final metadataType = user.userMetadata?['business_type'] as String?;
+
+        if (selectedBusinessType == null) {
+          if (metadataType == 'supplier') {
+            selectedBusinessType = BusinessType.supplier;
+          } else if (metadataType == 'butcher') {
+            selectedBusinessType = BusinessType.butcher;
+          }
+        }
+
+        if (selectedBusinessType == null) {
+          throw Exception('The business type could not be identified.');
+        }
+
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) =>
-                BusinessDetailsPage(businessType: widget.businessType!),
+                BusinessDetailsPage(businessType: selectedBusinessType!),
           ),
         );
 
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Signed in successfully.')));
+      final membership = Map<String, dynamic>.from(memberships.first);
+
+      final businessData = Map<String, dynamic>.from(membership['businesses']);
+
+      final verificationStatus = businessData['verification_status'] as String?;
+
+      if (verificationStatus == 'pending') {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const PendingVerificationPage(),
+          ),
+          (route) => route.isFirst,
+        );
+
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your business account has been approved.'),
+        ),
+      );
 
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on AuthException catch (error) {
