@@ -33,3 +33,15 @@
 - One supplier business has many products.
 - One product belongs to one animal type.
 - One product belongs to one cut.
+
+## Supplier customer relationships
+
+- supplier_customer_relationships
+
+## Relationship rules
+
+- A butcher can request access to a supplier.
+- A supplier can approve, decline or suspend the relationship.
+- Approved-customer pricing requires an approved relationship.
+- Private contract pricing requires the butcher to be assigned directly to the price list.
+- Public pricing is available to approved butcher businesses.
