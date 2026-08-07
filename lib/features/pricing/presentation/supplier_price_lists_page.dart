@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../customers/presentation/supplier_customer_requests_page.dart';
 import 'price_list_products_page.dart';
+import 'private_price_list_customers_page.dart';
 
 class SupplierPriceListsPage extends StatefulWidget {
   const SupplierPriceListsPage({super.key});
@@ -77,13 +80,13 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
         _errorMessage = error.message;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _errorMessage = 'Unable to load price lists.';
+        _errorMessage = error.toString();
         _isLoading = false;
       });
     }
@@ -108,12 +111,11 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
               final name = nameController.text.trim();
 
               if (name.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
                     content: Text('Please enter a price list name.'),
                   ),
                 );
-
                 return;
               }
 
@@ -288,6 +290,17 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
         ),
         actions: [
           IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SupplierCustomerRequestsPage(),
+                ),
+              );
+            },
+            tooltip: 'Customer requests',
+            icon: const Icon(Icons.people_outline),
+          ),
+          IconButton(
             onPressed: _loadPriceLists,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
@@ -378,7 +391,10 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
       },
       itemBuilder: (context, index) {
         final priceList = _priceLists[index];
+
         final isActive = priceList['active'] as bool? ?? true;
+
+        final visibility = priceList['visibility'] as String?;
 
         return Card(
           elevation: 0,
@@ -406,12 +422,36 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                _formatVisibility(priceList['visibility'] as String?),
-              ),
+              child: Text(_formatVisibility(visibility)),
             ),
             trailing: Chip(label: Text(isActive ? 'Active' : 'Inactive')),
             onTap: () {
+              if (visibility == 'private') {
+                final supplierBusinessId = _supplierBusinessId;
+
+                if (supplierBusinessId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Supplier business could not be loaded.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PrivatePriceListCustomersPage(
+                      priceListId: priceList['id'] as String,
+                      priceListName:
+                          priceList['name'] as String? ?? 'Private Price List',
+                      supplierBusinessId: supplierBusinessId,
+                    ),
+                  ),
+                );
+
+                return;
+              }
+
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => PriceListProductsPage(
