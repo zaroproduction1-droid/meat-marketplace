@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../products/presentation/supplier_products_page.dart';
 import '../../pricing/presentation/supplier_price_lists_page.dart';
+import '../../marketplace/presentation/marketplace_products_page.dart';
 
 class BusinessDashboardPage extends StatefulWidget {
   const BusinessDashboardPage({super.key});
@@ -234,7 +235,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                     description:
                                         'Search products from approved suppliers.',
                                     onTap: () {
-                                      _showComingSoon('Product marketplace');
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const MarketplaceProductsPage(),
+                                        ),
+                                      );
                                     },
                                   ),
                                   _DashboardCard(

@@ -142,23 +142,31 @@ class _SignInPageState extends State<SignInPage> {
         return;
       }
 
+      setState(() {
+        _isLoading = false;
+      });
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
-    } catch (_) {
+
+      debugPrint('Supabase sign-in error: ${error.message}');
+      debugPrint('Supabase error code: ${error.code}');
+    } catch (error, stackTrace) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong while signing in.')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+
+      debugPrint('Unexpected sign-in error: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
