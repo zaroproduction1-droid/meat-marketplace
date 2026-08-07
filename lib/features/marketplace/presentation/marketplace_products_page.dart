@@ -149,6 +149,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       return null;
     }
 
+    Map<String, dynamic>? bestPrice;
+    var bestPriority = 0;
+
     for (final rawPrice in rawPrices) {
       if (rawPrice is! Map) {
         continue;
@@ -156,12 +159,50 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       final price = Map<String, dynamic>.from(rawPrice);
 
-      if (price['active'] == true) {
-        return price;
+      if (price['active'] != true) {
+        continue;
+      }
+
+      final rawPriceList = price['price_lists'];
+
+      if (rawPriceList is! Map) {
+        continue;
+      }
+
+      final priceList = Map<String, dynamic>.from(rawPriceList);
+
+      if (priceList['active'] != true) {
+        continue;
+      }
+
+      final visibility = priceList['visibility'] as String?;
+
+      int priority;
+
+      switch (visibility) {
+        case 'private':
+          priority = 3;
+          break;
+
+        case 'approved_customers':
+          priority = 2;
+          break;
+
+        case 'public':
+          priority = 1;
+          break;
+
+        default:
+          priority = 0;
+      }
+
+      if (priority > bestPriority) {
+        bestPriority = priority;
+        bestPrice = price;
       }
     }
 
-    return null;
+    return bestPrice;
   }
 
   String _formatPriceBasis(String? value) {
