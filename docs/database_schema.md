@@ -78,3 +78,16 @@ Example:
 Beef → Chuck → Blade
 
 The old animal_types and cuts tables remain temporarily while the application is migrated to the canonical catalogue structure.
+
+### meat_products
+
+Canonical meat cuts/products belonging to a sub-primal section.
+
+Example:
+
+Beef
+→ Chuck
+→ Blade
+→ Oyster Blade
+
+This table describes what the cut/product actually is and contains no supplier-specific pricing, SKU or stock information.
