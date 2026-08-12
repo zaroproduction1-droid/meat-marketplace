@@ -106,3 +106,24 @@ Oyster Blade
 Stores future verified product codes such as marketplace codes or recognised industry codes.
 
 AUS-MEAT codes will only be added after verification.
+### Supplier product catalogue link
+
+The existing products table now contains:
+
+- product_variant_id
+
+This links a supplier's listing to the canonical meat catalogue.
+
+Existing animal_type_id and cut_id relationships remain temporarily for backwards compatibility while Flutter is migrated.
+
+Current relationship:
+
+businesses
+→ products
+→ product_variants
+→ meat_products
+→ subprimal_sections
+→ primal_sections
+→ species
+
+Existing pricing continues to reference products.id and is not changed by this migration.
