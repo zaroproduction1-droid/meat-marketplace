@@ -45,3 +45,36 @@
 - Approved-customer pricing requires an approved relationship.
 - Private contract pricing requires the butcher to be assigned directly to the price list.
 - Public pricing is available to approved butcher businesses.
+
+## Canonical Meat Catalogue
+
+### species
+
+Top-level animal category.
+
+Initial marketplace species:
+
+- Beef
+- Lamb
+- Chicken
+- Goat
+
+Pork is not supported.
+
+### primal_sections
+
+Major anatomical sections belonging to a species.
+
+Example:
+
+Beef → Chuck
+
+### subprimal_sections
+
+Subdivisions belonging to a primal section.
+
+Example:
+
+Beef → Chuck → Blade
+
+The old animal_types and cuts tables remain temporarily while the application is migrated to the canonical catalogue structure.
