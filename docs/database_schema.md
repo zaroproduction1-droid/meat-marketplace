@@ -91,3 +91,18 @@ Beef
 → Oyster Blade
 
 This table describes what the cut/product actually is and contains no supplier-specific pricing, SKU or stock information.
+### product_aliases
+
+Alternative/common names that point back to one canonical meat product.
+
+Example:
+
+Oyster Blade
+- Oyster Blade Steak
+- Blade Muscle
+
+### product_codes
+
+Stores future verified product codes such as marketplace codes or recognised industry codes.
+
+AUS-MEAT codes will only be added after verification.
