@@ -20,20 +20,25 @@ class _AddProductPageState extends State<AddProductPage> {
   final _availableQuantityController = TextEditingController();
 
   bool _isLoadingPage = true;
+  bool _isLoadingCatalogue = false;
+  bool _isLoadingVariants = false;
   bool _isSaving = false;
   bool _catchWeight = false;
 
   String? _supplierBusinessId;
-  String? _selectedAnimalTypeId;
-  String? _selectedCutId;
+
+  String? _selectedSpeciesId;
+  String? _selectedMeatProductId;
+  String? _selectedProductVariantId;
 
   String _temperatureState = 'chilled';
   String _priceBasis = 'kilogram';
   String _quantityUnit = 'kilogram';
   String _availabilityStatus = 'in_stock';
 
-  List<Map<String, dynamic>> _animalTypes = [];
-  List<Map<String, dynamic>> _cuts = [];
+  List<Map<String, dynamic>> _species = [];
+  List<Map<String, dynamic>> _catalogueProducts = [];
+  List<Map<String, dynamic>> _productVariants = [];
 
   @override
   void initState() {
@@ -50,6 +55,7 @@ class _AddProductPageState extends State<AddProductPage> {
     _originCountryController.dispose();
     _originStateController.dispose();
     _availableQuantityController.dispose();
+
     super.dispose();
   }
 
@@ -63,7 +69,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
       final membership = await Supabase.instance.client
           .from('business_memberships')
-          .select('business_id, businesses(business_type)')
+          .select('business_id, businesses(business_type, verification_status)')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .limit(1)
@@ -74,14 +80,26 @@ class _AddProductPageState extends State<AddProductPage> {
       );
 
       if (business['business_type'] != 'supplier') {
-        throw Exception('Only approved supplier accounts can create products.');
+        throw Exception('Only supplier accounts can create products.');
       }
 
-      final animalTypesResponse = await Supabase.instance.client
-          .from('animal_types')
-          .select('id, name')
+      if (business['verification_status'] != 'approved') {
+        throw Exception(
+          'Your supplier business must be approved before creating products.',
+        );
+      }
+
+      final speciesResponse = await Supabase.instance.client
+          .from('species')
+          .select('''
+            id,
+            name,
+            slug,
+            display_order
+            ''')
           .eq('active', true)
-          .order('sort_order');
+          .order('display_order')
+          .order('name');
 
       if (!mounted) {
         return;
@@ -89,7 +107,9 @@ class _AddProductPageState extends State<AddProductPage> {
 
       setState(() {
         _supplierBusinessId = membership['business_id'] as String;
-        _animalTypes = List<Map<String, dynamic>>.from(animalTypesResponse);
+
+        _species = List<Map<String, dynamic>>.from(speciesResponse);
+
         _isLoadingPage = false;
       });
     } on PostgrestException catch (error) {
@@ -101,9 +121,7 @@ class _AddProductPageState extends State<AddProductPage> {
         _isLoadingPage = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      _showMessage(error.message);
     } catch (error) {
       if (!mounted) {
         return;
@@ -113,43 +131,208 @@ class _AddProductPageState extends State<AddProductPage> {
         _isLoadingPage = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      _showMessage(error.toString());
     }
   }
 
-  Future<void> _loadCuts(String animalTypeId) async {
+  Future<void> _loadCatalogueProducts(String speciesId) async {
     setState(() {
-      _selectedAnimalTypeId = animalTypeId;
-      _selectedCutId = null;
-      _cuts = [];
+      _selectedSpeciesId = speciesId;
+
+      _selectedMeatProductId = null;
+      _selectedProductVariantId = null;
+
+      _catalogueProducts = [];
+      _productVariants = [];
+
+      _isLoadingCatalogue = true;
+      _isLoadingVariants = false;
     });
 
     try {
-      final cutsResponse = await Supabase.instance.client
-          .from('cuts')
-          .select('id, name')
-          .eq('animal_type_id', animalTypeId)
+      final response = await Supabase.instance.client
+          .from('meat_product_catalogue_paths')
+          .select('''
+            id,
+            species_id,
+            species_name,
+            parent_product_id,
+            name,
+            slug,
+            product_level,
+            depth,
+            catalogue_path
+            ''')
+          .eq('species_id', speciesId)
           .eq('active', true)
-          .order('sort_order');
+          .order('catalogue_path');
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _cuts = List<Map<String, dynamic>>.from(cutsResponse);
+        _catalogueProducts = List<Map<String, dynamic>>.from(response);
+
+        _isLoadingCatalogue = false;
       });
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      setState(() {
+        _isLoadingCatalogue = false;
+      });
+
+      _showDatabaseError(error);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingCatalogue = false;
+      });
+
+      _showMessage('Unable to load catalogue products: $error');
     }
+  }
+
+  Future<void> _loadProductVariants(String meatProductId) async {
+    setState(() {
+      _selectedMeatProductId = meatProductId;
+
+      _selectedProductVariantId = null;
+      _productVariants = [];
+
+      _isLoadingVariants = true;
+    });
+
+    try {
+      final response = await Supabase.instance.client
+          .from('product_variants')
+          .select('''
+            id,
+            variant_name,
+            temperature_state,
+            bone_state,
+            trim_specification,
+            fat_specification,
+            weight_min,
+            weight_max,
+            weight_unit,
+            pack_size,
+            pack_unit,
+            grade,
+            breed,
+            halal_status,
+            country_of_origin,
+            specification_notes
+            ''')
+          .eq('meat_product_id', meatProductId)
+          .eq('active', true)
+          .order('variant_name');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _productVariants = List<Map<String, dynamic>>.from(response);
+
+        _isLoadingVariants = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingVariants = false;
+      });
+
+      _showDatabaseError(error);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingVariants = false;
+      });
+
+      _showMessage('Unable to load product variants: $error');
+    }
+  }
+
+  void _selectVariant(String? variantId) {
+    if (variantId == null) {
+      return;
+    }
+
+    final variant = _productVariants.firstWhere(
+      (item) => item['id']?.toString() == variantId,
+    );
+
+    final variantName = variant['variant_name']?.toString();
+
+    final variantTemperature = variant['temperature_state']?.toString();
+
+    final countryOfOrigin = variant['country_of_origin']?.toString();
+
+    setState(() {
+      _selectedProductVariantId = variantId;
+
+      if (variantName != null && variantName.trim().isNotEmpty) {
+        _productNameController.text = variantName;
+      }
+
+      if (variantTemperature != null &&
+          ['fresh', 'chilled', 'frozen'].contains(variantTemperature)) {
+        _temperatureState = variantTemperature;
+      }
+
+      if (countryOfOrigin != null &&
+          countryOfOrigin.trim().isNotEmpty &&
+          _originCountryController.text.trim().isEmpty) {
+        _originCountryController.text = countryOfOrigin;
+      }
+    });
+  }
+
+  String _catalogueProductLabel(Map<String, dynamic> product) {
+    final path = product['catalogue_path']?.toString();
+
+    if (path != null && path.trim().isNotEmpty) {
+      return path;
+    }
+
+    return product['name']?.toString() ?? 'Unnamed catalogue product';
+  }
+
+  String? _selectedCataloguePath() {
+    final selectedId = _selectedMeatProductId;
+
+    if (selectedId == null) {
+      return null;
+    }
+
+    for (final product in _catalogueProducts) {
+      if (product['id']?.toString() == selectedId) {
+        return _catalogueProductLabel(product);
+      }
+    }
+
+    return null;
+  }
+
+  void _showDatabaseError(PostgrestException error) {
+    if (!mounted) {
+      return;
+    }
+
+    _showMessage(error.message);
   }
 
   String? _requiredValidator(String? value, String fieldName) {
@@ -181,29 +364,23 @@ class _AddProductPageState extends State<AddProductPage> {
       return;
     }
 
-    if (_selectedAnimalTypeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an animal type.')),
-      );
-
+    if (_selectedSpeciesId == null) {
+      _showMessage('Please select a species.');
       return;
     }
 
-    if (_selectedCutId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a cut.')));
+    if (_selectedMeatProductId == null) {
+      _showMessage('Please select a catalogue product or cut.');
+      return;
+    }
 
+    if (_selectedProductVariantId == null) {
+      _showMessage('Please select a product variant.');
       return;
     }
 
     if (_supplierBusinessId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The supplier business could not be identified.'),
-        ),
-      );
-
+      _showMessage('The supplier business could not be identified.');
       return;
     }
 
@@ -216,22 +393,38 @@ class _AddProductPageState extends State<AddProductPage> {
 
       await Supabase.instance.client.from('products').insert({
         'supplier_business_id': _supplierBusinessId,
-        'animal_type_id': _selectedAnimalTypeId,
-        'cut_id': _selectedCutId,
+
+        'product_variant_id': _selectedProductVariantId,
+
+        'animal_type_id': null,
+        'cut_id': null,
+
         'sku': _skuController.text.trim(),
+
         'product_name': _productNameController.text.trim(),
+
         'description': _emptyToNull(_descriptionController.text),
+
         'brand': _emptyToNull(_brandController.text),
+
         'origin_country': _emptyToNull(_originCountryController.text),
+
         'origin_state': _emptyToNull(_originStateController.text),
+
         'temperature_state': _temperatureState,
+
         'price_basis': _priceBasis,
+
         'catch_weight': _catchWeight,
+
         'available_quantity': quantityText.isEmpty
             ? null
             : double.parse(quantityText),
+
         'quantity_unit': _quantityUnit,
+
         'availability_status': _availabilityStatus,
+
         'active': true,
       });
 
@@ -255,19 +448,13 @@ class _AddProductPageState extends State<AddProductPage> {
         message = 'This SKU already exists for your supplier business.';
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } catch (_) {
+      _showMessage(message);
+    } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Something went wrong while creating the product.'),
-        ),
-      );
+      _showMessage('Something went wrong while creating the product: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -275,6 +462,16 @@ class _AddProductPageState extends State<AddProductPage> {
         });
       }
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _emptyToNull(String value) {
@@ -287,9 +484,43 @@ class _AddProductPageState extends State<AddProductPage> {
     return trimmedValue;
   }
 
+  String _variantLabel(Map<String, dynamic> variant) {
+    final variantName = variant['variant_name']?.toString();
+
+    if (variantName != null && variantName.trim().isNotEmpty) {
+      return variantName;
+    }
+
+    final parts = <String>[];
+
+    final temperature = variant['temperature_state']?.toString();
+
+    final boneState = variant['bone_state']?.toString();
+
+    if (temperature != null && temperature.isNotEmpty) {
+      parts.add(temperature[0].toUpperCase() + temperature.substring(1));
+    }
+
+    if (boneState == 'bone_in') {
+      parts.add('Bone-in');
+    }
+
+    if (boneState == 'boneless') {
+      parts.add('Boneless');
+    }
+
+    if (parts.isEmpty) {
+      return 'Unnamed variant';
+    }
+
+    return parts.join(' • ');
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkRed = Color(0xFF741C1C);
+
+    final selectedCataloguePath = _selectedCataloguePath();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
@@ -328,19 +559,210 @@ class _AddProductPageState extends State<AddProductPage> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
+
                             const SizedBox(height: 10),
+
                             const Text(
-                              'Enter the basic details for this product. '
-                              'Pricing and photos will be added separately.',
+                              'Select the product from the marketplace catalogue, then enter your supplier-specific information.',
                               style: TextStyle(color: Color(0xFF5E5E5E)),
                             ),
+
                             const SizedBox(height: 30),
+
+                            const Text(
+                              'Meat catalogue',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            const Text(
+                              'Catalogue products can now have any number of parent levels. The complete path is shown automatically.',
+                              style: TextStyle(
+                                color: Color(0xFF666666),
+                                height: 1.4,
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            DropdownButtonFormField<String>(
+                              initialValue: _selectedSpeciesId,
+                              decoration: const InputDecoration(
+                                labelText: 'Species',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _species.map((species) {
+                                return DropdownMenuItem<String>(
+                                  value: species['id'] as String,
+                                  child: Text(species['name'] as String),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  _loadCatalogueProducts(value);
+                                }
+                              },
+                            ),
+
+                            const SizedBox(height: 18),
+
+                            DropdownButtonFormField<String>(
+                              key: ValueKey('catalogue-$_selectedSpeciesId'),
+                              initialValue: _selectedMeatProductId,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Catalogue product / cut',
+                                hintText: _isLoadingCatalogue
+                                    ? 'Loading catalogue...'
+                                    : 'Select a product or cut',
+                                border: const OutlineInputBorder(),
+                                suffixIcon: _isLoadingCatalogue
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              items: _catalogueProducts.map((product) {
+                                return DropdownMenuItem<String>(
+                                  value: product['id'] as String,
+                                  child: Text(
+                                    _catalogueProductLabel(product),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged:
+                                  _selectedSpeciesId == null ||
+                                      _isLoadingCatalogue
+                                  ? null
+                                  : (value) {
+                                      if (value != null) {
+                                        _loadProductVariants(value);
+                                      }
+                                    },
+                            ),
+
+                            if (selectedCataloguePath != null) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8F4F4),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFFE5D6D6),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.account_tree_outlined,
+                                      size: 20,
+                                      color: darkRed,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        selectedCataloguePath,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 18),
+
+                            DropdownButtonFormField<String>(
+                              key: ValueKey('variant-$_selectedMeatProductId'),
+                              initialValue: _selectedProductVariantId,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Product variant / specification',
+                                hintText: _isLoadingVariants
+                                    ? 'Loading variants...'
+                                    : 'Select a variant',
+                                border: const OutlineInputBorder(),
+                                suffixIcon: _isLoadingVariants
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              items: _productVariants.map((variant) {
+                                return DropdownMenuItem<String>(
+                                  value: variant['id'] as String,
+                                  child: Text(
+                                    _variantLabel(variant),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged:
+                                  _selectedMeatProductId == null ||
+                                      _isLoadingVariants
+                                  ? null
+                                  : _selectVariant,
+                            ),
+
+                            if (_selectedMeatProductId != null &&
+                                !_isLoadingVariants &&
+                                _productVariants.isEmpty) ...[
+                              const SizedBox(height: 10),
+                              const Text(
+                                'This catalogue product does not currently have an active variant. Select another catalogue product.',
+                                style: TextStyle(
+                                  color: Color(0xFF9A6700),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 32),
+
+                            const Divider(),
+
+                            const SizedBox(height: 28),
+
+                            const Text(
+                              'Supplier listing',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+
+                            const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _skuController,
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
                                 labelText: 'Supplier SKU',
-                                hintText: 'Example: BEEF-RIBEYE-001',
+                                hintText: 'Example: BEEF-OB-001',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (value) {
@@ -350,13 +772,16 @@ class _AddProductPageState extends State<AddProductPage> {
                                 );
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _productNameController,
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
-                                labelText: 'Product name',
-                                hintText: 'Example: Chilled Beef Rib Eye',
+                                labelText: 'Supplier product name',
+                                hintText:
+                                    'Automatically filled from the selected variant',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (value) {
@@ -366,47 +791,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 );
                               },
                             ),
+
                             const SizedBox(height: 18),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedAnimalTypeId,
-                              decoration: const InputDecoration(
-                                labelText: 'Animal type',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: _animalTypes.map((animalType) {
-                                return DropdownMenuItem<String>(
-                                  value: animalType['id'] as String,
-                                  child: Text(animalType['name'] as String),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  _loadCuts(value);
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 18),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedCutId,
-                              decoration: const InputDecoration(
-                                labelText: 'Cut',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: _cuts.map((cut) {
-                                return DropdownMenuItem<String>(
-                                  value: cut['id'] as String,
-                                  child: Text(cut['name'] as String),
-                                );
-                              }).toList(),
-                              onChanged: _selectedAnimalTypeId == null
-                                  ? null
-                                  : (value) {
-                                      setState(() {
-                                        _selectedCutId = value;
-                                      });
-                                    },
-                            ),
-                            const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _brandController,
                               textInputAction: TextInputAction.next,
@@ -415,7 +802,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+
                             const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _descriptionController,
                               minLines: 3,
@@ -425,7 +814,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+
                             const SizedBox(height: 18),
+
                             DropdownButtonFormField<String>(
                               initialValue: _temperatureState,
                               decoration: const InputDecoration(
@@ -433,6 +824,10 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                               items: const [
+                                DropdownMenuItem(
+                                  value: 'fresh',
+                                  child: Text('Fresh'),
+                                ),
                                 DropdownMenuItem(
                                   value: 'chilled',
                                   child: Text('Chilled'),
@@ -450,7 +845,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             DropdownButtonFormField<String>(
                               initialValue: _priceBasis,
                               decoration: const InputDecoration(
@@ -479,14 +876,15 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             SwitchListTile(
                               value: _catchWeight,
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Catch-weight product'),
                               subtitle: const Text(
-                                'The final supplied weight may differ '
-                                'from the ordered estimate.',
+                                'The final supplied weight may differ from the ordered estimate.',
                               ),
                               onChanged: (value) {
                                 setState(() {
@@ -494,7 +892,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 });
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _availableQuantityController,
                               keyboardType:
@@ -507,7 +907,9 @@ class _AddProductPageState extends State<AddProductPage> {
                               ),
                               validator: _validateQuantity,
                             ),
+
                             const SizedBox(height: 18),
+
                             DropdownButtonFormField<String>(
                               initialValue: _quantityUnit,
                               decoration: const InputDecoration(
@@ -536,7 +938,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             DropdownButtonFormField<String>(
                               initialValue: _availabilityStatus,
                               decoration: const InputDecoration(
@@ -569,7 +973,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }
                               },
                             ),
+
                             const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _originCountryController,
                               textInputAction: TextInputAction.next,
@@ -579,7 +985,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+
                             const SizedBox(height: 18),
+
                             TextFormField(
                               controller: _originStateController,
                               decoration: const InputDecoration(
@@ -588,7 +996,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+
                             const SizedBox(height: 30),
+
                             FilledButton(
                               onPressed: _isSaving ? null : _saveProduct,
                               style: FilledButton.styleFrom(

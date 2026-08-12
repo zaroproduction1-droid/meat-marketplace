@@ -20,6 +20,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _filteredProducts = [];
 
+  final Map<String, Map<String, dynamic>> _parentProductsById = {};
+
   @override
   void initState() {
     super.initState();
@@ -53,18 +55,43 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             quantity_unit,
             availability_status,
             supplier_business_id,
+            product_variant_id,
+            animal_type_id,
+            cut_id,
             active,
+
             businesses(
               legal_name,
               trading_name
             ),
+
             animal_types(name),
             cuts(name),
+
+            product_variants(
+              id,
+              variant_name,
+              temperature_state,
+              bone_state,
+
+              meat_products(
+                id,
+                name,
+                parent_product_id,
+
+                species(
+                  id,
+                  name
+                )
+              )
+            ),
+
             product_prices(
               amount,
               price_basis,
               minimum_quantity,
               active,
+
               price_lists(
                 id,
                 name,
@@ -76,15 +103,55 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           .eq('active', true)
           .order('product_name');
 
+      final products = List<Map<String, dynamic>>.from(response);
+
+      final parentIds = <String>{};
+
+      for (final product in products) {
+        final meatProduct = _extractMeatProduct(product);
+
+        final parentId = meatProduct?['parent_product_id']?.toString();
+
+        if (parentId != null && parentId.isNotEmpty) {
+          parentIds.add(parentId);
+        }
+      }
+
+      final parentProductsById = <String, Map<String, dynamic>>{};
+
+      if (parentIds.isNotEmpty) {
+        final parentResponse = await Supabase.instance.client
+            .from('meat_products')
+            .select('''
+                  id,
+                  name,
+                  slug
+                  ''')
+            .inFilter('id', parentIds.toList());
+
+        for (final rawParent in parentResponse) {
+          final parent = Map<String, dynamic>.from(rawParent);
+
+          final id = parent['id']?.toString();
+
+          if (id != null) {
+            parentProductsById[id] = parent;
+          }
+        }
+      }
+
       if (!mounted) {
         return;
       }
 
-      final products = List<Map<String, dynamic>>.from(response);
-
       setState(() {
         _products = products;
-        _filteredProducts = products;
+        _filteredProducts = List<Map<String, dynamic>>.from(products);
+
+        _parentProductsById
+          ..clear()
+          ..addAll(parentProductsById);
+
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -108,6 +175,126 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
+  Map<String, dynamic>? _variant(Map<String, dynamic> product) {
+    final raw = product['product_variants'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _extractMeatProduct(Map<String, dynamic> product) {
+    final variant = _variant(product);
+
+    final raw = variant?['meat_products'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _species(Map<String, dynamic> product) {
+    final meatProduct = _extractMeatProduct(product);
+
+    final raw = meatProduct?['species'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _parentProduct(Map<String, dynamic> product) {
+    final meatProduct = _extractMeatProduct(product);
+
+    final parentId = meatProduct?['parent_product_id']?.toString();
+
+    if (parentId == null || parentId.isEmpty) {
+      return null;
+    }
+
+    return _parentProductsById[parentId];
+  }
+
+  List<String> _canonicalCatalogueNames(Map<String, dynamic> product) {
+    final names = <String>[];
+
+    final variant = _variant(product);
+
+    final meatProduct = _extractMeatProduct(product);
+
+    final species = _species(product);
+
+    final parentProduct = _parentProduct(product);
+
+    if (variant == null || meatProduct == null) {
+      return names;
+    }
+
+    final speciesName = species?['name']?.toString();
+
+    final parentName = parentProduct?['name']?.toString();
+
+    final meatProductName = meatProduct['name']?.toString();
+
+    final variantName = variant['variant_name']?.toString();
+
+    if (speciesName != null && speciesName.trim().isNotEmpty) {
+      names.add(speciesName);
+    }
+
+    if (parentName != null && parentName.trim().isNotEmpty) {
+      names.add(parentName);
+    }
+
+    if (meatProductName != null && meatProductName.trim().isNotEmpty) {
+      names.add(meatProductName);
+    }
+
+    if (variantName != null && variantName.trim().isNotEmpty) {
+      names.add(variantName);
+    }
+
+    return names;
+  }
+
+  String _cataloguePath(Map<String, dynamic> product) {
+    final canonicalNames = _canonicalCatalogueNames(product);
+
+    if (canonicalNames.isNotEmpty) {
+      return canonicalNames.join(' → ');
+    }
+
+    final animalType = product['animal_types'] as Map<String, dynamic>?;
+
+    final cut = product['cuts'] as Map<String, dynamic>?;
+
+    final legacyNames = <String>[];
+
+    final animalName = animalType?['name']?.toString();
+
+    final cutName = cut?['name']?.toString();
+
+    if (animalName != null && animalName.isNotEmpty) {
+      legacyNames.add(animalName);
+    }
+
+    if (cutName != null && cutName.isNotEmpty) {
+      legacyNames.add(cutName);
+    }
+
+    if (legacyNames.isNotEmpty) {
+      return legacyNames.join(' → ');
+    }
+
+    return 'Catalogue not linked';
+  }
+
   void _applySearch() {
     final search = _searchController.text.trim().toLowerCase();
 
@@ -118,20 +305,25 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       }
 
       _filteredProducts = _products.where((product) {
+        final supplier = product['businesses'] as Map<String, dynamic>?;
+
+        final catalogueNames = _canonicalCatalogueNames(product);
+
         final animalType = product['animal_types'] as Map<String, dynamic>?;
 
         final cut = product['cuts'] as Map<String, dynamic>?;
-
-        final supplier = product['businesses'] as Map<String, dynamic>?;
 
         final searchableValues = [
           product['product_name'],
           product['sku'],
           product['brand'],
-          animalType?['name'],
-          cut?['name'],
           supplier?['trading_name'],
           supplier?['legal_name'],
+
+          ...catalogueNames,
+
+          animalType?['name'],
+          cut?['name'],
         ];
 
         return searchableValues.any((value) {
@@ -140,6 +332,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         });
       }).toList();
     });
+  }
+
+  bool _usesCanonicalCatalogue(Map<String, dynamic> product) {
+    return product['product_variant_id'] != null;
   }
 
   Map<String, dynamic>? _findVisiblePrice(Map<String, dynamic> product) {
@@ -209,10 +405,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     switch (value) {
       case 'kilogram':
         return 'kg';
+
       case 'carton':
         return 'carton';
+
       case 'unit':
         return 'unit';
+
       default:
         return '';
     }
@@ -222,12 +421,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     switch (value) {
       case 'in_stock':
         return 'In stock';
+
       case 'limited':
         return 'Limited';
+
       case 'out_of_stock':
         return 'Out of stock';
+
       case 'made_to_order':
         return 'Made to order';
+
       default:
         return 'Unknown';
     }
@@ -276,7 +479,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search product, cut, brand or supplier',
+                    hintText:
+                        'Search species, parent cut, product, variant, brand or supplier',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
@@ -355,15 +559,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           itemBuilder: (context, index) {
             final product = _filteredProducts[index];
 
-            final animalType = product['animal_types'] as Map<String, dynamic>?;
-
-            final cut = product['cuts'] as Map<String, dynamic>?;
-
             final price = _findVisiblePrice(product);
 
             final amount = price?['amount'];
 
             final priceBasis = price?['price_basis'] as String?;
+
+            final cataloguePath = _cataloguePath(product);
+
+            final usesCanonicalCatalogue = _usesCanonicalCatalogue(product);
 
             return Card(
               elevation: 0,
@@ -398,7 +602,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
+
                           const SizedBox(height: 7),
+
                           Text(
                             _supplierName(product),
                             style: const TextStyle(
@@ -406,14 +612,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 9),
+
+                          const SizedBox(height: 10),
+
                           Text(
-                            '${animalType?['name'] ?? ''} • '
-                            '${cut?['name'] ?? ''} • '
-                            '${product['temperature_state'] ?? ''}',
-                            style: const TextStyle(color: Color(0xFF5E5E5E)),
+                            cataloguePath,
+                            style: const TextStyle(
+                              color: Color(0xFF5E5E5E),
+                              height: 1.4,
+                            ),
                           ),
-                          const SizedBox(height: 9),
+
+                          const SizedBox(height: 8),
+
+                          Text(
+                            'Storage: ${product['temperature_state'] ?? 'Not specified'}',
+                            style: const TextStyle(color: Color(0xFF666666)),
+                          ),
+
+                          const SizedBox(height: 10),
+
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -425,8 +643,23 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                                   ),
                                 ),
                               ),
+
                               if (product['brand'] != null)
                                 Chip(label: Text(product['brand'].toString())),
+
+                              Chip(
+                                avatar: Icon(
+                                  usesCanonicalCatalogue
+                                      ? Icons.account_tree_outlined
+                                      : Icons.history,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  usesCanonicalCatalogue
+                                      ? 'Catalogue linked'
+                                      : 'Legacy listing',
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -447,20 +680,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                             )
                           else
                             Text(
-                              '\$$amount / '
-                              '${_formatPriceBasis(priceBasis)}',
+                              '\$$amount / ${_formatPriceBasis(priceBasis)}',
                               style: const TextStyle(
                                 fontSize: 21,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF741C1C),
                               ),
                             ),
+
                           if (price?['minimum_quantity'] != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 7),
                               child: Text(
-                                'Minimum: '
-                                '${price?['minimum_quantity']}',
+                                'Minimum: ${price?['minimum_quantity']}',
                               ),
                             ),
                         ],

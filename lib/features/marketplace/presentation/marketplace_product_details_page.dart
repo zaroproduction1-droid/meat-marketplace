@@ -15,13 +15,78 @@ class _MarketplaceProductDetailsPageState
     extends State<MarketplaceProductDetailsPage> {
   bool _isCheckingRelationship = true;
   bool _isSubmittingRequest = false;
+  bool _isLoadingCatalogueParent = true;
+
   String? _relationshipStatus;
   String? _butcherBusinessId;
+
+  Map<String, dynamic>? _parentProduct;
 
   @override
   void initState() {
     super.initState();
+
     _loadRelationshipStatus();
+    _loadParentProduct();
+  }
+
+  Future<void> _loadParentProduct() async {
+    try {
+      final meatProduct = _meatProduct();
+
+      final parentProductId = meatProduct?['parent_product_id']?.toString();
+
+      if (parentProductId == null || parentProductId.isEmpty) {
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _parentProduct = null;
+          _isLoadingCatalogueParent = false;
+        });
+
+        return;
+      }
+
+      final response = await Supabase.instance.client
+          .from('meat_products')
+          .select('''
+            id,
+            name,
+            slug
+            ''')
+          .eq('id', parentProductId)
+          .single();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _parentProduct = Map<String, dynamic>.from(response);
+
+        _isLoadingCatalogueParent = false;
+      });
+    } on PostgrestException catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _parentProduct = null;
+        _isLoadingCatalogueParent = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _parentProduct = null;
+        _isLoadingCatalogueParent = false;
+      });
+    }
   }
 
   Future<void> _loadRelationshipStatus() async {
@@ -58,9 +123,11 @@ class _MarketplaceProductDetailsPageState
 
       setState(() {
         _butcherBusinessId = butcherBusinessId;
+
         _relationshipStatus = relationships.isEmpty
             ? null
             : relationships.first['status'] as String?;
+
         _isCheckingRelationship = false;
       });
     } on PostgrestException catch (error) {
@@ -143,6 +210,152 @@ class _MarketplaceProductDetailsPageState
     }
   }
 
+  Map<String, dynamic>? _variant() {
+    final raw = widget.product['product_variants'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _meatProduct() {
+    final variant = _variant();
+
+    final raw = variant?['meat_products'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _species() {
+    final meatProduct = _meatProduct();
+
+    final raw = meatProduct?['species'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    return null;
+  }
+
+  bool _usesCanonicalCatalogue() {
+    return widget.product['product_variant_id'] != null;
+  }
+
+  String _speciesName() {
+    final species = _species();
+
+    if (species != null) {
+      final name = species['name']?.toString();
+
+      if (name != null && name.trim().isNotEmpty) {
+        return name;
+      }
+    }
+
+    final animalType = widget.product['animal_types'] as Map<String, dynamic>?;
+
+    return animalType?['name']?.toString() ?? 'Not linked';
+  }
+
+  String _parentProductName() {
+    final name = _parentProduct?['name']?.toString();
+
+    if (name != null && name.trim().isNotEmpty) {
+      return name;
+    }
+
+    return 'Not linked';
+  }
+
+  String _meatProductName() {
+    final meatProduct = _meatProduct();
+
+    if (meatProduct != null) {
+      final name = meatProduct['name']?.toString();
+
+      if (name != null && name.trim().isNotEmpty) {
+        return name;
+      }
+    }
+
+    final cut = widget.product['cuts'] as Map<String, dynamic>?;
+
+    return cut?['name']?.toString() ?? 'Not linked';
+  }
+
+  String _variantName() {
+    final variant = _variant();
+
+    final name = variant?['variant_name']?.toString();
+
+    if (name != null && name.trim().isNotEmpty) {
+      return name;
+    }
+
+    return 'Not linked';
+  }
+
+  String _cataloguePath() {
+    if (_usesCanonicalCatalogue()) {
+      final parts = <String>[];
+
+      final species = _speciesName();
+
+      final parent = _parentProductName();
+
+      final meatProduct = _meatProductName();
+
+      final variant = _variantName();
+
+      if (species != 'Not linked') {
+        parts.add(species);
+      }
+
+      if (parent != 'Not linked') {
+        parts.add(parent);
+      }
+
+      if (meatProduct != 'Not linked') {
+        parts.add(meatProduct);
+      }
+
+      if (variant != 'Not linked') {
+        parts.add(variant);
+      }
+
+      if (parts.isNotEmpty) {
+        return parts.join(' → ');
+      }
+    }
+
+    final legacyParts = <String>[];
+
+    final species = _speciesName();
+
+    final meatProduct = _meatProductName();
+
+    if (species != 'Not linked') {
+      legacyParts.add(species);
+    }
+
+    if (meatProduct != 'Not linked') {
+      legacyParts.add(meatProduct);
+    }
+
+    if (legacyParts.isNotEmpty) {
+      return legacyParts.join(' → ');
+    }
+
+    return 'Catalogue not linked';
+  }
+
   String _supplierName() {
     final supplier = widget.product['businesses'] as Map<String, dynamic>?;
 
@@ -159,12 +372,16 @@ class _MarketplaceProductDetailsPageState
     switch (value) {
       case 'in_stock':
         return 'In stock';
+
       case 'limited':
         return 'Limited stock';
+
       case 'out_of_stock':
         return 'Out of stock';
+
       case 'made_to_order':
         return 'Made to order';
+
       default:
         return 'Unknown';
     }
@@ -174,10 +391,13 @@ class _MarketplaceProductDetailsPageState
     switch (value) {
       case 'fresh':
         return 'Fresh';
+
       case 'frozen':
         return 'Frozen';
+
       case 'chilled':
         return 'Chilled';
+
       default:
         return value ?? 'Not specified';
     }
@@ -239,9 +459,7 @@ class _MarketplaceProductDetailsPageState
   Widget build(BuildContext context) {
     final product = widget.product;
 
-    final animalType = product['animal_types'] as Map<String, dynamic>?;
-
-    final cut = product['cuts'] as Map<String, dynamic>?;
+    final usesCanonicalCatalogue = _usesCanonicalCatalogue();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
@@ -277,7 +495,9 @@ class _MarketplaceProductDetailsPageState
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+
                       const SizedBox(height: 10),
+
                       Text(
                         _supplierName(),
                         style: const TextStyle(
@@ -286,22 +506,38 @@ class _MarketplaceProductDetailsPageState
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 24),
+
+                      const SizedBox(height: 22),
+
+                      if (_isLoadingCatalogueParent && usesCanonicalCatalogue)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 18),
+                          child: LinearProgressIndicator(),
+                        )
+                      else
+                        Text(
+                          _cataloguePath(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF5E5E5E),
+                            height: 1.5,
+                          ),
+                        ),
+
+                      const SizedBox(height: 18),
+
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
                         children: [
-                          Chip(
-                            label: Text(
-                              animalType?['name'] as String? ??
-                                  'Unknown animal',
-                            ),
-                          ),
-                          Chip(
-                            label: Text(
-                              cut?['name'] as String? ?? 'Unknown cut',
-                            ),
-                          ),
+                          Chip(label: Text(_speciesName())),
+
+                          if (usesCanonicalCatalogue &&
+                              _parentProductName() != 'Not linked')
+                            Chip(label: Text(_parentProductName())),
+
+                          Chip(label: Text(_meatProductName())),
+
                           Chip(
                             label: Text(
                               _formatTemperature(
@@ -309,6 +545,7 @@ class _MarketplaceProductDetailsPageState
                               ),
                             ),
                           ),
+
                           Chip(
                             label: Text(
                               _formatAvailability(
@@ -318,26 +555,65 @@ class _MarketplaceProductDetailsPageState
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 28),
+
                       const Divider(),
+
                       const SizedBox(height: 20),
+
+                      const Text(
+                        'Product Information',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
                       _DetailRow(
                         label: 'SKU',
                         value: product['sku']?.toString() ?? 'Not provided',
                       ),
+
                       _DetailRow(
                         label: 'Brand',
                         value: product['brand']?.toString() ?? 'Not provided',
                       ),
+
                       _DetailRow(
                         label: 'Available quantity',
                         value:
                             '${product['available_quantity'] ?? 'Not provided'} '
                             '${product['quantity_unit'] ?? ''}',
                       ),
+
+                      if (usesCanonicalCatalogue) ...[
+                        const SizedBox(height: 8),
+
+                        _DetailRow(label: 'Species', value: _speciesName()),
+
+                        if (_parentProductName() != 'Not linked')
+                          _DetailRow(
+                            label: 'Product family / parent cut',
+                            value: _parentProductName(),
+                          ),
+
+                        _DetailRow(
+                          label: 'Meat product / cut',
+                          value: _meatProductName(),
+                        ),
+
+                        _DetailRow(label: 'Variant', value: _variantName()),
+                      ],
+
                       const SizedBox(height: 28),
+
                       const Divider(),
+
                       const SizedBox(height: 20),
+
                       const Text(
                         'Supplier Access',
                         style: TextStyle(
@@ -345,12 +621,16 @@ class _MarketplaceProductDetailsPageState
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+
                       const SizedBox(height: 10),
+
                       const Text(
                         'Request access to become an approved customer of this supplier and view customer-only pricing.',
                         style: TextStyle(color: Color(0xFF5E5E5E), height: 1.5),
                       ),
+
                       const SizedBox(height: 20),
+
                       _buildRelationshipButton(),
                     ],
                   ),
@@ -378,7 +658,7 @@ class _DetailRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 180,
+            width: 210,
             child: Text(
               label,
               style: const TextStyle(fontWeight: FontWeight.w700),
