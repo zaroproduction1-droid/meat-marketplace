@@ -2,67 +2,93 @@
 
 ## Purpose
 
-This document defines the long-term meat product structure for the marketplace.
+This document defines the long-term canonical meat catalogue architecture for the marketplace.
 
-The structure must support:
+The catalogue must support:
 
 - Species
-- Primal sections
-- Sub-primal sections
-- Meat products / cuts
+- Flexible product and cut hierarchy
+- Unlimited hierarchy depth
 - Product variants and specifications
-- Alternative/common product names
-- Future industry product codes
+- Common and alternative terminology
+- Verified industry codes
 - Supplier product listings
-- Supplier-specific availability
+- Supplier-specific naming
+- Supplier-specific SKU
+- Availability
 - Public pricing
 - Approved-customer pricing
 - Private contract pricing
-- Future purchasing
-- Future sales/orders
+- Future ordering
+- Future purchasing and sales
 - Future invoicing
 - Future analytics
-- Future visual animal browsers
-
-Pork is not supported by this marketplace and must not be added to the catalogue.
+- Future CSV and Excel exports
+- Future interactive animal browsers
 
 ---
 
-# Core hierarchy
+# Core principle
 
-The canonical meat catalogue will follow:
+The marketplace must separate:
+
+1. Canonical product identity
+2. Product specification
+3. Supplier listing
+4. Supplier pricing
+5. Visual animal anatomy
+
+These are related concepts but must not be forced into one hierarchy.
+
+---
+
+# Canonical hierarchy
+
+The catalogue uses a recursive product hierarchy.
+
+Structure:
 
 Species
-→ Primal Section
-→ Sub-primal Section
-→ Meat Product / Cut
-→ Product Variant / Specification
+→ Meat Product
+→ Child Meat Product
+→ Child Meat Product
+→ any additional required levels
+→ Product Variant
 → Supplier Product
 
 Example:
 
 Beef
-→ Chuck
 → Blade
 → Oyster Blade
-→ Fresh / Boneless / Trim specification
+→ Fresh Boneless Oyster Blade
 → Supplier listing
+
+The number of meat product levels is not fixed.
+
+A catalogue product may be:
+
+- a top-level commercial family
+- a recognised cut
+- a child cut
+- a structural catalogue grouping
+- a recognised saleable product
+
+The database must not assume every product has exactly one primal and one sub-primal parent.
 
 ---
 
 # 1. species
 
-Represents the animal species/category.
+Represents the top-level animal category.
 
-Examples:
+Current species:
 
 - Beef
 - Lamb
 - Chicken
 - Goat
 
-Pork must not be added.
-
 Suggested fields:
 
 - id
@@ -74,123 +100,128 @@ Suggested fields:
 - created_at
 - updated_at
 
-Example:
-
-name: Beef
-slug: beef
-
 ---
 
-# 2. primal_sections
+# 2. meat_products
 
-Represents the major anatomical section of the animal.
+Represents canonical meat products, cuts and catalogue families.
 
-Each primal section belongs to one species.
+This table is recursive.
 
-Example:
-
-Beef
-→ Chuck
-
-Suggested fields:
+Important fields:
 
 - id
 - species_id
+- parent_product_id
 - name
 - slug
 - description
-- active
-- display_order
-- diagram_key
-- created_at
-- updated_at
-
-diagram_key will later allow the interactive animal diagram to link a clickable region to the database.
-
-Example:
-
-species: Beef
-name: Chuck
-diagram_key: beef_chuck
-
----
-
-# 3. subprimal_sections
-
-Represents a subdivision underneath a primal section.
-
-Example:
-
-Beef
-→ Chuck
-→ Blade
-
-Suggested fields:
-
-- id
-- primal_section_id
-- name
-- slug
-- description
+- product_level
 - active
 - display_order
 - created_at
 - updated_at
 
----
+Relationship:
 
-# 4. meat_products
+parent_product_id
+→ meat_products.id
 
-Represents the canonical meat cut/product.
+A root product has:
 
-This is not supplier-specific.
+parent_product_id = null
 
 Example:
 
-Beef
-→ Chuck
-→ Blade
+Blade
+
+Child product:
+
+Blade
 → Oyster Blade
 
-Suggested fields:
+A deeper hierarchy is also valid where required.
 
-- id
-- subprimal_section_id
-- name
-- slug
-- description
-- active
-- display_order
-- created_at
-- updated_at
+The hierarchy must reflect product relationships rather than forcing every product through a predefined anatomical tree.
 
-This table represents what the product actually is.
+---
 
-It must not contain supplier-specific information such as:
+# 3. Recursive catalogue paths
 
-- Supplier SKU
-- Supplier price
-- Supplier stock quantity
-- Supplier brand
-- Supplier availability
+The database view:
+
+meat_product_catalogue_paths
+
+resolves the complete ancestry of each canonical meat product.
+
+Example output:
+
+Blade
+
+Blade → Oyster Blade
+
+or deeper:
+
+Product A
+→ Product B
+→ Product C
+→ Product D
+
+The view includes:
+
+- species
+- current product
+- hierarchy depth
+- path IDs
+- path names
+- printable catalogue path
+
+Flutter should use this view instead of manually reconstructing parent relationships.
+
+This prevents the application from depending on a fixed hierarchy depth.
+
+---
+
+# 4. Hierarchy validation
+
+Database validation must protect the catalogue from invalid genealogy.
+
+The hierarchy must reject:
+
+- self-parenting
+- circular parent relationships
+- parents from another species
+
+A Beef product cannot have a Lamb product as its parent.
+
+A relationship such as:
+
+Blade
+→ Oyster Blade
+→ Blade
+
+must also be rejected.
+
+These rules are enforced in PostgreSQL rather than relying only on Flutter validation.
 
 ---
 
 # 5. product_variants
 
-Represents a specific variation or specification of a canonical meat product.
+Represents specific recognised versions or specifications of a canonical product.
 
 Example:
 
+Canonical meat product:
+
 Oyster Blade
-→ Fresh
-→ Boneless
-→ Trim specification
-→ Pack specification
 
-Suggested fields:
+Variant:
 
-- id
+Fresh Boneless Oyster Blade
+
+Possible specification fields:
+
 - meat_product_id
 - variant_name
 - temperature_state
@@ -208,38 +239,18 @@ Suggested fields:
 - country_of_origin
 - specification_notes
 - active
-- created_at
-- updated_at
 
-Not every field must contain a value.
+Not every field must be populated.
 
-The purpose of this table is to allow multiple recognised specifications of the same canonical cut.
+Variants describe the product specification.
 
-Example:
-
-Meat product:
-Oyster Blade
-
-Variant:
-Fresh Boneless Oyster Blade 2–4 kg
-
-Another variant:
-Frozen Boneless Oyster Blade 2–4 kg
+They must not contain supplier pricing or supplier stock.
 
 ---
 
 # 6. product_aliases
 
-Stores alternative or commonly used names for canonical meat products.
-
-Suggested fields:
-
-- id
-- meat_product_id
-- alias
-- alias_type
-- active
-- created_at
+Stores recognised alternative terminology for canonical meat products.
 
 Possible alias types:
 
@@ -247,273 +258,427 @@ Possible alias types:
 - regional
 - trade
 - historical
-- supplier terminology
 
 Example:
 
 Canonical product:
+
 Oyster Blade
 
-Possible aliases:
-- Oyster Blade
-- Flat Iron source muscle
-- Blade muscle
+Possible recognised aliases can point back to that same canonical product.
 
-Aliases must point back to one canonical meat product.
+Supplier-specific sales descriptions should normally not become global aliases automatically.
+
+If Supplier A describes a product differently from Supplier B, each supplier can keep its own wording in products.product_name.
 
 ---
 
 # 7. product_codes
 
-Stores industry or marketplace codes.
+Stores recognised canonical or industry codes.
 
-Suggested fields:
+Possible examples:
 
-- id
+- AUS-MEAT HAM
+- marketplace-defined code
+- other recognised industry systems
+
+Codes may reference:
+
 - meat_product_id
 - product_variant_id
-- code_system
-- code
-- description
-- active
-- created_at
 
-Possible future code systems:
+Supplier-specific SKU values belong in:
 
-- AUS-MEAT
-- Marketplace
-- Supplier
-- Other recognised industry system
+products.sku
 
-We will not populate AUS-MEAT codes until the catalogue structure is final and the codes are verified.
+Supplier SKU values should not normally be inserted into the global product_codes table.
+
+Industry codes must be verified before insertion.
 
 ---
 
-# 8. Existing products table
+# 8. Supplier products
 
-The existing products table currently represents a supplier's product listing.
-
-We will keep this table.
-
-It will eventually behave as the supplier_products table.
-
-A new relationship will later be added:
-
-product_variant_id
+The existing products table represents a supplier's actual marketplace listing.
 
 Conceptually:
 
-products
-- id
-- supplier_business_id
-- product_variant_id
-- sku
-- product_name
-- brand
-- temperature_state
-- available_quantity
-- quantity_unit
-- availability_status
-- active
-- created_at
-- updated_at
+Canonical catalogue
 
-Existing product data must not be deleted during the migration.
-
-The old animal_type_id and cut_id fields can remain temporarily while Flutter is migrated to the new structure.
-
-They will only be retired after the new catalogue works correctly.
-
----
-
-# Supplier product relationship
-
-The relationship will be:
-
-businesses
-→ products
-→ product_variants
-→ meat_products
-→ subprimal_sections
-→ primal_sections
-→ species
-
-This means the supplier is linked to the actual product they sell rather than merely being linked to a generic animal section.
-
-Example:
-
-Supplier A
-→ Supplier product SKU BEEF-001
-→ Fresh Boneless Oyster Blade
-→ Oyster Blade
+Beef
 → Blade
-→ Chuck
-→ Beef
+→ Oyster Blade
+→ Fresh Boneless Oyster Blade
+
+Supplier listing
+
+→ Supplier SKU
+→ Supplier product name
+→ Brand
+→ Availability
+→ Quantity
+→ Supplier-specific description
+
+The supplier listing links to the canonical catalogue through:
+
+products.product_variant_id
+
+This means multiple suppliers can sell the same canonical product while retaining their own:
+
+- SKU
+- wording
+- brand
+- available quantity
+- stock status
+- origin information
+- commercial presentation
 
 ---
 
-# Pricing relationship
+# Supplier variation
 
-The existing pricing architecture remains:
+Different suppliers may present meat ranges differently.
+
+A supplier sheet may contain:
+
+- broad commercial headings
+- supplier product names
+- weight ranges
+- brands
+- grades
+- chilled/frozen differences
+- bone state
+- trim specifications
+- packaging descriptions
+- supplier SKU/code
+- supplier price
+
+The marketplace should not copy one supplier's product structure and treat it as the universal catalogue.
+
+Supplier data should be mapped to canonical marketplace products where appropriate.
+
+---
+
+# Pricing architecture
+
+Pricing remains supplier-specific.
+
+Relationship:
 
 products
 → product_prices
 → price_lists
 
-Price-list visibility remains:
+Price-list visibility:
 
-1. Private contract
-2. Approved customer
+1. Private
+2. Approved customers
 3. Public
 
-The marketplace must select the most specific authorised price.
+The buyer should receive the highest-priority authorised price.
+
+Canonical product hierarchy must not contain pricing.
 
 ---
 
-# Customer relationships
+# Supplier customer relationships
 
-The existing supplier_customer_relationships table remains.
+supplier_customer_relationships controls supplier/customer approval.
 
-It controls whether a butcher has:
+A butcher can:
 
-- Public access only
-- Approved-customer access
-- Supplier relationship status
+- browse approved marketplace suppliers
+- view authorised public prices
+- request supplier access
 
-Private pricing remains controlled separately through:
+A supplier can:
 
-price_list_customers
+- approve a butcher
+- decline a butcher
+- suspend a relationship
+
+Approved-customer pricing depends on an approved relationship.
+
+Private pricing remains controlled through price_list_customers.
 
 ---
 
-# Future ordering relationship
+# Legacy structures
 
-Orders will later reference the supplier product.
+The following structures remain temporarily:
+
+- animal_types
+- cuts
+- primal_sections
+- subprimal_sections
+- products.animal_type_id
+- products.cut_id
+- meat_products.subprimal_section_id
+
+They are migration structures only.
+
+They must not determine the long-term catalogue architecture.
+
+They will be retired only after:
+
+- all relevant products are migrated
+- no Flutter feature depends on them
+- future order and pricing dependencies are checked
+- migration data has been validated
+
+---
+
+# Future visual animal browser
+
+The animal diagram must be separate from canonical product genealogy.
+
+A cow region such as a body section is a navigation concept.
+
+It is not automatically the parent of every commercial product associated with that area.
+
+Future structure:
+
+species
+→ animal_regions
+
+and:
+
+meat_products
+↔ meat_product_regions
+↔ animal_regions
+
+Possible future animal_regions fields:
+
+- id
+- species_id
+- name
+- slug
+- diagram_key
+- description
+- display_order
+- active
+
+Possible future meat_product_regions fields:
+
+- meat_product_id
+- animal_region_id
+- relationship_type
+
+This allows a product to appear when a butcher clicks a body region without corrupting the canonical product hierarchy.
+
+---
+
+# Supplier application flow
+
+Supplier Add Product:
+
+Species
+→ Catalogue Product / Cut
+→ Product Variant
+→ Supplier Listing
+
+The catalogue product dropdown displays the complete recursive path.
 
 Example:
 
-order
-→ order_item
+Blade
+Blade → Oyster Blade
+
+Supplier selects:
+
+Blade → Oyster Blade
+
+Then selects:
+
+Fresh Boneless Oyster Blade
+
+The supplier listing then stores product_variant_id.
+
+---
+
+# Supplier Edit Product
+
+Edit Product uses the same recursive catalogue system.
+
+Existing canonical products load:
+
+Species
+→ Catalogue Product / Cut
+→ Variant
+
+Legacy products can continue to be edited without being forced into the canonical catalogue immediately.
+
+---
+
+# Butcher marketplace
+
+Browse Products displays:
+
+Supplier product name
+
+Supplier
+
+Species
+→ complete canonical product path
+→ variant
+
+Example:
+
+Fresh Boneless Oyster Blade
+
+Supplier A
+
+Beef
+→ Blade
+→ Oyster Blade
+→ Fresh Boneless Oyster Blade
+
+Search must match:
+
+- species
+- every catalogue hierarchy level
+- variant
+- supplier product name
+- SKU
+- brand
+- supplier name
+
+---
+
+# Product details
+
+The butcher Product Details page displays:
+
+- supplier product name
+- supplier
+- species
+- complete catalogue path
+- current canonical product
+- variant
+- availability
+- supplier relationship status
+
+The complete path must support unlimited hierarchy depth.
+
+---
+
+# Future ordering
+
+Orders will reference supplier products.
+
+Relationship:
+
+orders
+→ order_items
 → products.id
 
-The order item must also store a price snapshot so historical orders do not change when the supplier later changes their current price.
+Each order item must store snapshots of important values at the time of purchase.
 
-Potential future order item fields:
+Potential snapshot fields:
 
 - product_id
-- product_name_snapshot
+- supplier_product_name
 - quantity
 - quantity_unit
 - unit_price
 - price_basis
 - line_total
+- tax information
+- catalogue description if required
 
-This will be designed during the ordering phase.
+A historical order must not change if the supplier later edits the live product or price.
 
 ---
 
 # Future purchasing and sales
 
-Purchasing and sales records will eventually reference supplier products and canonical meat products.
+Purchasing and sales records will later reference supplier listings and canonical catalogue products.
 
-This will allow analytics such as:
+This will support:
 
-- Purchase quantity
-- Purchase cost
-- Sale quantity
-- Sale revenue
-- Gross profit
-- Gross margin
-- Spend by supplier
-- Sales by customer
-- Product popularity
-- Product profitability
-
-These tables will not be created during the current catalogue phase.
+- purchase quantity
+- purchase cost
+- sale quantity
+- sale revenue
+- gross profit
+- gross margin
+- spend by supplier
+- sales by customer
+- product popularity
+- product profitability
 
 ---
 
 # Future invoicing
 
-Invoices will be built only after the order and sales structure is stable.
+Invoices will be developed after ordering and sales structures are stable.
 
-Invoice lines must preserve historical values rather than dynamically reading today's product price.
-
----
-
-# Future animal browser
-
-The interactive animal browser will use the primal_sections table.
-
-Example:
-
-Cow diagram
-→ user clicks Chuck
-→ primal_sections.diagram_key = beef_chuck
-→ display Chuck sub-primals
-→ display meat products
-→ display supplier products
-→ display authorised supplier price
-
-The diagram will not contain the product database itself.
-
-It will only act as a visual navigation layer over the catalogue.
+Invoice lines must preserve historical values.
 
 ---
 
 # Security architecture
 
-Suppliers never receive direct database administration access.
+Suppliers and butchers interact only through the marketplace application.
 
-Supabase remains the backend database.
+They do not receive Supabase administration access.
 
-Suppliers and butchers access data through the marketplace application.
+Supabase Row Level Security must enforce:
 
-Supabase Row Level Security must continue enforcing:
+- supplier ownership
+- butcher marketplace access
+- approved supplier/customer relationships
+- private price-list assignment
+- public price visibility
+- admin-only functionality
 
-- Suppliers can access their own supplier data
-- Butchers can access authorised marketplace data
-- Public prices remain visible to approved marketplace buyers
-- Approved-customer pricing requires supplier approval
-- Private pricing requires specific price-list assignment
-- Admin-only actions require is_admin = true
-
-CSV and Excel exports will later use the same authorisation rules.
+Future CSV and Excel exports must obey the same permissions.
 
 ---
 
-# Migration strategy
+# Catalogue population strategy
 
-We will not replace the current catalogue in one step.
+The catalogue should not be populated from one supplier's list alone.
 
-Migration order:
+Sources can include:
 
-1. Create the new catalogue tables.
-2. Add Beef as the first full test species.
-3. Add several Beef primal sections.
-4. Add several sub-primal sections.
-5. Add several canonical meat products.
-6. Add product variants.
-7. Add product_variant_id to the existing products table.
-8. Link one existing supplier product to the new catalogue.
-9. Update Flutter product creation/editing to use the new catalogue.
-10. Update marketplace browsing.
-11. Confirm pricing still works.
-12. Migrate remaining products.
-13. Retire the old flat animal_types/cuts relationship only after all dependencies have been removed.
+- verified industry references
+- recognised product codes
+- real supplier catalogues
+- butcher terminology
+- commercial supplier sheets
 
-No existing working product or pricing data should be deleted during this migration.
+Supplier material is useful for identifying:
+
+- real-world naming
+- common commercial groupings
+- product variants
+- weight specifications
+- packaging terminology
+
+But supplier-specific structure must be mapped into the canonical marketplace model rather than copied directly.
 
 ---
 
 # Current Phase 2 objective
 
-The immediate objective is to establish a stable canonical meat catalogue before building:
+The remaining Phase 2 work is:
+
+- validate the recursive model with more real-world cuts
+- populate the initial canonical catalogue
+- add verified aliases where appropriate
+- add verified codes where appropriate
+- review legacy dependencies
+- document migration status
+- perform final catalogue testing
+
+Only after the canonical catalogue is stable should development move heavily into:
 
 - Ordering
 - Purchasing
 - Sales
 - Invoicing
-- Interactive animal diagrams
+- Animal diagrams
 - Analytics
-- CSV/Excel exports
+- CSV and Excel exports

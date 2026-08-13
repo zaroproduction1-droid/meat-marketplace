@@ -20,12 +20,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _filteredProducts = [];
 
-  final Map<String, Map<String, dynamic>> _parentProductsById = {};
+  final Map<String, Map<String, dynamic>> _cataloguePathsByProductId = {};
 
   @override
   void initState() {
     super.initState();
+
     _searchController.addListener(_applySearch);
+
     _loadProducts();
   }
 
@@ -33,6 +35,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   void dispose() {
     _searchController.removeListener(_applySearch);
     _searchController.dispose();
+
     super.dispose();
   }
 
@@ -70,20 +73,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
             product_variants(
               id,
+              meat_product_id,
               variant_name,
               temperature_state,
-              bone_state,
-
-              meat_products(
-                id,
-                name,
-                parent_product_id,
-
-                species(
-                  id,
-                  name
-                )
-              )
+              bone_state
             ),
 
             product_prices(
@@ -105,37 +98,44 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       final products = List<Map<String, dynamic>>.from(response);
 
-      final parentIds = <String>{};
+      final meatProductIds = <String>{};
 
       for (final product in products) {
-        final meatProduct = _extractMeatProduct(product);
+        final variant = _variant(product);
 
-        final parentId = meatProduct?['parent_product_id']?.toString();
+        final meatProductId = variant?['meat_product_id']?.toString();
 
-        if (parentId != null && parentId.isNotEmpty) {
-          parentIds.add(parentId);
+        if (meatProductId != null && meatProductId.trim().isNotEmpty) {
+          meatProductIds.add(meatProductId);
         }
       }
 
-      final parentProductsById = <String, Map<String, dynamic>>{};
+      final cataloguePathsByProductId = <String, Map<String, dynamic>>{};
 
-      if (parentIds.isNotEmpty) {
-        final parentResponse = await Supabase.instance.client
-            .from('meat_products')
+      if (meatProductIds.isNotEmpty) {
+        final pathResponse = await Supabase.instance.client
+            .from('meat_product_catalogue_paths')
             .select('''
-                  id,
-                  name,
-                  slug
-                  ''')
-            .inFilter('id', parentIds.toList());
+              id,
+              species_id,
+              species_name,
+              parent_product_id,
+              name,
+              slug,
+              product_level,
+              depth,
+              path_names,
+              catalogue_path
+              ''')
+            .inFilter('id', meatProductIds.toList());
 
-        for (final rawParent in parentResponse) {
-          final parent = Map<String, dynamic>.from(rawParent);
+        for (final rawPath in pathResponse) {
+          final path = Map<String, dynamic>.from(rawPath);
 
-          final id = parent['id']?.toString();
+          final id = path['id']?.toString();
 
           if (id != null) {
-            parentProductsById[id] = parent;
+            cataloguePathsByProductId[id] = path;
           }
         }
       }
@@ -146,14 +146,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       setState(() {
         _products = products;
-        _filteredProducts = List<Map<String, dynamic>>.from(products);
 
-        _parentProductsById
+        _cataloguePathsByProductId
           ..clear()
-          ..addAll(parentProductsById);
+          ..addAll(cataloguePathsByProductId);
 
         _isLoading = false;
       });
+
+      _applySearch();
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -185,40 +186,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return null;
   }
 
-  Map<String, dynamic>? _extractMeatProduct(Map<String, dynamic> product) {
+  Map<String, dynamic>? _cataloguePathRecord(Map<String, dynamic> product) {
     final variant = _variant(product);
 
-    final raw = variant?['meat_products'];
+    final meatProductId = variant?['meat_product_id']?.toString();
 
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    return null;
-  }
-
-  Map<String, dynamic>? _species(Map<String, dynamic> product) {
-    final meatProduct = _extractMeatProduct(product);
-
-    final raw = meatProduct?['species'];
-
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    return null;
-  }
-
-  Map<String, dynamic>? _parentProduct(Map<String, dynamic> product) {
-    final meatProduct = _extractMeatProduct(product);
-
-    final parentId = meatProduct?['parent_product_id']?.toString();
-
-    if (parentId == null || parentId.isEmpty) {
+    if (meatProductId == null || meatProductId.trim().isEmpty) {
       return null;
     }
 
-    return _parentProductsById[parentId];
+    return _cataloguePathsByProductId[meatProductId];
   }
 
   List<String> _canonicalCatalogueNames(Map<String, dynamic> product) {
@@ -226,35 +203,45 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     final variant = _variant(product);
 
-    final meatProduct = _extractMeatProduct(product);
+    final pathRecord = _cataloguePathRecord(product);
 
-    final species = _species(product);
-
-    final parentProduct = _parentProduct(product);
-
-    if (variant == null || meatProduct == null) {
+    if (variant == null || pathRecord == null) {
       return names;
     }
 
-    final speciesName = species?['name']?.toString();
-
-    final parentName = parentProduct?['name']?.toString();
-
-    final meatProductName = meatProduct['name']?.toString();
-
-    final variantName = variant['variant_name']?.toString();
+    final speciesName = pathRecord['species_name']?.toString();
 
     if (speciesName != null && speciesName.trim().isNotEmpty) {
       names.add(speciesName);
     }
 
-    if (parentName != null && parentName.trim().isNotEmpty) {
-      names.add(parentName);
+    final rawPathNames = pathRecord['path_names'];
+
+    if (rawPathNames is List) {
+      for (final value in rawPathNames) {
+        final name = value?.toString();
+
+        if (name != null && name.trim().isNotEmpty) {
+          names.add(name);
+        }
+      }
+    } else {
+      final cataloguePath = pathRecord['catalogue_path']?.toString();
+
+      if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
+        final pathParts = cataloguePath.split('→');
+
+        for (final rawPart in pathParts) {
+          final part = rawPart.trim();
+
+          if (part.isNotEmpty) {
+            names.add(part);
+          }
+        }
+      }
     }
 
-    if (meatProductName != null && meatProductName.trim().isNotEmpty) {
-      names.add(meatProductName);
-    }
+    final variantName = variant['variant_name']?.toString();
 
     if (variantName != null && variantName.trim().isNotEmpty) {
       names.add(variantName);
@@ -264,29 +251,55 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   String _cataloguePath(Map<String, dynamic> product) {
-    final canonicalNames = _canonicalCatalogueNames(product);
+    final variant = _variant(product);
 
-    if (canonicalNames.isNotEmpty) {
-      return canonicalNames.join(' → ');
+    final pathRecord = _cataloguePathRecord(product);
+
+    if (variant != null && pathRecord != null) {
+      final parts = <String>[];
+
+      final speciesName = pathRecord['species_name']?.toString();
+
+      final cataloguePath = pathRecord['catalogue_path']?.toString();
+
+      final variantName = variant['variant_name']?.toString();
+
+      if (speciesName != null && speciesName.trim().isNotEmpty) {
+        parts.add(speciesName);
+      }
+
+      if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
+        parts.add(cataloguePath);
+      }
+
+      if (variantName != null && variantName.trim().isNotEmpty) {
+        parts.add(variantName);
+      }
+
+      if (parts.isNotEmpty) {
+        return parts.join(' → ');
+      }
     }
 
-    final animalType = product['animal_types'] as Map<String, dynamic>?;
+    final rawAnimalType = product['animal_types'];
 
-    final cut = product['cuts'] as Map<String, dynamic>?;
+    final rawCut = product['cuts'];
 
-    final legacyNames = <String>[];
+    String? animalName;
+    String? cutName;
 
-    final animalName = animalType?['name']?.toString();
-
-    final cutName = cut?['name']?.toString();
-
-    if (animalName != null && animalName.isNotEmpty) {
-      legacyNames.add(animalName);
+    if (rawAnimalType is Map) {
+      animalName = rawAnimalType['name']?.toString();
     }
 
-    if (cutName != null && cutName.isNotEmpty) {
-      legacyNames.add(cutName);
+    if (rawCut is Map) {
+      cutName = rawCut['name']?.toString();
     }
+
+    final legacyNames = <String>[
+      if (animalName != null && animalName.trim().isNotEmpty) animalName,
+      if (cutName != null && cutName.trim().isNotEmpty) cutName,
+    ];
 
     if (legacyNames.isNotEmpty) {
       return legacyNames.join(' → ');
@@ -296,34 +309,62 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   void _applySearch() {
+    if (!mounted) {
+      return;
+    }
+
     final search = _searchController.text.trim().toLowerCase();
 
     setState(() {
       if (search.isEmpty) {
         _filteredProducts = List<Map<String, dynamic>>.from(_products);
+
         return;
       }
 
       _filteredProducts = _products.where((product) {
-        final supplier = product['businesses'] as Map<String, dynamic>?;
+        final supplier = product['businesses'];
+
+        String? tradingName;
+        String? legalName;
+
+        if (supplier is Map) {
+          tradingName = supplier['trading_name']?.toString();
+
+          legalName = supplier['legal_name']?.toString();
+        }
 
         final catalogueNames = _canonicalCatalogueNames(product);
 
-        final animalType = product['animal_types'] as Map<String, dynamic>?;
+        final fullCataloguePath = _cataloguePath(product);
 
-        final cut = product['cuts'] as Map<String, dynamic>?;
+        final animalType = product['animal_types'];
 
-        final searchableValues = [
+        final cut = product['cuts'];
+
+        String? legacyAnimal;
+        String? legacyCut;
+
+        if (animalType is Map) {
+          legacyAnimal = animalType['name']?.toString();
+        }
+
+        if (cut is Map) {
+          legacyCut = cut['name']?.toString();
+        }
+
+        final searchableValues = <dynamic>[
           product['product_name'],
           product['sku'],
           product['brand'],
-          supplier?['trading_name'],
-          supplier?['legal_name'],
+          tradingName,
+          legalName,
 
+          fullCataloguePath,
           ...catalogueNames,
 
-          animalType?['name'],
-          cut?['name'],
+          legacyAnimal,
+          legacyCut,
         ];
 
         return searchableValues.any((value) {
@@ -346,6 +387,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     Map<String, dynamic>? bestPrice;
+
     var bestPriority = 0;
 
     for (final rawPrice in rawPrices) {
@@ -436,16 +478,38 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
-  String _supplierName(Map<String, dynamic> product) {
-    final supplier = product['businesses'] as Map<String, dynamic>?;
+  String _formatTemperature(String? value) {
+    switch (value) {
+      case 'fresh':
+        return 'Fresh';
 
-    final tradingName = supplier?['trading_name'] as String?;
+      case 'chilled':
+        return 'Chilled';
+
+      case 'frozen':
+        return 'Frozen';
+
+      default:
+        return value ?? 'Not specified';
+    }
+  }
+
+  String _supplierName(Map<String, dynamic> product) {
+    final raw = product['businesses'];
+
+    if (raw is! Map) {
+      return 'Unknown supplier';
+    }
+
+    final supplier = Map<String, dynamic>.from(raw);
+
+    final tradingName = supplier['trading_name']?.toString();
 
     if (tradingName != null && tradingName.trim().isNotEmpty) {
       return tradingName;
     }
 
-    return supplier?['legal_name'] as String? ?? 'Unknown supplier';
+    return supplier['legal_name']?.toString() ?? 'Unknown supplier';
   }
 
   @override
@@ -480,7 +544,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText:
-                        'Search species, parent cut, product, variant, brand or supplier',
+                        'Search species, cut, full catalogue path, variant, brand or supplier',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
@@ -626,9 +690,17 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                           const SizedBox(height: 8),
 
                           Text(
-                            'Storage: ${product['temperature_state'] ?? 'Not specified'}',
+                            'Storage: ${_formatTemperature(product['temperature_state'] as String?)}',
                             style: const TextStyle(color: Color(0xFF666666)),
                           ),
+
+                          if (product['available_quantity'] != null) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              'Available: ${product['available_quantity']} ${product['quantity_unit'] ?? ''}',
+                              style: const TextStyle(color: Color(0xFF666666)),
+                            ),
+                          ],
 
                           const SizedBox(height: 10),
 
@@ -656,7 +728,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                                 ),
                                 label: Text(
                                   usesCanonicalCatalogue
-                                      ? 'Catalogue linked'
+                                      ? 'Recursive catalogue'
                                       : 'Legacy listing',
                                 ),
                               ),

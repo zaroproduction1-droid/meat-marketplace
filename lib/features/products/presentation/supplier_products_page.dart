@@ -17,7 +17,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   List<Map<String, dynamic>> _products = [];
 
-  final Map<String, Map<String, dynamic>> _parentProductsById = {};
+  final Map<String, Map<String, dynamic>> _cataloguePathsByProductId = {};
 
   @override
   void initState() {
@@ -76,20 +76,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
                 product_variants(
                   id,
+                  meat_product_id,
                   variant_name,
                   temperature_state,
-                  bone_state,
-
-                  meat_products(
-                    id,
-                    name,
-                    parent_product_id,
-
-                    species(
-                      id,
-                      name
-                    )
-                  )
+                  bone_state
                 )
                 ''')
           .eq('supplier_business_id', businessId)
@@ -97,47 +87,43 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
       final products = List<Map<String, dynamic>>.from(response);
 
-      //
-      // Collect every parent_product_id used
-      // by the supplier's catalogue products.
-      //
-      final parentIds = <String>{};
+      final meatProductIds = <String>{};
 
       for (final product in products) {
-        final meatProduct = _extractMeatProduct(product);
+        final variant = _variant(product);
 
-        final parentId = meatProduct?['parent_product_id']?.toString();
+        final meatProductId = variant?['meat_product_id']?.toString();
 
-        if (parentId != null && parentId.isNotEmpty) {
-          parentIds.add(parentId);
+        if (meatProductId != null && meatProductId.isNotEmpty) {
+          meatProductIds.add(meatProductId);
         }
       }
 
-      final parentProductsById = <String, Map<String, dynamic>>{};
+      final cataloguePathsByProductId = <String, Map<String, dynamic>>{};
 
-      //
-      // Load the parent products separately.
-      //
-      // This avoids PostgREST self-referencing
-      // relationship ambiguity.
-      //
-      if (parentIds.isNotEmpty) {
-        final parentResponse = await Supabase.instance.client
-            .from('meat_products')
+      if (meatProductIds.isNotEmpty) {
+        final pathResponse = await Supabase.instance.client
+            .from('meat_product_catalogue_paths')
             .select('''
                   id,
+                  species_id,
+                  species_name,
+                  parent_product_id,
                   name,
-                  slug
+                  slug,
+                  product_level,
+                  depth,
+                  catalogue_path
                   ''')
-            .inFilter('id', parentIds.toList());
+            .inFilter('id', meatProductIds.toList());
 
-        for (final rawParent in parentResponse) {
-          final parent = Map<String, dynamic>.from(rawParent);
+        for (final rawPath in pathResponse) {
+          final path = Map<String, dynamic>.from(rawPath);
 
-          final id = parent['id']?.toString();
+          final id = path['id']?.toString();
 
           if (id != null) {
-            parentProductsById[id] = parent;
+            cataloguePathsByProductId[id] = path;
           }
         }
       }
@@ -149,9 +135,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       setState(() {
         _products = products;
 
-        _parentProductsById
+        _cataloguePathsByProductId
           ..clear()
-          ..addAll(parentProductsById);
+          ..addAll(cataloguePathsByProductId);
 
         _isLoading = false;
       });
@@ -196,59 +182,29 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return null;
   }
 
-  Map<String, dynamic>? _extractMeatProduct(Map<String, dynamic> product) {
+  Map<String, dynamic>? _cataloguePathRecord(Map<String, dynamic> product) {
     final variant = _variant(product);
 
-    final raw = variant?['meat_products'];
+    final meatProductId = variant?['meat_product_id']?.toString();
 
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    return null;
-  }
-
-  Map<String, dynamic>? _species(Map<String, dynamic> product) {
-    final meatProduct = _extractMeatProduct(product);
-
-    final raw = meatProduct?['species'];
-
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    return null;
-  }
-
-  Map<String, dynamic>? _parentProduct(Map<String, dynamic> product) {
-    final meatProduct = _extractMeatProduct(product);
-
-    final parentId = meatProduct?['parent_product_id']?.toString();
-
-    if (parentId == null || parentId.isEmpty) {
+    if (meatProductId == null || meatProductId.isEmpty) {
       return null;
     }
 
-    return _parentProductsById[parentId];
+    return _cataloguePathsByProductId[meatProductId];
   }
 
   String _cataloguePath(Map<String, dynamic> product) {
     final variant = _variant(product);
 
-    final meatProduct = _extractMeatProduct(product);
+    final pathRecord = _cataloguePathRecord(product);
 
-    final species = _species(product);
-
-    final parentProduct = _parentProduct(product);
-
-    if (variant != null && meatProduct != null) {
+    if (variant != null && pathRecord != null) {
       final parts = <String>[];
 
-      final speciesName = species?['name']?.toString();
+      final speciesName = pathRecord['species_name']?.toString();
 
-      final parentName = parentProduct?['name']?.toString();
-
-      final meatProductName = meatProduct['name']?.toString();
+      final cataloguePath = pathRecord['catalogue_path']?.toString();
 
       final variantName = variant['variant_name']?.toString();
 
@@ -256,12 +212,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         parts.add(speciesName);
       }
 
-      if (parentName != null && parentName.trim().isNotEmpty) {
-        parts.add(parentName);
-      }
-
-      if (meatProductName != null && meatProductName.trim().isNotEmpty) {
-        parts.add(meatProductName);
+      if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
+        parts.add(cataloguePath);
       }
 
       if (variantName != null && variantName.trim().isNotEmpty) {
@@ -479,7 +431,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(product['sku']?.toString() ?? 'No SKU'),
+
                     const SizedBox(height: 5),
+
                     Text(
                       cataloguePath,
                       style: const TextStyle(
@@ -487,7 +441,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                         height: 1.4,
                       ),
                     ),
+
                     const SizedBox(height: 7),
+
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -503,7 +459,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                         const SizedBox(width: 5),
                         Text(
                           usesNewCatalogue
-                              ? 'Canonical catalogue'
+                              ? 'Recursive catalogue'
                               : 'Legacy catalogue',
                           style: TextStyle(
                             fontSize: 12,
