@@ -1114,6 +1114,8 @@ class _MarketplaceProductDetailsPageState
     final catalogueNames = _catalogueProductPathNames();
 
     final visiblePrice = _findVisiblePrice();
+    final amount = visiblePrice?['amount'];
+    final priceBasis = visiblePrice?['price_basis']?.toString();
     final minimumQuantity = visiblePrice?['minimum_quantity'];
 
     final supplierSpecification =

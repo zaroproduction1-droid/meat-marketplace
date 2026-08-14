@@ -205,7 +205,7 @@ class _SupplierCustomerRequestsPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<String>(
-                        initialValue: paymentMethod,
+                        value: paymentMethod,
                         decoration: const InputDecoration(
                           labelText: 'Payment type',
                           border: OutlineInputBorder(),

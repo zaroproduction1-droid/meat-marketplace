@@ -2047,7 +2047,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       if (savingText != null) ...[
                         const SizedBox(height: 5),
                         Text(
-                          savingText,
+                          savingText!,
                           style: const TextStyle(
                             color: Color(0xFF2E7D32),
                             fontWeight: FontWeight.w700,
@@ -3719,6 +3719,80 @@ _isLoadingPage
         ],
       ),
 
+      ),
+    );
+  }
+}
+
+
+class _PrivatePriceListCard extends StatelessWidget {
+  const _PrivatePriceListCard({
+    required this.name,
+    required this.price,
+    required this.money,
+    required this.basisLabel,
+    required this.onEdit,
+  });
+
+  final String name;
+  final Map<String, dynamic>? price;
+  final String Function(dynamic value) money;
+  final String Function(String? value) basisLabel;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final priceText = price == null
+        ? 'Not set'
+        : '${money(price!['amount'])} / ${basisLabel(price!['price_basis']?.toString())}';
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(
+          color: Color(0xFFE0E0E0),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.lock_outline,
+              color: Color(0xFF741C1C),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    priceText,
+                    style: const TextStyle(
+                      color: Color(0xFF555555),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(
+                price == null ? 'Set Price' : 'Edit',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
