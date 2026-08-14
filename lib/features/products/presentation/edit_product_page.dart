@@ -63,6 +63,15 @@ class _EditProductPageState extends State<EditProductPage> {
   List<Map<String, dynamic>> _catalogueProducts = [];
   List<Map<String, dynamic>> _productVariants = [];
 
+  bool _isLoadingPricing = true;
+  bool _isSavingPrice = false;
+  String? _pricingError;
+  String? _supplierBusinessId;
+
+  List<Map<String, dynamic>> _priceLists = [];
+  List<Map<String, dynamic>> _productPrices = [];
+  List<Map<String, dynamic>> _approvedCustomers = [];
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +98,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _applyProductData(widget.product);
     _loadInitialData();
+    _loadPricing();
   }
 
   @override
@@ -1055,6 +1065,1200 @@ class _EditProductPageState extends State<EditProductPage> {
     }
   }
 
+  Future<void> _loadPricing() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingPricing = true;
+        _pricingError = null;
+      });
+    }
+
+    try {
+      final productId = widget.product['id']?.toString();
+
+      if (productId == null || productId.isEmpty) {
+        throw Exception('The product ID could not be identified.');
+      }
+
+      final product = await Supabase.instance.client
+          .from('products')
+          .select('supplier_business_id')
+          .eq('id', productId)
+          .single();
+
+      final supplierBusinessId =
+          product['supplier_business_id']?.toString();
+
+      if (supplierBusinessId == null ||
+          supplierBusinessId.isEmpty) {
+        throw Exception(
+          'The supplier business for this product could not be identified.',
+        );
+      }
+
+      final priceListsResponse = await Supabase.instance.client
+          .from('price_lists')
+          .select('''
+            id,
+            supplier_business_id,
+            name,
+            visibility,
+            active,
+            price_list_customers(
+              butcher_business_id
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .order('name');
+
+      final approvedCustomersResponse = await Supabase.instance.client
+          .from('supplier_customer_relationships')
+          .select('''
+            butcher_business_id,
+            businesses!supplier_customer_relationships_butcher_business_id_fkey(
+              legal_name,
+              trading_name
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'approved')
+          .order('created_at');
+
+      final pricesResponse = await Supabase.instance.client
+          .from('product_prices')
+          .select('''
+            id,
+            product_id,
+            price_list_id,
+            amount,
+            price_basis,
+            minimum_quantity,
+            active
+          ''')
+          .eq('product_id', productId);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _supplierBusinessId = supplierBusinessId;
+        _priceLists =
+            List<Map<String, dynamic>>.from(priceListsResponse);
+        _productPrices =
+            List<Map<String, dynamic>>.from(pricesResponse);
+        _approvedCustomers =
+            List<Map<String, dynamic>>.from(approvedCustomersResponse);
+        _isLoadingPricing = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _pricingError = error.message;
+        _isLoadingPricing = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _pricingError = error.toString();
+        _isLoadingPricing = false;
+      });
+    }
+  }
+
+  Map<String, dynamic>? _firstPriceListForVisibility(
+    String visibility,
+  ) {
+    for (final priceList in _priceLists) {
+      if (priceList['visibility']?.toString() == visibility &&
+          priceList['active'] == true) {
+        return priceList;
+      }
+    }
+
+    return null;
+  }
+
+  List<Map<String, dynamic>> _priceListsForVisibility(
+    String visibility,
+  ) {
+    return _priceLists.where((priceList) {
+      return priceList['visibility']?.toString() == visibility &&
+          priceList['active'] == true;
+    }).toList();
+  }
+
+  Map<String, dynamic>? _priceForList(String priceListId) {
+    for (final price in _productPrices) {
+      if (price['price_list_id']?.toString() == priceListId &&
+          price['active'] == true) {
+        return price;
+      }
+    }
+
+    return null;
+  }
+
+  String _formatMoneyValue(dynamic value) {
+    final number =
+        value is num ? value.toDouble() : double.tryParse('$value');
+
+    if (number == null) {
+      return 'Not set';
+    }
+
+    final parts = number.toStringAsFixed(2).split('.');
+    final digits = parts.first;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[i]);
+    }
+
+    return '\$${buffer.toString()}.${parts.last}';
+  }
+
+  String _pricingBasisLabel(String? basis) {
+    switch (basis) {
+      case 'kilogram':
+        return 'kg';
+      case 'carton':
+        return 'carton';
+      case 'unit':
+        return 'unit';
+      default:
+        return '';
+    }
+  }
+
+  String _visibilityLabel(String visibility) {
+    switch (visibility) {
+      case 'public':
+        return 'Standard Price';
+      case 'approved_customers':
+        return 'Trade Price';
+      case 'private':
+        return 'Customer-Specific Price';
+      default:
+        return visibility;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _ensurePriceList({
+    required String visibility,
+    required String defaultName,
+  }) async {
+    final existing = _firstPriceListForVisibility(visibility);
+
+    if (existing != null) {
+      return existing;
+    }
+
+    if (_supplierBusinessId == null) {
+      _showMessage('Supplier business could not be identified.');
+      return null;
+    }
+
+    try {
+      final inserted = await Supabase.instance.client
+          .from('price_lists')
+          .insert({
+            'supplier_business_id': _supplierBusinessId,
+            'name': defaultName,
+            'visibility': visibility,
+            'active': true,
+          })
+          .select('''
+            id,
+            supplier_business_id,
+            name,
+            visibility,
+            active
+          ''')
+          .single();
+
+      await _loadPricing();
+
+      return Map<String, dynamic>.from(inserted);
+    } on PostgrestException catch (error) {
+      _showMessage(error.message);
+      return null;
+    }
+  }
+
+  Future<void> _editProductPrice({
+    required Map<String, dynamic> priceList,
+  }) async {
+    final priceListId = priceList['id']?.toString();
+
+    if (priceListId == null || priceListId.isEmpty) {
+      return;
+    }
+
+    final existingPrice = _priceForList(priceListId);
+
+    final amountController = TextEditingController(
+      text: existingPrice?['amount']?.toString() ?? '',
+    );
+
+    final minimumController = TextEditingController(
+      text: existingPrice?['minimum_quantity']?.toString() ?? '',
+    );
+
+    var basis =
+        existingPrice?['price_basis']?.toString() ?? _priceBasis;
+
+    if (!['kilogram', 'carton', 'unit'].contains(basis)) {
+      basis = 'kilogram';
+    }
+
+    final result = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                '${_visibilityLabel(priceList['visibility']?.toString() ?? '')} - ${priceList['name'] ?? ''}',
+              ),
+              content: SizedBox(
+                width: 500,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: amountController,
+                      autofocus: true,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Price',
+                        prefixText: '\$',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: basis,
+                      decoration: const InputDecoration(
+                        labelText: 'Price basis',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'kilogram',
+                          child: Text('Per kilogram'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'carton',
+                          child: Text('Per carton'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'unit',
+                          child: Text('Per unit'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() {
+                            basis = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: minimumController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Minimum quantity',
+                        hintText: 'Optional',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                if (existingPrice != null)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop({
+                        'remove': true,
+                      });
+                    },
+                    child: const Text('Remove Price'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final amount =
+                        double.tryParse(amountController.text.trim());
+
+                    if (amount == null || amount < 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Enter a valid price.'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final minimumText =
+                        minimumController.text.trim();
+
+                    final minimum = minimumText.isEmpty
+                        ? null
+                        : double.tryParse(minimumText);
+
+                    if (minimumText.isNotEmpty &&
+                        (minimum == null || minimum <= 0)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Minimum quantity must be greater than 0.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.of(context).pop({
+                      'amount': amount,
+                      'price_basis': basis,
+                      'minimum_quantity': minimum,
+                      'remove': false,
+                    });
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF741C1C),
+                  ),
+                  child: const Text('Save Price'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    amountController.dispose();
+    minimumController.dispose();
+
+    if (result == null) {
+      return;
+    }
+
+    setState(() {
+      _isSavingPrice = true;
+    });
+
+    try {
+      if (result['remove'] == true) {
+        if (existingPrice != null) {
+          await Supabase.instance.client
+              .from('product_prices')
+              .update({
+                'active': false,
+              })
+              .eq('id', existingPrice['id']);
+        }
+      } else if (existingPrice != null) {
+        await Supabase.instance.client
+            .from('product_prices')
+            .update({
+              'amount': result['amount'],
+              'price_basis': result['price_basis'],
+              'minimum_quantity': result['minimum_quantity'],
+              'active': true,
+            })
+            .eq('id', existingPrice['id']);
+      } else {
+        await Supabase.instance.client
+            .from('product_prices')
+            .insert({
+              'product_id': widget.product['id'],
+              'price_list_id': priceListId,
+              'amount': result['amount'],
+              'price_basis': result['price_basis'],
+              'minimum_quantity': result['minimum_quantity'],
+              'active': true,
+            });
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Product price updated.'),
+        ),
+      );
+
+      await _loadPricing();
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(error.message);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingPrice = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _createAndEditStandardPrice(
+    String visibility,
+  ) async {
+    final defaultName = visibility == 'public'
+        ? 'Standard Pricing'
+        : 'Trade Pricing';
+
+    final priceList = await _ensurePriceList(
+      visibility: visibility,
+      defaultName: defaultName,
+    );
+
+    if (priceList == null || !mounted) {
+      return;
+    }
+
+    await _editProductPrice(priceList: priceList);
+  }
+
+  Widget _pricingSectionCard({
+    required String title,
+    required String description,
+    required String visibility,
+    required IconData icon,
+  }) {
+    final priceList = _firstPriceListForVisibility(visibility);
+
+    if (priceList == null) {
+      return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(
+            color: Color(0xFFE0E0E0),
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF741C1C),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: _isSavingPrice
+                          ? null
+                          : () => _createAndEditStandardPrice(
+                                visibility,
+                              ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Set Price'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF741C1C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final price = _priceForList(priceList['id'].toString());
+
+    final priceText = price == null
+        ? 'Not set'
+        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())}';
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(
+          color: Color(0xFFE0E0E0),
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final details = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  icon,
+                  color: const Color(0xFF741C1C),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 13),
+                      Text(
+                        priceText,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: price == null
+                              ? const Color(0xFF777777)
+                              : const Color(0xFF741C1C),
+                        ),
+                      ),
+                      if (price?['minimum_quantity'] != null) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          'Minimum quantity: ${price!['minimum_quantity']}',
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+
+            final editButton = OutlinedButton.icon(
+              onPressed: _isSavingPrice
+                  ? null
+                  : () => _editProductPrice(
+                        priceList: priceList,
+                      ),
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(
+                price == null ? 'Set Price' : 'Edit Price',
+              ),
+            );
+
+            if (constraints.maxWidth < 650) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  details,
+                  const SizedBox(height: 16),
+                  editButton,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 18),
+                editButton,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _approvedCustomerName(
+    Map<String, dynamic> customer,
+  ) {
+    final business = customer['businesses'];
+
+    if (business is Map) {
+      final tradingName = business['trading_name']?.toString();
+
+      if (tradingName != null && tradingName.trim().isNotEmpty) {
+        return tradingName.trim();
+      }
+
+      final legalName = business['legal_name']?.toString();
+
+      if (legalName != null && legalName.trim().isNotEmpty) {
+        return legalName.trim();
+      }
+    }
+
+    return 'Unnamed butcher';
+  }
+
+  List<String> _customerIdsForPriceList(
+    Map<String, dynamic> priceList,
+  ) {
+    final raw = priceList['price_list_customers'];
+
+    if (raw is! List) {
+      return [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map((item) => item['butcher_business_id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList();
+  }
+
+  Map<String, dynamic>? _privatePriceListForCustomer(
+    String customerBusinessId,
+  ) {
+    for (final priceList in _priceListsForVisibility('private')) {
+      if (_customerIdsForPriceList(priceList)
+          .contains(customerBusinessId)) {
+        return priceList;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _setCustomerSpecificPrice(
+    Map<String, dynamic> customer,
+  ) async {
+    final customerBusinessId =
+        customer['butcher_business_id']?.toString();
+
+    if (customerBusinessId == null ||
+        customerBusinessId.isEmpty ||
+        _supplierBusinessId == null) {
+      return;
+    }
+
+    var priceList =
+        _privatePriceListForCustomer(customerBusinessId);
+
+    if (priceList == null) {
+      try {
+        final customerName = _approvedCustomerName(customer);
+
+        final insertedPriceList = await Supabase.instance.client
+            .from('price_lists')
+            .insert({
+              'supplier_business_id': _supplierBusinessId,
+              'name': '$customerName - Customer Price',
+              'visibility': 'private',
+              'active': true,
+            })
+            .select('''
+              id,
+              supplier_business_id,
+              name,
+              visibility,
+              active
+            ''')
+            .single();
+
+        final priceListId =
+            insertedPriceList['id']?.toString();
+
+        if (priceListId == null || priceListId.isEmpty) {
+          throw Exception(
+            'The customer-specific price list could not be created.',
+          );
+        }
+
+        await Supabase.instance.client
+            .from('price_list_customers')
+            .insert({
+              'price_list_id': priceListId,
+              'butcher_business_id': customerBusinessId,
+            });
+
+        await _loadPricing();
+
+        priceList =
+            _privatePriceListForCustomer(customerBusinessId);
+
+        if (priceList == null) {
+          throw Exception(
+            'The customer-specific price list could not be loaded.',
+          );
+        }
+      } on PostgrestException catch (error) {
+        _showMessage(error.message);
+        return;
+      } catch (error) {
+        _showMessage(error.toString());
+        return;
+      }
+    }
+
+    await _editProductPrice(
+      priceList: priceList,
+    );
+  }
+
+  Future<void> _removeCustomerSpecificPrice(
+    Map<String, dynamic> customer,
+  ) async {
+    final customerBusinessId =
+        customer['butcher_business_id']?.toString();
+
+    if (customerBusinessId == null ||
+        customerBusinessId.isEmpty) {
+      return;
+    }
+
+    final priceList =
+        _privatePriceListForCustomer(customerBusinessId);
+
+    if (priceList == null) {
+      return;
+    }
+
+    final price = _priceForList(
+      priceList['id'].toString(),
+    );
+
+    if (price == null) {
+      return;
+    }
+
+    try {
+      await Supabase.instance.client
+          .from('product_prices')
+          .update({
+            'active': false,
+          })
+          .eq('id', price['id']);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Customer-specific price removed for this product.',
+          ),
+        ),
+      );
+
+      await _loadPricing();
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(error.message);
+    }
+  }
+
+  Widget _buildCustomerSpecificPricingSection() {
+    if (_approvedCustomers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFE1E1DE),
+          ),
+        ),
+        child: const Text(
+          'No approved butcher customers are available yet. Approve a butcher under Customers & Accounts before assigning a customer-specific price.',
+          style: TextStyle(
+            color: Color(0xFF666666),
+            height: 1.4,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final customer in _approvedCustomers) ...[
+          _buildCustomerPriceCard(customer),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCustomerPriceCard(
+    Map<String, dynamic> customer,
+  ) {
+    final customerBusinessId =
+        customer['butcher_business_id']?.toString();
+
+    final priceList = customerBusinessId == null
+        ? null
+        : _privatePriceListForCustomer(
+            customerBusinessId,
+          );
+
+    final price = priceList == null
+        ? null
+        : _priceForList(
+            priceList['id'].toString(),
+          );
+
+    final standardPriceList =
+        _firstPriceListForVisibility('public');
+
+    final standardPrice = standardPriceList == null
+        ? null
+        : _priceForList(
+            standardPriceList['id'].toString(),
+          );
+
+    final priceText = price == null
+        ? 'No special price'
+        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())}';
+
+    String? savingText;
+
+    if (price != null &&
+        standardPrice != null &&
+        price['price_basis']?.toString() ==
+            standardPrice['price_basis']?.toString()) {
+      final customerAmount = price['amount'] is num
+          ? (price['amount'] as num).toDouble()
+          : double.tryParse('${price['amount']}');
+
+      final standardAmount = standardPrice['amount'] is num
+          ? (standardPrice['amount'] as num).toDouble()
+          : double.tryParse('${standardPrice['amount']}');
+
+      if (customerAmount != null &&
+          standardAmount != null &&
+          standardAmount > customerAmount &&
+          standardAmount > 0) {
+        final saving = standardAmount - customerAmount;
+        final percentage =
+            (saving / standardAmount) * 100;
+
+        savingText =
+            'Saves ${_formatMoneyValue(saving)} / ${_pricingBasisLabel(price['price_basis']?.toString())} (${percentage.toStringAsFixed(1)}%) vs Standard';
+      }
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: price == null
+              ? const Color(0xFFE0E0E0)
+              : const Color(0xFFD9C1C1),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final details = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(
+                  backgroundColor: Color(0xFFF4E5E5),
+                  foregroundColor: Color(0xFF741C1C),
+                  child: Icon(Icons.storefront_outlined),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _approvedCustomerName(customer),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        priceText,
+                        style: TextStyle(
+                          color: price == null
+                              ? const Color(0xFF666666)
+                              : const Color(0xFF741C1C),
+                          fontWeight: price == null
+                              ? FontWeight.w500
+                              : FontWeight.w800,
+                          fontSize: price == null ? 14 : 18,
+                        ),
+                      ),
+                      if (savingText != null) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          savingText!,
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+
+            final actions = Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _isSavingPrice
+                      ? null
+                      : () => _setCustomerSpecificPrice(
+                            customer,
+                          ),
+                  icon: Icon(
+                    price == null
+                        ? Icons.add
+                        : Icons.edit_outlined,
+                  ),
+                  label: Text(
+                    price == null
+                        ? 'Set Special Price'
+                        : 'Edit Price',
+                  ),
+                ),
+                if (price != null)
+                  TextButton.icon(
+                    onPressed: _isSavingPrice
+                        ? null
+                        : () => _removeCustomerSpecificPrice(
+                              customer,
+                            ),
+                    icon: const Icon(Icons.close),
+                    label: const Text('Remove'),
+                  ),
+              ],
+            );
+
+            if (constraints.maxWidth < 680) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  details,
+                  const SizedBox(height: 14),
+                  actions,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 16),
+                actions,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPricingTab() {
+    if (_isLoadingPricing) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_pricingError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 56,
+                color: Color(0xFF741C1C),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _pricingError!,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: _loadPricing,
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 900,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Product Pricing',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 9),
+              const Text(
+                'Manage the prices for this product. Standard, Trade and Customer-Specific pricing stays attached to this product while access rules control which price each butcher receives.',
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 26),
+
+              _pricingSectionCard(
+                title: 'Standard Price',
+                description:
+                    'The normal marketplace price shown to all approved butchers.',
+                visibility: 'public',
+                icon: Icons.public,
+              ),
+
+              const SizedBox(height: 14),
+
+              _pricingSectionCard(
+                title: 'Trade Price',
+                description:
+                    'Shown to butchers approved as customers by this supplier. It takes priority over the Standard Price.',
+                visibility: 'approved_customers',
+                icon: Icons.handshake_outlined,
+              ),
+
+              const SizedBox(height: 26),
+
+              const Text(
+                'Customer-Specific Pricing',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Give selected approved butchers their own negotiated price for this product. This price takes priority over Trade and Standard pricing for that butcher only.',
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              _buildCustomerSpecificPricingSection(),
+
+              const SizedBox(height: 20),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F4F4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE5D6D6),
+                  ),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF741C1C),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Price priority remains: Customer-Specific Price → Trade Price → Standard Price.',
+                        style: TextStyle(
+                          height: 1.4,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showMessage(
     String message,
   ) {
@@ -1211,7 +2415,9 @@ class _EditProductPageState extends State<EditProductPage> {
     final selectedCataloguePath =
         _selectedCataloguePath();
 
-    return Scaffold(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
       backgroundColor:
           const Color(0xFFF7F7F5),
       appBar: AppBar(
@@ -1226,8 +2432,27 @@ class _EditProductPageState extends State<EditProductPage> {
                 FontWeight.w700,
           ),
         ),
+        bottom: const TabBar(
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelColor: darkRed,
+          unselectedLabelColor: Color(0xFF666666),
+          indicatorColor: darkRed,
+          tabs: [
+            Tab(
+              icon: Icon(Icons.inventory_2_outlined),
+              text: 'Product Details',
+            ),
+            Tab(
+              icon: Icon(Icons.price_change_outlined),
+              text: 'Pricing',
+            ),
+          ],
+        ),
       ),
-      body: _isLoadingPage
+      body: TabBarView(
+        children: [
+_isLoadingPage
           ? const Center(
               child:
                   CircularProgressIndicator(),
@@ -2490,6 +3715,85 @@ class _EditProductPageState extends State<EditProductPage> {
                 ),
               ),
             ),
+          _buildPricingTab(),
+        ],
+      ),
+
+      ),
+    );
+  }
+}
+
+
+class _PrivatePriceListCard extends StatelessWidget {
+  const _PrivatePriceListCard({
+    required this.name,
+    required this.price,
+    required this.money,
+    required this.basisLabel,
+    required this.onEdit,
+  });
+
+  final String name;
+  final Map<String, dynamic>? price;
+  final String Function(dynamic value) money;
+  final String Function(String? value) basisLabel;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final priceText = price == null
+        ? 'Not set'
+        : '${money(price!['amount'])} / ${basisLabel(price!['price_basis']?.toString())}';
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(
+          color: Color(0xFFE0E0E0),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.lock_outline,
+              color: Color(0xFF741C1C),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    priceText,
+                    style: const TextStyle(
+                      color: Color(0xFF555555),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(
+                price == null ? 'Set Price' : 'Edit',
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

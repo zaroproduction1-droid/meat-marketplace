@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../orders/presentation/draft_orders_page.dart';
+
 class MarketplaceProductDetailsPage extends StatefulWidget {
   const MarketplaceProductDetailsPage({
     super.key,
@@ -16,9 +18,15 @@ class MarketplaceProductDetailsPage extends StatefulWidget {
 
 class _MarketplaceProductDetailsPageState
     extends State<MarketplaceProductDetailsPage> {
+  final TextEditingController _quantityController =
+      TextEditingController(text: '1');
+
   bool _isCheckingRelationship = true;
   bool _isSubmittingRequest = false;
   bool _isLoadingCatalogue = true;
+  bool _isAddingToOrder = false;
+
+  double _orderQuantityPreview = 1;
 
   String? _relationshipStatus;
   String? _butcherBusinessId;
@@ -30,6 +38,12 @@ class _MarketplaceProductDetailsPageState
     super.initState();
     _loadRelationshipStatus();
     _loadCataloguePath();
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCataloguePath() async {
@@ -462,6 +476,442 @@ class _MarketplaceProductDetailsPageState
     return bestPrice;
   }
 
+  Map<String, dynamic>? _priceForVisibility(
+    String visibility,
+  ) {
+    final rawPrices = widget.product['product_prices'];
+
+    if (rawPrices is! List) {
+      return null;
+    }
+
+    for (final rawPrice in rawPrices) {
+      if (rawPrice is! Map) {
+        continue;
+      }
+
+      final price = Map<String, dynamic>.from(rawPrice);
+
+      if (price['active'] != true) {
+        continue;
+      }
+
+      final rawPriceList = price['price_lists'];
+
+      if (rawPriceList is! Map) {
+        continue;
+      }
+
+      final priceList = Map<String, dynamic>.from(rawPriceList);
+
+      if (priceList['active'] != true) {
+        continue;
+      }
+
+      if (priceList['visibility']?.toString() == visibility) {
+        return price;
+      }
+    }
+
+    return null;
+  }
+
+  String _visiblePriceLabel(
+    Map<String, dynamic>? price,
+  ) {
+    final rawPriceList = price?['price_lists'];
+
+    if (rawPriceList is! Map) {
+      return 'Standard Price';
+    }
+
+    switch (rawPriceList['visibility']?.toString()) {
+      case 'private':
+        return 'Your Special Price';
+      case 'approved_customers':
+        return 'Your Trade Price';
+      case 'public':
+      default:
+        return 'Standard Price';
+    }
+  }
+
+  Widget _buildCustomerPriceDisplay({
+    required Map<String, dynamic>? visiblePrice,
+    required CrossAxisAlignment alignment,
+    double priceFontSize = 24,
+  }) {
+    if (visiblePrice == null ||
+        visiblePrice['amount'] == null) {
+      return const Text(
+        'Price unavailable',
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF666666),
+        ),
+      );
+    }
+
+    final visibleAmountRaw = visiblePrice['amount'];
+    final visibleAmount = visibleAmountRaw is num
+        ? visibleAmountRaw.toDouble()
+        : double.tryParse('$visibleAmountRaw');
+
+    final visibleBasis =
+        visiblePrice['price_basis']?.toString();
+
+    final standardPrice = _priceForVisibility('public');
+    final standardAmountRaw = standardPrice?['amount'];
+    final standardAmount = standardAmountRaw is num
+        ? standardAmountRaw.toDouble()
+        : double.tryParse('${standardAmountRaw ?? ''}');
+
+    final standardBasis =
+        standardPrice?['price_basis']?.toString();
+
+    final priceLabel = _visiblePriceLabel(visiblePrice);
+    final isDiscountedPrice =
+        priceLabel != 'Standard Price' &&
+        visibleAmount != null &&
+        standardAmount != null &&
+        standardAmount > visibleAmount &&
+        standardBasis == visibleBasis;
+
+    final saving = isDiscountedPrice
+        ? standardAmount - visibleAmount
+        : null;
+
+    final savingPercent =
+        isDiscountedPrice && standardAmount > 0
+            ? (saving! / standardAmount) * 100
+            : null;
+
+    return Column(
+      crossAxisAlignment: alignment,
+      children: [
+        if (isDiscountedPrice) ...[
+          Text(
+            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)}',
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF777777),
+              decoration: TextDecoration.lineThrough,
+              decorationThickness: 2,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+        Text(
+          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)}',
+          style: TextStyle(
+            fontSize: priceFontSize,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF741C1C),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          priceLabel,
+          style: TextStyle(
+            color: priceLabel == 'Standard Price'
+                ? const Color(0xFF666666)
+                : const Color(0xFF741C1C),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+        if (saving != null && savingPercent != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            'You save ${_formatMoney(saving)} / ${_formatPriceBasis(visibleBasis)} • ${savingPercent.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              color: Color(0xFF2E7D32),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _orderQuantityUnit(Map<String, dynamic>? visiblePrice) {
+    final basis = visiblePrice?['price_basis']?.toString();
+
+    if (basis == 'kilogram' || basis == 'carton' || basis == 'unit') {
+      return basis!;
+    }
+
+    final productUnit = widget.product['quantity_unit']?.toString();
+
+    if (productUnit == 'kilogram' ||
+        productUnit == 'carton' ||
+        productUnit == 'unit') {
+      return productUnit!;
+    }
+
+    return 'unit';
+  }
+
+  String _orderQuantityUnitLabel(String value) {
+    switch (value) {
+      case 'kilogram':
+        return 'kg';
+      case 'carton':
+        return 'cartons';
+      case 'unit':
+        return 'units';
+      default:
+        return value;
+    }
+  }
+
+  Future<void> _addToOrder() async {
+    if (_isAddingToOrder) {
+      return;
+    }
+
+    final butcherBusinessId = _butcherBusinessId;
+
+    if (butcherBusinessId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your butcher business could not be identified.'),
+        ),
+      );
+      return;
+    }
+
+    final visiblePrice = _findVisiblePrice();
+
+    if (visiblePrice == null || visiblePrice['amount'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product does not currently have a visible price.'),
+        ),
+      );
+      return;
+    }
+
+    if (widget.product['availability_status'] == 'out_of_stock') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is currently out of stock.'),
+        ),
+      );
+      return;
+    }
+
+    final quantity = double.tryParse(_quantityController.text.trim());
+
+    if (quantity == null || quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a quantity greater than 0.'),
+        ),
+      );
+      return;
+    }
+
+    final minimumRaw = visiblePrice['minimum_quantity'];
+    final minimum = minimumRaw is num
+        ? minimumRaw.toDouble()
+        : double.tryParse(minimumRaw?.toString() ?? '');
+
+    if (minimum != null && quantity < minimum) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Minimum order quantity is ${_formatNumber(minimum)}.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final supplierBusinessId =
+        widget.product['supplier_business_id']?.toString();
+    final productId = widget.product['id']?.toString();
+
+    if (supplierBusinessId == null ||
+        supplierBusinessId.isEmpty ||
+        productId == null ||
+        productId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is missing required order information.'),
+        ),
+      );
+      return;
+    }
+
+    final unitPriceRaw = visiblePrice['amount'];
+    final unitPrice = unitPriceRaw is num
+        ? unitPriceRaw.toDouble()
+        : double.tryParse(unitPriceRaw.toString());
+
+    if (unitPrice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The visible price could not be read.'),
+        ),
+      );
+      return;
+    }
+
+    final quantityUnit = _orderQuantityUnit(visiblePrice);
+    final priceBasis = visiblePrice['price_basis']?.toString();
+
+    setState(() {
+      _isAddingToOrder = true;
+    });
+
+    try {
+      final client = Supabase.instance.client;
+
+      final draftOrders = await client
+          .from('orders')
+          .select('id, order_number')
+          .eq('butcher_business_id', butcherBusinessId)
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'draft')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      late String orderId;
+      String? orderNumber;
+
+      if (draftOrders.isNotEmpty) {
+        orderId = draftOrders.first['id'].toString();
+        orderNumber = draftOrders.first['order_number']?.toString();
+      } else {
+        final createdOrder = await client
+            .from('orders')
+            .insert({
+              'butcher_business_id': butcherBusinessId,
+              'supplier_business_id': supplierBusinessId,
+            })
+            .select('id, order_number')
+            .single();
+
+        orderId = createdOrder['id'].toString();
+        orderNumber = createdOrder['order_number']?.toString();
+      }
+
+      final existingItems = await client
+          .from('order_items')
+          .select('id, quantity')
+          .eq('order_id', orderId)
+          .eq('product_id', productId)
+          .limit(1);
+
+      final productName =
+          widget.product['product_name']?.toString() ?? 'Unnamed product';
+      final sku = widget.product['sku']?.toString();
+
+      if (existingItems.isNotEmpty) {
+        final existingQuantityRaw = existingItems.first['quantity'];
+        final existingQuantity = existingQuantityRaw is num
+            ? existingQuantityRaw.toDouble()
+            : double.tryParse(existingQuantityRaw?.toString() ?? '') ?? 0;
+
+        await client
+            .from('order_items')
+            .update({
+              'product_name_snapshot': productName,
+              'sku_snapshot': sku,
+              'quantity': existingQuantity + quantity,
+              'quantity_unit': quantityUnit,
+              'unit_price': unitPrice,
+              'price_basis': priceBasis,
+            })
+            .eq('id', existingItems.first['id']);
+      } else {
+        await client.from('order_items').insert({
+          'order_id': orderId,
+          'product_id': productId,
+          'product_name_snapshot': productName,
+          'sku_snapshot': sku,
+          'quantity': quantity,
+          'quantity_unit': quantityUnit,
+          'unit_price': unitPrice,
+          'price_basis': priceBasis,
+        });
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      _quantityController.text = '1';
+
+      setState(() {
+        _orderQuantityPreview = 1;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            orderNumber == null || orderNumber.trim().isEmpty
+                ? 'Product added to your draft order.'
+                : 'Product added to $orderNumber.',
+          ),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to add product to order: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAddingToOrder = false;
+        });
+      }
+    }
+  }
+
+
+  String _withThousandsSeparators(String value) {
+    final parts = value.split('.');
+    final whole = parts.first;
+    final negative = whole.startsWith('-');
+    final digits = negative ? whole.substring(1) : whole;
+
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[i]);
+    }
+
+    final formattedWhole = '${negative ? '-' : ''}${buffer.toString()}';
+
+    if (parts.length == 1) {
+      return formattedWhole;
+    }
+
+    return '$formattedWhole.${parts.sublist(1).join('.')}';
+  }
+
   String _formatNumber(dynamic value) {
     if (value == null) return '';
 
@@ -470,13 +920,26 @@ class _MarketplaceProductDetailsPageState
     if (number == null) return value.toString();
 
     if (number == number.roundToDouble()) {
-      return number.toInt().toString();
+      return _withThousandsSeparators(number.toInt().toString());
     }
 
-    return number
+    final formatted = number
         .toStringAsFixed(2)
         .replaceFirst(RegExp(r'0+$'), '')
         .replaceFirst(RegExp(r'\.$'), '');
+
+    return _withThousandsSeparators(formatted);
+  }
+
+
+  String _formatMoney(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+
+    if (number == null) {
+      return '\$0.00';
+    }
+
+    return '\$${_withThousandsSeparators(number.toStringAsFixed(2))}';
   }
 
   String _pieceWeightText() {
@@ -564,6 +1027,14 @@ class _MarketplaceProductDetailsPageState
     }
 
     return value;
+  }
+
+  Future<void> _openDraftOrdersPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DraftOrdersPage(),
+      ),
+    );
   }
 
   Widget _buildRelationshipButton() {
@@ -659,6 +1130,14 @@ class _MarketplaceProductDetailsPageState
           'Product Details',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            onPressed: _openDraftOrdersPage,
+            tooltip: 'Draft orders',
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -709,27 +1188,17 @@ class _MarketplaceProductDetailsPageState
                                 ? CrossAxisAlignment.start
                                 : CrossAxisAlignment.end,
                             children: [
-                              if (amount == null)
-                                const Text(
-                                  'Price unavailable',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF666666),
-                                  ),
-                                )
-                              else
-                                Text(
-                                  '\$$amount / ${_formatPriceBasis(priceBasis)}',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF741C1C),
-                                  ),
-                                ),
+                              _buildCustomerPriceDisplay(
+                                visiblePrice: visiblePrice,
+                                alignment: narrow
+                                    ? CrossAxisAlignment.start
+                                    : CrossAxisAlignment.end,
+                                priceFontSize: 24,
+                              ),
                               if (minimumQuantity != null) ...[
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Minimum: $minimumQuantity',
+                                  'Minimum: ${_formatNumber(minimumQuantity)}',
                                   style: const TextStyle(
                                     color: Color(0xFF666666),
                                   ),
@@ -977,6 +1446,228 @@ class _MarketplaceProductDetailsPageState
                             ),
                           ],
                         ),
+
+                      _section(
+                        title: 'Add to Order',
+                        children: [
+                          Builder(
+                            builder: (context) {
+                              final price = _findVisiblePrice();
+                              final amount = price?['amount'];
+                              final quantityUnit = _orderQuantityUnit(price);
+                              final unitLabel =
+                                  _orderQuantityUnitLabel(quantityUnit);
+                              final minimum = price?['minimum_quantity'];
+
+                              final unitPrice = amount is num
+                                  ? amount.toDouble()
+                                  : double.tryParse(
+                                      amount?.toString() ?? '',
+                                    );
+
+                              final estimatedTotal =
+                                  unitPrice == null
+                                      ? null
+                                      : unitPrice * _orderQuantityPreview;
+
+                              if (amount == null || unitPrice == null) {
+                                return const Text(
+                                  'A visible price is required before this product can be added to an order.',
+                                  style: TextStyle(
+                                    color: Color(0xFF666666),
+                                    height: 1.5,
+                                  ),
+                                );
+                              }
+
+                              if (product['availability_status'] ==
+                                  'out_of_stock') {
+                                return const Text(
+                                  'This product is currently out of stock and cannot be added to an order.',
+                                  style: TextStyle(
+                                    color: Color(0xFF666666),
+                                    height: 1.5,
+                                  ),
+                                );
+                              }
+
+                              return LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final narrow =
+                                      constraints.maxWidth < 700;
+
+                                  final quantityAndButton = Wrap(
+                                    spacing: 14,
+                                    runSpacing: 14,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.end,
+                                    children: [
+                                      SizedBox(
+                                        width: 190,
+                                        child: TextField(
+                                          controller:
+                                              _quantityController,
+                                          keyboardType:
+                                              const TextInputType
+                                                  .numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                          onChanged: (value) {
+                                            final parsed =
+                                                double.tryParse(
+                                              value.trim(),
+                                            );
+
+                                            setState(() {
+                                              _orderQuantityPreview =
+                                                  parsed != null &&
+                                                          parsed > 0
+                                                      ? parsed
+                                                      : 0;
+                                            });
+                                          },
+                                          decoration: InputDecoration(
+                                            labelText: 'Quantity',
+                                            suffixText: unitLabel,
+                                            helperText: minimum == null
+                                                ? null
+                                                : 'Minimum ${_formatNumber(minimum)}',
+                                            border:
+                                                const OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                      FilledButton.icon(
+                                        onPressed: _isAddingToOrder
+                                            ? null
+                                            : _addToOrder,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF741C1C),
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                            horizontal: 22,
+                                            vertical: 18,
+                                          ),
+                                        ),
+                                        icon: _isAddingToOrder
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.add_shopping_cart,
+                                              ),
+                                        label: Text(
+                                          _isAddingToOrder
+                                              ? 'Adding'
+                                              : 'Add to Order',
+                                        ),
+                                      ),
+                                    ],
+                                  );
+
+                                  final priceSummary = Container(
+                                    width: narrow ? double.infinity : 290,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8F8F6),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            const Color(0xFFE1E1DE),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Price',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF666666),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          '${_formatMoney(unitPrice)} / ${_formatPriceBasis(price?['price_basis']?.toString())}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF741C1C),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        const Divider(height: 1),
+                                        const SizedBox(height: 14),
+                                        const Text(
+                                          'Estimated total',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF666666),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          estimatedTotal == null
+                                              ? '\$0.00'
+                                              : _formatMoney(
+                                                  estimatedTotal,
+                                                ),
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          '${_formatNumber(_orderQuantityPreview)} $unitLabel × ${_formatMoney(unitPrice)}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF666666),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (narrow) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        priceSummary,
+                                        const SizedBox(height: 16),
+                                        quantityAndButton,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      priceSummary,
+                                      const SizedBox(width: 20),
+                                      Expanded(
+                                        child: quantityAndButton,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
 
                       _section(
                         title: 'Supplier Access',

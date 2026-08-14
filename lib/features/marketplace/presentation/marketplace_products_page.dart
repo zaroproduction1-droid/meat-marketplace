@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'marketplace_product_details_page.dart';
+import '../../orders/presentation/draft_orders_page.dart';
+import '../../orders/presentation/submitted_orders_page.dart';
 
 class MarketplaceProductsPage extends StatefulWidget {
   const MarketplaceProductsPage({super.key});
@@ -186,6 +188,34 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _openDraftOrdersPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DraftOrdersPage(),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadProducts();
+  }
+
+  Future<void> _openMyOrdersPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SubmittedOrdersPage(),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadProducts();
   }
 
   Map<String, dynamic>? _variant(Map<String, dynamic> product) {
@@ -510,6 +540,31 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return supplier['legal_name']?.toString() ?? 'Unknown supplier';
   }
 
+
+  String _withThousandsSeparators(String value) {
+    final parts = value.split('.');
+    final whole = parts.first;
+    final negative = whole.startsWith('-');
+    final digits = negative ? whole.substring(1) : whole;
+
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[i]);
+    }
+
+    final formattedWhole = '${negative ? '-' : ''}${buffer.toString()}';
+
+    if (parts.length == 1) {
+      return formattedWhole;
+    }
+
+    return '$formattedWhole.${parts.sublist(1).join('.')}';
+  }
+
   String _formatNumber(dynamic value) {
     if (value == null) {
       return '';
@@ -522,13 +577,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     if (number == number.roundToDouble()) {
-      return number.toInt().toString();
+      return _withThousandsSeparators(number.toInt().toString());
     }
 
-    return number
+    final formatted = number
         .toStringAsFixed(2)
         .replaceFirst(RegExp(r'0+$'), '')
         .replaceFirst(RegExp(r'\.$'), '');
+
+    return _withThousandsSeparators(formatted);
+  }
+
+
+  String _formatMoney(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+
+    if (number == null) {
+      return '\$0.00';
+    }
+
+    return '\$${_withThousandsSeparators(number.toStringAsFixed(2))}';
   }
 
   String _pieceWeightText(Map<String, dynamic> product) {
@@ -806,6 +874,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         ),
         actions: [
           IconButton(
+            onPressed: _openMyOrdersPage,
+            tooltip: 'My orders',
+            icon: const Icon(Icons.receipt_long_outlined),
+          ),
+          IconButton(
+            onPressed: _openDraftOrdersPage,
+            tooltip: 'Draft orders',
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
+          IconButton(
             onPressed: _loadProducts,
             tooltip: 'Refresh products',
             icon: const Icon(Icons.refresh),
@@ -1021,7 +1099,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                             )
                           else
                             Text(
-                              '\$$amount / ${_formatPriceBasis(priceBasis)}',
+                              '${_formatMoney(amount)} / ${_formatPriceBasis(priceBasis)}',
                               style: const TextStyle(
                                 fontSize: 21,
                                 fontWeight: FontWeight.w800,
@@ -1033,7 +1111,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                             Padding(
                               padding: const EdgeInsets.only(top: 7),
                               child: Text(
-                                'Minimum: ${price?['minimum_quantity']}',
+                                'Minimum: ${_formatNumber(price?['minimum_quantity'])}',
                               ),
                             ),
                         ],

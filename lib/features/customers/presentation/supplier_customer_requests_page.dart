@@ -53,6 +53,10 @@ class _SupplierCustomerRequestsPageState
             status,
             account_reference,
             credit_terms,
+            payment_method,
+            payment_terms_days,
+            credit_limit,
+            issue_reporting_window_hours,
             created_at,
             approved_at,
             businesses!supplier_customer_relationships_butcher_business_id_fkey(
@@ -160,6 +164,288 @@ class _SupplierCustomerRequestsPageState
     }
   }
 
+  Future<void> _editAccountTerms(
+    Map<String, dynamic> relationship,
+  ) async {
+    String paymentMethod =
+        relationship['payment_method']?.toString() ?? 'cod';
+
+    final paymentTermsController = TextEditingController(
+      text: '${relationship['payment_terms_days'] ?? 0}',
+    );
+
+    final creditLimitController = TextEditingController(
+      text: relationship['credit_limit'] == null
+          ? ''
+          : relationship['credit_limit'].toString(),
+    );
+
+    final issueWindowController = TextEditingController(
+      text: '${relationship['issue_reporting_window_hours'] ?? 24}',
+    );
+
+    final accountReferenceController = TextEditingController(
+      text: relationship['account_reference']?.toString() ?? '',
+    );
+
+    final result = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'Account settings - ${_businessName(relationship)}',
+              ),
+              content: SizedBox(
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: paymentMethod,
+                        decoration: const InputDecoration(
+                          labelText: 'Payment type',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'cod',
+                            child: Text('COD'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'prepaid',
+                            child: Text('Prepaid'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'account',
+                            child: Text('Account'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+
+                          setDialogState(() {
+                            paymentMethod = value;
+
+                            if (value != 'account') {
+                              paymentTermsController.text = '0';
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (paymentMethod == 'account') ...[
+                        TextField(
+                          controller: paymentTermsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Account terms (days)',
+                            hintText: 'Example: 7, 15, 30',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: creditLimitController,
+                          keyboardType:
+                              const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Credit limit',
+                            hintText: 'Optional',
+                            prefixText: '\$',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      TextField(
+                        controller: accountReferenceController,
+                        decoration: const InputDecoration(
+                          labelText: 'Account reference',
+                          hintText: 'Optional supplier account code',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextField(
+                        controller: issueWindowController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Issue reporting window (hours)',
+                          hintText: 'Example: 24',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'This controls how long after delivery the butcher is expected to report quality, wrong-product or delivery issues.',
+                        style: TextStyle(
+                          color: Color(0xFF666666),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final paymentTermsDays =
+                        int.tryParse(paymentTermsController.text.trim());
+
+                    final issueWindowHours =
+                        int.tryParse(issueWindowController.text.trim());
+
+                    final creditLimitText =
+                        creditLimitController.text.trim();
+
+                    final creditLimit = creditLimitText.isEmpty
+                        ? null
+                        : double.tryParse(creditLimitText);
+
+                    if (paymentMethod == 'account' &&
+                        (paymentTermsDays == null ||
+                            paymentTermsDays <= 0)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Enter a valid number of account days.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (issueWindowHours == null ||
+                        issueWindowHours < 1 ||
+                        issueWindowHours > 720) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Issue reporting window must be between 1 and 720 hours.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (creditLimitText.isNotEmpty &&
+                        (creditLimit == null || creditLimit < 0)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Enter a valid credit limit.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.of(context).pop({
+                      'payment_method': paymentMethod,
+                      'payment_terms_days':
+                          paymentMethod == 'account'
+                              ? paymentTermsDays
+                              : 0,
+                      'credit_limit':
+                          paymentMethod == 'account'
+                              ? creditLimit
+                              : null,
+                      'issue_reporting_window_hours':
+                          issueWindowHours,
+                      'account_reference':
+                          accountReferenceController.text.trim(),
+                    });
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF741C1C),
+                  ),
+                  child: const Text('Save Settings'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    paymentTermsController.dispose();
+    creditLimitController.dispose();
+    issueWindowController.dispose();
+    accountReferenceController.dispose();
+
+    if (result == null) {
+      return;
+    }
+
+    try {
+      await Supabase.instance.client
+          .from('supplier_customer_relationships')
+          .update({
+            'payment_method': result['payment_method'],
+            'payment_terms_days': result['payment_terms_days'],
+            'credit_limit': result['credit_limit'],
+            'issue_reporting_window_hours':
+                result['issue_reporting_window_hours'],
+            'account_reference':
+                (result['account_reference'] as String).isEmpty
+                    ? null
+                    : result['account_reference'],
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', relationship['id']);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer account settings updated.'),
+        ),
+      );
+
+      await _loadRequests();
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
+  String _formatPaymentTerms(Map<String, dynamic> relationship) {
+    final method = relationship['payment_method']?.toString();
+
+    switch (method) {
+      case 'account':
+        return '${relationship['payment_terms_days'] ?? 0} day account';
+      case 'prepaid':
+        return 'Prepaid';
+      case 'cod':
+      default:
+        return 'COD';
+    }
+  }
+
   String _businessName(Map<String, dynamic> relationship) {
     final business = relationship['businesses'] as Map<String, dynamic>?;
 
@@ -231,7 +517,7 @@ class _SupplierCustomerRequestsPageState
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'Customer Requests',
+          'Customers & Accounts',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -321,6 +607,11 @@ class _SupplierCustomerRequestsPageState
 
             final creditTerms = relationship['credit_terms']?.toString();
 
+            final paymentTerms = _formatPaymentTerms(relationship);
+            final creditLimit = relationship['credit_limit'];
+            final issueWindowHours =
+                relationship['issue_reporting_window_hours'] ?? 24;
+
             return Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -396,6 +687,53 @@ class _SupplierCustomerRequestsPageState
                       const SizedBox(height: 6),
                       Text('Credit terms: $creditTerms'),
                     ],
+
+                    if (status == 'approved') ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F8F6),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFE1E1DE),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Commercial terms',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text('Payment: $paymentTerms'),
+                            if (creditLimit != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                'Credit limit: \$${creditLimit.toString()}',
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Text(
+                              'Issue reporting window: $issueWindowHours hours',
+                            ),
+                            const SizedBox(height: 14),
+                            OutlinedButton.icon(
+                              onPressed: () =>
+                                  _editAccountTerms(relationship),
+                              icon: const Icon(Icons.tune_outlined),
+                              label: const Text('Edit Account Settings'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     if (status == 'requested') ...[
                       const SizedBox(height: 22),
                       const Divider(),

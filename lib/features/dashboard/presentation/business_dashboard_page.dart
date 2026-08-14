@@ -3,7 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../admin/presentation/pending_businesses_page.dart';
 import '../../marketplace/presentation/marketplace_products_page.dart';
-import '../../pricing/presentation/supplier_price_lists_page.dart';
+import '../../customers/presentation/supplier_customer_requests_page.dart';
+import '../../orders/presentation/submitted_orders_page.dart';
+import '../../orders/presentation/supplier_orders_page.dart';
 import '../../products/presentation/supplier_products_page.dart';
 
 class BusinessDashboardPage extends StatefulWidget {
@@ -16,6 +18,8 @@ class BusinessDashboardPage extends StatefulWidget {
 class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   bool _isLoading = true;
   bool _isAdmin = false;
+
+  int _newSupplierOrderCount = 0;
 
   String? _errorMessage;
   String? _businessName;
@@ -94,6 +98,27 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
       final businessType = business['business_type'] as String?;
 
+      var newSupplierOrderCount = 0;
+
+      if (businessType == 'supplier') {
+        final newOrders = await Supabase.instance.client
+            .from('orders')
+            .select('''
+              id,
+              order_items(id)
+            ''')
+            .eq('supplier_business_id', businessId)
+            .eq('status', 'submitted');
+
+        for (final order in newOrders) {
+          final rawItems = order['order_items'];
+
+          if (rawItems is List) {
+            newSupplierOrderCount += rawItems.length;
+          }
+        }
+      }
+
       if (!mounted) {
         return;
       }
@@ -102,6 +127,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _businessName = businessName;
         _businessType = businessType;
         _isAdmin = isAdmin;
+        _newSupplierOrderCount = newSupplierOrderCount;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -280,17 +306,23 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                         _DashboardCard(
                           width: cardWidth,
-                          icon: Icons.price_change_outlined,
-                          title: 'Pricing',
+                          icon: Icons.people_alt_outlined,
+                          title: 'Customers & Accounts',
                           description:
-                              'Manage public, customer and private pricing.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                              'Approve butcher requests and manage account terms.',
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    const SupplierPriceListsPage(),
+                                    const SupplierCustomerRequestsPage(),
                               ),
                             );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
                           },
                         ),
                         _DashboardCard(
@@ -298,8 +330,20 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           icon: Icons.receipt_long_outlined,
                           title: 'Orders',
                           description: 'Manage customer orders.',
-                          onTap: () {
-                            _showComingSoon('Supplier orders');
+                          badgeCount: _newSupplierOrderCount,
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SupplierOrdersPage(),
+                              ),
+                            );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
                           },
                         ),
                         _DashboardCard(
@@ -345,9 +389,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           width: cardWidth,
                           icon: Icons.shopping_bag_outlined,
                           title: 'Orders',
-                          description: 'View and manage your orders.',
+                          description: 'View and track your submitted orders.',
                           onTap: () {
-                            _showComingSoon('Butcher orders');
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SubmittedOrdersPage(),
+                              ),
+                            );
                           },
                         ),
                         _DashboardCard(
@@ -401,6 +450,7 @@ class _DashboardCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   final double width;
@@ -408,6 +458,7 @@ class _DashboardCard extends StatelessWidget {
   final String title;
   final String description;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -427,14 +478,55 @@ class _DashboardCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4E5E5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF741C1C), size: 28),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4E5E5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: const Color(0xFF741C1C),
+                        size: 28,
+                      ),
+                    ),
+                    if (badgeCount > 0)
+                      Positioned(
+                        top: -8,
+                        right: -8,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB3261E),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            badgeCount > 99 ? '99+' : badgeCount.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 Text(
