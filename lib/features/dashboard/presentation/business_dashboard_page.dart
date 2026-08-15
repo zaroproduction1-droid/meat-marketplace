@@ -391,15 +391,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                         _DashboardCard(
                           width: cardWidth,
-                          icon: Icons.compare_arrows_outlined,
-                          title: 'Compare',
-                          description: 'Compare products and supplier pricing.',
-                          onTap: () {
-                            _showComingSoon('Product comparison');
-                          },
-                        ),
-                        _DashboardCard(
-                          width: cardWidth,
                           icon: Icons.shopping_bag_outlined,
                           title: 'Orders',
                           description: 'View and track your submitted orders.',

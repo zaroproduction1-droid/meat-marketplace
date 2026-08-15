@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'marketplace_product_details_page.dart';
+import 'compare_offers_page.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
 
@@ -316,6 +316,24 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
+  Future<void> _openCompareOffers(
+    Map<String, dynamic> product,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CompareOffersPage(
+          selectedProduct: product,
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadProducts();
+  }
+
   Future<void> _openDraftOrdersPage() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -543,6 +561,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     });
   }
 
+  // ignore: unused_element
   bool _usesCanonicalCatalogue(Map<String, dynamic> product) {
     return product['product_variant_id'] != null;
   }
@@ -668,6 +687,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
+  // ignore: unused_element
   Widget _buildCustomerPriceDisplay(
     Map<String, dynamic> product, {
     required Map<String, dynamic>? visiblePrice,
@@ -798,6 +818,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
+  // ignore: unused_element
   String _formatTemperature(String? value) {
     switch (value) {
       case 'fresh':
@@ -811,6 +832,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
+  // ignore: unused_element
   String _supplierName(Map<String, dynamic> product) {
     final raw = product['businesses'];
 
@@ -988,6 +1010,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     );
   }
 
+  // ignore: unused_element
   List<Widget> _marketplaceChips(
     Map<String, dynamic> product, {
     required bool usesCanonicalCatalogue,
@@ -1203,6 +1226,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         'default_lead_time_days'];
   }
 
+  // ignore: unused_element
   Widget _buildDeliverySummary(
     Map<String, dynamic> product,
   ) {
@@ -1296,6 +1320,129 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             .toList(),
       ),
     );
+  }
+
+  String _comparisonKey(Map<String, dynamic> product) {
+    final variantId = product['product_variant_id']?.toString();
+
+    if (variantId != null && variantId.trim().isNotEmpty) {
+      return 'variant:$variantId';
+    }
+
+    final cutId = product['cut_id']?.toString() ?? '';
+    final productName =
+        product['product_name']?.toString().trim().toLowerCase() ?? '';
+
+    return 'legacy:$cutId:$productName';
+  }
+
+  List<List<Map<String, dynamic>>> _groupedBuyingOptions() {
+    final groups = <String, List<Map<String, dynamic>>>{};
+
+    for (final product in _filteredProducts) {
+      groups
+          .putIfAbsent(
+            _comparisonKey(product),
+            () => <Map<String, dynamic>>[],
+          )
+          .add(product);
+    }
+
+    final result = groups.values.toList();
+
+    result.sort((a, b) {
+      final aName =
+          a.first['product_name']?.toString().toLowerCase() ?? '';
+      final bName =
+          b.first['product_name']?.toString().toLowerCase() ?? '';
+
+      return aName.compareTo(bName);
+    });
+
+    return result;
+  }
+
+  int _supplierOfferCount(List<Map<String, dynamic>> offers) {
+    return offers
+        .map((product) => product['supplier_business_id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .length;
+  }
+
+  // ignore: unused_element
+  Map<String, dynamic>? _lowestVisiblePrice(
+    List<Map<String, dynamic>> offers,
+  ) {
+    Map<String, dynamic>? lowest;
+    double? lowestAmount;
+
+    for (final product in offers) {
+      final price = _findVisiblePrice(product);
+      final rawAmount = price?['amount'];
+
+      final amount = rawAmount is num
+          ? rawAmount.toDouble()
+          : double.tryParse('${rawAmount ?? ''}');
+
+      if (price == null || amount == null) {
+        continue;
+      }
+
+      if (lowestAmount == null || amount < lowestAmount) {
+        lowestAmount = amount;
+        lowest = price;
+      }
+    }
+
+    return lowest;
+  }
+
+  // ignore: unused_element
+  String _groupAvailabilityText(List<Map<String, dynamic>> offers) {
+    var inStock = 0;
+    var limited = 0;
+    var madeToOrder = 0;
+
+    for (final product in offers) {
+      switch (product['availability_status']?.toString()) {
+        case 'in_stock':
+          inStock++;
+          break;
+        case 'limited':
+          limited++;
+          break;
+        case 'made_to_order':
+          madeToOrder++;
+          break;
+      }
+    }
+
+    if (inStock > 0) {
+      return '$inStock offer${inStock == 1 ? '' : 's'} in stock';
+    }
+
+    if (limited > 0) {
+      return '$limited limited-stock offer${limited == 1 ? '' : 's'}';
+    }
+
+    if (madeToOrder > 0) {
+      return '$madeToOrder made-to-order offer${madeToOrder == 1 ? '' : 's'}';
+    }
+
+    return 'Currently unavailable';
+  }
+
+  String _variantDisplayName(Map<String, dynamic> product) {
+    final variant = _variant(product);
+    final name = variant?['variant_name']?.toString().trim();
+
+    if (name == null || name.isEmpty) {
+      return '';
+    }
+
+    return name;
   }
 
   @override
@@ -1394,12 +1541,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       );
     }
 
-    if (_filteredProducts.isEmpty) {
+    final groups = _groupedBuyingOptions();
+
+    if (groups.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'No matching marketplace products were found.',
+            'No matching products were found.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18),
           ),
@@ -1409,165 +1558,130 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100),
-        child: ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: _filteredProducts.length,
-          separatorBuilder: (context, index) {
-            return const SizedBox(height: 14);
-          },
-          itemBuilder: (context, index) {
-            final product = _filteredProducts[index];
-
-            final price = _findVisiblePrice(product);
-
-            final cataloguePath = _cataloguePath(product);
-            final usesCanonicalCatalogue = _usesCanonicalCatalogue(product);
-
-            final chips = _marketplaceChips(
-              product,
-              usesCanonicalCatalogue: usesCanonicalCatalogue,
-            );
-
-            final supplierSpecification =
-                product['supplier_specification']?.toString();
-
-            return Card(
-              elevation: 0,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(14),
+        constraints: const BoxConstraints(maxWidth: 1040),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+          children: [
+            const Text(
+              'Choose what you want to buy',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
               ),
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          MarketplaceProductDetailsPage(product: product),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Choose the exact cut or product first. Prices and supplier '
+              'offers are shown only after you open the buying page.',
+              style: TextStyle(
+                color: Color(0xFF666666),
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            for (final offers in groups) ...[
+              Builder(
+                builder: (context) {
+                  final representative = offers.first;
+                  final supplierCount = _supplierOfferCount(offers);
+                  final cataloguePath = _cataloguePath(representative);
+                  final variantName = _variantDisplayName(representative);
+
+                  return Card(
+                    elevation: 0,
+                    clipBehavior: Clip.antiAlias,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(
+                        color: Color(0xFFE0E0E0),
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: InkWell(
+                      onTap: () => _openCompareOffers(representative),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4E5E5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.restaurant_menu_outlined,
+                                color: Color(0xFF741C1C),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    representative['product_name']
+                                            ?.toString() ??
+                                        'Unnamed product',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  if (variantName.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      variantName,
+                                      style: const TextStyle(
+                                        color: Color(0xFF741C1C),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    cataloguePath,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$supplierCount supplier offer'
+                                    '${supplierCount == 1 ? '' : 's'} available',
+                                    style: const TextStyle(
+                                      color: Color(0xFF555555),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF741C1C),
+                              size: 30,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 680;
-
-                      final details = Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product['product_name'] as String? ??
-                                'Unnamed product',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-
-                          const SizedBox(height: 7),
-
-                          Text(
-                            _supplierName(product),
-                            style: const TextStyle(
-                              color: Color(0xFF741C1C),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Text(
-                            cataloguePath,
-                            style: const TextStyle(
-                              color: Color(0xFF5E5E5E),
-                              height: 1.4,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Text(
-                            'Storage: ${_formatTemperature(product['temperature_state'] as String?)}',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
-                            ),
-                          ),
-
-                          if (supplierSpecification != null &&
-                              supplierSpecification.trim().isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              supplierSpecification.trim(),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF666666),
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-
-                          _buildDeliverySummary(product),
-
-                          const SizedBox(height: 12),
-
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: chips,
-                          ),
-                        ],
-                      );
-
-                      final pricing = Column(
-                        crossAxisAlignment: isNarrow
-                            ? CrossAxisAlignment.start
-                            : CrossAxisAlignment.end,
-                        children: [
-                          _buildCustomerPriceDisplay(
-                            product,
-                            visiblePrice: price,
-                            alignment: isNarrow
-                                ? CrossAxisAlignment.start
-                                : CrossAxisAlignment.end,
-                          ),
-                          if (price?['minimum_quantity'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 7),
-                              child: Text(
-                                'Minimum: ${_formatNumber(price?['minimum_quantity'])}',
-                              ),
-                            ),
-                        ],
-                      );
-
-                      if (isNarrow) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            details,
-                            const SizedBox(height: 18),
-                            pricing,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: details),
-                          const SizedBox(width: 24),
-                          pricing,
-                        ],
-                      );
-                    },
-                  ),
-                ),
               ),
-            );
-          },
+              const SizedBox(height: 12),
+            ],
+          ],
         ),
       ),
     );

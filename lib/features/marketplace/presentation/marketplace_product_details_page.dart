@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../orders/presentation/draft_orders_page.dart';
+import 'compare_offers_page.dart';
 
 class MarketplaceProductDetailsPage extends StatefulWidget {
   const MarketplaceProductDetailsPage({
@@ -52,6 +53,16 @@ class _MarketplaceProductDetailsPageState
   void dispose() {
     _quantityController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openCompareOffers() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CompareOffersPage(
+          selectedProduct: widget.product,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCataloguePath() async {
@@ -1670,6 +1681,11 @@ class _MarketplaceProductDetailsPageState
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+          IconButton(
+            onPressed: _openCompareOffers,
+            tooltip: 'Compare offers',
+            icon: const Icon(Icons.compare_arrows_outlined),
+          ),
           IconButton(
             onPressed: _openDraftOrdersPage,
             tooltip: 'Draft orders',
