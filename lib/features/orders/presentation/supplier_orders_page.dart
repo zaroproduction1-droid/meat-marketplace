@@ -14,6 +14,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   String? _errorMessage;
   String? _supplierBusinessId;
   String? _updatingOrderId;
+  String? _updatingIssueId;
 
   late final TabController _tabController;
 
@@ -109,9 +110,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             butcher_business_id,
             supplier_business_id,
             status,
+            order_type,
+            replacement_for_order_id,
+            replacement_issue_id,
+            replacement_for_order_number_snapshot,
             customer_reference,
             delivery_notes,
             internal_notes,
+            delivery_fee,
             subtotal,
             gst_amount,
             total_amount,
@@ -146,7 +152,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               notes
             ),
 
-            order_issues(
+            order_issues!order_issues_order_id_fkey(
               id,
               status,
               issue_reason,
@@ -160,7 +166,17 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               replacement_required,
               approved_at,
               rejected_at,
-              resolved_at
+              resolved_at,
+              butcher_confirmed_at,
+              butcher_confirmed_by_business_id,
+              replacement_order_id,
+              order_issue_messages(
+                id,
+                sender_business_id,
+                sender_role,
+                message,
+                created_at
+              )
             )
           ''')
           .eq('supplier_business_id', supplierBusinessId)
@@ -261,7 +277,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             .toList();
 
       case 'issues':
-        return _orders.where(_hasOpenIssues).toList();
+        return _orders
+            .where((order) => _issues(order).isNotEmpty)
+            .toList();
 
       case 'completed':
         return _orders
@@ -373,6 +391,19 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         .replaceFirst(RegExp(r'\.$'), '');
 
     return _withThousandsSeparators(formatted);
+  }
+
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse('$value') ?? 0;
+  }
+
+  double _exGstAmount(Map<String, dynamic> order) {
+    final total = _asDouble(order['total_amount']);
+    return total / 1.10;
   }
 
   String _money(dynamic value) {
@@ -536,6 +567,663 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         return 'Other';
       default:
         return reason ?? 'Issue';
+    }
+  }
+
+  bool _isReplacementOrder(Map<String, dynamic> order) {
+    return order['order_type']?.toString() == 'replacement';
+  }
+
+  List<Map<String, dynamic>> _issueMessages(
+    Map<String, dynamic> issue,
+  ) {
+    final raw = issue['order_issue_messages'];
+
+    if (raw is! List) {
+      return [];
+    }
+
+    final messages = raw
+        .whereType<Map>()
+        .map((message) => Map<String, dynamic>.from(message))
+        .toList();
+
+    messages.sort((a, b) {
+      final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '');
+      final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '');
+
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+      if (aDate == null) {
+        return -1;
+      }
+      if (bDate == null) {
+        return 1;
+      }
+
+      return aDate.compareTo(bDate);
+    });
+
+    return messages;
+  }
+
+  Future<void> _createReplacementFulfilment(
+    Map<String, dynamic> order,
+    Map<String, dynamic> issue,
+  ) async {
+    final issueId = issue['id']?.toString();
+
+    if (issueId == null ||
+        issueId.isEmpty ||
+        _updatingIssueId != null) {
+      return;
+    }
+
+    final existingReplacement =
+        issue['replacement_order_id']?.toString();
+
+    if (existingReplacement != null &&
+        existingReplacement.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'A replacement fulfilment already exists for this issue.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Create Replacement Fulfilment?'),
+          content: Text(
+            'Create a no-charge replacement order for the affected '
+            'products in ${order['order_number'] ?? 'this order'}? '
+            'It will start in Accepted and move through Processing, '
+            'Dispatched, Delivered and Completed like a normal order.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+              ),
+              child: const Text('Create Replacement'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() {
+      _updatingIssueId = issueId;
+    });
+
+    try {
+      final replacementId = await Supabase.instance.client.rpc(
+        'create_replacement_order',
+        params: {
+          'target_issue_id': issueId,
+        },
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Replacement fulfilment created'
+            '${replacementId == null ? '.' : ' successfully.'}',
+          ),
+        ),
+      );
+
+      await _loadOrders();
+
+      if (mounted) {
+        _tabController.animateTo(1);
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingIssueId = null;
+        });
+      }
+    }
+  }
+
+  bool _isIssueClosed(Map<String, dynamic> issue) {
+    final status = issue['status']?.toString();
+    return status == 'resolved' ||
+        status == 'rejected' ||
+        status == 'cancelled';
+  }
+
+  Future<void> _confirmResolutionCompleted(
+    Map<String, dynamic> order,
+    Map<String, dynamic> issue,
+  ) async {
+    final issueId = issue['id']?.toString();
+    final supplierBusinessId = _supplierBusinessId;
+
+    if (issueId == null ||
+        issueId.isEmpty ||
+        supplierBusinessId == null ||
+        _updatingIssueId != null ||
+        _isIssueClosed(issue)) {
+      return;
+    }
+
+    final resolution = _resolutionLabel(
+      issue['resolution_type']?.toString(),
+    );
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Resolution Completed?'),
+          content: Text(
+            'Confirm that the agreed resolution has actually been completed.\n\n'
+            'Resolution: $resolution\n\n'
+            'This closes the issue for both businesses but keeps the full '
+            'complaint and resolution history.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Not Yet'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+              ),
+              child: const Text('Confirm Completed'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() {
+      _updatingIssueId = issueId;
+    });
+
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+
+      await Supabase.instance.client
+          .from('order_issues')
+          .update({
+            'status': 'resolved',
+            'resolved_at': now,
+          })
+          .eq('id', issueId);
+
+      await Supabase.instance.client
+          .from('order_issue_messages')
+          .insert({
+            'order_issue_id': issueId,
+            'sender_business_id': supplierBusinessId,
+            'sender_role': 'supplier',
+            'message':
+                'Resolution completed and issue closed. Resolution: $resolution.',
+          });
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Issue resolved for ${order['order_number'] ?? 'this order'}.',
+          ),
+        ),
+      );
+
+      await _loadOrders();
+
+      if (mounted) {
+        _tabController.animateTo(5);
+      }
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingIssueId = null;
+        });
+      }
+    }
+  }
+
+  String _resolutionLabel(String? value) {
+    switch (value) {
+      case 'replacement':
+        return 'Replacement / exchange';
+      case 'credit':
+        return 'Account credit / credit note';
+      case 'refund':
+        return 'Refund';
+      case 'collection':
+        return 'Supplier collection';
+      case 'other':
+        return 'Other';
+      default:
+        return value?.replaceAll('_', ' ') ?? 'Not set';
+    }
+  }
+
+  Future<void> _respondToIssue(
+    Map<String, dynamic> order,
+    Map<String, dynamic> issue,
+  ) async {
+    final issueId = issue['id']?.toString();
+
+    if (issueId == null || issueId.isEmpty || _updatingIssueId != null) {
+      return;
+    }
+
+    final responseController = TextEditingController(
+      text: issue['supplier_response']?.toString() ?? '',
+    );
+    final creditController = TextEditingController(
+      text: issue['credit_amount']?.toString() ?? '',
+    );
+
+    String action = 'approve';
+    String resolutionType =
+        issue['resolution_type']?.toString() ?? 'replacement';
+    bool pickupRequired = issue['pickup_required'] == true;
+    bool replacementRequired = issue['replacement_required'] == true;
+    bool saving = false;
+
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              Future<void> save() async {
+                if (saving) {
+                  return;
+                }
+
+                final response = responseController.text.trim();
+                final creditText = creditController.text.trim();
+                final credit = creditText.isEmpty
+                    ? null
+                    : double.tryParse(creditText);
+
+                if (response.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Enter a response for the butcher.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                if (creditText.isNotEmpty &&
+                    (credit == null || credit < 0)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Enter a valid credit amount.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                setDialogState(() {
+                  saving = true;
+                });
+
+                if (mounted) {
+                  setState(() {
+                    _updatingIssueId = issueId;
+                  });
+                }
+
+                try {
+                  final now = DateTime.now().toUtc().toIso8601String();
+
+                  final update = <String, dynamic>{
+                    'supplier_response': response,
+                    'resolution_type': resolutionType,
+                    'pickup_required': pickupRequired,
+                    'replacement_required': replacementRequired,
+                    'credit_amount': credit,
+                  };
+
+                  if (action == 'approve') {
+                    update['status'] = 'approved';
+                    update['approved_at'] = now;
+                    update['rejected_at'] = null;
+                    update['resolved_at'] = null;
+                  } else if (action == 'reject') {
+                    update['status'] = 'rejected';
+                    update['rejected_at'] = now;
+                    update['approved_at'] = null;
+                    update['resolved_at'] = null;
+                  }
+
+                  await Supabase.instance.client
+                      .from('order_issues')
+                      .update(update)
+                      .eq('id', issueId);
+
+                  await Supabase.instance.client
+                      .from('order_issue_messages')
+                      .insert({
+                        'order_issue_id': issueId,
+                        'sender_business_id': _supplierBusinessId,
+                        'sender_role': 'supplier',
+                        'message': response,
+                      });
+
+                  if (!mounted || !dialogContext.mounted) {
+                    return;
+                  }
+
+                  Navigator.of(dialogContext).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Issue updated for '
+                        '${order['order_number'] ?? 'this order'}.',
+                      ),
+                    ),
+                  );
+
+                  await _loadOrders();
+
+                  if (mounted) {
+                    _tabController.animateTo(5);
+                  }
+                } on PostgrestException catch (error) {
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(content: Text(error.message)),
+                    );
+
+                    setDialogState(() {
+                      saving = false;
+                    });
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      _updatingIssueId = null;
+                    });
+                  }
+                }
+              }
+
+              return AlertDialog(
+                title: Text(
+                  'Process Issue\n'
+                  '${order['order_number'] ?? ''}',
+                ),
+                content: SizedBox(
+                  width: 620,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _issueReasonLabel(
+                            issue['issue_reason']?.toString(),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (issue['description'] != null &&
+                            issue['description']
+                                .toString()
+                                .trim()
+                                .isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(issue['description'].toString()),
+                        ],
+                        if (_issueMessages(issue).isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Conversation',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final message in _issueMessages(issue))
+                            Container(
+                              width: double.infinity,
+                              margin:
+                                  const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: message['sender_role']
+                                            ?.toString() ==
+                                        'butcher'
+                                    ? const Color(0xFFF3F3F1)
+                                    : const Color(0xFFEAF1FB),
+                                borderRadius:
+                                    BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${message['sender_role']?.toString() == 'butcher' ? 'Butcher' : 'You'}: '
+                                '${message['message'] ?? ''}',
+                              ),
+                            ),
+                        ],
+                        const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: action,
+                          decoration: const InputDecoration(
+                            labelText: 'Action',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'approve',
+                              child: Text('Approve issue'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'reject',
+                              child: Text('Reject issue'),
+                            ),
+                          ],
+                          onChanged: saving
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setDialogState(() {
+                                      action = value;
+                                    });
+                                  }
+                                },
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: resolutionType,
+                          decoration: const InputDecoration(
+                            labelText: 'Resolution',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'replacement',
+                              child: Text('Replacement / exchange'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'credit',
+                              child: Text(
+                                'Account credit / credit note',
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'refund',
+                              child: Text('Refund'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'collection',
+                              child: Text('Supplier collection'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Other'),
+                            ),
+                          ],
+                          onChanged: saving
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setDialogState(() {
+                                      resolutionType = value;
+                                    });
+                                  }
+                                },
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: responseController,
+                          minLines: 3,
+                          maxLines: 6,
+                          enabled: !saving,
+                          decoration: const InputDecoration(
+                            labelText: 'Reply / update to butcher',
+                            hintText:
+                                'Reply to the existing issue. Explain what happens next, including any collection, replacement or credit details.',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: creditController,
+                          enabled: !saving,
+                          keyboardType:
+                              const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Credit amount (inc GST, optional)',
+                            prefixText: '\$',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: pickupRequired,
+                          title: const Text('Supplier pickup required'),
+                          onChanged: saving
+                              ? null
+                              : (value) {
+                                  setDialogState(() {
+                                    pickupRequired = value;
+                                  });
+                                },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: replacementRequired,
+                          title: const Text('Replacement required'),
+                          onChanged: saving
+                              ? null
+                              : (value) {
+                                  setDialogState(() {
+                                    replacementRequired = value;
+                                  });
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: saving
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: saving ? null : save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF741C1C),
+                    ),
+                    icon: saving
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(
+                      saving ? 'Saving...' : 'Save Issue Update',
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      responseController.dispose();
+      creditController.dispose();
+
+      if (mounted) {
+        setState(() {
+          _updatingIssueId = null;
+        });
+      }
     }
   }
 
@@ -1055,6 +1743,33 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (_isReplacementOrder(order)) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        const Chip(
+                          avatar: Icon(
+                            Icons.autorenew,
+                            size: 15,
+                          ),
+                          label: Text('REPLACEMENT JOB'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        if (order['replacement_for_order_number_snapshot'] !=
+                            null)
+                          Text(
+                            'For ${order['replacement_for_order_number_snapshot']}',
+                            style: const TextStyle(
+                              color: Color(0xFF666666),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1168,18 +1883,39 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
           if (issues.isNotEmpty) ...[
             const SizedBox(height: 4),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Reported issues',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+            if (issues.any((issue) => !_isIssueClosed(issue))) ...[
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Open Issues',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            for (final issue in issues) _buildIssueCard(issue),
+              const SizedBox(height: 10),
+              for (final issue
+                  in issues.where((issue) => !_isIssueClosed(issue)))
+                _buildIssueCard(order, issue),
+            ],
+            if (issues.any(_isIssueClosed)) ...[
+              const SizedBox(height: 14),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Closed Issues',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF666666),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (final issue in issues.where(_isIssueClosed))
+                _buildIssueCard(order, issue),
+            ],
             const SizedBox(height: 8),
           ],
 
@@ -1282,18 +2018,29 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               child: Column(
                 children: [
                   _TotalRow(
-                    label: 'Subtotal',
+                    label: 'Products (inc GST)',
                     value: _money(order['subtotal']),
                   ),
                   _TotalRow(
-                    label: 'GST',
-                    value: _money(order['gst_amount']),
+                    label: 'Delivery (inc GST)',
+                    value: _asDouble(order['delivery_fee']) == 0
+                        ? 'Free'
+                        : _money(order['delivery_fee']),
                   ),
                   const Divider(),
                   _TotalRow(
-                    label: 'Total',
+                    label: 'Total inc GST',
                     value: _money(order['total_amount']),
                     bold: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _TotalRow(
+                    label: 'Total ex GST',
+                    value: _money(_exGstAmount(order)),
+                  ),
+                  _TotalRow(
+                    label: 'GST included',
+                    value: _money(order['gst_amount']),
                   ),
                 ],
               ),
@@ -1316,19 +2063,30 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     );
   }
 
-  Widget _buildIssueCard(Map<String, dynamic> issue) {
+  Widget _buildIssueCard(
+    Map<String, dynamic> order,
+    Map<String, dynamic> issue,
+  ) {
     final status = issue['status']?.toString() ?? 'requested';
     final withinWindow = issue['within_reporting_window'] == true;
+    final issueId = issue['id']?.toString();
+    final closed = _isIssueClosed(issue);
+    final resolutionType = issue['resolution_type']?.toString();
+    final replacementOrderId = issue['replacement_order_id']?.toString();
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: closed
+            ? const Color(0xFFF5F5F3)
+            : const Color(0xFFFFF7F7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFE4BABA),
+          color: closed
+              ? const Color(0xFFD7D7D2)
+              : const Color(0xFFE4BABA),
         ),
       ),
       child: Column(
@@ -1341,9 +2099,15 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             children: [
               Text(
                 _issueReasonLabel(issue['issue_reason']?.toString()),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              Chip(
+                avatar: Icon(
+                  closed ? Icons.lock_outline : Icons.circle_outlined,
+                  size: 15,
                 ),
+                label: Text(closed ? 'CLOSED' : 'OPEN'),
+                visualDensity: VisualDensity.compact,
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -1351,15 +2115,23 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDECEC),
+                  color: status == 'resolved'
+                      ? const Color(0xFFE8F5E9)
+                      : status == 'rejected'
+                          ? const Color(0xFFFDECEC)
+                          : const Color(0xFFFFF4E5),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   status.replaceAll('_', ' '),
-                  style: const TextStyle(
-                    color: Color(0xFFB3261E),
+                  style: TextStyle(
+                    color: status == 'resolved'
+                        ? const Color(0xFF2E7D32)
+                        : status == 'rejected'
+                            ? const Color(0xFFB3261E)
+                            : const Color(0xFF9A5B00),
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1390,6 +2162,162 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ),
             ),
           ],
+          if (issue['supplier_response'] != null &&
+              issue['supplier_response'].toString().trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Your response: ${issue['supplier_response']}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+          if (resolutionType != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Resolution: ${_resolutionLabel(resolutionType)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+          if (status == 'resolved') ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: issue['butcher_confirmed_at'] != null
+                    ? const Color(0xFFE8F5E9)
+                    : const Color(0xFFFFF4E5),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    issue['butcher_confirmed_at'] != null
+                        ? Icons.verified_outlined
+                        : Icons.hourglass_top_outlined,
+                    size: 16,
+                    color: issue['butcher_confirmed_at'] != null
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFF9A5B00),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    issue['butcher_confirmed_at'] != null
+                        ? 'Butcher confirmed resolution'
+                        : 'Awaiting butcher confirmation',
+                    style: TextStyle(
+                      color: issue['butcher_confirmed_at'] != null
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFF9A5B00),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (_asDouble(issue['credit_amount']) > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Credit: ${_money(issue['credit_amount'])} inc GST',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+          if (issue['pickup_required'] == true) ...[
+            const SizedBox(height: 6),
+            const Text('Supplier pickup required'),
+          ],
+          if (issue['replacement_required'] == true) ...[
+            const SizedBox(height: 6),
+            const Text('Replacement required'),
+          ],
+          if (_issueMessages(issue).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Conversation',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 7),
+            for (final message in _issueMessages(issue))
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: message['sender_role']?.toString() == 'butcher'
+                      ? const Color(0xFFF3F3F1)
+                      : const Color(0xFFEAF1FB),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  '${message['sender_role']?.toString() == 'butcher' ? 'Butcher' : 'Supplier'}: '
+                  '${message['message'] ?? ''}',
+                ),
+              ),
+          ],
+          const SizedBox(height: 12),
+          if (closed)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Chip(
+                avatar: const Icon(Icons.task_alt, size: 16),
+                label: Text(
+                  status == 'rejected'
+                      ? 'Rejected and closed'
+                      : 'Resolution completed',
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.end,
+              children: [
+                if (replacementOrderId == null &&
+                    resolutionType == 'replacement' &&
+                    status != 'rejected')
+                  OutlinedButton.icon(
+                    onPressed: _updatingIssueId == issueId
+                        ? null
+                        : () => _createReplacementFulfilment(order, issue),
+                    icon: const Icon(Icons.autorenew),
+                    label: const Text('Start Replacement Fulfilment'),
+                  )
+                else if (replacementOrderId != null)
+                  const Chip(
+                    avatar: Icon(Icons.autorenew, size: 16),
+                    label: Text('Replacement fulfilment in progress'),
+                  ),
+                if (status == 'approved' &&
+                    resolutionType != 'replacement' &&
+                    replacementOrderId == null)
+                  FilledButton.icon(
+                    onPressed: _updatingIssueId == issueId
+                        ? null
+                        : () => _confirmResolutionCompleted(order, issue),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                    ),
+                    icon: const Icon(Icons.task_alt),
+                    label: const Text('Confirm Resolution Completed'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: _updatingIssueId == issueId
+                      ? null
+                      : () => _respondToIssue(order, issue),
+                  icon: const Icon(Icons.forum_outlined),
+                  label: Text(
+                    status == 'approved'
+                        ? 'Reply / Update'
+                        : 'Reply / Process Issue',
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

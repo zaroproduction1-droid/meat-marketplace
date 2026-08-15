@@ -1343,7 +1343,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Price',
+                        labelText: 'Price (inc GST)',
                         prefixText: '\$',
                         border: OutlineInputBorder(),
                       ),
@@ -1385,7 +1385,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Minimum quantity',
+                        labelText: 'Minimum quantity for this product (optional)',
                         hintText: 'Optional',
                         border: OutlineInputBorder(),
                       ),
@@ -1620,7 +1620,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     final priceText = price == null
         ? 'Not set'
-        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())}';
+        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())} inc GST';
 
     return Card(
       elevation: 0,
@@ -1675,7 +1675,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       if (price?['minimum_quantity'] != null) ...[
                         const SizedBox(height: 5),
                         Text(
-                          'Minimum quantity: ${price!['minimum_quantity']}',
+                          'Product minimum quantity: ${price!['minimum_quantity']}',
                           style: const TextStyle(
                             color: Color(0xFF666666),
                           ),
@@ -1968,7 +1968,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     final priceText = price == null
         ? 'No special price'
-        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())}';
+        : '${_formatMoneyValue(price['amount'])} / ${_pricingBasisLabel(price['price_basis']?.toString())} inc GST';
 
     String? savingText;
 

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../admin/presentation/pending_businesses_page.dart';
 import '../../marketplace/presentation/marketplace_products_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
+import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
 import '../../orders/presentation/supplier_orders_page.dart';
 import '../../products/presentation/supplier_products_page.dart';
@@ -350,9 +351,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           width: cardWidth,
                           icon: Icons.local_shipping_outlined,
                           title: 'Delivery',
-                          description: 'Manage delivery information.',
-                          onTap: () {
-                            _showComingSoon('Delivery management');
+                          description:
+                              'Manage delivery days, cut-off times, zones and minimum orders.',
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SupplierDeliverySettingsPage(),
+                              ),
+                            );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
                           },
                         ),
                       ],

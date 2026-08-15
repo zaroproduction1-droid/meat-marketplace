@@ -23,6 +23,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   List<Map<String, dynamic>> _filteredProducts = [];
 
   final Map<String, Map<String, dynamic>> _cataloguePathsByProductId = {};
+  final Map<String, Map<String, dynamic>> _deliverySettingsBySupplierId = {};
+  final Map<String, Map<String, dynamic>> _deliveryZoneBySupplierId = {};
+
+  String? _butcherPostcode;
 
   @override
   void initState() {
@@ -116,6 +120,40 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       final products = List<Map<String, dynamic>>.from(response);
 
+      final user = Supabase.instance.client.auth.currentUser;
+      String? butcherPostcode;
+
+      if (user != null) {
+        final memberships = await Supabase.instance.client
+            .from('business_memberships')
+            .select('business_id')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .limit(1);
+
+        if (memberships.isNotEmpty) {
+          final businessId =
+              memberships.first['business_id']?.toString();
+
+          if (businessId != null && businessId.isNotEmpty) {
+            final businesses = await Supabase.instance.client
+                .from('businesses')
+                .select('postcode')
+                .eq('id', businessId)
+                .limit(1);
+
+            if (businesses.isNotEmpty) {
+              final postcode =
+                  businesses.first['postcode']?.toString().trim();
+
+              if (postcode != null && postcode.isNotEmpty) {
+                butcherPostcode = postcode;
+              }
+            }
+          }
+        }
+      }
+
       final meatProductIds = <String>{};
 
       for (final product in products) {
@@ -156,6 +194,84 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         }
       }
 
+      final supplierIds = products
+          .map((product) => product['supplier_business_id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      final deliverySettingsBySupplierId =
+          <String, Map<String, dynamic>>{};
+      final deliveryZoneBySupplierId =
+          <String, Map<String, dynamic>>{};
+
+      if (supplierIds.isNotEmpty) {
+        final settingsResponse = await Supabase.instance.client
+            .from('supplier_delivery_settings')
+            .select('''
+              supplier_business_id,
+              minimum_order_amount,
+              default_lead_time_days,
+              order_cutoff_time,
+              pickup_available,
+              delivery_notes,
+              active
+            ''')
+            .inFilter(
+              'supplier_business_id',
+              supplierIds.toList(),
+            );
+
+        for (final rawSetting in settingsResponse) {
+          final setting =
+              Map<String, dynamic>.from(rawSetting);
+          final supplierId =
+              setting['supplier_business_id']?.toString();
+
+          if (supplierId != null && supplierId.isNotEmpty) {
+            deliverySettingsBySupplierId[supplierId] = setting;
+          }
+        }
+
+        if (butcherPostcode != null) {
+          final zonesResponse = await Supabase.instance.client
+              .from('supplier_delivery_zones')
+              .select('''
+                id,
+                supplier_business_id,
+                zone_name,
+                minimum_order_amount,
+                delivery_fee,
+                lead_time_days,
+                active,
+                supplier_delivery_zone_postcodes!inner(
+                  postcode
+                )
+              ''')
+              .inFilter(
+                'supplier_business_id',
+                supplierIds.toList(),
+              )
+              .eq('active', true)
+              .eq(
+                'supplier_delivery_zone_postcodes.postcode',
+                butcherPostcode,
+              );
+
+          for (final rawZone in zonesResponse) {
+            final zone = Map<String, dynamic>.from(rawZone);
+            final supplierId =
+                zone['supplier_business_id']?.toString();
+
+            if (supplierId != null &&
+                supplierId.isNotEmpty &&
+                !deliveryZoneBySupplierId.containsKey(supplierId)) {
+              deliveryZoneBySupplierId[supplierId] = zone;
+            }
+          }
+        }
+      }
+
       if (!mounted) {
         return;
       }
@@ -165,6 +281,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         _cataloguePathsByProductId
           ..clear()
           ..addAll(cataloguePathsByProductId);
+
+        _deliverySettingsBySupplierId
+          ..clear()
+          ..addAll(deliverySettingsBySupplierId);
+
+        _deliveryZoneBySupplierId
+          ..clear()
+          ..addAll(deliveryZoneBySupplierId);
+
+        _butcherPostcode = butcherPostcode;
         _isLoading = false;
       });
 
@@ -479,6 +605,169 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     return bestPrice;
+  }
+
+  Map<String, dynamic>? _priceForVisibility(
+    Map<String, dynamic> product,
+    String visibility,
+  ) {
+    final rawPrices = product['product_prices'];
+
+    if (rawPrices is! List) {
+      return null;
+    }
+
+    for (final rawPrice in rawPrices) {
+      if (rawPrice is! Map) {
+        continue;
+      }
+
+      final price = Map<String, dynamic>.from(rawPrice);
+
+      if (price['active'] != true) {
+        continue;
+      }
+
+      final rawPriceList = price['price_lists'];
+
+      if (rawPriceList is! Map) {
+        continue;
+      }
+
+      final priceList = Map<String, dynamic>.from(rawPriceList);
+
+      if (priceList['active'] != true) {
+        continue;
+      }
+
+      if (priceList['visibility']?.toString() == visibility) {
+        return price;
+      }
+    }
+
+    return null;
+  }
+
+  String _visiblePriceLabel(
+    Map<String, dynamic>? price,
+  ) {
+    final rawPriceList = price?['price_lists'];
+
+    if (rawPriceList is! Map) {
+      return 'Standard Price';
+    }
+
+    switch (rawPriceList['visibility']?.toString()) {
+      case 'private':
+        return 'Your Special Price';
+      case 'approved_customers':
+        return 'Your Trade Price';
+      case 'public':
+      default:
+        return 'Standard Price';
+    }
+  }
+
+  Widget _buildCustomerPriceDisplay(
+    Map<String, dynamic> product, {
+    required Map<String, dynamic>? visiblePrice,
+    required CrossAxisAlignment alignment,
+  }) {
+    if (visiblePrice == null ||
+        visiblePrice['amount'] == null) {
+      return const Text(
+        'Price unavailable',
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF666666),
+        ),
+      );
+    }
+
+    final visibleAmountRaw = visiblePrice['amount'];
+    final visibleAmount = visibleAmountRaw is num
+        ? visibleAmountRaw.toDouble()
+        : double.tryParse('$visibleAmountRaw');
+
+    final visibleBasis =
+        visiblePrice['price_basis']?.toString();
+
+    final standardPrice =
+        _priceForVisibility(product, 'public');
+
+    final standardAmountRaw = standardPrice?['amount'];
+    final standardAmount = standardAmountRaw is num
+        ? standardAmountRaw.toDouble()
+        : double.tryParse('${standardAmountRaw ?? ''}');
+
+    final standardBasis =
+        standardPrice?['price_basis']?.toString();
+
+    final priceLabel = _visiblePriceLabel(visiblePrice);
+
+    final isDiscountedPrice =
+        priceLabel != 'Standard Price' &&
+        visibleAmount != null &&
+        standardAmount != null &&
+        standardAmount > visibleAmount &&
+        standardBasis == visibleBasis;
+
+    final saving = isDiscountedPrice
+        ? standardAmount - visibleAmount
+        : null;
+
+    final savingPercent =
+        isDiscountedPrice && standardAmount > 0
+            ? (saving! / standardAmount) * 100
+            : null;
+
+    return Column(
+      crossAxisAlignment: alignment,
+      children: [
+        if (isDiscountedPrice) ...[
+          Text(
+            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)} inc GST',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF777777),
+              decoration: TextDecoration.lineThrough,
+              decorationThickness: 2,
+            ),
+          ),
+          const SizedBox(height: 3),
+        ],
+        Text(
+          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)} inc GST',
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF741C1C),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          priceLabel,
+          style: TextStyle(
+            color: priceLabel == 'Standard Price'
+                ? const Color(0xFF666666)
+                : const Color(0xFF741C1C),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+        if (saving != null && savingPercent != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Save ${_formatMoney(saving)} / ${_formatPriceBasis(visibleBasis)} • ${savingPercent.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              color: Color(0xFF2E7D32),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   String _formatPriceBasis(String? value) {
@@ -861,6 +1150,154 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return chips;
   }
 
+  Map<String, dynamic>? _deliverySettingsForProduct(
+    Map<String, dynamic> product,
+  ) {
+    final supplierId =
+        product['supplier_business_id']?.toString();
+
+    if (supplierId == null || supplierId.isEmpty) {
+      return null;
+    }
+
+    return _deliverySettingsBySupplierId[supplierId];
+  }
+
+  Map<String, dynamic>? _deliveryZoneForProduct(
+    Map<String, dynamic> product,
+  ) {
+    final supplierId =
+        product['supplier_business_id']?.toString();
+
+    if (supplierId == null || supplierId.isEmpty) {
+      return null;
+    }
+
+    return _deliveryZoneBySupplierId[supplierId];
+  }
+
+  dynamic _effectiveDeliveryMinimum(
+    Map<String, dynamic> product,
+  ) {
+    final zone = _deliveryZoneForProduct(product);
+
+    if (zone != null &&
+        zone['minimum_order_amount'] != null) {
+      return zone['minimum_order_amount'];
+    }
+
+    return _deliverySettingsForProduct(product)?[
+        'minimum_order_amount'];
+  }
+
+  dynamic _effectiveLeadTime(
+    Map<String, dynamic> product,
+  ) {
+    final zone = _deliveryZoneForProduct(product);
+
+    if (zone != null && zone['lead_time_days'] != null) {
+      return zone['lead_time_days'];
+    }
+
+    return _deliverySettingsForProduct(product)?[
+        'default_lead_time_days'];
+  }
+
+  Widget _buildDeliverySummary(
+    Map<String, dynamic> product,
+  ) {
+    final settings = _deliverySettingsForProduct(product);
+    final zone = _deliveryZoneForProduct(product);
+
+    if (settings == null || settings['active'] != true) {
+      return const SizedBox.shrink();
+    }
+
+    final rows = <String>[];
+    final zoneName = zone?['zone_name']?.toString();
+    final leadTime = _effectiveLeadTime(product);
+    final minimum = _effectiveDeliveryMinimum(product);
+    final deliveryFee = zone?['delivery_fee'];
+
+    if (_butcherPostcode != null) {
+      rows.add(
+        zoneName != null && zoneName.trim().isNotEmpty
+            ? 'Zone: ${zoneName.trim()}'
+            : 'No zone match for $_butcherPostcode',
+      );
+    }
+
+    if (leadTime != null) {
+      final days = leadTime is num
+          ? leadTime.toInt()
+          : int.tryParse('$leadTime');
+
+      if (days != null) {
+        rows.add(
+          'Lead time: $days day${days == 1 ? '' : 's'}',
+        );
+      }
+    }
+
+    if (minimum != null) {
+      rows.add('Minimum: ${_formatMoney(minimum)}');
+    }
+
+    if (zone != null) {
+      if (deliveryFee == null) {
+        rows.add('Delivery fee: Not set');
+      } else {
+        final fee = deliveryFee is num
+            ? deliveryFee.toDouble()
+            : double.tryParse('$deliveryFee');
+
+        if (fee != null) {
+          rows.add(
+            fee == 0
+                ? 'Delivery fee: Free'
+                : 'Delivery fee: ${_formatMoney(fee)}',
+          );
+        }
+      }
+    }
+
+    if (settings['pickup_available'] == true) {
+      rows.add('Pickup available');
+    }
+
+    if (rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFE1E1DE),
+        ),
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 6,
+        children: rows
+            .map(
+              (row) => Text(
+                row,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF555555),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -983,8 +1420,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             final product = _filteredProducts[index];
 
             final price = _findVisiblePrice(product);
-            final amount = price?['amount'];
-            final priceBasis = price?['price_basis'] as String?;
 
             final cataloguePath = _cataloguePath(product);
             final usesCanonicalCatalogue = _usesCanonicalCatalogue(product);
@@ -1074,6 +1509,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                             ),
                           ],
 
+                          _buildDeliverySummary(product),
+
                           const SizedBox(height: 12),
 
                           Wrap(
@@ -1089,24 +1526,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                             ? CrossAxisAlignment.start
                             : CrossAxisAlignment.end,
                         children: [
-                          if (amount == null)
-                            const Text(
-                              'Price unavailable',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF666666),
-                              ),
-                            )
-                          else
-                            Text(
-                              '${_formatMoney(amount)} / ${_formatPriceBasis(priceBasis)}',
-                              style: const TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF741C1C),
-                              ),
-                            ),
-
+                          _buildCustomerPriceDisplay(
+                            product,
+                            visiblePrice: price,
+                            alignment: isNarrow
+                                ? CrossAxisAlignment.start
+                                : CrossAxisAlignment.end,
+                          ),
                           if (price?['minimum_quantity'] != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 7),

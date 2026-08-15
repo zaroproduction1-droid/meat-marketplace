@@ -44,6 +44,27 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
       final butcherBusinessId = membership['business_id'] as String;
 
+      final draftIds = await Supabase.instance.client
+          .from('orders')
+          .select('id')
+          .eq('butcher_business_id', butcherBusinessId)
+          .eq('status', 'draft');
+
+      for (final rawDraft in draftIds) {
+        final draftId = rawDraft['id']?.toString();
+
+        if (draftId == null || draftId.isEmpty) {
+          continue;
+        }
+
+        await Supabase.instance.client.rpc(
+          'refresh_draft_order_delivery_terms',
+          params: {
+            'target_order_id': draftId,
+          },
+        );
+      }
+
       final response = await Supabase.instance.client
           .from('orders')
           .select('''
@@ -54,6 +75,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             status,
             customer_reference,
             delivery_notes,
+            delivery_fee,
+            delivery_zone_id,
+            delivery_zone_name_snapshot,
+            delivery_postcode_snapshot,
+            delivery_minimum_order_snapshot,
+            delivery_lead_time_days_snapshot,
+            delivery_cutoff_time_snapshot,
+            pickup_available_snapshot,
             subtotal,
             gst_amount,
             total_amount,
@@ -470,6 +499,240 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     }
   }
 
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse('$value') ?? 0;
+  }
+
+  double _exGstAmount(Map<String, dynamic> order) {
+    final total = _asDouble(order['total_amount']);
+    return total / 1.10;
+  }
+
+  double _deliveryFee(Map<String, dynamic> order) {
+    return _asDouble(order['delivery_fee']);
+  }
+
+  double? _minimumOrder(Map<String, dynamic> order) {
+    final value = order['delivery_minimum_order_snapshot'];
+
+    if (value == null) {
+      return null;
+    }
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse('$value');
+  }
+
+  double _amountRemainingForMinimum(Map<String, dynamic> order) {
+    final minimum = _minimumOrder(order);
+
+    if (minimum == null) {
+      return 0;
+    }
+
+    final subtotal = _asDouble(order['subtotal']);
+    final remaining = minimum - subtotal;
+
+    return remaining > 0 ? remaining : 0;
+  }
+
+  bool _meetsMinimumOrder(Map<String, dynamic> order) {
+    return _amountRemainingForMinimum(order) <= 0;
+  }
+
+  String _deliveryZoneLabel(Map<String, dynamic> order) {
+    final zone =
+        order['delivery_zone_name_snapshot']?.toString().trim();
+
+    if (zone != null && zone.isNotEmpty) {
+      return zone;
+    }
+
+    final postcode =
+        order['delivery_postcode_snapshot']?.toString().trim();
+
+    if (postcode != null && postcode.isNotEmpty) {
+      return 'No matched delivery zone for $postcode';
+    }
+
+    return 'No delivery zone matched';
+  }
+
+  String _leadTimeLabel(Map<String, dynamic> order) {
+    final raw = order['delivery_lead_time_days_snapshot'];
+
+    if (raw == null) {
+      return 'Not set';
+    }
+
+    final days = raw is num
+        ? raw.toInt()
+        : int.tryParse('$raw');
+
+    if (days == null) {
+      return 'Not set';
+    }
+
+    return '$days day${days == 1 ? '' : 's'}';
+  }
+
+  String _cutoffLabel(Map<String, dynamic> order) {
+    final raw =
+        order['delivery_cutoff_time_snapshot']?.toString();
+
+    if (raw == null || raw.isEmpty) {
+      return 'Not set';
+    }
+
+    return raw.length >= 5 ? raw.substring(0, 5) : raw;
+  }
+
+  Widget _buildMinimumOrderNotice(
+    Map<String, dynamic> order,
+  ) {
+    final minimum = _minimumOrder(order);
+
+    if (minimum == null) {
+      return const SizedBox.shrink();
+    }
+
+    final remaining = _amountRemainingForMinimum(order);
+    final met = remaining <= 0;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: met
+            ? const Color(0xFFF2F7F2)
+            : const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: met
+              ? const Color(0xFFB7D5B7)
+              : const Color(0xFFE7C27A),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            met
+                ? Icons.check_circle_outline
+                : Icons.info_outline,
+            color: met
+                ? const Color(0xFF2F6D3A)
+                : const Color(0xFF9A6700),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              met
+                  ? 'Minimum order met. Required minimum: ${_money(minimum)}.'
+                  : 'Minimum order is ${_money(minimum)}. Add another ${_money(remaining)} before submitting.',
+              style: TextStyle(
+                color: met
+                    ? const Color(0xFF2F6D3A)
+                    : const Color(0xFF7A5200),
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliverySnapshotCard(
+    Map<String, dynamic> order,
+  ) {
+    final hasSnapshot =
+        order['delivery_postcode_snapshot'] != null ||
+        order['delivery_zone_name_snapshot'] != null ||
+        order['delivery_minimum_order_snapshot'] != null ||
+        order['delivery_lead_time_days_snapshot'] != null ||
+        _deliveryFee(order) > 0;
+
+    if (!hasSnapshot) {
+      return const SizedBox.shrink();
+    }
+
+    final fee = _deliveryFee(order);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE1E1DE),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Delivery',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Zone: ${_deliveryZoneLabel(order)}',
+            style: const TextStyle(
+              color: Color(0xFF555555),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Lead time: ${_leadTimeLabel(order)}',
+            style: const TextStyle(
+              color: Color(0xFF555555),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Cut-off: ${_cutoffLabel(order)}',
+            style: const TextStyle(
+              color: Color(0xFF555555),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pickup: ${order['pickup_available_snapshot'] == true ? 'Available' : 'Not available'}',
+            style: const TextStyle(
+              color: Color(0xFF555555),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            fee == 0
+                ? 'Delivery fee: Free'
+                : 'Delivery fee: ${_money(fee)}',
+            style: const TextStyle(
+              color: Color(0xFF555555),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          _buildMinimumOrderNotice(order),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitOrder(Map<String, dynamic> order) async {
     final items = _items(order);
 
@@ -477,6 +740,20 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Add at least one product before submitting the order.'),
+        ),
+      );
+      return;
+    }
+
+    if (!_meetsMinimumOrder(order)) {
+      final remaining = _amountRemainingForMinimum(order);
+      final minimum = _minimumOrder(order);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Minimum order is ${_money(minimum)}. Add another ${_money(remaining)} before submitting.',
+          ),
         ),
       );
       return;
@@ -844,6 +1121,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         ),
                       ),
 
+                      _buildDeliverySnapshotCard(order),
+
                       const SizedBox(height: 18),
                       const Divider(),
                       const SizedBox(height: 16),
@@ -855,18 +1134,29 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           child: Column(
                             children: [
                               _TotalRow(
-                                label: 'Subtotal',
+                                label: 'Products (inc GST)',
                                 value: _money(order['subtotal']),
                               ),
                               _TotalRow(
-                                label: 'GST',
-                                value: _money(order['gst_amount']),
+                                label: 'Delivery (inc GST)',
+                                value: _deliveryFee(order) == 0
+                                    ? 'Free'
+                                    : _money(_deliveryFee(order)),
                               ),
                               const Divider(),
                               _TotalRow(
-                                label: 'Total',
+                                label: 'Total inc GST',
                                 value: _money(order['total_amount']),
                                 bold: true,
+                              ),
+                              const SizedBox(height: 8),
+                              _TotalRow(
+                                label: 'Total ex GST',
+                                value: _money(_exGstAmount(order)),
+                              ),
+                              _TotalRow(
+                                label: 'GST included',
+                                value: _money(order['gst_amount']),
                               ),
                             ],
                           ),
@@ -879,7 +1169,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         alignment: Alignment.centerRight,
                         child: FilledButton.icon(
                           onPressed:
-                              items.isEmpty ? null : () => _submitOrder(order),
+                              items.isEmpty || !_meetsMinimumOrder(order)
+                                  ? null
+                                  : () => _submitOrder(order),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF741C1C),
                             padding: const EdgeInsets.symmetric(

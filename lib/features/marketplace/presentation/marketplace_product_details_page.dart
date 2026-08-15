@@ -30,14 +30,22 @@ class _MarketplaceProductDetailsPageState
 
   String? _relationshipStatus;
   String? _butcherBusinessId;
+  String? _butcherPostcode;
 
   Map<String, dynamic>? _cataloguePathRecord;
+  Map<String, dynamic>? _deliverySettings;
+  Map<String, dynamic>? _deliveryZone;
+
+  bool _isLoadingDelivery = true;
+  String? _deliveryConfigurationError;
+  List<int> _deliveryDays = <int>[];
 
   @override
   void initState() {
     super.initState();
     _loadRelationshipStatus();
     _loadCataloguePath();
+    _loadDeliveryInformation();
   }
 
   @override
@@ -176,6 +184,539 @@ class _MarketplaceProductDetailsPageState
         ),
       );
     }
+  }
+
+  Future<void> _loadDeliveryInformation() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingDelivery = true;
+        _deliveryConfigurationError = null;
+      });
+    }
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoadingDelivery = false;
+        });
+        return;
+      }
+
+      final memberships = await Supabase.instance.client
+          .from('business_memberships')
+          .select('business_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .limit(1);
+
+      if (memberships.isEmpty) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoadingDelivery = false;
+        });
+        return;
+      }
+
+      final butcherBusinessId =
+          memberships.first['business_id']?.toString();
+
+      if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoadingDelivery = false;
+        });
+        return;
+      }
+
+      final businessRows = await Supabase.instance.client
+          .from('businesses')
+          .select('postcode')
+          .eq('id', butcherBusinessId)
+          .limit(1);
+
+      String? postcode;
+
+      if (businessRows.isNotEmpty) {
+        final value =
+            businessRows.first['postcode']?.toString().trim();
+
+        if (value != null && value.isNotEmpty) {
+          postcode = value;
+        }
+      }
+
+      final supplierBusinessId =
+          widget.product['supplier_business_id']?.toString();
+
+      if (supplierBusinessId == null ||
+          supplierBusinessId.isEmpty) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoadingDelivery = false;
+        });
+        return;
+      }
+
+      final settingsRows = await Supabase.instance.client
+          .from('supplier_delivery_settings')
+          .select('''
+            supplier_business_id,
+            minimum_order_amount,
+            default_lead_time_days,
+            order_cutoff_time,
+            pickup_available,
+            delivery_notes,
+            active
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .limit(1);
+
+      Map<String, dynamic>? settings;
+
+      if (settingsRows.isNotEmpty) {
+        settings = Map<String, dynamic>.from(settingsRows.first);
+      }
+
+      final daysRows = await Supabase.instance.client
+          .from('supplier_delivery_days')
+          .select('weekday, active')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('active', true)
+          .order('weekday');
+
+      final deliveryDays = <int>[];
+
+      for (final rawDay in daysRows) {
+        final value = rawDay['weekday'];
+
+        if (value is int && value >= 1 && value <= 7) {
+          deliveryDays.add(value);
+        } else {
+          final parsed = int.tryParse('$value');
+
+          if (parsed != null && parsed >= 1 && parsed <= 7) {
+            deliveryDays.add(parsed);
+          }
+        }
+      }
+
+      Map<String, dynamic>? zone;
+      String? configurationError;
+
+      if (postcode != null &&
+          settings != null &&
+          settings['active'] == true) {
+        final zoneRows = await Supabase.instance.client
+            .from('supplier_delivery_zones')
+            .select('''
+              id,
+              supplier_business_id,
+              zone_name,
+              minimum_order_amount,
+              delivery_fee,
+              lead_time_days,
+              active,
+              notes,
+              supplier_delivery_zone_postcodes!inner(
+                postcode
+              )
+            ''')
+            .eq('supplier_business_id', supplierBusinessId)
+            .eq('active', true)
+            .eq(
+              'supplier_delivery_zone_postcodes.postcode',
+              postcode,
+            );
+
+        if (zoneRows.length == 1) {
+          zone = Map<String, dynamic>.from(zoneRows.first);
+        } else if (zoneRows.length > 1) {
+          configurationError =
+              'This postcode is assigned to more than one active delivery '
+              'zone. The supplier needs to correct their delivery settings.';
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _butcherPostcode = postcode;
+        _deliverySettings = settings;
+        _deliveryZone = zone;
+        _deliveryDays = deliveryDays;
+        _deliveryConfigurationError = configurationError;
+        _isLoadingDelivery = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _deliveryConfigurationError =
+            'Delivery information could not be loaded: ${error.message}';
+        _isLoadingDelivery = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _deliveryConfigurationError =
+            'Delivery information could not be loaded.';
+        _isLoadingDelivery = false;
+      });
+    }
+  }
+
+  dynamic _effectiveDeliveryMinimum() {
+    if (_deliveryZone != null &&
+        _deliveryZone!['minimum_order_amount'] != null) {
+      return _deliveryZone!['minimum_order_amount'];
+    }
+
+    return _deliverySettings?['minimum_order_amount'];
+  }
+
+  dynamic _effectiveLeadTime() {
+    if (_deliveryZone != null &&
+        _deliveryZone!['lead_time_days'] != null) {
+      return _deliveryZone!['lead_time_days'];
+    }
+
+    return _deliverySettings?['default_lead_time_days'];
+  }
+
+  int? _effectiveLeadTimeDays() {
+    final raw = _effectiveLeadTime();
+
+    if (raw is int) {
+      return raw;
+    }
+
+    if (raw is num) {
+      return raw.toInt();
+    }
+
+    return int.tryParse('${raw ?? ''}');
+  }
+
+  DateTime? _nextAvailableDeliveryDate() {
+    final settings = _deliverySettings;
+
+    if (settings == null ||
+        settings['active'] != true ||
+        _deliveryZone == null ||
+        _deliveryConfigurationError != null ||
+        _deliveryDays.isEmpty) {
+      return null;
+    }
+
+    final leadDays = _effectiveLeadTimeDays();
+
+    if (leadDays == null) {
+      return null;
+    }
+
+    final now = DateTime.now();
+    var earliest = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(
+      Duration(days: leadDays),
+    );
+
+    final cutoff = settings['order_cutoff_time']?.toString();
+
+    if (cutoff != null && cutoff.trim().isNotEmpty) {
+      final parts = cutoff.split(':');
+
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+
+        if (hour != null && minute != null) {
+          final cutoffToday = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            hour,
+            minute,
+          );
+
+          if (now.isAfter(cutoffToday)) {
+            earliest = earliest.add(const Duration(days: 1));
+          }
+        }
+      }
+    }
+
+    for (var offset = 0; offset <= 35; offset++) {
+      final candidate = earliest.add(Duration(days: offset));
+
+      if (_deliveryDays.contains(candidate.weekday)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  String _formatDeliveryDate(DateTime value) {
+    const weekdays = <String>[
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return '${weekdays[value.weekday - 1]} '
+        '${value.day} ${months[value.month - 1]} ${value.year}';
+  }
+
+  String _deliveryDaysText() {
+    if (_deliveryDays.isEmpty) {
+      return 'Not configured';
+    }
+
+    const shortNames = <String>[
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ];
+
+    return _deliveryDays
+        .map((weekday) => shortNames[weekday - 1])
+        .join(', ');
+  }
+
+  Widget _buildDeliveryInformationCard() {
+    if (_isLoadingDelivery) {
+      return _section(
+        title: 'Delivery',
+        children: const [
+          _DetailRow(
+            label: 'Status',
+            value: 'Checking delivery information...',
+          ),
+        ],
+      );
+    }
+
+    final settings = _deliverySettings;
+
+    if (settings == null || settings['active'] != true) {
+      return _section(
+        title: 'Delivery',
+        children: [
+          const _DetailRow(
+            label: 'Status',
+            value: 'Supplier delivery is not configured',
+          ),
+          _DetailRow(
+            label: 'Pickup',
+            value: settings?['pickup_available'] == true
+                ? 'Available'
+                : 'Not available',
+          ),
+        ],
+      );
+    }
+
+    if (_butcherPostcode == null ||
+        _butcherPostcode!.trim().isEmpty) {
+      return _section(
+        title: 'Delivery',
+        children: [
+          const _DetailRow(
+            label: 'Status',
+            value:
+                'Add a postcode to your butcher business profile to check delivery',
+          ),
+          _DetailRow(
+            label: 'Pickup',
+            value: settings['pickup_available'] == true
+                ? 'Available'
+                : 'Not available',
+          ),
+        ],
+      );
+    }
+
+    if (_deliveryConfigurationError != null) {
+      return _section(
+        title: 'Delivery',
+        children: [
+          _DetailRow(
+            label: 'Status',
+            value: _deliveryConfigurationError!,
+          ),
+          _DetailRow(
+            label: 'Your postcode',
+            value: _butcherPostcode!,
+          ),
+          _DetailRow(
+            label: 'Pickup',
+            value: settings['pickup_available'] == true
+                ? 'Available'
+                : 'Not available',
+          ),
+        ],
+      );
+    }
+
+    final zone = _deliveryZone;
+
+    if (zone == null) {
+      return _section(
+        title: 'Delivery',
+        children: [
+          _DetailRow(
+            label: 'Your postcode',
+            value: _butcherPostcode!,
+          ),
+          const _DetailRow(
+            label: 'Status',
+            value: 'Delivery not configured for your postcode',
+          ),
+          _DetailRow(
+            label: 'Pickup',
+            value: settings['pickup_available'] == true
+                ? 'Available'
+                : 'Not available',
+          ),
+        ],
+      );
+    }
+
+    final zoneName = zone['zone_name']?.toString();
+    final leadDays = _effectiveLeadTimeDays();
+    final minimum = _effectiveDeliveryMinimum();
+    final deliveryFee = zone['delivery_fee'];
+    final cutoff = settings['order_cutoff_time']?.toString();
+    final notes = settings['delivery_notes']?.toString().trim();
+    final zoneNotes = zone['notes']?.toString().trim();
+    final nextDelivery = _nextAvailableDeliveryDate();
+
+    String feeText = 'Not configured';
+
+    if (deliveryFee != null) {
+      final fee = deliveryFee is num
+          ? deliveryFee.toDouble()
+          : double.tryParse('$deliveryFee');
+
+      if (fee != null) {
+        feeText = fee == 0 ? 'Free' : _formatMoney(fee);
+      }
+    }
+
+    final children = <Widget>[
+      _DetailRow(
+        label: 'Your postcode',
+        value: _butcherPostcode!,
+      ),
+      _DetailRow(
+        label: 'Delivery zone',
+        value: zoneName == null || zoneName.trim().isEmpty
+            ? 'Unnamed zone'
+            : zoneName.trim(),
+      ),
+      _DetailRow(
+        label: 'Next available delivery',
+        value: nextDelivery == null
+            ? 'Not configured'
+            : _formatDeliveryDate(nextDelivery),
+      ),
+      _DetailRow(
+        label: 'Delivery days',
+        value: _deliveryDaysText(),
+      ),
+      _DetailRow(
+        label: 'Estimated lead time',
+        value: leadDays == null
+            ? 'Not configured'
+            : '$leadDays day${leadDays == 1 ? '' : 's'}',
+      ),
+      _DetailRow(
+        label: 'Minimum Order Value for Delivery',
+        value: minimum == null
+            ? 'Not configured'
+            : '${_formatMoney(minimum)} inc GST',
+      ),
+      _DetailRow(
+        label: 'Delivery fee',
+        value: feeText == 'Free'
+            ? feeText
+            : feeText == 'Not configured'
+                ? feeText
+                : '$feeText inc GST',
+      ),
+      _DetailRow(
+        label: 'Order cut-off',
+        value: cutoff == null || cutoff.isEmpty
+            ? 'Not configured'
+            : cutoff.substring(
+                0,
+                cutoff.length >= 5 ? 5 : cutoff.length,
+              ),
+      ),
+      _DetailRow(
+        label: 'Pickup',
+        value: settings['pickup_available'] == true
+            ? 'Available'
+            : 'Not available',
+      ),
+    ];
+
+    if (zoneNotes != null && zoneNotes.isNotEmpty) {
+      children.add(
+        _DetailRow(
+          label: 'Zone notes',
+          value: zoneNotes,
+        ),
+      );
+    }
+
+    if (notes != null && notes.isNotEmpty) {
+      children.add(
+        _DetailRow(
+          label: 'Delivery notes',
+          value: notes,
+        ),
+      );
+    }
+
+    return _section(
+      title: 'Delivery',
+      children: children,
+    );
   }
 
   Future<void> _requestSupplierAccess() async {
@@ -591,7 +1132,7 @@ class _MarketplaceProductDetailsPageState
       children: [
         if (isDiscountedPrice) ...[
           Text(
-            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)}',
+            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)} inc GST',
             style: const TextStyle(
               fontSize: 15,
               color: Color(0xFF777777),
@@ -602,7 +1143,7 @@ class _MarketplaceProductDetailsPageState
           const SizedBox(height: 4),
         ],
         Text(
-          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)}',
+          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)} inc GST',
           style: TextStyle(
             fontSize: priceFontSize,
             fontWeight: FontWeight.w800,
@@ -1445,6 +1986,8 @@ class _MarketplaceProductDetailsPageState
                           ],
                         ),
 
+                      _buildDeliveryInformationCard(),
+
                       _section(
                         title: 'Add to Order',
                         children: [
@@ -1587,7 +2130,7 @@ class _MarketplaceProductDetailsPageState
                                           CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'Price',
+                                          'Price (inc GST)',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
