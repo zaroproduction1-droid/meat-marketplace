@@ -5,9 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierCreateOrderPage extends StatefulWidget {
-  const SupplierCreateOrderPage({super.key, this.initialProductId});
+  const SupplierCreateOrderPage({
+    super.key,
+    this.initialProductId,
+    this.quoteOrderId,
+  });
 
   final String? initialProductId;
+  final String? quoteOrderId;
 
   @override
   State<SupplierCreateOrderPage> createState() =>
@@ -28,6 +33,8 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   String? _errorMessage;
   String? _supplierBusinessId;
   String? _selectedCustomerAccountId;
+  String? _editingQuoteNumber;
+  int _editingQuoteRevision = 0;
   String _orderSource = 'phone';
   String _paymentMethod = 'cod';
   int _paymentTermsDays = 0;
@@ -146,26 +153,32 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
         _isLoading = false;
       });
 
-      final initialProductId = widget.initialProductId;
+      final quoteOrderId = widget.quoteOrderId;
 
-      if (initialProductId != null && initialProductId.isNotEmpty) {
-        Map<String, dynamic>? initialProduct;
+      if (quoteOrderId != null && quoteOrderId.isNotEmpty) {
+        await _loadExistingQuote(quoteOrderId);
+      } else {
+        final initialProductId = widget.initialProductId;
 
-        for (final product in products) {
-          if (product['id']?.toString() == initialProductId) {
-            initialProduct = product;
-            break;
-          }
-        }
+        if (initialProductId != null && initialProductId.isNotEmpty) {
+          Map<String, dynamic>? initialProduct;
 
-        if (initialProduct != null && mounted) {
-          final productToAdd = initialProduct;
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _addProduct(productToAdd);
+          for (final product in products) {
+            if (product['id']?.toString() == initialProductId) {
+              initialProduct = product;
+              break;
             }
-          });
+          }
+
+          if (initialProduct != null && mounted) {
+            final productToAdd = initialProduct;
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _addProduct(productToAdd);
+              }
+            });
+          }
         }
       }
     } on PostgrestException catch (error) {
@@ -652,6 +665,122 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     return '$day/$month/${value.year}';
   }
 
+  Future<void> _loadExistingQuote(String orderId) async {
+    final response = await Supabase.instance.client
+        .from('orders')
+        .select('''
+          id,
+          order_number,
+          quote_revision,
+          status,
+          order_source,
+          source_reference,
+          customer_reference,
+          delivery_notes,
+          internal_notes,
+          payment_method_snapshot,
+          payment_terms_days_snapshot,
+          fulfilment_method,
+          requested_fulfilment_date,
+          delivery_fee,
+          supplier_customer_account_id,
+          order_items(
+            id,
+            product_id,
+            product_name_snapshot,
+            sku_snapshot,
+            quantity,
+            quantity_unit,
+            unit_price,
+            price_basis,
+            catch_weight_snapshot,
+            notes
+          )
+        ''')
+        .eq('id', orderId)
+        .single();
+
+    if (response['status']?.toString() != 'draft') {
+      throw Exception('Only draft quotes can be edited.');
+    }
+
+    final itemRows = response['order_items'] is List
+        ? List<Map<String, dynamic>>.from(
+            (response['order_items'] as List).whereType<Map>().map(
+              (row) => Map<String, dynamic>.from(row),
+            ),
+          )
+        : <Map<String, dynamic>>[];
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _editingQuoteNumber = response['order_number']?.toString() ?? 'Quote';
+      _editingQuoteRevision =
+          (response['quote_revision'] as num?)?.toInt() ?? 0;
+      _selectedCustomerAccountId = response['supplier_customer_account_id']
+          ?.toString();
+      _orderSource = response['order_source']?.toString() ?? 'phone';
+      _paymentMethod = response['payment_method_snapshot']?.toString() ?? 'cod';
+      _paymentTermsDays =
+          (response['payment_terms_days_snapshot'] as num?)?.toInt() ?? 0;
+      _fulfilmentMethod =
+          response['fulfilment_method']?.toString() ?? 'delivery';
+
+      final requestedDate = response['requested_fulfilment_date']?.toString();
+
+      _requestedFulfilmentDate = requestedDate == null
+          ? null
+          : DateTime.tryParse(requestedDate);
+
+      _sourceReferenceController.text =
+          response['source_reference']?.toString() ?? '';
+      _customerReferenceController.text =
+          response['customer_reference']?.toString() ?? '';
+      _deliveryNotesController.text =
+          response['delivery_notes']?.toString() ?? '';
+      _internalNotesController.text =
+          response['internal_notes']?.toString() ?? '';
+      _deliveryFeeController.text =
+          (response['delivery_fee'] as num?)?.toString() ?? '0';
+
+      _lines
+        ..clear()
+        ..addAll(
+          itemRows.map((item) {
+            return <String, dynamic>{
+              'product_id': item['product_id']?.toString(),
+              'product_name':
+                  item['product_name_snapshot']?.toString() ?? 'Product',
+              'sku': item['sku_snapshot']?.toString(),
+              'quantity': item['quantity'],
+              'quantity_unit': item['quantity_unit']?.toString() ?? 'unit',
+              'unit_price': item['unit_price'],
+              'price_basis': item['price_basis']?.toString() ?? 'unit',
+              'catch_weight_snapshot': item['catch_weight_snapshot'] == true,
+              'notes': item['notes']?.toString(),
+            };
+          }),
+        );
+    });
+  }
+
+  String _quoteDisplayNumber() {
+    final number = _editingQuoteNumber;
+
+    if (number == null) {
+      return 'New Quote';
+    }
+
+    if (_editingQuoteRevision <= 0) {
+      return number;
+    }
+
+    return '$number #$_editingQuoteRevision';
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _productSearchController.text.trim().toLowerCase();
     if (search.isEmpty) {
@@ -1010,38 +1139,80 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     setState(() => _isSaving = true);
 
     try {
-      final quoteId = await Supabase.instance.client.rpc(
-        'create_supplier_sales_desk_quote',
-        params: {
-          'p_supplier_customer_account_id': customerAccountId,
-          'p_order_source': _orderSource,
-          'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
-          'p_customer_reference': _nullIfEmpty(
-            _customerReferenceController.text,
-          ),
-          'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
-          'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
-          'p_payment_method': _paymentMethod,
-          'p_payment_terms_days': _paymentTermsDays,
-          'p_fulfilment_method': _fulfilmentMethod,
-          'p_requested_fulfilment_date': _requestedFulfilmentDate
-              ?.toIso8601String()
-              .split('T')
-              .first,
-          'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
-          'p_items': _rpcItems(),
-        },
-      );
+      final editingQuoteId = widget.quoteOrderId;
 
-      if (!mounted) {
-        return;
+      if (editingQuoteId != null && editingQuoteId.isNotEmpty) {
+        final revision = await Supabase.instance.client.rpc(
+          'update_supplier_sales_desk_quote',
+          params: {
+            'target_order_id': editingQuoteId,
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': _orderSource,
+            'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
+            'p_customer_reference': _nullIfEmpty(
+              _customerReferenceController.text,
+            ),
+            'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
+            'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
+            'p_payment_method': _paymentMethod,
+            'p_payment_terms_days': _paymentTermsDays,
+            'p_fulfilment_method': _fulfilmentMethod,
+            'p_requested_fulfilment_date': _requestedFulfilmentDate
+                ?.toIso8601String()
+                .split('T')
+                .first,
+            'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
+            'p_items': _rpcItems(),
+          },
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _editingQuoteRevision = (revision as num).toInt();
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Quote saved as ${_quoteDisplayNumber()}.')),
+        );
+
+        Navigator.of(context).pop(editingQuoteId);
+      } else {
+        final quoteId = await Supabase.instance.client.rpc(
+          'create_supplier_sales_desk_quote',
+          params: {
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': _orderSource,
+            'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
+            'p_customer_reference': _nullIfEmpty(
+              _customerReferenceController.text,
+            ),
+            'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
+            'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
+            'p_payment_method': _paymentMethod,
+            'p_payment_terms_days': _paymentTermsDays,
+            'p_fulfilment_method': _fulfilmentMethod,
+            'p_requested_fulfilment_date': _requestedFulfilmentDate
+                ?.toIso8601String()
+                .split('T')
+                .first,
+            'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
+            'p_items': _rpcItems(),
+          },
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Quote saved.')));
+
+        Navigator.of(context).pop(quoteId);
       }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Quote saved.')));
-
-      Navigator.of(context).pop(quoteId);
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -1091,7 +1262,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Create Work Order?'),
         content: Text(
-          'Create the sale and warehouse work order for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
+          'Create the warehouse work order for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
           'The agreed rates will be locked. Catch-weight final totals remain pending until the warehouse records the actual supplied weight.',
         ),
         actions: [
@@ -1115,30 +1286,66 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     setState(() => _isSaving = true);
 
     try {
-      final orderIdRaw = await Supabase.instance.client.rpc(
-        'create_supplier_sales_desk_order',
-        params: {
-          'p_supplier_customer_account_id': customerAccountId,
-          'p_order_source': _orderSource,
-          'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
-          'p_customer_reference': _nullIfEmpty(
-            _customerReferenceController.text,
-          ),
-          'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
-          'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
-          'p_payment_method': _paymentMethod,
-          'p_payment_terms_days': _paymentTermsDays,
-          'p_fulfilment_method': _fulfilmentMethod,
-          'p_requested_fulfilment_date': _requestedFulfilmentDate
-              ?.toIso8601String()
-              .split('T')
-              .first,
-          'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
-          'p_items': _rpcItems(),
-        },
-      );
+      final editingQuoteId = widget.quoteOrderId;
+      late final String orderId;
 
-      final orderId = orderIdRaw.toString();
+      if (editingQuoteId != null && editingQuoteId.isNotEmpty) {
+        await Supabase.instance.client.rpc(
+          'update_supplier_sales_desk_quote',
+          params: {
+            'target_order_id': editingQuoteId,
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': _orderSource,
+            'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
+            'p_customer_reference': _nullIfEmpty(
+              _customerReferenceController.text,
+            ),
+            'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
+            'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
+            'p_payment_method': _paymentMethod,
+            'p_payment_terms_days': _paymentTermsDays,
+            'p_fulfilment_method': _fulfilmentMethod,
+            'p_requested_fulfilment_date': _requestedFulfilmentDate
+                ?.toIso8601String()
+                .split('T')
+                .first,
+            'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
+            'p_items': _rpcItems(),
+          },
+        );
+
+        await Supabase.instance.client.rpc(
+          'convert_supplier_quote_to_sales_order',
+          params: {'target_order_id': editingQuoteId},
+        );
+
+        orderId = editingQuoteId;
+      } else {
+        final orderIdRaw = await Supabase.instance.client.rpc(
+          'create_supplier_sales_desk_order',
+          params: {
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': _orderSource,
+            'p_source_reference': _nullIfEmpty(_sourceReferenceController.text),
+            'p_customer_reference': _nullIfEmpty(
+              _customerReferenceController.text,
+            ),
+            'p_delivery_notes': _nullIfEmpty(_deliveryNotesController.text),
+            'p_internal_notes': _nullIfEmpty(_internalNotesController.text),
+            'p_payment_method': _paymentMethod,
+            'p_payment_terms_days': _paymentTermsDays,
+            'p_fulfilment_method': _fulfilmentMethod,
+            'p_requested_fulfilment_date': _requestedFulfilmentDate
+                ?.toIso8601String()
+                .split('T')
+                .first,
+            'p_delivery_fee': _fulfilmentMethod == 'delivery' ? deliveryFee : 0,
+            'p_items': _rpcItems(),
+          },
+        );
+
+        orderId = orderIdRaw.toString();
+      }
 
       await Supabase.instance.client.rpc(
         'create_or_get_warehouse_work_order',
@@ -1152,7 +1359,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Sale and work order created. You can print it for the warehouse now.',
+            'Work order created. You can print it for the warehouse now.',
           ),
         ),
       );
@@ -1611,7 +1818,11 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           padding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                         icon: const Icon(Icons.description_outlined),
-                        label: const Text('Save Quote'),
+                        label: Text(
+                          widget.quoteOrderId == null
+                              ? 'Save Quote'
+                              : 'Save Quote Revision',
+                        ),
                       );
 
                       final workOrderButton = FilledButton.icon(

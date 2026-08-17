@@ -5,11 +5,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supplier_invoice_page.dart';
+
 class SupplierWorkOrderPage extends StatefulWidget {
-  const SupplierWorkOrderPage({
-    super.key,
-    required this.orderId,
-  });
+  const SupplierWorkOrderPage({super.key, required this.orderId});
 
   final String orderId;
 
@@ -72,6 +71,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             internal_notes,
             supplier_customer_account_id,
             pricing_status,
+            fulfilment_method,
+            requested_fulfilment_date,
+            payment_method_snapshot,
+            payment_terms_days_snapshot,
+            delivery_fee,
+            order_source,
             created_at,
             accepted_at,
             supplier_customer_accounts(
@@ -208,9 +213,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     final account = Map<String, dynamic>.from(raw);
 
     final parts = <String>[
-      if ((account['delivery_address_line_1']?.toString().trim() ?? '').isNotEmpty)
+      if ((account['delivery_address_line_1']?.toString().trim() ?? '')
+          .isNotEmpty)
         account['delivery_address_line_1'].toString().trim(),
-      if ((account['delivery_address_line_2']?.toString().trim() ?? '').isNotEmpty)
+      if ((account['delivery_address_line_2']?.toString().trim() ?? '')
+          .isNotEmpty)
         account['delivery_address_line_2'].toString().trim(),
       if ((account['delivery_suburb']?.toString().trim() ?? '').isNotEmpty)
         account['delivery_suburb'].toString().trim(),
@@ -279,9 +286,109 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     };
   }
 
-  Future<void> _saveWorkOrderDetails({
-    String? status,
-  }) async {
+  String _fulfilmentMethodLabel() {
+    return switch (_order?['fulfilment_method']?.toString()) {
+      'pickup' => 'Pickup',
+      'delivery' => 'Delivery',
+      _ => 'Not recorded',
+    };
+  }
+
+  String _requestedFulfilmentDateLabel() {
+    final raw = _order?['requested_fulfilment_date']?.toString();
+    final date = raw == null ? null : DateTime.tryParse(raw);
+
+    if (date == null) {
+      return 'Not recorded';
+    }
+
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  String _orderCreatedDateTimeLabel() {
+    final raw = _order?['created_at']?.toString();
+    final date = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+
+    if (date == null) {
+      return 'Not recorded';
+    }
+
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour12 = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+
+    return '$day/$month/${date.year} $hour12:$minute $period';
+  }
+
+  Future<void> _createInvoiceFromFinishedWorkOrder() async {
+    if (!_allLinesFinalised || _isSaving) {
+      return;
+    }
+
+    final workOrderId = _workOrder?['id']?.toString();
+
+    if (workOrderId == null) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+
+      final updated = await Supabase.instance.client
+          .from('warehouse_work_orders')
+          .update({
+            'status': 'picked',
+            'picked_at': now,
+            'warehouse_instructions': _nullIfEmpty(
+              _instructionsController.text,
+            ),
+            'picked_by': _nullIfEmpty(_pickedByController.text),
+            'checked_by': _nullIfEmpty(_checkedByController.text),
+          })
+          .eq('id', workOrderId)
+          .select()
+          .single();
+
+      await Supabase.instance.client.rpc(
+        'create_or_get_invoice_from_order',
+        params: {'target_order_id': widget.orderId},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _workOrder = Map<String, dynamic>.from(updated);
+      });
+
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SupplierInvoicePage(orderId: widget.orderId),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _saveWorkOrderDetails({String? status}) async {
     final workOrderId = _workOrder?['id']?.toString();
 
     if (workOrderId == null || _isSaving) {
@@ -370,7 +477,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     final orderedQuantity = item['quantity'];
 
     final suppliedController = TextEditingController(
-      text: item['supplied_quantity']?.toString() ??
+      text:
+          item['supplied_quantity']?.toString() ??
           _formatNumber(orderedQuantity),
     );
 
@@ -392,10 +500,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   return;
                 }
 
-                final supplied =
-                    double.tryParse(suppliedController.text.trim());
-                final actualWeight =
-                    double.tryParse(weightController.text.trim());
+                final supplied = double.tryParse(
+                  suppliedController.text.trim(),
+                );
+                final actualWeight = double.tryParse(
+                  weightController.text.trim(),
+                );
 
                 if (supplied == null || supplied < 0) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
@@ -406,7 +516,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   return;
                 }
 
-                final quantityUnit = item['quantity_unit']?.toString() ?? 'unit';
+                final quantityUnit =
+                    item['quantity_unit']?.toString() ?? 'unit';
 
                 if ((quantityUnit == 'carton' || quantityUnit == 'unit') &&
                     supplied != supplied.roundToDouble()) {
@@ -439,8 +550,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     'supplied_quantity': supplied,
                     'supplied_quantity_unit': quantityUnit,
                     'fulfilment_status': 'finalised',
-                    'finalised_at':
-                        DateTime.now().toUtc().toIso8601String(),
+                    'finalised_at': DateTime.now().toUtc().toIso8601String(),
                   };
 
                   if (catchWeight) {
@@ -474,9 +584,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   await _loadPage();
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text(error.message)),
-                    );
+                    ScaffoldMessenger.of(
+                      dialogContext,
+                    ).showSnackBar(SnackBar(content: Text(error.message)));
 
                     setDialogState(() {
                       saving = false;
@@ -508,13 +618,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           keyboardType: TextInputType.number,
                           inputFormatters:
                               item['quantity_unit']?.toString() == 'carton' ||
-                                      item['quantity_unit']?.toString() == 'unit'
-                                  ? [FilteringTextInputFormatter.digitsOnly]
-                                  : null,
+                                  item['quantity_unit']?.toString() == 'unit'
+                              ? [FilteringTextInputFormatter.digitsOnly]
+                              : null,
                           decoration: InputDecoration(
                             labelText: 'Quantity supplied',
-                            suffixText:
-                                _unitLabel(item['quantity_unit']?.toString()),
+                            suffixText: _unitLabel(
+                              item['quantity_unit']?.toString(),
+                            ),
                             border: const OutlineInputBorder(),
                           ),
                         ),
@@ -523,8 +634,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           TextField(
                             controller: weightController,
                             enabled: !saving,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
+                            keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
@@ -555,9 +665,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   ),
                   FilledButton.icon(
                     onPressed: saving ? null : save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                    ),
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
                     icon: saving
                         ? const SizedBox(
                             width: 17,
@@ -592,7 +700,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     );
   }
 
-
   Future<Uint8List> _buildPickSlipPdf() async {
     final document = pw.Document();
 
@@ -614,10 +721,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               ),
             ),
             pw.Expanded(
-              child: pw.Text(
-                value,
-                style: const pw.TextStyle(fontSize: 9),
-              ),
+              child: pw.Text(value, style: const pw.TextStyle(fontSize: 9)),
             ),
           ],
         ),
@@ -688,17 +792,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           children: [
             pw.Text(
               'CutLink warehouse document',
-              style: const pw.TextStyle(
-                fontSize: 8,
-                color: PdfColors.grey600,
-              ),
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
             ),
             pw.Text(
               'Page ${context.pageNumber} of ${context.pagesCount}',
-              style: const pw.TextStyle(
-                fontSize: 8,
-                color: PdfColors.grey600,
-              ),
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
             ),
           ],
         ),
@@ -714,6 +812,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 labelValue('Customer', _customerName()),
+                labelValue('Fulfilment', _fulfilmentMethodLabel()),
+                labelValue('Requested date', _requestedFulfilmentDateLabel()),
+                labelValue('Order placed', _orderCreatedDateTimeLabel()),
                 labelValue('Delivery address', _deliveryAddress()),
                 if ((_order?['customer_reference']?.toString().trim() ?? '')
                     .isNotEmpty)
@@ -733,17 +834,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           pw.SizedBox(height: 16),
           pw.Text(
             'PICK LIST',
-            style: pw.TextStyle(
-              fontSize: 13,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           pw.Table(
-            border: pw.TableBorder.all(
-              color: PdfColors.grey400,
-              width: 0.6,
-            ),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
             columnWidths: const {
               0: pw.FixedColumnWidth(22),
               1: pw.FlexColumnWidth(3.0),
@@ -753,9 +848,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             },
             children: [
               pw.TableRow(
-                decoration: const pw.BoxDecoration(
-                  color: PdfColors.grey200,
-                ),
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                 children: [
                   _pdfCell(''),
                   _pdfCell('Product / SKU', bold: true),
@@ -791,7 +884,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       item['supplied_quantity'] == null
                           ? ''
                           : '${_formatNumber(item['supplied_quantity'])} '
-                              '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
+                                '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
                     ),
                     _pdfCell(
                       _isCatchWeight(item) && item['actual_weight'] != null
@@ -821,10 +914,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             pw.SizedBox(height: 14),
             pw.Text(
               'WAREHOUSE INSTRUCTIONS',
-              style: pw.TextStyle(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 5),
             pw.Container(
@@ -860,10 +950,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           pw.SizedBox(height: 10),
           pw.Text(
             'This is an internal warehouse document and is not an invoice.',
-            style: const pw.TextStyle(
-              fontSize: 8,
-              color: PdfColors.grey700,
-            ),
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
           ),
         ],
       ),
@@ -872,16 +959,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return document.save();
   }
 
-  pw.Widget _pdfCell(
-    String value, {
-    bool bold = false,
-    bool center = false,
-  }) {
+  pw.Widget _pdfCell(String value, {bool bold = false, bool center = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(
-        horizontal: 5,
-        vertical: 7,
-      ),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 7),
       child: pw.Text(
         value,
         textAlign: center ? pw.TextAlign.center : pw.TextAlign.left,
@@ -930,8 +1010,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     try {
       final printed = await Printing.layoutPdf(
-        name:
-            '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
+        name: '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
         onLayout: (_) => _buildPickSlipPdf(),
       );
 
@@ -998,9 +1077,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         actions: [
           FilledButton.icon(
             onPressed: _isLoading || _isSaving ? null : _printPickSlip,
-            style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
             icon: const Icon(Icons.print_outlined),
             label: const Text('Print Pick Slip'),
           ),
@@ -1029,11 +1106,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 60,
-                color: _darkRed,
-              ),
+              const Icon(Icons.error_outline, size: 60, color: _darkRed),
               const SizedBox(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 18),
@@ -1092,6 +1165,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               title: 'Customer / Delivery',
               rows: [
                 _InfoRowData('Customer', _customerName()),
+                _InfoRowData('Fulfilment', _fulfilmentMethodLabel()),
+                _InfoRowData('Requested date', _requestedFulfilmentDateLabel()),
+                _InfoRowData('Order placed', _orderCreatedDateTimeLabel()),
                 _InfoRowData('Delivery address', _deliveryAddress()),
                 if ((_order?['customer_reference']?.toString().trim() ?? '')
                     .isNotEmpty)
@@ -1110,10 +1186,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             const SizedBox(height: 18),
             const Text(
               'Pick List',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             for (final item in _items) _buildItemCard(item),
@@ -1207,9 +1280,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           FilledButton.icon(
                             onPressed: _isSaving
                                 ? null
-                                : () => _saveWorkOrderDetails(
-                                      status: 'picking',
-                                    ),
+                                : () =>
+                                      _saveWorkOrderDetails(status: 'picking'),
                             style: FilledButton.styleFrom(
                               backgroundColor: _darkRed,
                             ),
@@ -1220,16 +1292,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           FilledButton.icon(
                             onPressed: !_allLinesFinalised || _isSaving
                                 ? null
-                                : () => _saveWorkOrderDetails(
-                                      status: 'picked',
-                                    ),
+                                : _createInvoiceFromFinishedWorkOrder,
                             style: FilledButton.styleFrom(
                               backgroundColor: _darkRed,
                             ),
-                            icon: const Icon(Icons.task_alt),
+                            icon: const Icon(Icons.request_quote_outlined),
                             label: Text(
                               _allLinesFinalised
-                                  ? 'Mark Picked'
+                                  ? 'Finish Picking & Create Invoice'
                                   : 'Finalise All Lines First',
                             ),
                           ),
@@ -1237,14 +1307,21 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           FilledButton.icon(
                             onPressed: _isSaving
                                 ? null
-                                : () => _saveWorkOrderDetails(
-                                      status: 'completed',
-                                    ),
+                                : () {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            SupplierInvoicePage(
+                                              orderId: widget.orderId,
+                                            ),
+                                      ),
+                                    );
+                                  },
                             style: FilledButton.styleFrom(
                               backgroundColor: _darkRed,
                             ),
-                            icon: const Icon(Icons.verified_outlined),
-                            label: const Text('Complete Work Order'),
+                            icon: const Icon(Icons.request_quote_outlined),
+                            label: const Text('Open Invoice'),
                           ),
                       ],
                     ),
@@ -1267,9 +1344,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: finalised
-              ? const Color(0xFFB8D8BE)
-              : const Color(0xFFE0E0E0),
+          color: finalised ? const Color(0xFFB8D8BE) : const Color(0xFFE0E0E0),
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -1279,9 +1354,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              finalised
-                  ? Icons.check_box
-                  : Icons.check_box_outline_blank,
+              finalised ? Icons.check_box : Icons.check_box_outline_blank,
               color: finalised ? Colors.green : const Color(0xFF777777),
             ),
             const SizedBox(width: 12),
@@ -1362,10 +1435,7 @@ class _InfoRowData {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.title,
-    required this.rows,
-  });
+  const _InfoCard({required this.title, required this.rows});
 
   final String title;
   final List<_InfoRowData> rows;
@@ -1385,10 +1455,7 @@ class _InfoCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             for (final row in rows) ...[
