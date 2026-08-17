@@ -84,6 +84,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             subtotal,
             gst_amount,
             total_amount,
+            pricing_status,
+            minimum_order_status,
             created_at,
             updated_at,
 
@@ -103,6 +105,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               unit_price,
               price_basis,
               line_subtotal,
+              catch_weight_snapshot,
+              supplied_quantity,
+              supplied_quantity_unit,
+              actual_weight,
+              actual_weight_unit,
+              final_line_amount,
+              fulfilment_status,
               notes,
               created_at
             )
@@ -260,6 +269,23 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     }
   }
 
+  bool _isCatchWeightItem(Map<String, dynamic> item) {
+    return item['catch_weight_snapshot'] == true &&
+        item['price_basis']?.toString() == 'kilogram';
+  }
+
+  bool _orderHasCatchWeightItems(Map<String, dynamic> order) {
+    return _items(order).any(_isCatchWeightItem);
+  }
+
+  String _draftPricingStatusText(Map<String, dynamic> order) {
+    if (_orderHasCatchWeightItems(order)) {
+      return 'Final product total pending supplier weight';
+    }
+
+    return 'Order total known';
+  }
+
   Future<void> _editQuantity(
     Map<String, dynamic> order,
     Map<String, dynamic> item,
@@ -268,39 +294,55 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       text: _formatNumber(item['quantity']),
     );
 
+    final quantityUnit = item['quantity_unit']?.toString();
+    final requiresWholeNumber =
+        quantityUnit == 'carton' || quantityUnit == 'unit';
+
     final newQuantity = await showDialog<double>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Change quantity'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Quantity',
-              suffixText: _unitLabel(item['quantity_unit']?.toString()),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = double.tryParse(controller.text.trim());
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final parsed = double.tryParse(controller.text.trim());
+            final valid =
+                parsed != null &&
+                parsed > 0 &&
+                (!requiresWholeNumber || parsed == parsed.roundToDouble());
 
-                if (value == null || value <= 0) {
-                  return;
-                }
-
-                Navigator.of(context).pop(value);
-              },
-              child: const Text('Save'),
-            ),
-          ],
+            return AlertDialog(
+              title: const Text('Change quantity'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.numberWithOptions(
+                  decimal: !requiresWholeNumber,
+                ),
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Quantity',
+                  suffixText: _unitLabel(quantityUnit),
+                  helperText: requiresWholeNumber
+                      ? 'Cartons and units must be whole numbers.'
+                      : null,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: !valid
+                      ? null
+                      : () {
+                          Navigator.of(context).pop(parsed);
+                        },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -524,6 +566,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   double _amountRemainingForMinimum(Map<String, dynamic> order) {
+    if (_orderHasCatchWeightItems(order)) {
+      return 0;
+    }
+
     final minimum = _minimumOrder(order);
 
     if (minimum == null) {
@@ -537,6 +583,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   bool _meetsMinimumOrder(Map<String, dynamic> order) {
+    if (_orderHasCatchWeightItems(order)) {
+      return true;
+    }
+
     return _amountRemainingForMinimum(order) <= 0;
   }
 
@@ -589,6 +639,30 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       return const SizedBox.shrink();
     }
 
+    if (_orderHasCatchWeightItems(order)) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF4E5),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE7C27A)),
+        ),
+        child: Text(
+          'Minimum order value for delivery: ${_money(minimum)}. '
+          'This order contains catch-weight products, so the final product '
+          'value cannot be confirmed until the supplier weighs the cartons. '
+          'The minimum will be confirmed by the supplier.',
+          style: const TextStyle(
+            color: Color(0xFF7A5200),
+            fontWeight: FontWeight.w700,
+            height: 1.4,
+          ),
+        ),
+      );
+    }
+
     final remaining = _amountRemainingForMinimum(order);
     final met = remaining <= 0;
 
@@ -614,8 +688,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           Expanded(
             child: Text(
               met
-                  ? 'Minimum order met. Required minimum: ${_money(minimum)}.'
-                  : 'Minimum order is ${_money(minimum)}. Add another ${_money(remaining)} before submitting.',
+                  ? 'Minimum order value for delivery met. Required minimum: ${_money(minimum)}.'
+                  : 'Minimum order value for delivery is ${_money(minimum)}. '
+                        'Add another ${_money(remaining)} before submitting.',
               style: TextStyle(
                 color: met ? const Color(0xFF2F6D3A) : const Color(0xFF7A5200),
                 fontWeight: FontWeight.w700,
@@ -713,7 +788,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Minimum order is ${_money(minimum)}. Add another ${_money(remaining)} before submitting.',
+            'Minimum order value for delivery is ${_money(minimum)}. '
+            'Add another ${_money(remaining)} before submitting.',
           ),
         ),
       );
@@ -726,8 +802,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return AlertDialog(
           title: const Text('Submit order?'),
           content: Text(
-            'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
-            'Once submitted, the order items can no longer be changed.',
+            _orderHasCatchWeightItems(order)
+                ? 'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
+                      'Catch-weight product totals remain pending until the supplier '
+                      'records the actual supplied kilograms.'
+                : 'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
+                      'Once submitted, the order items can no longer be changed.',
           ),
           actions: [
             TextButton(
@@ -1066,39 +1146,81 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       const Divider(),
                       const SizedBox(height: 16),
 
+                      if (_orderHasCatchWeightItems(order)) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F8F6),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE1E1DE)),
+                          ),
+                          child: Text(
+                            _draftPricingStatusText(order),
+                            style: const TextStyle(
+                              color: Color(0xFF555555),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+
                       Align(
                         alignment: Alignment.centerRight,
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 340),
-                          child: Column(
-                            children: [
-                              _TotalRow(
-                                label: 'Products (inc GST)',
-                                value: _money(order['subtotal']),
-                              ),
-                              _TotalRow(
-                                label: 'Delivery (inc GST)',
-                                value: _deliveryFee(order) == 0
-                                    ? 'Free'
-                                    : _money(_deliveryFee(order)),
-                              ),
-                              const Divider(),
-                              _TotalRow(
-                                label: 'Total inc GST',
-                                value: _money(order['total_amount']),
-                                bold: true,
-                              ),
-                              const SizedBox(height: 8),
-                              _TotalRow(
-                                label: 'Total ex GST',
-                                value: _money(_exGstAmount(order)),
-                              ),
-                              _TotalRow(
-                                label: 'GST included',
-                                value: _money(order['gst_amount']),
-                              ),
-                            ],
-                          ),
+                          child: _orderHasCatchWeightItems(order)
+                              ? Column(
+                                  children: [
+                                    const _TotalRow(
+                                      label: 'Products',
+                                      value: 'Pending final weight',
+                                      bold: true,
+                                    ),
+                                    _TotalRow(
+                                      label: 'Delivery',
+                                      value: _deliveryFee(order) == 0
+                                          ? 'Free'
+                                          : _money(_deliveryFee(order)),
+                                    ),
+                                    const Divider(),
+                                    const _TotalRow(
+                                      label: 'Final order total',
+                                      value: 'Pending supplier weight',
+                                      bold: true,
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    _TotalRow(
+                                      label: 'Products (inc GST)',
+                                      value: _money(order['subtotal']),
+                                    ),
+                                    _TotalRow(
+                                      label: 'Delivery (inc GST)',
+                                      value: _deliveryFee(order) == 0
+                                          ? 'Free'
+                                          : _money(_deliveryFee(order)),
+                                    ),
+                                    const Divider(),
+                                    _TotalRow(
+                                      label: 'Total inc GST',
+                                      value: _money(order['total_amount']),
+                                      bold: true,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _TotalRow(
+                                      label: 'Total ex GST',
+                                      value: _money(_exGstAmount(order)),
+                                    ),
+                                    _TotalRow(
+                                      label: 'GST included',
+                                      value: _money(order['gst_amount']),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
 
@@ -1161,6 +1283,9 @@ class _OrderItemCard extends StatelessWidget {
 
     final price = money(item['unit_price']);
     final priceBasis = priceBasisLabel(item['price_basis']?.toString());
+    final isCatchWeight =
+        item['catch_weight_snapshot'] == true &&
+        item['price_basis']?.toString() == 'kilogram';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1193,9 +1318,23 @@ class _OrderItemCard extends StatelessWidget {
                 ),
               const SizedBox(height: 8),
               Text(
-                '$quantity $quantityUnit × $price${priceBasis.isEmpty ? '' : ' / $priceBasis'}',
+                isCatchWeight
+                    ? '$quantity $quantityUnit ordered at '
+                          '$price${priceBasis.isEmpty ? '' : ' / $priceBasis'}'
+                    : '$quantity $quantityUnit × '
+                          '$price${priceBasis.isEmpty ? '' : ' / $priceBasis'}',
                 style: const TextStyle(color: Color(0xFF555555)),
               ),
+              if (isCatchWeight) ...[
+                const SizedBox(height: 5),
+                const Text(
+                  'Final kilograms and product total pending supplier weight.',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
           );
 
@@ -1205,7 +1344,9 @@ class _OrderItemCard extends StatelessWidget {
                 : CrossAxisAlignment.end,
             children: [
               Text(
-                money(item['line_subtotal']),
+                isCatchWeight
+                    ? 'Final total pending'
+                    : money(item['line_subtotal']),
                 style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,

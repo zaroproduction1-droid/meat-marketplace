@@ -6,8 +6,10 @@ import '../../marketplace/presentation/marketplace_products_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
-import '../../orders/presentation/supplier_orders_page.dart';
-import '../../products/presentation/supplier_products_page.dart';
+import '../../orders/presentation/supplier_invoices_page.dart';
+import '../../orders/presentation/supplier_inventory_page.dart';
+import '../../orders/presentation/supplier_sales_page.dart';
+import '../../orders/presentation/supplier_work_orders_page.dart';
 
 class BusinessDashboardPage extends StatefulWidget {
   const BusinessDashboardPage({super.key});
@@ -59,20 +61,28 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       //
       // Find the business this user belongs to.
       //
-      final membership = await Supabase.instance.client
+      final memberships = await Supabase.instance.client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
+          .eq('status', 'active');
 
-      final businessId = membership['business_id'] as String;
+      final businessIds = <String>[
+        for (final raw in memberships)
+          if (raw['business_id'] != null) raw['business_id'].toString(),
+      ];
+
+      if (businessIds.isEmpty) {
+        throw Exception('No active business membership was found.');
+      }
 
       //
-      // Load the business details.
+      // Load every active business membership instead of taking an arbitrary
+      // first membership. If this user belongs to a supplier business, the
+      // supplier workspace wins so supplier users cannot accidentally land in
+      // the butcher marketplace.
       //
-      final business = await Supabase.instance.client
+      final businesses = await Supabase.instance.client
           .from('businesses')
           .select('''
             id,
@@ -82,8 +92,27 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             verification_status,
             active
             ''')
-          .eq('id', businessId)
-          .single();
+          .inFilter('id', businessIds)
+          .eq('active', true);
+
+      if (businesses.isEmpty) {
+        throw Exception('No active business was found for this user.');
+      }
+
+      Map<String, dynamic>? business;
+
+      for (final raw in businesses) {
+        final candidate = Map<String, dynamic>.from(raw);
+
+        if (candidate['business_type']?.toString() == 'supplier') {
+          business = candidate;
+          break;
+        }
+      }
+
+      business ??= Map<String, dynamic>.from(businesses.first);
+
+      final businessId = business['id'] as String;
 
       final tradingName = business['trading_name'] as String?;
 
@@ -292,17 +321,44 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       if (_businessType == 'supplier') ...[
                         _DashboardCard(
                           width: cardWidth,
-                          icon: Icons.inventory_2_outlined,
-                          title: 'Products',
+                          icon: Icons.point_of_sale_outlined,
+                          title: 'Sales',
                           description:
-                              'Manage the products your business supplies.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                              'Search your stock, create sales orders and move jobs through work orders and invoicing.',
+                          badgeCount: _newSupplierOrderCount,
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    const SupplierProductsPage(),
+                                builder: (context) => const SupplierSalesPage(),
                               ),
                             );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
+                          icon: Icons.inventory_2_outlined,
+                          title: 'Inventory',
+                          description:
+                              'Manage your stock, add products and update pricing.',
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SupplierInventoryPage(),
+                              ),
+                            );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
                           },
                         ),
                         _DashboardCard(
@@ -328,15 +384,36 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                         _DashboardCard(
                           width: cardWidth,
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Orders',
-                          description: 'Manage customer orders.',
-                          badgeCount: _newSupplierOrderCount,
+                          icon: Icons.assignment_outlined,
+                          title: 'Work Orders',
+                          description:
+                              'Manage warehouse picking, weighing and fulfilment.',
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    const SupplierOrdersPage(),
+                                    const SupplierWorkOrdersPage(),
+                              ),
+                            );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
+                          icon: Icons.request_quote_outlined,
+                          title: 'Invoices',
+                          description:
+                              'View draft, issued, paid and outstanding invoices.',
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SupplierInvoicesPage(),
                               ),
                             );
 
@@ -514,10 +591,7 @@ class _DashboardCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: const Color(0xFFB3261E),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: Text(
                             badgeCount > 99 ? '99+' : badgeCount.toString(),

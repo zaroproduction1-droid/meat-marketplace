@@ -111,6 +111,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         temperature_state,
         available_quantity,
         quantity_unit,
+        order_unit,
+        weight_type,
+        price_basis,
         availability_status,
         supplier_business_id,
         product_variant_id,
@@ -147,6 +150,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           amount,
           price_basis,
           minimum_quantity,
+          minimum_quantity_unit,
           active,
           price_lists(
             id,
@@ -838,6 +842,89 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     return result;
   }
 
+  bool _isCatchWeightProduct(Map<String, dynamic> product) {
+    return product['weight_type']?.toString() == 'catch_weight' ||
+        product['catch_weight'] == true;
+  }
+
+  String _orderQuantityUnit(
+    Map<String, dynamic> product,
+    Map<String, dynamic>? visiblePrice,
+  ) {
+    // Locked CutLink rule:
+    // catch-weight meat is priced per kg but ALWAYS ordered by carton.
+    if (_isCatchWeightProduct(product)) {
+      return 'carton';
+    }
+
+    final configuredOrderUnit = product['order_unit']?.toString();
+
+    if (configuredOrderUnit == 'kilogram' ||
+        configuredOrderUnit == 'carton' ||
+        configuredOrderUnit == 'unit') {
+      return configuredOrderUnit!;
+    }
+
+    final legacyUnit = product['quantity_unit']?.toString();
+
+    if (legacyUnit == 'kilogram' ||
+        legacyUnit == 'carton' ||
+        legacyUnit == 'unit') {
+      return legacyUnit!;
+    }
+
+    final basis = visiblePrice?['price_basis']?.toString();
+
+    if (basis == 'kilogram' || basis == 'carton' || basis == 'unit') {
+      return basis!;
+    }
+
+    return 'unit';
+  }
+
+  String _minimumQuantityUnit(
+    Map<String, dynamic> product,
+    Map<String, dynamic>? visiblePrice,
+  ) {
+    if (_isCatchWeightProduct(product)) {
+      return 'carton';
+    }
+
+    final configured = visiblePrice?['minimum_quantity_unit']?.toString();
+
+    if (configured == 'kilogram' ||
+        configured == 'carton' ||
+        configured == 'unit') {
+      return configured!;
+    }
+
+    return _orderQuantityUnit(product, visiblePrice);
+  }
+
+  String _orderQuantityUnitLabel(String value) {
+    return switch (value) {
+      'kilogram' => 'kg',
+      'carton' => 'cartons',
+      'unit' => 'units',
+      _ => value,
+    };
+  }
+
+  String _minimumQuantityText(
+    Map<String, dynamic> product,
+    Map<String, dynamic>? visiblePrice,
+  ) {
+    final minimum = visiblePrice?['minimum_quantity'];
+
+    if (minimum == null) {
+      return '';
+    }
+
+    final unit = _minimumQuantityUnit(product, visiblePrice);
+
+    return '${_formatNumber(minimum)} ${_orderQuantityUnitLabel(unit)}';
+  }
+
   Future<void> _showAddToOrderDialog(Map<String, dynamic> product) async {
     if (_isAddingToOrder) return;
 
@@ -858,11 +945,25 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         ? minimumRaw.toDouble()
         : double.tryParse('${minimumRaw ?? ''}');
 
+    final quantityUnit = _orderQuantityUnit(product, visiblePrice);
+    final quantityUnitLabel = _orderQuantityUnitLabel(quantityUnit);
+    final minimumUnit = _minimumQuantityUnit(product, visiblePrice);
+    final minimumText = _minimumQuantityText(product, visiblePrice);
+
+    final isCatchWeightKgPricing =
+        _isCatchWeightProduct(product) &&
+        visiblePrice['price_basis']?.toString() == 'kilogram';
+
     final quantityController = TextEditingController(
-      text: minimum != null && minimum > 1 ? _formatNumber(minimum) : '1',
+      text: minimum != null && minimum > 1 && minimumUnit == quantityUnit
+          ? _formatNumber(minimum)
+          : '1',
     );
 
-    final basis = visiblePrice['price_basis']?.toString();
+    final basis = isCatchWeightKgPricing
+        ? 'kilogram'
+        : visiblePrice['price_basis']?.toString();
+
     final unitPriceRaw = visiblePrice['amount'];
     final unitPrice = unitPriceRaw is num
         ? unitPriceRaw.toDouble()
@@ -880,14 +981,24 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final entered = double.tryParse(quantityController.text.trim());
-            final total = entered == null || entered <= 0
-                ? 0.0
-                : entered * unitPrice;
+
+            final requiresWholeNumber =
+                quantityUnit == 'carton' || quantityUnit == 'unit';
+
+            final validWholeNumber =
+                !requiresWholeNumber ||
+                entered == null ||
+                entered == entered.roundToDouble();
+
+            final knownOrderTotal =
+                !isCatchWeightKgPricing && entered != null && entered > 0
+                ? entered * unitPrice
+                : null;
 
             return AlertDialog(
               title: Text('Add ${product['product_name'] ?? 'offer'}'),
               content: SizedBox(
-                width: 430,
+                width: 450,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -901,7 +1012,8 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      '${_formatMoney(unitPrice)} / ${_priceBasisLabel(basis)} inc GST',
+                      '${_formatMoney(unitPrice)} / '
+                      '${_priceBasisLabel(basis)} inc GST',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -910,32 +1022,92 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                     if (minimum != null) ...[
                       const SizedBox(height: 5),
                       Text(
-                        'Minimum quantity: ${_formatNumber(minimum)}',
+                        'Minimum order: $minimumText',
                         style: const TextStyle(color: Color(0xFF666666)),
+                      ),
+                    ],
+                    if (isCatchWeightKgPricing) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F8F6),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE1E1DE)),
+                        ),
+                        child: const Text(
+                          'Order cartons now. Final kilograms and the final product total are confirmed by the supplier when the order is prepared.',
+                          style: TextStyle(
+                            color: Color(0xFF555555),
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                     const SizedBox(height: 18),
                     TextField(
                       controller: quantityController,
                       autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: !requiresWholeNumber,
                       ),
                       decoration: InputDecoration(
-                        labelText: 'Quantity (${_priceBasisLabel(basis)})',
+                        labelText: 'Quantity ($quantityUnitLabel)',
+                        helperText: requiresWholeNumber
+                            ? 'Enter a whole number of $quantityUnitLabel.'
+                            : null,
                         border: const OutlineInputBorder(),
                       ),
                       onChanged: (_) => setDialogState(() {}),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Order total: ${_formatMoney(total)} inc GST',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: _darkRed,
+                    if (!validWholeNumber) ...[
+                      const SizedBox(height: 7),
+                      const Text(
+                        'Cartons and units must be entered as whole numbers.',
+                        style: TextStyle(
+                          color: _darkRed,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
+                    ],
+                    const SizedBox(height: 16),
+                    if (isCatchWeightKgPricing) ...[
+                      const Text(
+                        'Final total',
+                        style: TextStyle(
+                          color: Color(0xFF666666),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Pending final weight',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: _darkRed,
+                        ),
+                      ),
+                      if (entered != null && entered > 0) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          '${_formatNumber(entered)} $quantityUnitLabel ordered '
+                          'at ${_formatMoney(unitPrice)} / kg',
+                          style: const TextStyle(color: Color(0xFF666666)),
+                        ),
+                      ],
+                    ] else
+                      Text(
+                        'Order total: '
+                        '${_formatMoney(knownOrderTotal ?? 0)} inc GST',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: _darkRed,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -945,7 +1117,8 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                   child: const Text('Cancel'),
                 ),
                 FilledButton.icon(
-                  onPressed: entered == null || entered <= 0
+                  onPressed:
+                      entered == null || entered <= 0 || !validWholeNumber
                       ? null
                       : () => Navigator.of(dialogContext).pop(entered),
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
@@ -965,8 +1138,16 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       return;
     }
 
-    if (minimum != null && quantity < minimum) {
-      _showMessage('Minimum order quantity is ${_formatNumber(minimum)}.');
+    final requiresWholeNumber =
+        quantityUnit == 'carton' || quantityUnit == 'unit';
+
+    if (requiresWholeNumber && quantity != quantity.roundToDouble()) {
+      _showMessage('Cartons and units must be entered as whole numbers.');
+      return;
+    }
+
+    if (minimum != null && minimumUnit == quantityUnit && quantity < minimum) {
+      _showMessage('Minimum order is $minimumText.');
       return;
     }
 
@@ -1002,13 +1183,13 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       return;
     }
 
-    final priceBasis = visiblePrice['price_basis']?.toString();
-    final quantityUnit =
-        priceBasis == 'kilogram' ||
-            priceBasis == 'carton' ||
-            priceBasis == 'unit'
-        ? priceBasis!
-        : product['quantity_unit']?.toString() ?? 'unit';
+    final catchWeightSnapshot = _isCatchWeightProduct(product);
+
+    final priceBasis = catchWeightSnapshot
+        ? 'kilogram'
+        : visiblePrice['price_basis']?.toString();
+
+    final quantityUnit = _orderQuantityUnit(product, visiblePrice);
 
     setState(() {
       _isAddingToOrder = true;
@@ -1048,7 +1229,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
 
       final existingItems = await client
           .from('order_items')
-          .select('id, quantity')
+          .select(
+            'id, quantity, quantity_unit, price_basis, catch_weight_snapshot',
+          )
           .eq('order_id', orderId)
           .eq('product_id', productId)
           .limit(1);
@@ -1058,22 +1241,33 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       final sku = product['sku']?.toString();
 
       if (existingItems.isNotEmpty) {
-        final existingRaw = existingItems.first['quantity'];
+        final existingItem = Map<String, dynamic>.from(existingItems.first);
+
+        final existingRaw = existingItem['quantity'];
         final existingQuantity = existingRaw is num
             ? existingRaw.toDouble()
             : double.tryParse('${existingRaw ?? ''}') ?? 0;
+
+        final existingQuantityUnit = existingItem['quantity_unit']?.toString();
+
+        // Do not mathematically combine a legacy kg draft quantity
+        // with the new carton ordering model.
+        final updatedQuantity = existingQuantityUnit == quantityUnit
+            ? existingQuantity + quantity
+            : quantity;
 
         await client
             .from('order_items')
             .update({
               'product_name_snapshot': productName,
               'sku_snapshot': sku,
-              'quantity': existingQuantity + quantity,
+              'quantity': updatedQuantity,
               'quantity_unit': quantityUnit,
               'unit_price': unitPrice,
               'price_basis': priceBasis,
+              'catch_weight_snapshot': catchWeightSnapshot,
             })
-            .eq('id', existingItems.first['id']);
+            .eq('id', existingItem['id']);
       } else {
         await client.from('order_items').insert({
           'order_id': orderId,
@@ -1084,6 +1278,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           'quantity_unit': quantityUnit,
           'unit_price': unitPrice,
           'price_basis': priceBasis,
+          'catch_weight_snapshot': catchWeightSnapshot,
         });
       }
 
@@ -1333,18 +1528,17 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       return 'No product minimum';
     }
 
-    return 'Min ${_formatNumber(minimum)} '
-        '${_priceBasisLabel(visiblePrice?['price_basis']?.toString())}';
+    return 'Min ${_minimumQuantityText(product, visiblePrice)}';
   }
 
   String _shortDeliveryMinimumText(Map<String, dynamic> product) {
     final minimum = _deliveryMinimum(product);
 
     if (minimum == null) {
-      return 'Delivery minimum: not set';
+      return 'Delivery order value: not set';
     }
 
-    return 'Delivery minimum: ${_formatMoney(minimum)} inc GST';
+    return 'Delivery order value: ${_formatMoney(minimum)} inc GST';
   }
 
   Widget _offerCard(Map<String, dynamic> product) {
@@ -1432,6 +1626,13 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                           _compactBadge(
                             icon: Icons.workspace_premium_outlined,
                             text: _optionalText(product['grade']),
+                          ),
+                        if (_isCatchWeightProduct(product))
+                          _compactBadge(
+                            icon: Icons.monitor_weight_outlined,
+                            text: 'Order cartons • priced / kg',
+                            foreground: _darkRed,
+                            background: const Color(0xFFF4E5E5),
                           ),
                       ],
                     ),

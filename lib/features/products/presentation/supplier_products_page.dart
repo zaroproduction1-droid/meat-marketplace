@@ -38,15 +38,39 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         throw Exception('No signed-in user was found.');
       }
 
-      final membership = await Supabase.instance.client
+      final memberships = await Supabase.instance.client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
+          .eq('status', 'active');
 
-      final businessId = membership['business_id'] as String;
+      final businessIds = <String>[
+        for (final raw in memberships)
+          if (raw['business_id'] != null) raw['business_id'].toString(),
+      ];
+
+      if (businessIds.isEmpty) {
+        throw Exception('No active business membership was found.');
+      }
+
+      final businesses = await Supabase.instance.client
+          .from('businesses')
+          .select('id, business_type, active')
+          .inFilter('id', businessIds)
+          .eq('active', true);
+
+      String? businessId;
+
+      for (final raw in businesses) {
+        if (raw['business_type']?.toString() == 'supplier') {
+          businessId = raw['id']?.toString();
+          break;
+        }
+      }
+
+      if (businessId == null || businessId.isEmpty) {
+        throw Exception('No active supplier business membership was found.');
+      }
 
       final response = await Supabase.instance.client
           .from('products')
@@ -279,7 +303,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       return number.toInt().toString();
     }
 
-    return number.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    return number
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   String _weightRange(Map<String, dynamic> product) {
@@ -312,8 +339,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final parts = <String>[];
 
     if (cartonWeight != null) {
-      final suffix =
-          cartonUnit == null || cartonUnit.trim().isEmpty ? '' : ' $cartonUnit';
+      final suffix = cartonUnit == null || cartonUnit.trim().isEmpty
+          ? ''
+          : ' $cartonUnit';
       parts.add('${_formatNumber(cartonWeight)}$suffix');
     }
 
@@ -353,10 +381,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
   }
 
-  Widget _specChip({
-    required IconData icon,
-    required String label,
-  }) {
+  Widget _specChip({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -367,11 +392,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: const Color(0xFF5A5A5A),
-          ),
+          Icon(icon, size: 15, color: const Color(0xFF5A5A5A)),
           const SizedBox(width: 6),
           Text(
             label,
@@ -408,34 +429,49 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     if (marbling != null && marbling.trim().isNotEmpty) {
-      chips.add(_specChip(
-        icon: Icons.auto_awesome_outlined,
-        label: 'MB ${marbling.trim().replaceFirst(RegExp(r'^mb\s*', caseSensitive: false), '')}',
-      ));
+      chips.add(
+        _specChip(
+          icon: Icons.auto_awesome_outlined,
+          label:
+              'MB ${marbling.trim().replaceFirst(RegExp(r'^mb\s*', caseSensitive: false), '')}',
+        ),
+      );
     }
 
     if (grade != null && grade.trim().isNotEmpty) {
-      chips.add(_specChip(icon: Icons.workspace_premium_outlined, label: grade.trim()));
+      chips.add(
+        _specChip(icon: Icons.workspace_premium_outlined, label: grade.trim()),
+      );
     }
 
     if (breedProgram != null && breedProgram.trim().isNotEmpty) {
-      chips.add(_specChip(icon: Icons.badge_outlined, label: breedProgram.trim()));
+      chips.add(
+        _specChip(icon: Icons.badge_outlined, label: breedProgram.trim()),
+      );
     }
 
     if (pieceWeight.isNotEmpty) {
-      chips.add(_specChip(icon: Icons.scale_outlined, label: 'Piece $pieceWeight'));
+      chips.add(
+        _specChip(icon: Icons.scale_outlined, label: 'Piece $pieceWeight'),
+      );
     }
 
     if (carton.isNotEmpty) {
-      chips.add(_specChip(icon: Icons.inventory_2_outlined, label: 'Carton $carton'));
+      chips.add(
+        _specChip(icon: Icons.inventory_2_outlined, label: 'Carton $carton'),
+      );
     }
 
     if (packaging != null && packaging.trim().isNotEmpty) {
-      chips.add(_specChip(icon: Icons.all_inbox_outlined, label: packaging.trim()));
+      chips.add(
+        _specChip(icon: Icons.all_inbox_outlined, label: packaging.trim()),
+      );
     }
 
     if (trim != null && trim.trim().isNotEmpty) {
-      chips.add(_specChip(icon: Icons.content_cut_outlined, label: trim.trim()));
+      chips.add(
+        _specChip(icon: Icons.content_cut_outlined, label: trim.trim()),
+      );
     }
 
     if (fat != null && fat.trim().isNotEmpty) {
@@ -447,30 +483,31 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     final originParts = <String>[
-      if (originState != null && originState.trim().isNotEmpty) originState.trim(),
+      if (originState != null && originState.trim().isNotEmpty)
+        originState.trim(),
       if (originCountry != null && originCountry.trim().isNotEmpty)
         originCountry.trim(),
     ];
 
     if (originParts.isNotEmpty) {
-      chips.add(_specChip(
-        icon: Icons.public_outlined,
-        label: originParts.join(', '),
-      ));
+      chips.add(
+        _specChip(icon: Icons.public_outlined, label: originParts.join(', ')),
+      );
     }
 
     if (available.isNotEmpty) {
-      chips.add(_specChip(
-        icon: Icons.inventory_outlined,
-        label: 'Available $available',
-      ));
+      chips.add(
+        _specChip(
+          icon: Icons.inventory_outlined,
+          label: 'Available $available',
+        ),
+      );
     }
 
     if (product['catch_weight'] == true) {
-      chips.add(_specChip(
-        icon: Icons.monitor_weight_outlined,
-        label: 'Catch weight',
-      ));
+      chips.add(
+        _specChip(icon: Icons.monitor_weight_outlined, label: 'Catch weight'),
+      );
     }
 
     return chips;
@@ -484,13 +521,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'Products',
+          'My Stock',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
             onPressed: _loadProducts,
-            tooltip: 'Refresh products',
+            tooltip: 'Refresh stock',
             icon: const Icon(Icons.refresh),
           ),
           const SizedBox(width: 8),
@@ -526,7 +563,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               ),
               const SizedBox(height: 18),
               const Text(
-                'Products could not be loaded',
+                'Stock could not be loaded',
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
@@ -558,13 +595,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'No products yet',
+                  'No stock yet',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'Create your first product to begin building your supplier catalogue.',
+                  'Add your first product to begin building your supplier stock list.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 17,
@@ -606,8 +643,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           final usesNewCatalogue = _usesNewCatalogue(product);
           final specificationChips = _buildSpecificationChips(product);
 
-          final supplierSpecification =
-              product['supplier_specification']?.toString();
+          final supplierSpecification = product['supplier_specification']
+              ?.toString();
 
           return Card(
             elevation: 0,
@@ -756,10 +793,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(
-                      Icons.chevron_right,
-                      color: Color(0xFF777777),
-                    ),
+                    const Icon(Icons.chevron_right, color: Color(0xFF777777)),
                   ],
                 ),
               ),

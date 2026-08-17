@@ -62,6 +62,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             temperature_state,
             available_quantity,
             quantity_unit,
+            order_unit,
+            weight_type,
+            price_basis,
             availability_status,
             supplier_business_id,
             product_variant_id,
@@ -105,6 +108,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               amount,
               price_basis,
               minimum_quantity,
+              minimum_quantity_unit,
               active,
 
               price_lists(
@@ -754,6 +758,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     );
   }
 
+  bool _isCatchWeightProduct(Map<String, dynamic> product) {
+    return product['weight_type']?.toString() == 'catch_weight' ||
+        product['catch_weight'] == true;
+  }
+
   String _formatPriceBasis(String? value) {
     switch (value) {
       case 'kilogram':
@@ -1078,7 +1087,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       );
     }
 
-    if (product['catch_weight'] == true) {
+    if (_isCatchWeightProduct(product)) {
       chips.add(
         _specChip(icon: Icons.monitor_weight_outlined, label: 'Catch weight'),
       );
@@ -1174,7 +1183,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     if (minimum != null) {
-      rows.add('Minimum: ${_formatMoney(minimum)}');
+      rows.add('Minimum order value for delivery: ${_formatMoney(minimum)}');
     }
 
     if (zone != null) {
@@ -1469,8 +1478,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Choose the exact cut or product first. Prices and supplier '
-              'offers are shown only after you open the buying page.',
+              'Choose the exact cut or product first. Supplier offers are shown '
+              'on the buying page. Catch-weight meat is priced per kg and ordered '
+              'by whole cartons.',
               style: TextStyle(
                 color: Color(0xFF666666),
                 fontSize: 15,
@@ -1559,6 +1569,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                                       fontSize: 12,
                                     ),
                                   ),
+                                  if (_isCatchWeightProduct(
+                                    representative,
+                                  )) ...[
+                                    const SizedBox(height: 5),
+                                    const Text(
+                                      'Ordered by cartons • priced per kg',
+                                      style: TextStyle(
+                                        color: Color(0xFF741C1C),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
