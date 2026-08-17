@@ -5,10 +5,7 @@ import '../../orders/presentation/draft_orders_page.dart';
 import 'compare_offers_page.dart';
 
 class MarketplaceProductDetailsPage extends StatefulWidget {
-  const MarketplaceProductDetailsPage({
-    super.key,
-    required this.product,
-  });
+  const MarketplaceProductDetailsPage({super.key, required this.product});
 
   final Map<String, dynamic> product;
 
@@ -19,8 +16,9 @@ class MarketplaceProductDetailsPage extends StatefulWidget {
 
 class _MarketplaceProductDetailsPageState
     extends State<MarketplaceProductDetailsPage> {
-  final TextEditingController _quantityController =
-      TextEditingController(text: '1');
+  final TextEditingController _quantityController = TextEditingController(
+    text: '1',
+  );
 
   bool _isCheckingRelationship = true;
   bool _isSubmittingRequest = false;
@@ -58,9 +56,8 @@ class _MarketplaceProductDetailsPageState
   Future<void> _openCompareOffers() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CompareOffersPage(
-          selectedProduct: widget.product,
-        ),
+        builder: (context) =>
+            CompareOffersPage(selectedProduct: widget.product),
       ),
     );
   }
@@ -179,9 +176,9 @@ class _MarketplaceProductDetailsPageState
         _isCheckingRelationship = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
 
@@ -190,9 +187,7 @@ class _MarketplaceProductDetailsPageState
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to check supplier access.'),
-        ),
+        const SnackBar(content: Text('Unable to check supplier access.')),
       );
     }
   }
@@ -233,8 +228,7 @@ class _MarketplaceProductDetailsPageState
         return;
       }
 
-      final butcherBusinessId =
-          memberships.first['business_id']?.toString();
+      final butcherBusinessId = memberships.first['business_id']?.toString();
 
       if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
         if (!mounted) return;
@@ -254,19 +248,17 @@ class _MarketplaceProductDetailsPageState
       String? postcode;
 
       if (businessRows.isNotEmpty) {
-        final value =
-            businessRows.first['postcode']?.toString().trim();
+        final value = businessRows.first['postcode']?.toString().trim();
 
         if (value != null && value.isNotEmpty) {
           postcode = value;
         }
       }
 
-      final supplierBusinessId =
-          widget.product['supplier_business_id']?.toString();
+      final supplierBusinessId = widget.product['supplier_business_id']
+          ?.toString();
 
-      if (supplierBusinessId == null ||
-          supplierBusinessId.isEmpty) {
+      if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
         if (!mounted) return;
 
         setState(() {
@@ -321,9 +313,7 @@ class _MarketplaceProductDetailsPageState
       Map<String, dynamic>? zone;
       String? configurationError;
 
-      if (postcode != null &&
-          settings != null &&
-          settings['active'] == true) {
+      if (postcode != null && settings != null && settings['active'] == true) {
         final zoneRows = await Supabase.instance.client
             .from('supplier_delivery_zones')
             .select('''
@@ -341,10 +331,7 @@ class _MarketplaceProductDetailsPageState
             ''')
             .eq('supplier_business_id', supplierBusinessId)
             .eq('active', true)
-            .eq(
-              'supplier_delivery_zone_postcodes.postcode',
-              postcode,
-            );
+            .eq('supplier_delivery_zone_postcodes.postcode', postcode);
 
         if (zoneRows.length == 1) {
           zone = Map<String, dynamic>.from(zoneRows.first);
@@ -394,8 +381,7 @@ class _MarketplaceProductDetailsPageState
   }
 
   dynamic _effectiveLeadTime() {
-    if (_deliveryZone != null &&
-        _deliveryZone!['lead_time_days'] != null) {
+    if (_deliveryZone != null && _deliveryZone!['lead_time_days'] != null) {
       return _deliveryZone!['lead_time_days'];
     }
 
@@ -438,9 +424,7 @@ class _MarketplaceProductDetailsPageState
       now.year,
       now.month,
       now.day,
-    ).add(
-      Duration(days: leadDays),
-    );
+    ).add(Duration(days: leadDays));
 
     final cutoff = settings['order_cutoff_time']?.toString();
 
@@ -523,9 +507,7 @@ class _MarketplaceProductDetailsPageState
       'Sun',
     ];
 
-    return _deliveryDays
-        .map((weekday) => shortNames[weekday - 1])
-        .join(', ');
+    return _deliveryDays.map((weekday) => shortNames[weekday - 1]).join(', ');
   }
 
   Widget _buildDeliveryInformationCard() {
@@ -561,8 +543,7 @@ class _MarketplaceProductDetailsPageState
       );
     }
 
-    if (_butcherPostcode == null ||
-        _butcherPostcode!.trim().isEmpty) {
+    if (_butcherPostcode == null || _butcherPostcode!.trim().isEmpty) {
       return _section(
         title: 'Delivery',
         children: [
@@ -585,14 +566,8 @@ class _MarketplaceProductDetailsPageState
       return _section(
         title: 'Delivery',
         children: [
-          _DetailRow(
-            label: 'Status',
-            value: _deliveryConfigurationError!,
-          ),
-          _DetailRow(
-            label: 'Your postcode',
-            value: _butcherPostcode!,
-          ),
+          _DetailRow(label: 'Status', value: _deliveryConfigurationError!),
+          _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
           _DetailRow(
             label: 'Pickup',
             value: settings['pickup_available'] == true
@@ -609,10 +584,7 @@ class _MarketplaceProductDetailsPageState
       return _section(
         title: 'Delivery',
         children: [
-          _DetailRow(
-            label: 'Your postcode',
-            value: _butcherPostcode!,
-          ),
+          _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
           const _DetailRow(
             label: 'Status',
             value: 'Delivery not configured for your postcode',
@@ -649,10 +621,7 @@ class _MarketplaceProductDetailsPageState
     }
 
     final children = <Widget>[
-      _DetailRow(
-        label: 'Your postcode',
-        value: _butcherPostcode!,
-      ),
+      _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
       _DetailRow(
         label: 'Delivery zone',
         value: zoneName == null || zoneName.trim().isEmpty
@@ -665,10 +634,7 @@ class _MarketplaceProductDetailsPageState
             ? 'Not configured'
             : _formatDeliveryDate(nextDelivery),
       ),
-      _DetailRow(
-        label: 'Delivery days',
-        value: _deliveryDaysText(),
-      ),
+      _DetailRow(label: 'Delivery days', value: _deliveryDaysText()),
       _DetailRow(
         label: 'Estimated lead time',
         value: leadDays == null
@@ -686,17 +652,14 @@ class _MarketplaceProductDetailsPageState
         value: feeText == 'Free'
             ? feeText
             : feeText == 'Not configured'
-                ? feeText
-                : '$feeText inc GST',
+            ? feeText
+            : '$feeText inc GST',
       ),
       _DetailRow(
         label: 'Order cut-off',
         value: cutoff == null || cutoff.isEmpty
             ? 'Not configured'
-            : cutoff.substring(
-                0,
-                cutoff.length >= 5 ? 5 : cutoff.length,
-              ),
+            : cutoff.substring(0, cutoff.length >= 5 ? 5 : cutoff.length),
       ),
       _DetailRow(
         label: 'Pickup',
@@ -707,27 +670,14 @@ class _MarketplaceProductDetailsPageState
     ];
 
     if (zoneNotes != null && zoneNotes.isNotEmpty) {
-      children.add(
-        _DetailRow(
-          label: 'Zone notes',
-          value: zoneNotes,
-        ),
-      );
+      children.add(_DetailRow(label: 'Zone notes', value: zoneNotes));
     }
 
     if (notes != null && notes.isNotEmpty) {
-      children.add(
-        _DetailRow(
-          label: 'Delivery notes',
-          value: notes,
-        ),
-      );
+      children.add(_DetailRow(label: 'Delivery notes', value: notes));
     }
 
-    return _section(
-      title: 'Delivery',
-      children: children,
-    );
+    return _section(title: 'Delivery', children: children);
   }
 
   Future<void> _requestSupplierAccess() async {
@@ -743,10 +693,10 @@ class _MarketplaceProductDetailsPageState
       await Supabase.instance.client
           .from('supplier_customer_relationships')
           .insert({
-        'supplier_business_id': widget.product['supplier_business_id'],
-        'butcher_business_id': butcherBusinessId,
-        'status': 'requested',
-      });
+            'supplier_business_id': widget.product['supplier_business_id'],
+            'butcher_business_id': butcherBusinessId,
+            'status': 'requested',
+          });
 
       if (!mounted) return;
 
@@ -756,9 +706,7 @@ class _MarketplaceProductDetailsPageState
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Supplier access request sent.'),
-        ),
+        const SnackBar(content: Text('Supplier access request sent.')),
       );
     } on PostgrestException catch (error) {
       if (!mounted) return;
@@ -773,9 +721,9 @@ class _MarketplaceProductDetailsPageState
         message = 'A supplier relationship already exists.';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -821,8 +769,7 @@ class _MarketplaceProductDetailsPageState
       return names;
     }
 
-    final cataloguePath =
-        _cataloguePathRecord?['catalogue_path']?.toString();
+    final cataloguePath = _cataloguePathRecord?['catalogue_path']?.toString();
 
     if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
       for (final rawPart in cataloguePath.split('→')) {
@@ -1028,9 +975,7 @@ class _MarketplaceProductDetailsPageState
     return bestPrice;
   }
 
-  Map<String, dynamic>? _priceForVisibility(
-    String visibility,
-  ) {
+  Map<String, dynamic>? _priceForVisibility(String visibility) {
     final rawPrices = widget.product['product_prices'];
 
     if (rawPrices is! List) {
@@ -1068,9 +1013,7 @@ class _MarketplaceProductDetailsPageState
     return null;
   }
 
-  String _visiblePriceLabel(
-    Map<String, dynamic>? price,
-  ) {
+  String _visiblePriceLabel(Map<String, dynamic>? price) {
     final rawPriceList = price?['price_lists'];
 
     if (rawPriceList is! Map) {
@@ -1093,14 +1036,10 @@ class _MarketplaceProductDetailsPageState
     required CrossAxisAlignment alignment,
     double priceFontSize = 24,
   }) {
-    if (visiblePrice == null ||
-        visiblePrice['amount'] == null) {
+    if (visiblePrice == null || visiblePrice['amount'] == null) {
       return const Text(
         'Price unavailable',
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF666666),
-        ),
+        style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF666666)),
       );
     }
 
@@ -1109,8 +1048,7 @@ class _MarketplaceProductDetailsPageState
         ? visibleAmountRaw.toDouble()
         : double.tryParse('$visibleAmountRaw');
 
-    final visibleBasis =
-        visiblePrice['price_basis']?.toString();
+    final visibleBasis = visiblePrice['price_basis']?.toString();
 
     final standardPrice = _priceForVisibility('public');
     final standardAmountRaw = standardPrice?['amount'];
@@ -1118,8 +1056,7 @@ class _MarketplaceProductDetailsPageState
         ? standardAmountRaw.toDouble()
         : double.tryParse('${standardAmountRaw ?? ''}');
 
-    final standardBasis =
-        standardPrice?['price_basis']?.toString();
+    final standardBasis = standardPrice?['price_basis']?.toString();
 
     final priceLabel = _visiblePriceLabel(visiblePrice);
     final isDiscountedPrice =
@@ -1129,14 +1066,11 @@ class _MarketplaceProductDetailsPageState
         standardAmount > visibleAmount &&
         standardBasis == visibleBasis;
 
-    final saving = isDiscountedPrice
-        ? standardAmount - visibleAmount
-        : null;
+    final saving = isDiscountedPrice ? standardAmount - visibleAmount : null;
 
-    final savingPercent =
-        isDiscountedPrice && standardAmount > 0
-            ? (saving! / standardAmount) * 100
-            : null;
+    final savingPercent = isDiscountedPrice && standardAmount > 0
+        ? (saving! / standardAmount) * 100
+        : null;
 
     return Column(
       crossAxisAlignment: alignment,
@@ -1239,7 +1173,9 @@ class _MarketplaceProductDetailsPageState
     if (visiblePrice == null || visiblePrice['amount'] == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('This product does not currently have a visible price.'),
+          content: Text(
+            'This product does not currently have a visible price.',
+          ),
         ),
       );
       return;
@@ -1258,9 +1194,7 @@ class _MarketplaceProductDetailsPageState
 
     if (quantity == null || quantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a quantity greater than 0.'),
-        ),
+        const SnackBar(content: Text('Enter a quantity greater than 0.')),
       );
       return;
     }
@@ -1273,16 +1207,14 @@ class _MarketplaceProductDetailsPageState
     if (minimum != null && quantity < minimum) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Minimum order quantity is ${_formatNumber(minimum)}.',
-          ),
+          content: Text('Minimum order quantity is ${_formatNumber(minimum)}.'),
         ),
       );
       return;
     }
 
-    final supplierBusinessId =
-        widget.product['supplier_business_id']?.toString();
+    final supplierBusinessId = widget.product['supplier_business_id']
+        ?.toString();
     final productId = widget.product['id']?.toString();
 
     if (supplierBusinessId == null ||
@@ -1304,9 +1236,7 @@ class _MarketplaceProductDetailsPageState
 
     if (unitPrice == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The visible price could not be read.'),
-        ),
+        const SnackBar(content: Text('The visible price could not be read.')),
       );
       return;
     }
@@ -1415,20 +1345,16 @@ class _MarketplaceProductDetailsPageState
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to add product to order: $error'),
-        ),
+        SnackBar(content: Text('Unable to add product to order: $error')),
       );
     } finally {
       if (mounted) {
@@ -1438,7 +1364,6 @@ class _MarketplaceProductDetailsPageState
       }
     }
   }
-
 
   String _withThousandsSeparators(String value) {
     final parts = value.split('.');
@@ -1483,7 +1408,6 @@ class _MarketplaceProductDetailsPageState
     return _withThousandsSeparators(formatted);
   }
 
-
   String _formatMoney(dynamic value) {
     final number = value is num ? value.toDouble() : double.tryParse('$value');
 
@@ -1503,8 +1427,7 @@ class _MarketplaceProductDetailsPageState
       return 'Not provided';
     }
 
-    final suffix =
-        unit == null || unit.trim().isEmpty ? '' : ' ${unit.trim()}';
+    final suffix = unit == null || unit.trim().isEmpty ? '' : ' ${unit.trim()}';
 
     if (min != null && max != null) {
       return '${_formatNumber(min)}–${_formatNumber(max)}$suffix';
@@ -1582,11 +1505,9 @@ class _MarketplaceProductDetailsPageState
   }
 
   Future<void> _openDraftOrdersPage() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const DraftOrdersPage(),
-      ),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
   }
 
   Widget _buildRelationshipButton() {
@@ -1637,10 +1558,7 @@ class _MarketplaceProductDetailsPageState
     }
   }
 
-  Widget _section({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _section({required String title, required List<Widget> children}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1648,10 +1566,7 @@ class _MarketplaceProductDetailsPageState
         const SizedBox(height: 20),
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 18),
         ...children,
@@ -1668,8 +1583,9 @@ class _MarketplaceProductDetailsPageState
     final visiblePrice = _findVisiblePrice();
     final minimumQuantity = visiblePrice?['minimum_quantity'];
 
-    final supplierSpecification =
-        product['supplier_specification']?.toString().trim();
+    final supplierSpecification = product['supplier_specification']
+        ?.toString()
+        .trim();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
@@ -1815,11 +1731,7 @@ class _MarketplaceProductDetailsPageState
 
                           if (!usesCanonicalCatalogue &&
                               _currentCatalogueProductName() != 'Not linked')
-                            Chip(
-                              label: Text(
-                                _currentCatalogueProductName(),
-                              ),
-                            ),
+                            Chip(label: Text(_currentCatalogueProductName())),
 
                           Chip(
                             label: Text(
@@ -1864,8 +1776,7 @@ class _MarketplaceProductDetailsPageState
                         children: [
                           _DetailRow(
                             label: 'SKU',
-                            value:
-                                product['sku']?.toString() ?? 'Not provided',
+                            value: product['sku']?.toString() ?? 'Not provided',
                           ),
                           _DetailRow(
                             label: 'Brand',
@@ -1888,10 +1799,7 @@ class _MarketplaceProductDetailsPageState
                             ),
                           ),
                           if (usesCanonicalCatalogue) ...[
-                            _DetailRow(
-                              label: 'Species',
-                              value: _speciesName(),
-                            ),
+                            _DetailRow(label: 'Species', value: _speciesName()),
                             _DetailRow(
                               label: 'Catalogue path',
                               value: _catalogueProductPath(),
@@ -1900,10 +1808,7 @@ class _MarketplaceProductDetailsPageState
                               label: 'Current product / cut',
                               value: _currentCatalogueProductName(),
                             ),
-                            _DetailRow(
-                              label: 'Variant',
-                              value: _variantName(),
-                            ),
+                            _DetailRow(label: 'Variant', value: _variantName()),
                           ],
                         ],
                       ),
@@ -1945,10 +1850,7 @@ class _MarketplaceProductDetailsPageState
                             label: 'Piece weight',
                             value: _pieceWeightText(),
                           ),
-                          _DetailRow(
-                            label: 'Carton',
-                            value: _cartonText(),
-                          ),
+                          _DetailRow(label: 'Carton', value: _cartonText()),
                           _DetailRow(
                             label: 'Packaging',
                             value: _textValue('packaging_type'),
@@ -2012,20 +1914,18 @@ class _MarketplaceProductDetailsPageState
                               final price = _findVisiblePrice();
                               final amount = price?['amount'];
                               final quantityUnit = _orderQuantityUnit(price);
-                              final unitLabel =
-                                  _orderQuantityUnitLabel(quantityUnit);
+                              final unitLabel = _orderQuantityUnitLabel(
+                                quantityUnit,
+                              );
                               final minimum = price?['minimum_quantity'];
 
                               final unitPrice = amount is num
                                   ? amount.toDouble()
-                                  : double.tryParse(
-                                      amount?.toString() ?? '',
-                                    );
+                                  : double.tryParse(amount?.toString() ?? '');
 
-                              final estimatedTotal =
-                                  unitPrice == null
-                                      ? null
-                                      : unitPrice * _orderQuantityPreview;
+                              final estimatedTotal = unitPrice == null
+                                  ? null
+                                  : unitPrice * _orderQuantityPreview;
 
                               if (amount == null || unitPrice == null) {
                                 return const Text(
@@ -2050,37 +1950,31 @@ class _MarketplaceProductDetailsPageState
 
                               return LayoutBuilder(
                                 builder: (context, constraints) {
-                                  final narrow =
-                                      constraints.maxWidth < 700;
+                                  final narrow = constraints.maxWidth < 700;
 
                                   final quantityAndButton = Wrap(
                                     spacing: 14,
                                     runSpacing: 14,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.end,
+                                    crossAxisAlignment: WrapCrossAlignment.end,
                                     children: [
                                       SizedBox(
                                         width: 190,
                                         child: TextField(
-                                          controller:
-                                              _quantityController,
+                                          controller: _quantityController,
                                           keyboardType:
-                                              const TextInputType
-                                                  .numberWithOptions(
-                                            decimal: true,
-                                          ),
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                           onChanged: (value) {
-                                            final parsed =
-                                                double.tryParse(
+                                            final parsed = double.tryParse(
                                               value.trim(),
                                             );
 
                                             setState(() {
                                               _orderQuantityPreview =
-                                                  parsed != null &&
-                                                          parsed > 0
-                                                      ? parsed
-                                                      : 0;
+                                                  parsed != null && parsed > 0
+                                                  ? parsed
+                                                  : 0;
                                             });
                                           },
                                           decoration: InputDecoration(
@@ -2089,8 +1983,7 @@ class _MarketplaceProductDetailsPageState
                                             helperText: minimum == null
                                                 ? null
                                                 : 'Minimum ${_formatNumber(minimum)}',
-                                            border:
-                                                const OutlineInputBorder(),
+                                            border: const OutlineInputBorder(),
                                           ),
                                         ),
                                       ),
@@ -2099,10 +1992,10 @@ class _MarketplaceProductDetailsPageState
                                             ? null
                                             : _addToOrder,
                                         style: FilledButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF741C1C),
-                                          padding:
-                                              const EdgeInsets.symmetric(
+                                          backgroundColor: const Color(
+                                            0xFF741C1C,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
                                             horizontal: 22,
                                             vertical: 18,
                                           ),
@@ -2113,9 +2006,9 @@ class _MarketplaceProductDetailsPageState
                                                 height: 18,
                                                 child:
                                                     CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.white,
-                                                ),
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
                                               )
                                             : const Icon(
                                                 Icons.add_shopping_cart,
@@ -2134,11 +2027,9 @@ class _MarketplaceProductDetailsPageState
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF8F8F6),
-                                      borderRadius:
-                                          BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color:
-                                            const Color(0xFFE1E1DE),
+                                        color: const Color(0xFFE1E1DE),
                                       ),
                                     ),
                                     child: Column(
@@ -2177,9 +2068,7 @@ class _MarketplaceProductDetailsPageState
                                         Text(
                                           estimatedTotal == null
                                               ? '\$0.00'
-                                              : _formatMoney(
-                                                  estimatedTotal,
-                                                ),
+                                              : _formatMoney(estimatedTotal),
                                           style: const TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.w900,
@@ -2214,9 +2103,7 @@ class _MarketplaceProductDetailsPageState
                                     children: [
                                       priceSummary,
                                       const SizedBox(width: 20),
-                                      Expanded(
-                                        child: quantityAndButton,
-                                      ),
+                                      Expanded(child: quantityAndButton),
                                     ],
                                   );
                                 },
@@ -2253,10 +2140,7 @@ class _MarketplaceProductDetailsPageState
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -2273,9 +2157,7 @@ class _DetailRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 5),
                 Text(value),
@@ -2290,9 +2172,7 @@ class _DetailRow extends StatelessWidget {
                 width: 210,
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               Expanded(child: Text(value)),

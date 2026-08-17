@@ -59,9 +59,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
         await Supabase.instance.client.rpc(
           'refresh_draft_order_delivery_terms',
-          params: {
-            'target_order_id': draftId,
-          },
+          params: {'target_order_id': draftId},
         );
       }
 
@@ -179,7 +177,6 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       });
   }
 
-
   String _withThousandsSeparators(String value) {
     final parts = value.split('.');
     final whole = parts.first;
@@ -279,9 +276,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'Quantity',
               suffixText: _unitLabel(item['quantity_unit']?.toString()),
@@ -319,9 +314,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     try {
       await Supabase.instance.client
           .from('order_items')
-          .update({
-            'quantity': newQuantity,
-          })
+          .update({'quantity': newQuantity})
           .eq('id', item['id']);
 
       await _loadDraftOrders();
@@ -330,9 +323,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -396,9 +389,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -493,9 +486,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -548,15 +541,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   String _deliveryZoneLabel(Map<String, dynamic> order) {
-    final zone =
-        order['delivery_zone_name_snapshot']?.toString().trim();
+    final zone = order['delivery_zone_name_snapshot']?.toString().trim();
 
     if (zone != null && zone.isNotEmpty) {
       return zone;
     }
 
-    final postcode =
-        order['delivery_postcode_snapshot']?.toString().trim();
+    final postcode = order['delivery_postcode_snapshot']?.toString().trim();
 
     if (postcode != null && postcode.isNotEmpty) {
       return 'No matched delivery zone for $postcode';
@@ -572,9 +563,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       return 'Not set';
     }
 
-    final days = raw is num
-        ? raw.toInt()
-        : int.tryParse('$raw');
+    final days = raw is num ? raw.toInt() : int.tryParse('$raw');
 
     if (days == null) {
       return 'Not set';
@@ -584,8 +573,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   String _cutoffLabel(Map<String, dynamic> order) {
-    final raw =
-        order['delivery_cutoff_time_snapshot']?.toString();
+    final raw = order['delivery_cutoff_time_snapshot']?.toString();
 
     if (raw == null || raw.isEmpty) {
       return 'Not set';
@@ -594,9 +582,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     return raw.length >= 5 ? raw.substring(0, 5) : raw;
   }
 
-  Widget _buildMinimumOrderNotice(
-    Map<String, dynamic> order,
-  ) {
+  Widget _buildMinimumOrderNotice(Map<String, dynamic> order) {
     final minimum = _minimumOrder(order);
 
     if (minimum == null) {
@@ -611,26 +597,18 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: met
-            ? const Color(0xFFF2F7F2)
-            : const Color(0xFFFFF4E5),
+        color: met ? const Color(0xFFF2F7F2) : const Color(0xFFFFF4E5),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: met
-              ? const Color(0xFFB7D5B7)
-              : const Color(0xFFE7C27A),
+          color: met ? const Color(0xFFB7D5B7) : const Color(0xFFE7C27A),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            met
-                ? Icons.check_circle_outline
-                : Icons.info_outline,
-            color: met
-                ? const Color(0xFF2F6D3A)
-                : const Color(0xFF9A6700),
+            met ? Icons.check_circle_outline : Icons.info_outline,
+            color: met ? const Color(0xFF2F6D3A) : const Color(0xFF9A6700),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -639,9 +617,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   ? 'Minimum order met. Required minimum: ${_money(minimum)}.'
                   : 'Minimum order is ${_money(minimum)}. Add another ${_money(remaining)} before submitting.',
               style: TextStyle(
-                color: met
-                    ? const Color(0xFF2F6D3A)
-                    : const Color(0xFF7A5200),
+                color: met ? const Color(0xFF2F6D3A) : const Color(0xFF7A5200),
                 fontWeight: FontWeight.w700,
                 height: 1.4,
               ),
@@ -652,9 +628,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     );
   }
 
-  Widget _buildDeliverySnapshotCard(
-    Map<String, dynamic> order,
-  ) {
+  Widget _buildDeliverySnapshotCard(Map<String, dynamic> order) {
     final hasSnapshot =
         order['delivery_postcode_snapshot'] != null ||
         order['delivery_zone_name_snapshot'] != null ||
@@ -675,53 +649,38 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE1E1DE),
-        ),
+        border: Border.all(color: const Color(0xFFE1E1DE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Delivery',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           Text(
             'Zone: ${_deliveryZoneLabel(order)}',
-            style: const TextStyle(
-              color: Color(0xFF555555),
-            ),
+            style: const TextStyle(color: Color(0xFF555555)),
           ),
           const SizedBox(height: 6),
           Text(
             'Lead time: ${_leadTimeLabel(order)}',
-            style: const TextStyle(
-              color: Color(0xFF555555),
-            ),
+            style: const TextStyle(color: Color(0xFF555555)),
           ),
           const SizedBox(height: 6),
           Text(
             'Cut-off: ${_cutoffLabel(order)}',
-            style: const TextStyle(
-              color: Color(0xFF555555),
-            ),
+            style: const TextStyle(color: Color(0xFF555555)),
           ),
           const SizedBox(height: 6),
           Text(
             'Pickup: ${order['pickup_available_snapshot'] == true ? 'Available' : 'Not available'}',
-            style: const TextStyle(
-              color: Color(0xFF555555),
-            ),
+            style: const TextStyle(color: Color(0xFF555555)),
           ),
           const SizedBox(height: 6),
           Text(
-            fee == 0
-                ? 'Delivery fee: Free'
-                : 'Delivery fee: ${_money(fee)}',
+            fee == 0 ? 'Delivery fee: Free' : 'Delivery fee: ${_money(fee)}',
             style: const TextStyle(
               color: Color(0xFF555555),
               fontWeight: FontWeight.w700,
@@ -739,7 +698,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Add at least one product before submitting the order.'),
+          content: Text(
+            'Add at least one product before submitting the order.',
+          ),
         ),
       );
       return;
@@ -792,9 +753,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     try {
       await Supabase.instance.client
           .from('orders')
-          .update({
-            'status': 'submitted',
-          })
+          .update({'status': 'submitted'})
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
@@ -817,9 +776,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -849,9 +808,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
@@ -869,16 +826,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               const SizedBox(height: 18),
               const Text(
                 'Draft orders could not be loaded',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: _loadDraftOrders,
@@ -905,19 +856,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               SizedBox(height: 20),
               Text(
                 'No draft orders',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
               ),
               SizedBox(height: 10),
               Text(
                 'Products added from the marketplace will appear here before you submit them to a supplier.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF666666),
-                  height: 1.5,
-                ),
+                style: TextStyle(color: Color(0xFF666666), height: 1.5),
               ),
             ],
           ),
@@ -943,9 +888,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               return Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(
-                    color: Color(0xFFE0E0E0),
-                  ),
+                  side: const BorderSide(color: Color(0xFFE0E0E0)),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Padding(
@@ -1028,9 +971,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           padding: EdgeInsets.symmetric(vertical: 18),
                           child: Text(
                             'This draft order has no products.',
-                            style: TextStyle(
-                              color: Color(0xFF666666),
-                            ),
+                            style: TextStyle(color: Color(0xFF666666)),
                           ),
                         )
                       else
@@ -1053,9 +994,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8F8F6),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFE1E1DE),
-                          ),
+                          border: Border.all(color: const Color(0xFFE1E1DE)),
                         ),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
@@ -1168,10 +1107,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: FilledButton.icon(
-                          onPressed:
-                              items.isEmpty || !_meetsMinimumOrder(order)
-                                  ? null
-                                  : () => _submitOrder(order),
+                          onPressed: items.isEmpty || !_meetsMinimumOrder(order)
+                              ? null
+                              : () => _submitOrder(order),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF741C1C),
                             padding: const EdgeInsets.symmetric(
@@ -1230,9 +1168,7 @@ class _OrderItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE4E4E1),
-        ),
+        border: Border.all(color: const Color(0xFFE4E4E1)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1242,8 +1178,7 @@ class _OrderItemCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item['product_name_snapshot']?.toString() ??
-                    'Unnamed product',
+                item['product_name_snapshot']?.toString() ?? 'Unnamed product',
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -1254,16 +1189,12 @@ class _OrderItemCard extends StatelessWidget {
                   item['sku_snapshot'].toString().trim().isNotEmpty)
                 Text(
                   'SKU: ${item['sku_snapshot']}',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                  ),
+                  style: const TextStyle(color: Color(0xFF666666)),
                 ),
               const SizedBox(height: 8),
               Text(
                 '$quantity $quantityUnit × $price${priceBasis.isEmpty ? '' : ' / $priceBasis'}',
-                style: const TextStyle(
-                  color: Color(0xFF555555),
-                ),
+                style: const TextStyle(color: Color(0xFF555555)),
               ),
             ],
           );
@@ -1286,18 +1217,12 @@ class _OrderItemCard extends StatelessWidget {
                 children: [
                   TextButton.icon(
                     onPressed: onEdit,
-                    icon: const Icon(
-                      Icons.edit_outlined,
-                      size: 18,
-                    ),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
                     label: const Text('Quantity'),
                   ),
                   TextButton.icon(
                     onPressed: onRemove,
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      size: 18,
-                    ),
+                    icon: const Icon(Icons.delete_outline, size: 18),
                     label: const Text('Remove'),
                   ),
                 ],
@@ -1308,11 +1233,7 @@ class _OrderItemCard extends StatelessWidget {
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                details,
-                const SizedBox(height: 12),
-                actions,
-              ],
+              children: [details, const SizedBox(height: 12), actions],
             );
           }
 
@@ -1352,16 +1273,8 @@ class _TotalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: style,
-            ),
-          ),
-          Text(
-            value,
-            style: style,
-          ),
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
         ],
       ),
     );

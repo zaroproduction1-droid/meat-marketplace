@@ -132,8 +132,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             .limit(1);
 
         if (memberships.isNotEmpty) {
-          final businessId =
-              memberships.first['business_id']?.toString();
+          final businessId = memberships.first['business_id']?.toString();
 
           if (businessId != null && businessId.isNotEmpty) {
             final businesses = await Supabase.instance.client
@@ -143,8 +142,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 .limit(1);
 
             if (businesses.isNotEmpty) {
-              final postcode =
-                  businesses.first['postcode']?.toString().trim();
+              final postcode = businesses.first['postcode']?.toString().trim();
 
               if (postcode != null && postcode.isNotEmpty) {
                 butcherPostcode = postcode;
@@ -200,10 +198,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           .where((id) => id.isNotEmpty)
           .toSet();
 
-      final deliverySettingsBySupplierId =
-          <String, Map<String, dynamic>>{};
-      final deliveryZoneBySupplierId =
-          <String, Map<String, dynamic>>{};
+      final deliverySettingsBySupplierId = <String, Map<String, dynamic>>{};
+      final deliveryZoneBySupplierId = <String, Map<String, dynamic>>{};
 
       if (supplierIds.isNotEmpty) {
         final settingsResponse = await Supabase.instance.client
@@ -217,16 +213,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               delivery_notes,
               active
             ''')
-            .inFilter(
-              'supplier_business_id',
-              supplierIds.toList(),
-            );
+            .inFilter('supplier_business_id', supplierIds.toList());
 
         for (final rawSetting in settingsResponse) {
-          final setting =
-              Map<String, dynamic>.from(rawSetting);
-          final supplierId =
-              setting['supplier_business_id']?.toString();
+          final setting = Map<String, dynamic>.from(rawSetting);
+          final supplierId = setting['supplier_business_id']?.toString();
 
           if (supplierId != null && supplierId.isNotEmpty) {
             deliverySettingsBySupplierId[supplierId] = setting;
@@ -248,20 +239,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                   postcode
                 )
               ''')
-              .inFilter(
-                'supplier_business_id',
-                supplierIds.toList(),
-              )
+              .inFilter('supplier_business_id', supplierIds.toList())
               .eq('active', true)
-              .eq(
-                'supplier_delivery_zone_postcodes.postcode',
-                butcherPostcode,
-              );
+              .eq('supplier_delivery_zone_postcodes.postcode', butcherPostcode);
 
           for (final rawZone in zonesResponse) {
             final zone = Map<String, dynamic>.from(rawZone);
-            final supplierId =
-                zone['supplier_business_id']?.toString();
+            final supplierId = zone['supplier_business_id']?.toString();
 
             if (supplierId != null &&
                 supplierId.isNotEmpty &&
@@ -316,14 +300,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
-  Future<void> _openCompareOffers(
-    Map<String, dynamic> product,
-  ) async {
+  Future<void> _openCompareOffers(Map<String, dynamic> product) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CompareOffersPage(
-          selectedProduct: product,
-        ),
+        builder: (context) => CompareOffersPage(selectedProduct: product),
       ),
     );
 
@@ -335,11 +315,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   Future<void> _openDraftOrdersPage() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const DraftOrdersPage(),
-      ),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
 
     if (!mounted) {
       return;
@@ -350,9 +328,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
   Future<void> _openMyOrdersPage() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SubmittedOrdersPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const SubmittedOrdersPage()),
     );
 
     if (!mounted) {
@@ -667,9 +643,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return null;
   }
 
-  String _visiblePriceLabel(
-    Map<String, dynamic>? price,
-  ) {
+  String _visiblePriceLabel(Map<String, dynamic>? price) {
     final rawPriceList = price?['price_lists'];
 
     if (rawPriceList is! Map) {
@@ -693,14 +667,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     required Map<String, dynamic>? visiblePrice,
     required CrossAxisAlignment alignment,
   }) {
-    if (visiblePrice == null ||
-        visiblePrice['amount'] == null) {
+    if (visiblePrice == null || visiblePrice['amount'] == null) {
       return const Text(
         'Price unavailable',
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF666666),
-        ),
+        style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF666666)),
       );
     }
 
@@ -709,19 +679,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         ? visibleAmountRaw.toDouble()
         : double.tryParse('$visibleAmountRaw');
 
-    final visibleBasis =
-        visiblePrice['price_basis']?.toString();
+    final visibleBasis = visiblePrice['price_basis']?.toString();
 
-    final standardPrice =
-        _priceForVisibility(product, 'public');
+    final standardPrice = _priceForVisibility(product, 'public');
 
     final standardAmountRaw = standardPrice?['amount'];
     final standardAmount = standardAmountRaw is num
         ? standardAmountRaw.toDouble()
         : double.tryParse('${standardAmountRaw ?? ''}');
 
-    final standardBasis =
-        standardPrice?['price_basis']?.toString();
+    final standardBasis = standardPrice?['price_basis']?.toString();
 
     final priceLabel = _visiblePriceLabel(visiblePrice);
 
@@ -732,14 +699,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         standardAmount > visibleAmount &&
         standardBasis == visibleBasis;
 
-    final saving = isDiscountedPrice
-        ? standardAmount - visibleAmount
-        : null;
+    final saving = isDiscountedPrice ? standardAmount - visibleAmount : null;
 
-    final savingPercent =
-        isDiscountedPrice && standardAmount > 0
-            ? (saving! / standardAmount) * 100
-            : null;
+    final savingPercent = isDiscountedPrice && standardAmount > 0
+        ? (saving! / standardAmount) * 100
+        : null;
 
     return Column(
       crossAxisAlignment: alignment,
@@ -851,7 +815,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return supplier['legal_name']?.toString() ?? 'Unknown supplier';
   }
 
-
   String _withThousandsSeparators(String value) {
     final parts = value.split('.');
     final whole = parts.first;
@@ -899,7 +862,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return _withThousandsSeparators(formatted);
   }
 
-
   String _formatMoney(dynamic value) {
     final number = value is num ? value.toDouble() : double.tryParse('$value');
 
@@ -940,8 +902,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final parts = <String>[];
 
     if (cartonWeight != null) {
-      final suffix =
-          cartonUnit == null || cartonUnit.trim().isEmpty ? '' : ' $cartonUnit';
+      final suffix = cartonUnit == null || cartonUnit.trim().isEmpty
+          ? ''
+          : ' $cartonUnit';
       parts.add('${_formatNumber(cartonWeight)}$suffix');
     }
 
@@ -981,10 +944,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
-  Widget _specChip({
-    required IconData icon,
-    required String label,
-  }) {
+  Widget _specChip({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -1043,87 +1003,57 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     if (marbling != null && marbling.trim().isNotEmpty) {
-      final clean = marbling
-          .trim()
-          .replaceFirst(RegExp(r'^mb\s*', caseSensitive: false), '');
+      final clean = marbling.trim().replaceFirst(
+        RegExp(r'^mb\s*', caseSensitive: false),
+        '',
+      );
       chips.add(
-        _specChip(
-          icon: Icons.auto_awesome_outlined,
-          label: 'MB $clean',
-        ),
+        _specChip(icon: Icons.auto_awesome_outlined, label: 'MB $clean'),
       );
     }
 
     if (grade != null && grade.trim().isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.workspace_premium_outlined,
-          label: grade.trim(),
-        ),
+        _specChip(icon: Icons.workspace_premium_outlined, label: grade.trim()),
       );
     }
 
     if (breedProgram != null && breedProgram.trim().isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.badge_outlined,
-          label: breedProgram.trim(),
-        ),
+        _specChip(icon: Icons.badge_outlined, label: breedProgram.trim()),
       );
     }
 
     if (pieceWeight.isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.scale_outlined,
-          label: 'Piece $pieceWeight',
-        ),
+        _specChip(icon: Icons.scale_outlined, label: 'Piece $pieceWeight'),
       );
     }
 
     if (carton.isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.inventory_2_outlined,
-          label: 'Carton $carton',
-        ),
+        _specChip(icon: Icons.inventory_2_outlined, label: 'Carton $carton'),
       );
     }
 
     if (packaging != null && packaging.trim().isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.all_inbox_outlined,
-          label: packaging.trim(),
-        ),
+        _specChip(icon: Icons.all_inbox_outlined, label: packaging.trim()),
       );
     }
 
     if (trim != null && trim.trim().isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.content_cut_outlined,
-          label: trim.trim(),
-        ),
+        _specChip(icon: Icons.content_cut_outlined, label: trim.trim()),
       );
     }
 
     if (fat != null && fat.trim().isNotEmpty) {
-      chips.add(
-        _specChip(
-          icon: Icons.straighten_outlined,
-          label: fat.trim(),
-        ),
-      );
+      chips.add(_specChip(icon: Icons.straighten_outlined, label: fat.trim()));
     }
 
     if (halal.isNotEmpty) {
-      chips.add(
-        _specChip(
-          icon: Icons.verified_outlined,
-          label: halal,
-        ),
-      );
+      chips.add(_specChip(icon: Icons.verified_outlined, label: halal));
     }
 
     final originParts = <String>[
@@ -1135,10 +1065,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     if (originParts.isNotEmpty) {
       chips.add(
-        _specChip(
-          icon: Icons.public_outlined,
-          label: originParts.join(', '),
-        ),
+        _specChip(icon: Icons.public_outlined, label: originParts.join(', ')),
       );
     }
 
@@ -1153,10 +1080,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     if (product['catch_weight'] == true) {
       chips.add(
-        _specChip(
-          icon: Icons.monitor_weight_outlined,
-          label: 'Catch weight',
-        ),
+        _specChip(icon: Icons.monitor_weight_outlined, label: 'Catch weight'),
       );
     }
 
@@ -1165,8 +1089,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         icon: usesCanonicalCatalogue
             ? Icons.account_tree_outlined
             : Icons.history,
-        label:
-            usesCanonicalCatalogue ? 'Recursive catalogue' : 'Legacy listing',
+        label: usesCanonicalCatalogue
+            ? 'Recursive catalogue'
+            : 'Legacy listing',
       ),
     );
 
@@ -1176,8 +1101,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   Map<String, dynamic>? _deliverySettingsForProduct(
     Map<String, dynamic> product,
   ) {
-    final supplierId =
-        product['supplier_business_id']?.toString();
+    final supplierId = product['supplier_business_id']?.toString();
 
     if (supplierId == null || supplierId.isEmpty) {
       return null;
@@ -1186,11 +1110,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return _deliverySettingsBySupplierId[supplierId];
   }
 
-  Map<String, dynamic>? _deliveryZoneForProduct(
-    Map<String, dynamic> product,
-  ) {
-    final supplierId =
-        product['supplier_business_id']?.toString();
+  Map<String, dynamic>? _deliveryZoneForProduct(Map<String, dynamic> product) {
+    final supplierId = product['supplier_business_id']?.toString();
 
     if (supplierId == null || supplierId.isEmpty) {
       return null;
@@ -1199,37 +1120,28 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return _deliveryZoneBySupplierId[supplierId];
   }
 
-  dynamic _effectiveDeliveryMinimum(
-    Map<String, dynamic> product,
-  ) {
+  dynamic _effectiveDeliveryMinimum(Map<String, dynamic> product) {
     final zone = _deliveryZoneForProduct(product);
 
-    if (zone != null &&
-        zone['minimum_order_amount'] != null) {
+    if (zone != null && zone['minimum_order_amount'] != null) {
       return zone['minimum_order_amount'];
     }
 
-    return _deliverySettingsForProduct(product)?[
-        'minimum_order_amount'];
+    return _deliverySettingsForProduct(product)?['minimum_order_amount'];
   }
 
-  dynamic _effectiveLeadTime(
-    Map<String, dynamic> product,
-  ) {
+  dynamic _effectiveLeadTime(Map<String, dynamic> product) {
     final zone = _deliveryZoneForProduct(product);
 
     if (zone != null && zone['lead_time_days'] != null) {
       return zone['lead_time_days'];
     }
 
-    return _deliverySettingsForProduct(product)?[
-        'default_lead_time_days'];
+    return _deliverySettingsForProduct(product)?['default_lead_time_days'];
   }
 
   // ignore: unused_element
-  Widget _buildDeliverySummary(
-    Map<String, dynamic> product,
-  ) {
+  Widget _buildDeliverySummary(Map<String, dynamic> product) {
     final settings = _deliverySettingsForProduct(product);
     final zone = _deliveryZoneForProduct(product);
 
@@ -1257,9 +1169,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           : int.tryParse('$leadTime');
 
       if (days != null) {
-        rows.add(
-          'Lead time: $days day${days == 1 ? '' : 's'}',
-        );
+        rows.add('Lead time: $days day${days == 1 ? '' : 's'}');
       }
     }
 
@@ -1299,9 +1209,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFE1E1DE),
-        ),
+        border: Border.all(color: const Color(0xFFE1E1DE)),
       ),
       child: Wrap(
         spacing: 12,
@@ -1341,20 +1249,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     for (final product in _filteredProducts) {
       groups
-          .putIfAbsent(
-            _comparisonKey(product),
-            () => <Map<String, dynamic>>[],
-          )
+          .putIfAbsent(_comparisonKey(product), () => <Map<String, dynamic>>[])
           .add(product);
     }
 
     final result = groups.values.toList();
 
     result.sort((a, b) {
-      final aName =
-          a.first['product_name']?.toString().toLowerCase() ?? '';
-      final bName =
-          b.first['product_name']?.toString().toLowerCase() ?? '';
+      final aName = a.first['product_name']?.toString().toLowerCase() ?? '';
+      final bName = b.first['product_name']?.toString().toLowerCase() ?? '';
 
       return aName.compareTo(bName);
     });
@@ -1372,9 +1275,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   // ignore: unused_element
-  Map<String, dynamic>? _lowestVisiblePrice(
-    List<Map<String, dynamic>> offers,
-  ) {
+  Map<String, dynamic>? _lowestVisiblePrice(List<Map<String, dynamic>> offers) {
     Map<String, dynamic>? lowest;
     double? lowestAmount;
 
@@ -1564,10 +1465,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           children: [
             const Text(
               'Choose what you want to buy',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -1592,9 +1490,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                     elevation: 0,
                     clipBehavior: Clip.antiAlias,
                     shape: RoundedRectangleBorder(
-                      side: const BorderSide(
-                        color: Color(0xFFE0E0E0),
-                      ),
+                      side: const BorderSide(color: Color(0xFFE0E0E0)),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: InkWell(

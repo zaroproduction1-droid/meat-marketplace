@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CompareOffersPage extends StatefulWidget {
-  const CompareOffersPage({
-    super.key,
-    required this.selectedProduct,
-  });
+  const CompareOffersPage({super.key, required this.selectedProduct});
 
   final Map<String, dynamic> selectedProduct;
 
@@ -80,8 +77,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         throw Exception('Your butcher business could not be identified.');
       }
 
-      final butcherBusinessId =
-          memberships.first['business_id']?.toString();
+      final butcherBusinessId = memberships.first['business_id']?.toString();
 
       if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
         throw Exception('Your butcher business could not be identified.');
@@ -102,7 +98,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         }
       }
 
-      var query = client.from('products').select('''
+      var query = client
+          .from('products')
+          .select('''
         id,
         sku,
         product_name,
@@ -157,7 +155,8 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
             active
           )
         )
-      ''').eq('active', true);
+      ''')
+          .eq('active', true);
 
       final variantId = _selectedVariantId();
 
@@ -167,8 +166,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         response = await query.eq('product_variant_id', variantId);
       } else {
         final cutId = widget.selectedProduct['cut_id']?.toString();
-        final productName =
-            widget.selectedProduct['product_name']?.toString();
+        final productName = widget.selectedProduct['product_name']?.toString();
 
         if (cutId == null ||
             cutId.isEmpty ||
@@ -190,13 +188,10 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           .where((id) => id.isNotEmpty)
           .toSet();
 
-      final relationshipsBySupplierId =
-          <String, Map<String, dynamic>>{};
-      final deliverySettingsBySupplierId =
-          <String, Map<String, dynamic>>{};
+      final relationshipsBySupplierId = <String, Map<String, dynamic>>{};
+      final deliverySettingsBySupplierId = <String, Map<String, dynamic>>{};
       final deliveryDaysBySupplierId = <String, List<int>>{};
-      final deliveryZonesBySupplierId =
-          <String, List<Map<String, dynamic>>>{};
+      final deliveryZonesBySupplierId = <String, List<Map<String, dynamic>>>{};
 
       if (supplierIds.isNotEmpty) {
         final relationships = await client
@@ -214,8 +209,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
 
         for (final raw in relationships) {
           final relationship = Map<String, dynamic>.from(raw);
-          final supplierId =
-              relationship['supplier_business_id']?.toString();
+          final supplierId = relationship['supplier_business_id']?.toString();
 
           if (supplierId != null && supplierId.isNotEmpty) {
             relationshipsBySupplierId[supplierId] = relationship;
@@ -237,8 +231,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
 
         for (final raw in settings) {
           final setting = Map<String, dynamic>.from(raw);
-          final supplierId =
-              setting['supplier_business_id']?.toString();
+          final supplierId = setting['supplier_business_id']?.toString();
 
           if (supplierId != null && supplierId.isNotEmpty) {
             deliverySettingsBySupplierId[supplierId] = setting;
@@ -290,25 +283,18 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
               ''')
               .inFilter('supplier_business_id', supplierIds.toList())
               .eq('active', true)
-              .eq(
-                'supplier_delivery_zone_postcodes.postcode',
-                butcherPostcode,
-              );
+              .eq('supplier_delivery_zone_postcodes.postcode', butcherPostcode);
 
           for (final raw in zones) {
             final zone = Map<String, dynamic>.from(raw);
-            final supplierId =
-                zone['supplier_business_id']?.toString();
+            final supplierId = zone['supplier_business_id']?.toString();
 
             if (supplierId == null || supplierId.isEmpty) {
               continue;
             }
 
             deliveryZonesBySupplierId
-                .putIfAbsent(
-                  supplierId,
-                  () => <Map<String, dynamic>>[],
-                )
+                .putIfAbsent(supplierId, () => <Map<String, dynamic>>[])
                 .add(zone);
           }
         }
@@ -358,9 +344,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     }
   }
 
-  Map<String, dynamic>? _visiblePrice(
-    Map<String, dynamic> product,
-  ) {
+  Map<String, dynamic>? _visiblePrice(Map<String, dynamic> product) {
     final rawPrices = product['product_prices'];
 
     if (rawPrices is! List || rawPrices.isEmpty) {
@@ -400,9 +384,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     return bestPrice;
   }
 
-  Map<String, dynamic>? _standardPrice(
-    Map<String, dynamic> product,
-  ) {
+  Map<String, dynamic>? _standardPrice(Map<String, dynamic> product) {
     final rawPrices = product['product_prices'];
 
     if (rawPrices is! List) return null;
@@ -468,29 +450,22 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     return product['supplier_business_id']?.toString() ?? '';
   }
 
-  Map<String, dynamic>? _deliverySetting(
-    Map<String, dynamic> product,
-  ) {
+  Map<String, dynamic>? _deliverySetting(Map<String, dynamic> product) {
     return _deliverySettingsBySupplierId[_supplierId(product)];
   }
 
-  List<Map<String, dynamic>> _matchingZones(
-    Map<String, dynamic> product,
-  ) {
+  List<Map<String, dynamic>> _matchingZones(Map<String, dynamic> product) {
     return _deliveryZonesBySupplierId[_supplierId(product)] ??
         <Map<String, dynamic>>[];
   }
 
-  Map<String, dynamic>? _singleDeliveryZone(
-    Map<String, dynamic> product,
-  ) {
+  Map<String, dynamic>? _singleDeliveryZone(Map<String, dynamic> product) {
     final zones = _matchingZones(product);
     return zones.length == 1 ? zones.first : null;
   }
 
   List<int> _deliveryDays(Map<String, dynamic> product) {
-    final values =
-        _deliveryDaysBySupplierId[_supplierId(product)] ?? <int>[];
+    final values = _deliveryDaysBySupplierId[_supplierId(product)] ?? <int>[];
 
     final result = List<int>.from(values)..sort();
     return result;
@@ -500,8 +475,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final zone = _singleDeliveryZone(product);
     final setting = _deliverySetting(product);
 
-    final raw = zone?['lead_time_days'] ??
-        setting?['default_lead_time_days'];
+    final raw = zone?['lead_time_days'] ?? setting?['default_lead_time_days'];
 
     if (raw is int) return raw;
     if (raw is num) return raw.toInt();
@@ -572,8 +546,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final zone = _singleDeliveryZone(product);
     final setting = _deliverySetting(product);
 
-    return zone?['minimum_order_amount'] ??
-        setting?['minimum_order_amount'];
+    return zone?['minimum_order_amount'] ?? setting?['minimum_order_amount'];
   }
 
   String _deliveryFeeText(Map<String, dynamic> product) {
@@ -664,8 +637,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
   }
 
   String _relationshipStatus(Map<String, dynamic> product) {
-    final relationship =
-        _relationshipsBySupplierId[_supplierId(product)];
+    final relationship = _relationshipsBySupplierId[_supplierId(product)];
 
     return switch (relationship?['status']?.toString()) {
       'approved' => 'Approved customer',
@@ -676,8 +648,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
   }
 
   String _paymentTerms(Map<String, dynamic> product) {
-    final relationship =
-        _relationshipsBySupplierId[_supplierId(product)];
+    final relationship = _relationshipsBySupplierId[_supplierId(product)];
 
     if (relationship?['status']?.toString() != 'approved') {
       return 'Standard supplier terms';
@@ -710,12 +681,10 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final marblingText =
         offer['marbling_score']?.toString().trim().toLowerCase() ?? '';
 
-    final marblingMatch =
-        RegExp(r'(\d+(?:\.\d+)?)').firstMatch(marblingText);
+    final marblingMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(marblingText);
 
     if (marblingMatch != null) {
-      final marbling =
-          double.tryParse(marblingMatch.group(1) ?? '');
+      final marbling = double.tryParse(marblingMatch.group(1) ?? '');
 
       if (marbling != null) {
         // Marbling is the strongest numeric quality signal currently
@@ -740,21 +709,13 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     return score;
   }
 
-  Widget _sortMenuItem({
-    required IconData icon,
-    required String label,
-  }) {
+  Widget _sortMenuItem({required IconData icon, required String label}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 17),
         const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
       ],
     );
   }
@@ -797,8 +758,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
 
         final matches = searchable.any(
           (value) =>
-              value != null &&
-              value.toString().toLowerCase().contains(search),
+              value != null && value.toString().toLowerCase().contains(search),
         );
 
         if (!matches) {
@@ -831,8 +791,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           return bp.compareTo(ap);
 
         case 'best_quality':
-          final qualityCompare =
-              _qualityScore(b).compareTo(_qualityScore(a));
+          final qualityCompare = _qualityScore(b).compareTo(_qualityScore(a));
 
           if (qualityCompare != 0) {
             return qualityCompare;
@@ -857,9 +816,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           return ad.compareTo(bd);
 
         case 'supplier':
-          return _supplierName(a).toLowerCase().compareTo(
-                _supplierName(b).toLowerCase(),
-              );
+          return _supplierName(
+            a,
+          ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
 
         case 'stock':
           return availabilityRank(a).compareTo(availabilityRank(b));
@@ -879,9 +838,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     return result;
   }
 
-  Future<void> _showAddToOrderDialog(
-    Map<String, dynamic> product,
-  ) async {
+  Future<void> _showAddToOrderDialog(Map<String, dynamic> product) async {
     if (_isAddingToOrder) return;
 
     final visiblePrice = _visiblePrice(product);
@@ -891,8 +848,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       return;
     }
 
-    if (product['availability_status']?.toString() ==
-        'out_of_stock') {
+    if (product['availability_status']?.toString() == 'out_of_stock') {
       _showMessage('This offer is currently out of stock.');
       return;
     }
@@ -903,9 +859,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
         : double.tryParse('${minimumRaw ?? ''}');
 
     final quantityController = TextEditingController(
-      text: minimum != null && minimum > 1
-          ? _formatNumber(minimum)
-          : '1',
+      text: minimum != null && minimum > 1 ? _formatNumber(minimum) : '1',
     );
 
     final basis = visiblePrice['price_basis']?.toString();
@@ -925,10 +879,10 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final entered =
-                double.tryParse(quantityController.text.trim());
-            final total =
-                entered == null || entered <= 0 ? 0.0 : entered * unitPrice;
+            final entered = double.tryParse(quantityController.text.trim());
+            final total = entered == null || entered <= 0
+                ? 0.0
+                : entered * unitPrice;
 
             return AlertDialog(
               title: Text('Add ${product['product_name'] ?? 'offer'}'),
@@ -957,22 +911,18 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                       const SizedBox(height: 5),
                       Text(
                         'Minimum quantity: ${_formatNumber(minimum)}',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
-                        ),
+                        style: const TextStyle(color: Color(0xFF666666)),
                       ),
                     ],
                     const SizedBox(height: 18),
                     TextField(
                       controller: quantityController,
                       autofocus: true,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(
+                      keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
                       decoration: InputDecoration(
-                        labelText:
-                            'Quantity (${_priceBasisLabel(basis)})',
+                        labelText: 'Quantity (${_priceBasisLabel(basis)})',
                         border: const OutlineInputBorder(),
                       ),
                       onChanged: (_) => setDialogState(() {}),
@@ -991,17 +941,14 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () =>
-                      Navigator.of(dialogContext).pop(),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton.icon(
                   onPressed: entered == null || entered <= 0
                       ? null
                       : () => Navigator.of(dialogContext).pop(entered),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
-                  ),
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
                   icon: const Icon(Icons.add_shopping_cart),
                   label: const Text('Add to Order'),
                 ),
@@ -1019,9 +966,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     }
 
     if (minimum != null && quantity < minimum) {
-      _showMessage(
-        'Minimum order quantity is ${_formatNumber(minimum)}.',
-      );
+      _showMessage('Minimum order quantity is ${_formatNumber(minimum)}.');
       return;
     }
 
@@ -1046,8 +991,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       return;
     }
 
-    final supplierBusinessId =
-        product['supplier_business_id']?.toString();
+    final supplierBusinessId = product['supplier_business_id']?.toString();
     final productId = product['id']?.toString();
 
     if (supplierBusinessId == null ||
@@ -1061,10 +1005,10 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final priceBasis = visiblePrice['price_basis']?.toString();
     final quantityUnit =
         priceBasis == 'kilogram' ||
-                priceBasis == 'carton' ||
-                priceBasis == 'unit'
-            ? priceBasis!
-            : product['quantity_unit']?.toString() ?? 'unit';
+            priceBasis == 'carton' ||
+            priceBasis == 'unit'
+        ? priceBasis!
+        : product['quantity_unit']?.toString() ?? 'unit';
 
     setState(() {
       _isAddingToOrder = true;
@@ -1179,8 +1123,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       buffer.write(digits[i]);
     }
 
-    final formattedWhole =
-        '${negative ? '-' : ''}${buffer.toString()}';
+    final formattedWhole = '${negative ? '-' : ''}${buffer.toString()}';
 
     if (parts.length == 1) {
       return formattedWhole;
@@ -1192,8 +1135,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
   String _formatNumber(dynamic value) {
     if (value == null) return '';
 
-    final number =
-        value is num ? value.toDouble() : double.tryParse('$value');
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
 
     if (number == null) return value.toString();
 
@@ -1210,8 +1152,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
   }
 
   String _formatMoney(dynamic value) {
-    final number =
-        value is num ? value.toDouble() : double.tryParse('$value');
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
 
     if (number == null) return '\$0.00';
 
@@ -1270,9 +1211,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -1286,10 +1225,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     if (visible == null || visible['amount'] == null) {
       return const Text(
         'Price unavailable',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-        ),
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
       );
     }
 
@@ -1304,7 +1240,8 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final standardBasis = standard?['price_basis']?.toString();
     final label = _priceLabel(visible);
 
-    final discounted = label != 'Standard Price' &&
+    final discounted =
+        label != 'Standard Price' &&
         visibleAmount != null &&
         standardAmount != null &&
         standardAmount > visibleAmount &&
@@ -1373,11 +1310,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 14,
-            color: foreground ?? const Color(0xFF555555),
-          ),
+          Icon(icon, size: 14, color: foreground ?? const Color(0xFF555555)),
           const SizedBox(width: 5),
           Text(
             text,
@@ -1420,10 +1353,12 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final visiblePrice = _visiblePrice(product);
     final leadDays = _leadDays(product);
 
-    final availability =
-        _availabilityLabel(product['availability_status']?.toString());
-    final temperature =
-        _temperatureLabel(product['temperature_state']?.toString());
+    final availability = _availabilityLabel(
+      product['availability_status']?.toString(),
+    );
+    final temperature = _temperatureLabel(
+      product['temperature_state']?.toString(),
+    );
 
     final isHalal = product['halal_status']?.toString() == 'halal';
     final relationship = _relationshipStatus(product);
@@ -1475,12 +1410,12 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                           text: availability,
                           foreground:
                               product['availability_status'] == 'in_stock'
-                                  ? const Color(0xFF2E7D32)
-                                  : null,
+                              ? const Color(0xFF2E7D32)
+                              : null,
                           background:
                               product['availability_status'] == 'in_stock'
-                                  ? const Color(0xFFEAF5EC)
-                                  : null,
+                              ? const Color(0xFFEAF5EC)
+                              : null,
                         ),
                         _compactBadge(
                           icon: Icons.ac_unit_outlined,
@@ -1493,8 +1428,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                             foreground: const Color(0xFF2E7D32),
                             background: const Color(0xFFEAF5EC),
                           ),
-                        if (_optionalText(product['grade']) !=
-                            'Not specified')
+                        if (_optionalText(product['grade']) != 'Not specified')
                           _compactBadge(
                             icon: Icons.workspace_premium_outlined,
                             text: _optionalText(product['grade']),
@@ -1592,9 +1526,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                 ),
-                label: Text(
-                  expanded ? 'Hide details' : 'View details',
-                ),
+                label: Text(expanded ? 'Hide details' : 'View details'),
               ),
             ),
             if (expanded) ...[
@@ -1617,12 +1549,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                           product['available_quantity'] == null
                               ? 'Not specified'
                               : '${_formatNumber(product['available_quantity'])} '
-                                '${_priceBasisLabel(product['quantity_unit']?.toString())}',
+                                    '${_priceBasisLabel(product['quantity_unit']?.toString())}',
                         ),
-                        _detail(
-                          'Brand',
-                          _optionalText(product['brand']),
-                        ),
+                        _detail('Brand', _optionalText(product['brand'])),
                         _detail(
                           'Marbling',
                           _optionalText(product['marbling_score']),
@@ -1634,29 +1563,24 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                         _detail(
                           'Origin',
                           [
-                            _optionalText(product['origin_state']),
-                            _optionalText(product['origin_country']),
-                          ]
-                              .where((value) => value != 'Not specified')
-                              .join(', ')
-                              .trim()
-                              .isEmpty
+                                    _optionalText(product['origin_state']),
+                                    _optionalText(product['origin_country']),
+                                  ]
+                                  .where((value) => value != 'Not specified')
+                                  .join(', ')
+                                  .trim()
+                                  .isEmpty
                               ? 'Not specified'
                               : [
-                                  _optionalText(product['origin_state']),
-                                  _optionalText(product['origin_country']),
-                                ]
-                                    .where(
-                                      (value) =>
-                                          value != 'Not specified',
-                                    )
+                                      _optionalText(product['origin_state']),
+                                      _optionalText(product['origin_country']),
+                                    ]
+                                    .where((value) => value != 'Not specified')
                                     .join(', '),
                         ),
                         _detail(
                           'Trim',
-                          _optionalText(
-                            product['trim_specification'],
-                          ),
+                          _optionalText(product['trim_specification']),
                         ),
                       ],
                     );
@@ -1669,8 +1593,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                         ),
                         _detail(
                           'Delivery zone',
-                          _singleDeliveryZone(product)?['zone_name']
-                                  ?.toString() ??
+                          _singleDeliveryZone(
+                                product,
+                              )?['zone_name']?.toString() ??
                               (_matchingZones(product).length > 1
                                   ? 'Configuration error'
                                   : 'Not configured'),
@@ -1680,30 +1605,20 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                           leadDays == null
                               ? 'Not configured'
                               : '$leadDays day'
-                                '${leadDays == 1 ? '' : 's'}',
+                                    '${leadDays == 1 ? '' : 's'}',
                         ),
                         _detail(
                           'Pickup',
-                          _deliverySetting(product)?[
-                                      'pickup_available'] ==
-                                  true
+                          _deliverySetting(product)?['pickup_available'] == true
                               ? 'Available'
                               : 'Not available',
                         ),
-                        _detail(
-                          'Payment terms',
-                          _paymentTerms(product),
-                        ),
+                        _detail('Payment terms', _paymentTerms(product)),
                       ],
                     );
 
                     if (narrow) {
-                      return Column(
-                        children: [
-                          left,
-                          right,
-                        ],
-                      );
+                      return Column(children: [left, right]);
                     }
 
                     return Row(
@@ -1727,9 +1642,9 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   int _activeFilterCount() {
@@ -1778,301 +1693,270 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 60,
-                          color: _darkRed,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton(
-                          onPressed: _loadOffers,
-                          child: const Text('Try Again'),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 60, color: _darkRed),
+                    const SizedBox(height: 16),
+                    Text(_errorMessage!, textAlign: TextAlign.center),
+                    const SizedBox(height: 18),
+                    FilledButton(
+                      onPressed: _loadOffers,
+                      child: const Text('Try Again'),
                     ),
-                  ),
-                )
-              : Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1050),
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(
-                        24,
-                        24,
-                        24,
-                        50,
-                      ),
-                      children: [
-                        Text(
-                          widget.selectedProduct['product_name']
-                                  ?.toString() ??
-                              'Selected product',
-                          style: const TextStyle(
-                            fontSize: 29,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${_offers.length} supplier offer'
-                          '${_offers.length == 1 ? '' : 's'} available',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _searchController,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText:
-                                'Search supplier, brand, grade, origin, marbling or specification',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon:
-                                _searchController.text.trim().isEmpty
-                                    ? null
-                                    : IconButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            _searchController.clear();
-                                          });
-                                        },
-                                        icon: const Icon(Icons.close),
-                                      ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE0E0E0),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE0E0E0),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            side: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              crossAxisAlignment:
-                                  WrapCrossAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 230,
-                                  child:
-                                      DropdownButtonFormField<String>(
-                                    isExpanded: true,
-                                    initialValue: _sortBy,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Sort',
-                                      isDense: true,
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    items: [
-                                      DropdownMenuItem(
-                                        value: 'lowest_price',
-                                        child: _sortMenuItem(
-                                          icon: Icons.south_outlined,
-                                          label: 'Lowest price',
-                                        ),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'most_expensive',
-                                        child: _sortMenuItem(
-                                          icon: Icons.north_outlined,
-                                          label: 'Most expensive',
-                                        ),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'best_quality',
-                                        child: _sortMenuItem(
-                                          icon:
-                                              Icons.workspace_premium_outlined,
-                                          label: 'Best quality',
-                                        ),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'earliest_delivery',
-                                        child: _sortMenuItem(
-                                          icon:
-                                              Icons.local_shipping_outlined,
-                                          label: 'Earliest delivery',
-                                        ),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'stock',
-                                        child: _sortMenuItem(
-                                          icon:
-                                              Icons.inventory_2_outlined,
-                                          label: 'Best availability',
-                                        ),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'supplier',
-                                        child: _sortMenuItem(
-                                          icon: Icons.sort_by_alpha,
-                                          label: 'Supplier A–Z',
-                                        ),
-                                      ),
-                                    ],
-                                    onChanged: (value) {
-                                      if (value == null) return;
-                                      setState(() {
-                                        _sortBy = value;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                FilterChip(
-                                  selected: _inStockOnly,
-                                  avatar: const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 17,
-                                  ),
-                                  label: const Text('In stock'),
-                                  onSelected: (value) {
-                                    setState(() {
-                                      _inStockOnly = value;
-                                    });
-                                  },
-                                ),
-                                FilterChip(
-                                  selected:
-                                      _temperatureFilter == 'fresh',
-                                  avatar: const Icon(
-                                    Icons.spa_outlined,
-                                    size: 17,
-                                  ),
-                                  label: const Text('Fresh'),
-                                  onSelected: (value) {
-                                    setState(() {
-                                      _temperatureFilter =
-                                          value ? 'fresh' : 'all';
-                                    });
-                                  },
-                                ),
-                                FilterChip(
-                                  selected:
-                                      _temperatureFilter == 'chilled',
-                                  avatar: const Icon(
-                                    Icons.thermostat_outlined,
-                                    size: 17,
-                                  ),
-                                  label: const Text('Chilled'),
-                                  onSelected: (value) {
-                                    setState(() {
-                                      _temperatureFilter =
-                                          value ? 'chilled' : 'all';
-                                    });
-                                  },
-                                ),
-                                FilterChip(
-                                  selected:
-                                      _temperatureFilter == 'frozen',
-                                  avatar: const Icon(
-                                    Icons.ac_unit_outlined,
-                                    size: 17,
-                                  ),
-                                  label: const Text('Frozen'),
-                                  onSelected: (value) {
-                                    setState(() {
-                                      _temperatureFilter =
-                                          value ? 'frozen' : 'all';
-                                    });
-                                  },
-                                ),
-                                FilterChip(
-                                  selected: _halalFilter == 'halal',
-                                  avatar: const Icon(
-                                    Icons.verified_outlined,
-                                    size: 17,
-                                  ),
-                                  label: const Text('Halal'),
-                                  onSelected: (value) {
-                                    setState(() {
-                                      _halalFilter =
-                                          value ? 'halal' : 'all';
-                                    });
-                                  },
-                                ),
-                                if (activeFilters > 0)
-                                  TextButton.icon(
-                                    onPressed: _clearFilters,
-                                    icon: const Icon(
-                                      Icons.filter_alt_off_outlined,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      'Clear ($activeFilters)',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Text(
-                              '${offers.length} result'
-                              '${offers.length == 1 ? '' : 's'}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF555555),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        if (offers.isEmpty)
-                          const Card(
-                            elevation: 0,
-                            child: Padding(
-                              padding: EdgeInsets.all(30),
-                              child: Center(
-                                child: Text(
-                                  'No supplier offers match these filters.',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          for (final offer in offers) ...[
-                            _offerCard(offer),
-                            const SizedBox(height: 12),
-                          ],
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
+              ),
+            )
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1050),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 50),
+                  children: [
+                    Text(
+                      widget.selectedProduct['product_name']?.toString() ??
+                          'Selected product',
+                      style: const TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${_offers.length} supplier offer'
+                      '${_offers.length == 1 ? '' : 's'} available',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Search supplier, brand, grade, origin, marbling or specification',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.trim().isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                  });
+                                },
+                                icon: const Icon(Icons.close),
+                              ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE0E0E0),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(color: Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 230,
+                              child: DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue: _sortBy,
+                                decoration: const InputDecoration(
+                                  labelText: 'Sort',
+                                  isDense: true,
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'lowest_price',
+                                    child: _sortMenuItem(
+                                      icon: Icons.south_outlined,
+                                      label: 'Lowest price',
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'most_expensive',
+                                    child: _sortMenuItem(
+                                      icon: Icons.north_outlined,
+                                      label: 'Most expensive',
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'best_quality',
+                                    child: _sortMenuItem(
+                                      icon: Icons.workspace_premium_outlined,
+                                      label: 'Best quality',
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'earliest_delivery',
+                                    child: _sortMenuItem(
+                                      icon: Icons.local_shipping_outlined,
+                                      label: 'Earliest delivery',
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'stock',
+                                    child: _sortMenuItem(
+                                      icon: Icons.inventory_2_outlined,
+                                      label: 'Best availability',
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'supplier',
+                                    child: _sortMenuItem(
+                                      icon: Icons.sort_by_alpha,
+                                      label: 'Supplier A–Z',
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _sortBy = value;
+                                  });
+                                },
+                              ),
+                            ),
+                            FilterChip(
+                              selected: _inStockOnly,
+                              avatar: const Icon(
+                                Icons.inventory_2_outlined,
+                                size: 17,
+                              ),
+                              label: const Text('In stock'),
+                              onSelected: (value) {
+                                setState(() {
+                                  _inStockOnly = value;
+                                });
+                              },
+                            ),
+                            FilterChip(
+                              selected: _temperatureFilter == 'fresh',
+                              avatar: const Icon(Icons.spa_outlined, size: 17),
+                              label: const Text('Fresh'),
+                              onSelected: (value) {
+                                setState(() {
+                                  _temperatureFilter = value ? 'fresh' : 'all';
+                                });
+                              },
+                            ),
+                            FilterChip(
+                              selected: _temperatureFilter == 'chilled',
+                              avatar: const Icon(
+                                Icons.thermostat_outlined,
+                                size: 17,
+                              ),
+                              label: const Text('Chilled'),
+                              onSelected: (value) {
+                                setState(() {
+                                  _temperatureFilter = value
+                                      ? 'chilled'
+                                      : 'all';
+                                });
+                              },
+                            ),
+                            FilterChip(
+                              selected: _temperatureFilter == 'frozen',
+                              avatar: const Icon(
+                                Icons.ac_unit_outlined,
+                                size: 17,
+                              ),
+                              label: const Text('Frozen'),
+                              onSelected: (value) {
+                                setState(() {
+                                  _temperatureFilter = value ? 'frozen' : 'all';
+                                });
+                              },
+                            ),
+                            FilterChip(
+                              selected: _halalFilter == 'halal',
+                              avatar: const Icon(
+                                Icons.verified_outlined,
+                                size: 17,
+                              ),
+                              label: const Text('Halal'),
+                              onSelected: (value) {
+                                setState(() {
+                                  _halalFilter = value ? 'halal' : 'all';
+                                });
+                              },
+                            ),
+                            if (activeFilters > 0)
+                              TextButton.icon(
+                                onPressed: _clearFilters,
+                                icon: const Icon(
+                                  Icons.filter_alt_off_outlined,
+                                  size: 18,
+                                ),
+                                label: Text('Clear ($activeFilters)'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Text(
+                          '${offers.length} result'
+                          '${offers.length == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF555555),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (offers.isEmpty)
+                      const Card(
+                        elevation: 0,
+                        child: Padding(
+                          padding: EdgeInsets.all(30),
+                          child: Center(
+                            child: Text(
+                              'No supplier offers match these filters.',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      for (final offer in offers) ...[
+                        _offerCard(offer),
+                        const SizedBox(height: 12),
+                      ],
+                  ],
+                ),
+              ),
+            ),
     );
   }
 }
