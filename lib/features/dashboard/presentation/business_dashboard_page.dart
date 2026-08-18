@@ -6,6 +6,9 @@ import '../../marketplace/presentation/marketplace_products_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
+import '../../orders/presentation/butcher_accounts_page.dart';
+import '../../orders/presentation/butcher_settings_page.dart';
+import '../../orders/presentation/supplier_settings_page.dart';
 import '../../orders/presentation/supplier_invoices_page.dart';
 import '../../orders/presentation/supplier_inventory_page.dart';
 import '../../orders/presentation/supplier_sales_page.dart';
@@ -329,7 +332,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => const SupplierSalesPage(),
+                                builder: (context) =>
+                                    const SupplierSalesPage(),
                               ),
                             );
 
@@ -426,6 +430,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                         _DashboardCard(
                           width: cardWidth,
+                          icon: Icons.settings_outlined,
+                          title: 'Settings',
+                          description:
+                              'Configure invoice details, banking information and supplier settings.',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SupplierSettingsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
                           icon: Icons.local_shipping_outlined,
                           title: 'Delivery',
                           description:
@@ -476,6 +495,36 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                               MaterialPageRoute(
                                 builder: (context) =>
                                     const SubmittedOrdersPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'Accounts',
+                          description:
+                              'View COD payments, outstanding balances and invoices from your suppliers.',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ButcherAccountsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
+                          icon: Icons.settings_outlined,
+                          title: 'Settings',
+                          description:
+                              'Manage business, billing and account preferences.',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ButcherSettingsPage(),
                               ),
                             );
                           },
@@ -591,7 +640,10 @@ class _DashboardCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: const Color(0xFFB3261E),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
                           ),
                           child: Text(
                             badgeCount > 99 ? '99+' : badgeCount.toString(),

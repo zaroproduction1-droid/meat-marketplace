@@ -1,10 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/invoice_pdf_service.dart';
 
 class SupplierInvoicePage extends StatefulWidget {
   const SupplierInvoicePage({super.key, required this.orderId});
@@ -25,8 +22,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   Map<String, dynamic>? _invoice;
   List<Map<String, dynamic>> _items = [];
 
-  final _taxCategoryController = TextEditingController();
-  final _taxRateController = TextEditingController();
   final _notesController = TextEditingController();
 
   @override
@@ -37,8 +32,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   @override
   void dispose() {
-    _taxCategoryController.dispose();
-    _taxRateController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -86,6 +79,40 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             issued_at,
             paid_at,
             voided_at,
+            sent_to_butcher_at,
+            amount_paid,
+            last_payment_at,
+            customer_payment_claim_status,
+            customer_payment_claimed_at,
+            customer_payment_claimed_amount,
+            customer_payment_claimed_note,
+            payment_claim_reviewed_at,
+            payment_claim_review_note,
+            supplier_trading_name_snapshot,
+            supplier_legal_name_snapshot,
+            supplier_abn_snapshot,
+            supplier_licence_number_snapshot,
+            supplier_email_snapshot,
+            supplier_phone_snapshot,
+            supplier_address_line_1_snapshot,
+            supplier_address_line_2_snapshot,
+            supplier_suburb_snapshot,
+            supplier_state_snapshot,
+            supplier_postcode_snapshot,
+            bank_name_snapshot,
+            bank_account_name_snapshot,
+            bank_bsb_snapshot,
+            bank_account_number_snapshot,
+            payment_instructions_snapshot,
+            customer_legal_name_snapshot,
+            customer_abn_snapshot,
+            customer_email_snapshot,
+            customer_phone_snapshot,
+            customer_billing_address_line_1_snapshot,
+            customer_billing_address_line_2_snapshot,
+            customer_billing_suburb_snapshot,
+            customer_billing_state_snapshot,
+            customer_billing_postcode_snapshot,
             created_at,
             updated_at,
             invoice_items(
@@ -116,19 +143,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
       final loaded = Map<String, dynamic>.from(response);
       final rawItems = loaded['invoice_items'];
-
-      _taxCategoryController.text =
-          loaded['tax_category_snapshot']?.toString() ?? '';
-
-      final taxRate = loaded['tax_rate_snapshot'];
-      _taxRateController.text = taxRate == null
-          ? ''
-          : (_asDouble(taxRate) * 100).toStringAsFixed(
-              _asDouble(taxRate) * 100 ==
-                      (_asDouble(taxRate) * 100).roundToDouble()
-                  ? 0
-                  : 2,
-            );
 
       _notesController.text = loaded['notes']?.toString() ?? '';
 
@@ -173,7 +187,23 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   String _money(dynamic value) {
     final number = _asDouble(value);
-    return '\$${number.toStringAsFixed(2)}';
+    final fixed = number.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final whole = parts.first;
+    final decimal = parts.last;
+
+    final buffer = StringBuffer();
+
+    for (var index = 0; index < whole.length; index++) {
+      final remaining = whole.length - index;
+      buffer.write(whole[index]);
+
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+
+    return '\$${buffer.toString()}.$decimal';
   }
 
   String _formatNumber(dynamic value) {
@@ -238,13 +268,300 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   bool get _taxConfigured =>
       _invoice?['tax_status']?.toString() == 'configured';
 
-  bool get _canEditTax {
-    final status = _invoice?['status']?.toString();
-    return status == 'draft' || status == 'ready';
-  }
+  double get _incGstTotal => _asDouble(_invoice?['total_amount']);
+
+  double get _gstIncluded => _asDouble(_invoice?['tax_amount']);
+
+  double get _exGstTotal => _incGstTotal - _gstIncluded;
 
   bool get _canIssue =>
-      _invoice?['status']?.toString() == 'ready' && _taxConfigured;
+      _invoice?['status']?.toString() == 'ready' &&
+      _taxConfigured &&
+      _invoice?['total_amount'] != null;
+
+  double get _amountPaid => _asDouble(_invoice?['amount_paid']);
+
+  double get _amountOutstanding {
+    final outstanding = _incGstTotal - _amountPaid;
+    return outstanding < 0 ? 0 : outstanding;
+  }
+
+  bool get _sentToButcher => _invoice?['sent_to_butcher_at'] != null;
+
+  bool get _hasButcherAccount =>
+      (_invoice?['butcher_business_id']?.toString().trim() ?? '').isNotEmpty;
+
+  bool get _canSendToButcher {
+    final status = _invoice?['status']?.toString();
+    return _hasButcherAccount &&
+        !_sentToButcher &&
+        (status == 'issued' || status == 'part_paid' || status == 'paid');
+  }
+
+  bool get _canRecordPayment {
+    final status = _invoice?['status']?.toString();
+    return (status == 'issued' || status == 'part_paid') &&
+        _amountOutstanding > 0;
+  }
+
+  Future<void> _sendInvoiceToButcher() async {
+    final invoiceId = _invoice?['id']?.toString();
+
+    if (invoiceId == null || !_canSendToButcher || _isSaving) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send Invoice to Customer?'),
+        content: Text(
+          'Send ${_invoice?['invoice_number'] ?? 'this invoice'} to '
+          '${_invoice?['customer_name_snapshot'] ?? 'the customer'} inside CutLink?\n\n'
+          'It will appear in their Accounts section and remain linked to this supplier invoice.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Send Invoice'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'send_invoice_to_butcher',
+        params: {'target_invoice_id': invoiceId},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invoice sent to the butcher’s CutLink account.'),
+        ),
+      );
+
+      await _loadPage();
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _recordPayment() async {
+    final invoiceId = _invoice?['id']?.toString();
+
+    if (invoiceId == null || !_canRecordPayment || _isSaving) {
+      return;
+    }
+
+    final controller = TextEditingController();
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Record Payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Outstanding: ${_money(_amountOutstanding)}'),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Payment received',
+                prefixText: r'$',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            onPressed: () {
+              final parsed = double.tryParse(
+                controller.text.replaceAll(',', '').trim(),
+              );
+
+              if (parsed == null || parsed <= 0) {
+                return;
+              }
+
+              Navigator.of(dialogContext).pop(parsed);
+            },
+            child: const Text('Record Payment'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (amount == null) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'record_invoice_payment',
+        params: {'target_invoice_id': invoiceId, 'payment_amount': amount},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Payment recorded.')));
+
+      await _loadPage();
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  bool get _hasPendingCustomerPaymentClaim =>
+      _invoice?['customer_payment_claim_status']?.toString() == 'pending';
+
+  Future<void> _reviewCustomerPaymentClaim(bool confirm) async {
+    final invoiceId = _invoice?['id']?.toString();
+
+    if (invoiceId == null || !_hasPendingCustomerPaymentClaim || _isSaving) {
+      return;
+    }
+
+    final noteController = TextEditingController();
+    final claimedAmount = _asDouble(
+      _invoice?['customer_payment_claimed_amount'],
+    );
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(confirm ? 'Confirm Payment?' : 'Reject Payment Claim?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              confirm
+                  ? 'The customer says they paid ${_money(claimedAmount)}. Confirm only after checking that the payment has arrived.'
+                  : 'Reject this payment claim if the funds have not arrived or the details are incorrect.',
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: noteController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: confirm
+                    ? 'Confirmation note (optional)'
+                    : 'Reason / note (optional)',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: confirm ? const Color(0xFF2E7D32) : _darkRed,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirm ? 'Confirm Payment' : 'Reject Claim'),
+          ),
+        ],
+      ),
+    );
+
+    final note = noteController.text.trim();
+    noteController.dispose();
+
+    if (proceed != true) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await Supabase.instance.client.rpc(
+        confirm
+            ? 'confirm_customer_payment_claim'
+            : 'reject_customer_payment_claim',
+        params: {'target_invoice_id': invoiceId, 'review_note': note},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            confirm
+                ? 'Payment confirmed. The invoice balance has been updated.'
+                : 'Payment claim rejected.',
+          ),
+        ),
+      );
+
+      await _loadPage();
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
   Future<void> _saveNotes() async {
     final id = _invoice?['id']?.toString();
@@ -278,95 +595,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Invoice notes saved.')));
-    } on PostgrestException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
-  Future<void> _configureTax() async {
-    final invoiceId = _invoice?['id']?.toString();
-
-    if (invoiceId == null || !_canEditTax || _isSaving) {
-      return;
-    }
-
-    final category = _taxCategoryController.text.trim();
-    final ratePercent = double.tryParse(_taxRateController.text.trim());
-
-    if (category.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a tax category.')));
-      return;
-    }
-
-    if (ratePercent == null || ratePercent < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid tax rate percentage.')),
-      );
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Configure Invoice Tax?'),
-        content: Text(
-          'Apply tax category "$category" at '
-          '${ratePercent.toStringAsFixed(2)}% to this invoice?\n\n'
-          'Only continue if this is the correct tax treatment for this invoice.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            child: const Text('Apply Tax'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) {
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    try {
-      final updated = await Supabase.instance.client.rpc(
-        'configure_invoice_tax',
-        params: {
-          'target_invoice_id': invoiceId,
-          'target_tax_category': category,
-          'target_tax_rate': ratePercent / 100,
-        },
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _invoice = Map<String, dynamic>.from(updated as Map);
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Invoice tax configured.')));
-
-      await _loadPage();
     } on PostgrestException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -448,270 +676,21 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
   }
 
-  Future<Uint8List> _buildInvoicePdf() async {
-    final document = pw.Document();
+  Future<void> _refreshInvoicePartySnapshots() async {
+    final invoiceId = _invoice?['id']?.toString();
 
-    final invoiceNumber = _invoice?['invoice_number']?.toString() ?? 'Invoice';
+    if (invoiceId == null || invoiceId.isEmpty) {
+      return;
+    }
 
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
-        header: (context) => pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'CUTLINK',
-                  style: pw.TextStyle(
-                    fontSize: 22,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 3),
-                pw.Text(
-                  'TAX INVOICE',
-                  style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                pw.Text(
-                  invoiceNumber,
-                  style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 3),
-                pw.Text(
-                  'Status: ${_statusLabel(_invoice?['status']?.toString())}',
-                  style: const pw.TextStyle(fontSize: 9),
-                ),
-              ],
-            ),
-          ],
-        ),
-        footer: (context) => pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(
-              'Generated by CutLink',
-              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
-            ),
-            pw.Text(
-              'Page ${context.pageNumber} of ${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
-            ),
-          ],
-        ),
-        build: (context) => [
-          pw.SizedBox(height: 14),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey400),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _pdfLabelValue(
-                  'Customer',
-                  _invoice?['customer_name_snapshot']?.toString() ?? '',
-                ),
-                if ((_invoice?['customer_reference_snapshot']
-                            ?.toString()
-                            .trim() ??
-                        '')
-                    .isNotEmpty)
-                  _pdfLabelValue(
-                    'Customer reference',
-                    _invoice!['customer_reference_snapshot'].toString(),
-                  ),
-                _pdfLabelValue(
-                  'Invoice date',
-                  _invoice?['invoice_date']?.toString() ?? '',
-                ),
-                _pdfLabelValue(
-                  'Due date',
-                  _invoice?['due_date']?.toString() ?? '',
-                ),
-                _pdfLabelValue('Payment terms', _paymentText()),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 16),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
-            columnWidths: const {
-              0: pw.FlexColumnWidth(3.0),
-              1: pw.FlexColumnWidth(1.2),
-              2: pw.FlexColumnWidth(1.3),
-              3: pw.FlexColumnWidth(1.4),
-              4: pw.FlexColumnWidth(1.4),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                children: [
-                  _pdfCell('Product', bold: true),
-                  _pdfCell('Supplied', bold: true),
-                  _pdfCell('Actual kg', bold: true),
-                  _pdfCell('Rate', bold: true),
-                  _pdfCell('Amount', bold: true),
-                ],
-              ),
-              for (final item in _items)
-                pw.TableRow(
-                  children: [
-                    _pdfCell(
-                      [
-                        item['product_name_snapshot']?.toString() ?? 'Product',
-                        if ((item['sku_snapshot']?.toString().trim() ?? '')
-                            .isNotEmpty)
-                          'SKU: ${item['sku_snapshot']}',
-                      ].join('\n'),
-                    ),
-                    _pdfCell(
-                      '${_formatNumber(item['supplied_quantity'])} '
-                      '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
-                    ),
-                    _pdfCell(
-                      item['catch_weight_snapshot'] == true
-                          ? _formatNumber(item['actual_weight'])
-                          : '',
-                    ),
-                    _pdfCell(
-                      '${_money(item['locked_unit_price'])}'
-                      '${_basisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_basisLabel(item['price_basis']?.toString())}'}',
-                    ),
-                    _pdfCell(_money(item['line_amount'])),
-                  ],
-                ),
-            ],
-          ),
-          pw.SizedBox(height: 16),
-          pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.SizedBox(
-              width: 240,
-              child: pw.Column(
-                children: [
-                  _pdfTotalRow(
-                    'Products',
-                    _money(_invoice?['products_subtotal']),
-                  ),
-                  _pdfTotalRow(
-                    'Delivery',
-                    _asDouble(_invoice?['delivery_fee']) == 0
-                        ? 'Free'
-                        : _money(_invoice?['delivery_fee']),
-                  ),
-                  _pdfTotalRow(
-                    'Tax',
-                    _taxConfigured
-                        ? _money(_invoice?['tax_amount'])
-                        : 'Pending configuration',
-                  ),
-                  pw.Divider(),
-                  _pdfTotalRow(
-                    'Total',
-                    _invoice?['total_amount'] == null
-                        ? 'Pending'
-                        : _money(_invoice?['total_amount']),
-                    bold: true,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_notesController.text.trim().isNotEmpty) ...[
-            pw.SizedBox(height: 16),
-            pw.Text(
-              'Notes',
-              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 5),
-            pw.Text(
-              _notesController.text.trim(),
-              style: const pw.TextStyle(fontSize: 9),
-            ),
-          ],
-        ],
-      ),
+    final result = await Supabase.instance.client.rpc(
+      'snapshot_invoice_party_details',
+      params: {'target_invoice_id': invoiceId},
     );
 
-    return document.save();
-  }
-
-  pw.Widget _pdfLabelValue(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 5),
-      child: pw.Row(
-        children: [
-          pw.SizedBox(
-            width: 105,
-            child: pw.Text(
-              label,
-              style: pw.TextStyle(
-                fontSize: 8.5,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.grey700,
-              ),
-            ),
-          ),
-          pw.Expanded(
-            child: pw.Text(value, style: const pw.TextStyle(fontSize: 8.5)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _pdfCell(String value, {bool bold = false}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 7),
-      child: pw.Text(
-        value,
-        style: pw.TextStyle(
-          fontSize: 8.2,
-          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-        ),
-      ),
-    );
-  }
-
-  pw.Widget _pdfTotalRow(String label, String value, {bool bold = false}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 3),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            label,
-            style: pw.TextStyle(
-              fontSize: 9,
-              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            ),
-          ),
-          pw.Text(
-            value,
-            style: pw.TextStyle(
-              fontSize: 9,
-              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
+    if (result is Map) {
+      _invoice = Map<String, dynamic>.from(result);
+    }
   }
 
   Future<void> _printInvoice() async {
@@ -720,15 +699,27 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
 
     try {
+      setState(() => _isSaving = true);
+      await _refreshInvoicePartySnapshots();
+
+      if (mounted) {
+        setState(() {});
+      }
+
       await Printing.layoutPdf(
         name: '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
-        onLayout: (_) => _buildInvoicePdf(),
+        onLayout: (_) =>
+            CutLinkInvoicePdf.build(invoice: _invoice!, items: _items),
       );
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not create invoice PDF: $error')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -814,19 +805,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   avatar: const Icon(Icons.receipt_long_outlined, size: 17),
                   label: Text(_statusLabel(status)),
                 ),
-                Chip(
-                  avatar: Icon(
-                    _taxConfigured
-                        ? Icons.verified_outlined
-                        : Icons.warning_amber_outlined,
-                    size: 17,
-                  ),
-                  label: Text(
-                    _taxConfigured
-                        ? 'Tax configured'
-                        : 'Tax configuration required',
-                  ),
+                const Chip(
+                  avatar: Icon(Icons.receipt_outlined, size: 17),
+                  label: Text('GST inclusive'),
                 ),
+                if (_sentToButcher)
+                  const Chip(
+                    avatar: Icon(Icons.mark_email_read_outlined, size: 17),
+                    label: Text('Sent to customer'),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -897,27 +884,27 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     child: Column(
                       children: [
                         _TotalRow(
-                          label: 'Products',
+                          label: 'Products inc GST',
                           value: _money(_invoice?['products_subtotal']),
                         ),
                         _TotalRow(
-                          label: 'Delivery',
+                          label: 'Delivery inc GST',
                           value: _asDouble(_invoice?['delivery_fee']) == 0
                               ? 'Free'
                               : _money(_invoice?['delivery_fee']),
                         ),
                         _TotalRow(
-                          label: 'Tax',
-                          value: _taxConfigured
-                              ? _money(_invoice?['tax_amount'])
-                              : 'Pending',
+                          label: 'GST included',
+                          value: _money(_gstIncluded),
+                        ),
+                        _TotalRow(
+                          label: 'Total ex GST',
+                          value: _money(_exGstTotal),
                         ),
                         const Divider(),
                         _TotalRow(
-                          label: 'Total',
-                          value: _invoice?['total_amount'] == null
-                              ? 'Pending tax'
-                              : _money(_invoice?['total_amount']),
+                          label: 'Total inc GST',
+                          value: _money(_incGstTotal),
                           bold: true,
                         ),
                       ],
@@ -926,6 +913,87 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ),
               ),
             ),
+            if (_hasPendingCustomerPaymentClaim) ...[
+              const SizedBox(height: 20),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: Color(0xFFE0C26C)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.notification_important_outlined,
+                            color: Color(0xFF9A6700),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Customer Marked This Invoice as Paid',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Claimed amount: ${_money(_asDouble(_invoice?['customer_payment_claimed_amount']))}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if ((_invoice?['customer_payment_claimed_note']
+                                  ?.toString()
+                                  .trim() ??
+                              '')
+                          .isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Customer note: ${_invoice?['customer_payment_claimed_note']}',
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Check your bank/account before confirming. Confirming updates the paid balance on both the supplier and butcher sides.',
+                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: _isSaving
+                                ? null
+                                : () => _reviewCustomerPaymentClaim(true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('Confirm Payment'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _isSaving
+                                ? null
+                                : () => _reviewCustomerPaymentClaim(false),
+                            icon: const Icon(Icons.close),
+                            label: const Text('Reject Claim'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Card(
               elevation: 0,
@@ -939,75 +1007,90 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Tax Configuration',
+                      'Customer Account',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'CutLink does not guess the tax rate. Enter the correct tax category and percentage before issuing the invoice.',
-                      style: TextStyle(color: Color(0xFF666666), height: 1.4),
-                    ),
                     const SizedBox(height: 14),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 650;
-
-                        final category = TextField(
-                          controller: _taxCategoryController,
-                          enabled: _canEditTax && !_isSaving,
-                          decoration: const InputDecoration(
-                            labelText: 'Tax category',
-                            hintText: 'Example: GST taxable',
-                            border: OutlineInputBorder(),
-                          ),
-                        );
-
-                        final rate = TextField(
-                          controller: _taxRateController,
-                          enabled: _canEditTax && !_isSaving,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Tax rate',
-                            suffixText: '%',
-                            border: OutlineInputBorder(),
-                          ),
-                        );
-
-                        if (narrow) {
-                          return Column(
-                            children: [
-                              category,
-                              const SizedBox(height: 12),
-                              rate,
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          children: [
-                            Expanded(child: category),
-                            const SizedBox(width: 12),
-                            SizedBox(width: 220, child: rate),
-                          ],
-                        );
-                      },
+                    Wrap(
+                      spacing: 28,
+                      runSpacing: 14,
+                      children: [
+                        _InfoValue(
+                          label: 'Invoice total',
+                          value: _money(_incGstTotal),
+                        ),
+                        _InfoValue(
+                          label: 'Amount paid',
+                          value: _money(_amountPaid),
+                        ),
+                        _InfoValue(
+                          label: 'Outstanding',
+                          value: _money(_amountOutstanding),
+                        ),
+                        _InfoValue(
+                          label: 'Customer access',
+                          value: !_hasButcherAccount
+                              ? 'External customer'
+                              : _sentToButcher
+                              ? 'Invoice sent'
+                              : 'Not sent yet',
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
-                    FilledButton.icon(
-                      onPressed: _canEditTax && !_isSaving
-                          ? _configureTax
-                          : null,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                      icon: const Icon(Icons.calculate_outlined),
-                      label: Text(
-                        _taxConfigured ? 'Update Tax' : 'Configure Tax',
+                    const SizedBox(height: 18),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: _canSendToButcher && !_isSaving
+                              ? _sendInvoiceToButcher
+                              : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _darkRed,
+                          ),
+                          icon: Icon(
+                            _sentToButcher
+                                ? Icons.mark_email_read_outlined
+                                : Icons.send_outlined,
+                          ),
+                          label: Text(
+                            !_hasButcherAccount
+                                ? 'No CutLink Account'
+                                : _sentToButcher
+                                ? 'Sent to Customer'
+                                : 'Send Invoice to Customer',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _canRecordPayment && !_isSaving
+                              ? _recordPayment
+                              : null,
+                          icon: const Icon(Icons.payments_outlined),
+                          label: Text(
+                            _amountOutstanding <= 0
+                                ? 'Paid in Full'
+                                : 'Record Payment',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!_hasButcherAccount) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'This invoice belongs to an external customer, so it cannot be sent into a CutLink butcher account.',
+                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
                       ),
-                    ),
+                    ] else if (!_sentToButcher && status == 'ready') ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Issue the invoice first, then send it to the customer’s Accounts section.',
+                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1072,7 +1155,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                       ? 'Invoice Issued'
                       : _canIssue
                       ? 'Issue Invoice'
-                      : 'Configure Tax Before Issuing',
+                      : 'Invoice Not Ready',
                 ),
               ),
             ),

@@ -19,12 +19,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
   late final TabController _tabController;
 
   final TextEditingController _stockSearchController = TextEditingController();
+  final TextEditingController _quoteHistorySearchController =
+      TextEditingController();
 
   bool _isLoading = true;
   String? _errorMessage;
 
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _quotes = [];
+  List<Map<String, dynamic>> _marketplaceOrders = [];
   List<Map<String, dynamic>> _workOrders = [];
   List<Map<String, dynamic>> _invoices = [];
 
@@ -32,8 +35,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _stockSearchController.addListener(_refresh);
+    _quoteHistorySearchController.addListener(_refresh);
     _loadSalesDesk();
   }
 
@@ -42,6 +46,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     _tabController.dispose();
     _stockSearchController.removeListener(_refresh);
     _stockSearchController.dispose();
+    _quoteHistorySearchController.removeListener(_refresh);
+    _quoteHistorySearchController.dispose();
     super.dispose();
   }
 
@@ -169,6 +175,39 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
             .eq('status', 'draft')
             .order('created_at', ascending: false),
         client
+            .from('orders')
+            .select('''
+              id,
+              order_number,
+              status,
+              order_source,
+              customer_reference,
+              delivery_fee,
+              fulfilment_method,
+              requested_fulfilment_date,
+              created_at,
+              submitted_at,
+              butcher_business_id,
+              businesses!orders_butcher_business_id_fkey(
+                id,
+                trading_name,
+                legal_name
+              ),
+              order_items(
+                id,
+                product_name_snapshot,
+                quantity,
+                quantity_unit,
+                unit_price,
+                price_basis,
+                catch_weight_snapshot
+              )
+            ''')
+            .eq('supplier_business_id', supplierBusinessId)
+            .eq('status', 'submitted')
+            .eq('order_source', 'marketplace')
+            .order('submitted_at', ascending: false),
+        client
             .from('warehouse_work_orders')
             .select('''
               id,
@@ -191,6 +230,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
               )
             ''')
             .eq('supplier_business_id', supplierBusinessId)
+            .neq('status', 'completed')
             .order('created_at', ascending: false),
         client
             .from('invoices')
@@ -219,8 +259,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
       setState(() {
         _products = _maps(results[0]);
         _quotes = _maps(results[1]);
-        _workOrders = _maps(results[2]);
-        _invoices = _maps(results[3]);
+        _marketplaceOrders = _maps(results[2]);
+        _workOrders = _maps(results[3]);
+        _invoices = _maps(results[4]);
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -357,6 +398,100 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     };
   }
 
+  DateTime _startOfToday() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  DateTime? _quoteActivityDate(Map<String, dynamic> quote) {
+    final raw = quote['quote_last_saved_at'] ?? quote['created_at'];
+    if (raw == null) {
+      return null;
+    }
+
+    return DateTime.tryParse(raw.toString())?.toLocal();
+  }
+
+  List<Map<String, dynamic>> get _todaysQuotes {
+    final start = _startOfToday();
+    final tomorrow = start.add(const Duration(days: 1));
+
+    return _quotes.where((quote) {
+      final activity = _quoteActivityDate(quote);
+      return activity != null &&
+          !activity.isBefore(start) &&
+          activity.isBefore(tomorrow);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _quoteHistory {
+    final start = _startOfToday();
+    final query = _quoteHistorySearchController.text.trim().toLowerCase();
+
+    return _quotes.where((quote) {
+      final activity = _quoteActivityDate(quote);
+
+      if (activity == null || !activity.isBefore(start)) {
+        return false;
+      }
+
+      if (query.isEmpty) {
+        return true;
+      }
+
+      final account = _nestedMap(quote['supplier_customer_accounts']);
+      final items = _nestedList(quote['order_items']);
+
+      final searchText = <String>[
+        quote['order_number']?.toString() ?? '',
+        _quoteDisplayNumber(quote),
+        account?['customer_name']?.toString() ?? '',
+        account?['legal_name']?.toString() ?? '',
+        account?['phone']?.toString() ?? '',
+        account?['email']?.toString() ?? '',
+        quote['customer_reference']?.toString() ?? '',
+        quote['created_at']?.toString() ?? '',
+        quote['quote_last_saved_at']?.toString() ?? '',
+        for (final item in items)
+          item['product_name_snapshot']?.toString() ?? '',
+      ].join(' ').toLowerCase();
+
+      return searchText.contains(query);
+    }).toList();
+  }
+
+  String _marketplaceCustomerName(Map<String, dynamic> order) {
+    final business = _nestedMap(order['businesses']);
+
+    final tradingName = business?['trading_name']?.toString().trim();
+    final legalName = business?['legal_name']?.toString().trim();
+
+    if (tradingName != null && tradingName.isNotEmpty) {
+      return tradingName;
+    }
+
+    if (legalName != null && legalName.isNotEmpty) {
+      return legalName;
+    }
+
+    return 'Butcher';
+  }
+
+  String _displayDate(dynamic value) {
+    final parsed = value == null
+        ? null
+        : DateTime.tryParse(value.toString())?.toLocal();
+
+    if (parsed == null) {
+      return '';
+    }
+
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+
+    return '$day/$month/${parsed.year}';
+  }
+
   String _quoteDisplayNumber(Map<String, dynamic> quote) {
     final number = quote['order_number']?.toString() ?? 'Quote';
     final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
@@ -413,6 +548,96 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
 
     if (mounted) {
       await _loadSalesDesk();
+    }
+  }
+
+  Future<void> _acceptMarketplaceOrderAndCreateWorkOrder(
+    Map<String, dynamic> order,
+  ) async {
+    final orderId = order['id']?.toString();
+
+    if (orderId == null || orderId.isEmpty) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Accept & Create Work Order?'),
+        content: Text(
+          'Accept ${order['order_number'] ?? 'this marketplace order'} from '
+          '${_marketplaceCustomerName(order)} and send it to the warehouse?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Accept & Create Work Order'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+
+      final updated = await Supabase.instance.client
+          .from('orders')
+          .update({'status': 'accepted', 'accepted_at': now})
+          .eq('id', orderId)
+          .eq('status', 'submitted')
+          .select('id')
+          .maybeSingle();
+
+      if (updated == null) {
+        throw Exception(
+          'The marketplace order was not accepted. Refresh Sales and try again.',
+        );
+      }
+
+      await Supabase.instance.client.rpc(
+        'create_or_get_warehouse_work_order',
+        params: {'target_order_id': orderId},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SupplierWorkOrderPage(orderId: orderId),
+        ),
+      );
+
+      if (mounted) {
+        await _loadSalesDesk();
+        _tabController.animateTo(3);
+      }
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -473,7 +698,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
 
       if (mounted) {
         await _loadSalesDesk();
-        _tabController.animateTo(2);
+        _tabController.animateTo(3);
       }
     } on PostgrestException catch (error) {
       if (!mounted) {
@@ -689,13 +914,13 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     );
   }
 
-  Widget _quotesTab() {
-    if (_quotes.isEmpty) {
+  Widget _marketplaceOrdersTab() {
+    if (_marketplaceOrders.isEmpty) {
       return _emptyTab(
-        icon: Icons.description_outlined,
-        title: 'No saved quotes',
+        icon: Icons.storefront_outlined,
+        title: 'No new marketplace orders',
         message:
-            'Pricing enquiries saved from the Sales Desk will appear here.',
+            'New butcher marketplace orders waiting for supplier acceptance will appear here.',
       );
     }
 
@@ -704,9 +929,108 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
-        itemCount: _quotes.length,
+        itemCount: _marketplaceOrders.length,
         itemBuilder: (context, index) {
-          final quote = _quotes[index];
+          final order = _marketplaceOrders[index];
+          final items = _nestedList(order['order_items']);
+
+          return Card(
+            elevation: 0,
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: Color(0xFFE0E0E0)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order['order_number']?.toString() ??
+                              'Marketplace Order',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _marketplaceCustomerName(order),
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          '${items.length} line${items.length == 1 ? '' : 's'}'
+                          '${order['submitted_at'] == null ? '' : ' • Received ${_displayDate(order['submitted_at'])}'}',
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        for (final item in items.take(4))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '${item['product_name_snapshot'] ?? 'Product'} • '
+                              '${item['quantity'] ?? ''} '
+                              '${item['quantity_unit'] ?? ''}',
+                            ),
+                          ),
+                        if (items.length > 4)
+                          Text(
+                            '+ ${items.length - 4} more line${items.length - 4 == 1 ? '' : 's'}',
+                            style: const TextStyle(color: Color(0xFF666666)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    onPressed: () =>
+                        _acceptMarketplaceOrderAndCreateWorkOrder(order),
+                    icon: const Icon(Icons.assignment_turned_in_outlined),
+                    label: const Text('Accept & Create Work Order'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _quotesTab() {
+    final quotes = _todaysQuotes;
+
+    if (quotes.isEmpty) {
+      return _emptyTab(
+        icon: Icons.description_outlined,
+        title: 'No quotes today',
+        message:
+            'Quotes created or revised today will appear here. Older quotes move automatically to Quote History.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadSalesDesk,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        itemCount: quotes.length,
+        itemBuilder: (context, index) {
+          final quote = quotes[index];
           final items = _nestedList(quote['order_items']);
 
           return Card(
@@ -791,6 +1115,128 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _quoteHistoryTab() {
+    final quotes = _quoteHistory;
+
+    return RefreshIndicator(
+      onRefresh: _loadSalesDesk,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const Text(
+            'Quote History',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'Older quotes are kept here and remain searchable. Opening and saving an old quote creates a new revision and brings it back into Today’s Quotes.',
+            style: TextStyle(color: Color(0xFF666666), height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _quoteHistorySearchController,
+            decoration: InputDecoration(
+              hintText: 'Search customer, quote number, phone, date or product',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _quoteHistorySearchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: _quoteHistorySearchController.clear,
+                      icon: const Icon(Icons.close),
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (quotes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 50),
+              child: Center(
+                child: Text(
+                  _quoteHistorySearchController.text.trim().isEmpty
+                      ? 'No older quotes yet.'
+                      : 'No old quotes match your search.',
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...quotes.map((quote) {
+              final items = _nestedList(quote['order_items']);
+              final activity = _quoteActivityDate(quote);
+
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _editQuote(quote),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _quoteDisplayNumber(quote),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                _customerName(quote),
+                                style: const TextStyle(
+                                  color: _darkRed,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${items.length} line${items.length == 1 ? '' : 's'}'
+                                '${activity == null ? '' : ' • Last activity ${_displayDate(activity.toIso8601String())}'}',
+                                style: const TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        OutlinedButton.icon(
+                          onPressed: () => _editQuote(quote),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('Open Quote'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
       ),
     );
   }
@@ -998,7 +1444,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
 
     return TabBarView(
       controller: _tabController,
-      children: [_newSaleTab(), _quotesTab(), _workOrdersTab(), _invoicesTab()],
+      children: [
+        _newSaleTab(),
+        _marketplaceOrdersTab(),
+        _quotesTab(),
+        _workOrdersTab(),
+        _invoicesTab(),
+        _quoteHistoryTab(),
+      ],
     );
   }
 
@@ -1025,14 +1478,20 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
           controller: _tabController,
           labelColor: _darkRed,
           indicatorColor: _darkRed,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             const Tab(
               icon: Icon(Icons.point_of_sale_outlined),
               text: 'New Sale',
             ),
             Tab(
+              icon: const Icon(Icons.storefront_outlined),
+              text: 'Marketplace Orders (${_marketplaceOrders.length})',
+            ),
+            Tab(
               icon: const Icon(Icons.description_outlined),
-              text: 'Quotes (${_quotes.length})',
+              text: 'Today’s Quotes (${_todaysQuotes.length})',
             ),
             Tab(
               icon: const Icon(Icons.assignment_outlined),
@@ -1041,6 +1500,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
             Tab(
               icon: const Icon(Icons.request_quote_outlined),
               text: 'Invoices (${_invoices.length})',
+            ),
+            Tab(
+              icon: const Icon(Icons.history),
+              text: 'Quote History (${_quoteHistory.length})',
             ),
           ],
         ),

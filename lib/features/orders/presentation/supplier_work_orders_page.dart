@@ -161,6 +161,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
             )
           ''')
           .eq('supplier_business_id', supplierBusinessId)
+          .neq('status', 'completed')
           .order('created_at', ascending: false);
 
       if (!mounted) {
