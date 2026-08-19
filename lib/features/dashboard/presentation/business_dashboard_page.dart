@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../admin/presentation/pending_businesses_page.dart';
 import '../../marketplace/presentation/marketplace_products_page.dart';
+import '../../marketplace/presentation/butcher_vip_suppliers_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
@@ -332,8 +333,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    const SupplierSalesPage(),
+                                builder: (context) => const SupplierSalesPage(),
                               ),
                             );
 
@@ -501,6 +501,27 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                         _DashboardCard(
                           width: cardWidth,
+                          icon: Icons.workspace_premium_outlined,
+                          title: 'VIP Supplier Access',
+                          description:
+                              'Apply to individual suppliers for VIP pricing and track each application separately.',
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ButcherVipSuppliersPage(),
+                              ),
+                            );
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            await _loadDashboard();
+                          },
+                        ),
+                        _DashboardCard(
+                          width: cardWidth,
                           icon: Icons.account_balance_wallet_outlined,
                           title: 'Accounts',
                           description:
@@ -640,10 +661,7 @@ class _DashboardCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: const Color(0xFFB3261E),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: Text(
                             badgeCount > 99 ? '99+' : badgeCount.toString(),

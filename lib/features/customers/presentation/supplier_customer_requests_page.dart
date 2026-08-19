@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supplier_vip_applications_page.dart';
+
 class SupplierCustomerRequestsPage extends StatefulWidget {
   const SupplierCustomerRequestsPage({super.key});
 
@@ -19,6 +21,7 @@ class _SupplierCustomerRequestsPageState
 
   List<Map<String, dynamic>> _relationships = [];
   List<Map<String, dynamic>> _customerAccounts = [];
+  int _pendingVipApplicationCount = 0;
 
   @override
   void initState() {
@@ -116,6 +119,14 @@ class _SupplierCustomerRequestsPageState
           .eq('supplier_business_id', supplierBusinessId)
           .order('customer_name');
 
+      final pendingVipApplications = await client
+          .from('vip_trade_applications')
+          .select('id')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'pending');
+
+      final pendingVipCount = pendingVipApplications.length;
+
       if (!mounted) {
         return;
       }
@@ -124,6 +135,7 @@ class _SupplierCustomerRequestsPageState
         _supplierBusinessId = supplierBusinessId;
         _relationships = List<Map<String, dynamic>>.from(relationshipResponse);
         _customerAccounts = List<Map<String, dynamic>>.from(accountResponse);
+        _pendingVipApplicationCount = pendingVipCount;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -916,6 +928,108 @@ class _SupplierCustomerRequestsPageState
         .toList();
   }
 
+  Future<void> _openVipApplications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SupplierVipApplicationsPage(),
+      ),
+    );
+
+    if (!mounted) return;
+    await _loadPage();
+  }
+
+  Widget _vipApplicationsPanel() {
+    final hasPending = _pendingVipApplicationCount > 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: hasPending ? const Color(0xFFFFF8EB) : const Color(0xFFF8F8F6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: hasPending ? const Color(0xFFE6C98A) : const Color(0xFFE0E0DD),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _darkRed.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.workspace_premium_outlined,
+              color: _darkRed,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Flexible(
+                      child: Text(
+                        'VIP Applications',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    if (hasPending) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9A6500),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$_pendingVipApplicationCount pending',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  hasPending
+                      ? 'You have VIP or credit applications waiting for review.'
+                      : 'Review VIP pricing and credit applications from CutLink butchers.',
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.icon(
+            onPressed: _openVipApplications,
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            icon: const Icon(Icons.open_in_new),
+            label: Text(hasPending ? 'Review Now' : 'Open'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -932,7 +1046,7 @@ class _SupplierCustomerRequestsPageState
             onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
             style: FilledButton.styleFrom(backgroundColor: _darkRed),
             icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Add Customer'),
+            label: const Text('Add External Customer'),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -979,6 +1093,8 @@ class _SupplierCustomerRequestsPageState
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            _vipApplicationsPanel(),
+            const SizedBox(height: 20),
             const Text(
               'CutLink Customers',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
