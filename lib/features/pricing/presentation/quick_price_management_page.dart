@@ -11,16 +11,18 @@ class QuickPriceManagementPage extends StatefulWidget {
 }
 
 class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
+  static const _darkRed = Color(0xFF741C1C);
+
   final TextEditingController _searchController = TextEditingController();
 
   bool _isLoading = true;
-  bool _isApplyingBulkChange = false;
   String? _errorMessage;
-  String? _selectedPriceListId;
+  String? _supplierBusinessId;
 
-  List<Map<String, dynamic>> _priceLists = [];
   List<Map<String, dynamic>> _products = [];
-  Map<String, Map<String, dynamic>> _pricesByProductId = {};
+  List<Map<String, dynamic>> _priceLists = [];
+  List<Map<String, dynamic>> _approvedCustomers = [];
+  List<Map<String, dynamic>> _productPrices = [];
 
   @override
   void initState() {
@@ -41,32 +43,52 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   }
 
   Future<void> _loadPage() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
-      if (user == null) throw Exception('No signed-in user was found.');
+      if (user == null) {
+        throw Exception('No signed-in user was found.');
+      }
 
-      final membership = await client
+      final memberships = await client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
+          .eq('status', 'active');
 
-      final businessId = membership['business_id'] as String;
+      final businessIds = <String>[
+        for (final row in memberships)
+          if (row['business_id'] != null) row['business_id'].toString(),
+      ];
 
-      final priceListResponse = await client
-          .from('price_lists')
-          .select('id, name, visibility, active')
-          .eq('supplier_business_id', businessId)
-          .eq('active', true)
-          .order('name');
+      if (businessIds.isEmpty) {
+        throw Exception('No active business membership was found.');
+      }
+
+      final businesses = await client
+          .from('businesses')
+          .select('id, business_type, active')
+          .inFilter('id', businessIds)
+          .eq('active', true);
+
+      String? supplierBusinessId;
+      for (final row in businesses) {
+        if (row['business_type']?.toString() == 'supplier') {
+          supplierBusinessId = row['id']?.toString();
+          break;
+        }
+      }
+
+      if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
+        throw Exception('No active supplier business membership was found.');
+      }
 
       final productResponse = await client
           .from('products')
@@ -76,43 +98,90 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
             product_name,
             active,
             order_unit,
+            quantity_unit,
             price_basis,
             weight_type,
-            catch_weight
+            catch_weight,
+            meat_specification_id,
+            meat_grade_id
           ''')
-          .eq('supplier_business_id', businessId)
+          .eq('supplier_business_id', supplierBusinessId)
           .eq('active', true)
           .order('product_name');
 
-      final priceLists = List<Map<String, dynamic>>.from(priceListResponse);
+      final priceListResponse = await client
+          .from('price_lists')
+          .select('''
+            id,
+            supplier_business_id,
+            name,
+            visibility,
+            active,
+            price_list_customers(
+              butcher_business_id
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('active', true)
+          .order('name');
+
+      final customerResponse = await client
+          .from('supplier_customer_relationships')
+          .select('''
+            butcher_business_id,
+            businesses!supplier_customer_relationships_butcher_business_id_fkey(
+              legal_name,
+              trading_name
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'approved')
+          .order('created_at');
+
       final products = List<Map<String, dynamic>>.from(productResponse);
-      final selected = _selectedPriceListId ??
-          (priceLists.isEmpty ? null : priceLists.first['id']?.toString());
+      final productIds = products
+          .map((row) => row['id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
 
-      if (!mounted) {
+      List<Map<String, dynamic>> productPrices = [];
+      if (productIds.isNotEmpty) {
+        final priceResponse = await client
+            .from('product_prices')
+            .select('''
+              id,
+              product_id,
+              price_list_id,
+              amount,
+              price_basis,
+              minimum_quantity,
+              minimum_quantity_unit,
+              active
+            ''')
+            .inFilter('product_id', productIds);
 
-        return;
-
+        productPrices = List<Map<String, dynamic>>.from(priceResponse);
       }
+
+      if (!mounted) return;
+
       setState(() {
-        _priceLists = priceLists;
+        _supplierBusinessId = supplierBusinessId;
         _products = products;
-        _selectedPriceListId = selected;
+        _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
+        _approvedCustomers = List<Map<String, dynamic>>.from(customerResponse);
+        _productPrices = productPrices;
+        _isLoading = false;
       });
-
-      await _loadPrices();
     } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
@@ -120,49 +189,17 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     }
   }
 
-  Future<void> _loadPrices() async {
-    final priceListId = _selectedPriceListId;
-    if (priceListId == null) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _pricesByProductId = {};
-        _isLoading = false;
+  List<Map<String, dynamic>> get _filteredProducts {
+    final search = _searchController.text.trim().toLowerCase();
+    if (search.isEmpty) return _products;
+
+    return _products.where((product) {
+      final values = [product['product_name'], product['sku']];
+
+      return values.any((value) {
+        return value != null && value.toString().toLowerCase().contains(search);
       });
-      return;
-    }
-
-    final response = await Supabase.instance.client
-        .from('product_prices')
-        .select('''
-          id,
-          product_id,
-          price_list_id,
-          amount,
-          price_basis,
-          minimum_quantity,
-          minimum_quantity_unit,
-          active
-        ''')
-        .eq('price_list_id', priceListId);
-
-    final prices = <String, Map<String, dynamic>>{};
-    for (final raw in response) {
-      final row = Map<String, dynamic>.from(raw);
-      final productId = row['product_id']?.toString();
-      if (productId != null && productId.isNotEmpty) prices[productId] = row;
-    }
-
-    if (!mounted) {
-
-      return;
-
-    }
-    setState(() {
-      _pricesByProductId = prices;
-      _isLoading = false;
-    });
+    }).toList();
   }
 
   bool _isCatchWeight(Map<String, dynamic> product) {
@@ -170,161 +207,363 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
         product['catch_weight'] == true;
   }
 
-  String _effectivePriceBasis(Map<String, dynamic> product, Map<String, dynamic>? price) {
-    if (_isCatchWeight(product)) return 'kilogram';
-    final fromPrice = price?['price_basis']?.toString();
-    if (fromPrice == 'kilogram' || fromPrice == 'carton' || fromPrice == 'unit') {
-      return fromPrice!;
+  Map<String, dynamic>? _firstPriceListForVisibility(String visibility) {
+    for (final priceList in _priceLists) {
+      if (priceList['visibility']?.toString() == visibility &&
+          priceList['active'] == true) {
+        return priceList;
+      }
     }
-    final fromProduct = product['price_basis']?.toString();
-    if (fromProduct == 'kilogram' || fromProduct == 'carton' || fromProduct == 'unit') {
-      return fromProduct!;
-    }
-    return 'unit';
+    return null;
   }
 
-  String _effectiveMinimumUnit(Map<String, dynamic> product, Map<String, dynamic>? price) {
-    if (_isCatchWeight(product)) return 'carton';
-    final configured = price?['minimum_quantity_unit']?.toString();
-    if (configured == 'kilogram' || configured == 'carton' || configured == 'unit') {
-      return configured!;
-    }
-    final orderUnit = product['order_unit']?.toString();
-    if (orderUnit == 'kilogram' || orderUnit == 'carton' || orderUnit == 'unit') {
-      return orderUnit!;
-    }
-    return 'unit';
-  }
-
-  String _basisLabel(String value) => switch (value) {
-        'kilogram' => 'kg',
-        'carton' => 'carton',
-        'unit' => 'unit',
-        _ => value,
-      };
-
-  String _minimumUnitLabel(String value) => switch (value) {
-        'kilogram' => 'kg',
-        'carton' => 'cartons',
-        'unit' => 'units',
-        _ => value,
-      };
-
-  String _visibilityLabel(String? value) => switch (value) {
-        'public' => 'Standard',
-        'approved_customers' => 'Trade',
-        'private' => 'Customer-Specific',
-        _ => 'Price List',
-      };
-
-  List<Map<String, dynamic>> get _filteredProducts {
-    final search = _searchController.text.trim().toLowerCase();
-    if (search.isEmpty) return _products;
-    return _products.where((product) {
-      return [product['product_name'], product['sku']].any((value) =>
-          value != null && value.toString().toLowerCase().contains(search));
+  List<Map<String, dynamic>> _priceListsForVisibility(String visibility) {
+    return _priceLists.where((priceList) {
+      return priceList['visibility']?.toString() == visibility &&
+          priceList['active'] == true;
     }).toList();
   }
 
-  Future<void> _editPrice(Map<String, dynamic> product) async {
-    final productId = product['id']?.toString();
-    if (productId == null || productId.isEmpty) {
-      return;
+  Map<String, dynamic>? _priceForProductAndList(
+    String productId,
+    String priceListId,
+  ) {
+    for (final price in _productPrices) {
+      if (price['product_id']?.toString() == productId &&
+          price['price_list_id']?.toString() == priceListId &&
+          price['active'] == true) {
+        return price;
+      }
     }
-    final existing = _pricesByProductId[productId];
-    final isCatchWeight = _isCatchWeight(product);
-    final priceBasis = _effectivePriceBasis(product, existing);
-    final minimumUnit = _effectiveMinimumUnit(product, existing);
+    return null;
+  }
 
-    final amountController = TextEditingController(text: existing?['amount']?.toString() ?? '');
-    final minimumController = TextEditingController(text: existing?['minimum_quantity']?.toString() ?? '');
+  List<String> _customerIdsForPriceList(Map<String, dynamic> priceList) {
+    final raw = priceList['price_list_customers'];
+    if (raw is! List) return [];
+
+    return raw
+        .whereType<Map>()
+        .map((item) => item['butcher_business_id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList();
+  }
+
+  Map<String, dynamic>? _privatePriceListForCustomer(
+    String customerBusinessId,
+  ) {
+    for (final priceList in _priceListsForVisibility('private')) {
+      if (_customerIdsForPriceList(priceList).contains(customerBusinessId)) {
+        return priceList;
+      }
+    }
+    return null;
+  }
+
+  String _customerName(Map<String, dynamic> customer) {
+    final rawBusiness = customer['businesses'];
+    if (rawBusiness is Map) {
+      final business = Map<String, dynamic>.from(rawBusiness);
+      final trading = business['trading_name']?.toString().trim();
+      final legal = business['legal_name']?.toString().trim();
+
+      if (trading != null && trading.isNotEmpty) return trading;
+      if (legal != null && legal.isNotEmpty) return legal;
+    }
+
+    return 'Customer';
+  }
+
+  String _basisLabel(String? value) => switch (value) {
+    'kilogram' => 'kg',
+    'carton' => 'carton',
+    'unit' => 'unit',
+    _ => 'kg',
+  };
+
+  String _money(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+
+    if (number == null) return 'Not set';
+
+    final parts = number.toStringAsFixed(2).split('.');
+    final digits = parts.first;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[i]);
+    }
+
+    return '\$${buffer.toString()}.${parts.last}';
+  }
+
+  Future<Map<String, dynamic>> _ensurePriceList({
+    required String visibility,
+    required String defaultName,
+  }) async {
+    final existing = _firstPriceListForVisibility(visibility);
+    if (existing != null) return existing;
+
+    final supplierId = _supplierBusinessId;
+    if (supplierId == null) {
+      throw Exception('Supplier business could not be identified.');
+    }
+
+    final inserted = await Supabase.instance.client
+        .from('price_lists')
+        .insert({
+          'supplier_business_id': supplierId,
+          'name': defaultName,
+          'visibility': visibility,
+          'active': true,
+        })
+        .select('''
+          id,
+          supplier_business_id,
+          name,
+          visibility,
+          active
+        ''')
+        .single();
+
+    return Map<String, dynamic>.from(inserted);
+  }
+
+  Future<void> _editMainPrice({
+    required Map<String, dynamic> product,
+    required String visibility,
+  }) async {
+    final productId = product['id']?.toString();
+    if (productId == null || productId.isEmpty) return;
+
+    try {
+      final list = await _ensurePriceList(
+        visibility: visibility,
+        defaultName: visibility == 'public'
+            ? 'Standard Pricing'
+            : 'Trade Pricing',
+      );
+
+      final priceListId = list['id']?.toString();
+      if (priceListId == null || priceListId.isEmpty) return;
+
+      final existing = _priceForProductAndList(productId, priceListId);
+      await _openPriceDialog(
+        product: product,
+        priceList: list,
+        existingPrice: existing,
+        title: visibility == 'public' ? 'Standard Price' : 'Trade Price',
+      );
+    } catch (error) {
+      _message(error.toString());
+    }
+  }
+
+  Future<void> _openPriceDialog({
+    required Map<String, dynamic> product,
+    required Map<String, dynamic> priceList,
+    required Map<String, dynamic>? existingPrice,
+    required String title,
+  }) async {
+    final productId = product['id']?.toString();
+    final priceListId = priceList['id']?.toString();
+    if (productId == null || priceListId == null) return;
+
+    final catchWeight = _isCatchWeight(product);
+    final initialBasis = catchWeight
+        ? 'kilogram'
+        : existingPrice?['price_basis']?.toString() ??
+              product['price_basis']?.toString() ??
+              'unit';
+
+    final amountController = TextEditingController(
+      text: existingPrice?['amount']?.toString() ?? '',
+    );
+    final minimumController = TextEditingController(
+      text: existingPrice?['minimum_quantity']?.toString() ?? '',
+    );
+
+    var basis = ['kilogram', 'carton', 'unit'].contains(initialBasis)
+        ? initialBasis
+        : 'unit';
 
     final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        bool isSaving = false;
+        bool saving = false;
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> save() async {
               final amount = double.tryParse(amountController.text.trim());
+
               if (amount == null || amount < 0) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid price.')),
+                );
                 return;
               }
+
               final minimumText = minimumController.text.trim();
-              double? minimumQuantity;
+              double? minimum;
+
               if (minimumText.isNotEmpty) {
-                if (isCatchWeight) {
+                if (catchWeight) {
                   final whole = int.tryParse(minimumText);
                   if (whole == null || whole <= 0) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Minimum cartons must be a whole number greater than 0.',
+                        ),
+                      ),
+                    );
                     return;
                   }
-                  minimumQuantity = whole.toDouble();
+                  minimum = whole.toDouble();
                 } else {
-                  minimumQuantity = double.tryParse(minimumText);
-                  if (minimumQuantity == null || minimumQuantity <= 0) {
+                  minimum = double.tryParse(minimumText);
+                  if (minimum == null || minimum <= 0) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Minimum quantity must be greater than 0.',
+                        ),
+                      ),
+                    );
                     return;
                   }
                 }
               }
 
-              setDialogState(() => isSaving = true);
+              setDialogState(() => saving = true);
+
               try {
                 await Supabase.instance.client.from('product_prices').upsert({
-                  'price_list_id': _selectedPriceListId,
+                  'price_list_id': priceListId,
                   'product_id': productId,
                   'amount': amount,
-                  'price_basis': isCatchWeight ? 'kilogram' : priceBasis,
-                  'minimum_quantity': minimumQuantity,
-                  'minimum_quantity_unit': isCatchWeight ? 'carton' : minimumUnit,
+                  'price_basis': catchWeight ? 'kilogram' : basis,
+                  'minimum_quantity': minimum,
+                  'minimum_quantity_unit': catchWeight
+                      ? 'carton'
+                      : product['order_unit'],
                   'active': true,
                   'updated_at': DateTime.now().toIso8601String(),
                 }, onConflict: 'price_list_id,product_id');
 
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
-              } on PostgrestException catch (error) {
-                if (!dialogContext.mounted) {
-                  return;
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop(true);
                 }
-                setDialogState(() => isSaving = false);
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(content: Text(error.message)),
-                );
+              } on PostgrestException catch (error) {
+                if (!dialogContext.mounted) return;
+
+                setDialogState(() => saving = false);
+                ScaffoldMessenger.of(
+                  dialogContext,
+                ).showSnackBar(SnackBar(content: Text(error.message)));
               }
             }
 
             return AlertDialog(
-              title: Text(product['product_name']?.toString() ?? 'Edit price'),
+              title: Text('$title • ${product['product_name'] ?? 'Product'}'),
               content: SizedBox(
-                width: 480,
+                width: 500,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
-                      controller: amountController,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'Price per ${_basisLabel(priceBasis)}',
-                        prefixText: r'$ ',
-                        suffixText: '/ ${_basisLabel(priceBasis)}',
-                        border: const OutlineInputBorder(),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F8F6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        switch (priceList['visibility']?.toString()) {
+                          'public' =>
+                            'Standard Price: normal marketplace price.',
+                          'approved_customers' =>
+                            'Trade Price: shown to approved supplier customers.',
+                          'private' =>
+                            'Customer-Specific Price: only for this selected customer.',
+                          _ => '',
+                        },
+                        style: const TextStyle(
+                          color: Color(0xFF555555),
+                          height: 1.35,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      controller: minimumController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: !isCatchWeight),
-                      inputFormatters: isCatchWeight ? [FilteringTextInputFormatter.digitsOnly] : null,
+                      controller: amountController,
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
-                        labelText: 'Minimum ${_minimumUnitLabel(minimumUnit)} per order (optional)',
+                        labelText: 'Price inc GST',
+                        prefixText: '\$ ',
+                        suffixText:
+                            '/ ${catchWeight ? 'kg' : _basisLabel(basis)}',
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    if (isCatchWeight) ...[
+                    const SizedBox(height: 16),
+                    if (!catchWeight)
+                      DropdownButtonFormField<String>(
+                        initialValue: basis,
+                        decoration: const InputDecoration(
+                          labelText: 'Price basis',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'kilogram',
+                            child: Text('Per kilogram'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'carton',
+                            child: Text('Per carton'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'unit',
+                            child: Text('Per unit'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => basis = value);
+                          }
+                        },
+                      ),
+                    if (!catchWeight) const SizedBox(height: 16),
+                    TextField(
+                      controller: minimumController,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: !catchWeight,
+                      ),
+                      inputFormatters: catchWeight
+                          ? [FilteringTextInputFormatter.digitsOnly]
+                          : null,
+                      decoration: InputDecoration(
+                        labelText: catchWeight
+                            ? 'Minimum order (optional)'
+                            : 'Minimum quantity (optional)',
+                        suffixText: catchWeight ? 'cartons' : null,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    if (catchWeight) ...[
                       const SizedBox(height: 12),
                       const Text(
-                        'Catch-weight products are ordered by whole cartons and charged per kg after actual weight is known.',
+                        'Catch-weight products are ordered by whole cartons and charged per kg after the actual weight is known.',
                         style: TextStyle(color: Color(0xFF666666), height: 1.4),
                       ),
                     ],
@@ -333,18 +572,24 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(false),
+                  onPressed: saving
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: isSaving ? null : save,
-                  child: isSaving
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  onPressed: saving ? null : save,
+                  child: saving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Save'),
+                      : const Text('Save Price'),
                 ),
               ],
             );
@@ -355,107 +600,374 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
 
     amountController.dispose();
     minimumController.dispose();
-    if (saved == true) await _loadPrices();
+
+    if (saved == true) {
+      await _loadPage();
+    }
   }
 
-  Future<void> _showBulkAdjustDialog() async {
-    if (_selectedPriceListId == null || _pricesByProductId.isEmpty) {
+  Future<void> _manageCustomerPrices(Map<String, dynamic> product) async {
+    if (_approvedCustomers.isEmpty) {
+      _message('There are no approved butcher customers yet.');
       return;
     }
-    final controller = TextEditingController();
-    String adjustmentType = 'percent';
 
-    final result = await showDialog<Map<String, dynamic>?>(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Bulk price adjustment'),
-              content: SizedBox(
-                width: 460,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+        return Dialog(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 680),
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Column(
                   children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: adjustmentType,
-                      decoration: const InputDecoration(
-                        labelText: 'Adjustment type',
-                        border: OutlineInputBorder(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 20, 12, 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Customer-Specific Prices',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  product['product_name']?.toString() ??
+                                      'Product',
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'percent', child: Text('Percentage')),
-                        DropdownMenuItem(value: 'dollar', child: Text('Dollar amount')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setDialogState(() => adjustmentType = value);
-                      },
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-                      decoration: InputDecoration(
-                        labelText: adjustmentType == 'percent' ? 'Change percentage' : 'Change amount',
-                        hintText: adjustmentType == 'percent' ? 'Example: 5 or -5' : 'Example: 1.50 or -1.50',
-                        prefixText: adjustmentType == 'dollar' ? r'$ ' : null,
-                        suffixText: adjustmentType == 'percent' ? '%' : null,
-                        border: const OutlineInputBorder(),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(18),
+                        itemCount: _approvedCustomers.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final customer = _approvedCustomers[index];
+                          final customerId = customer['butcher_business_id']
+                              ?.toString();
+
+                          final priceList = customerId == null
+                              ? null
+                              : _privatePriceListForCustomer(customerId);
+
+                          final price = priceList == null
+                              ? null
+                              : _priceForProductAndList(
+                                  product['id'].toString(),
+                                  priceList['id'].toString(),
+                                );
+
+                          return Container(
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE2E2DE),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _customerName(customer),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        price == null
+                                            ? 'No special price'
+                                            : '${_money(price['amount'])} / ${_basisLabel(price['price_basis']?.toString())} inc GST',
+                                        style: TextStyle(
+                                          color: price == null
+                                              ? const Color(0xFF777777)
+                                              : _darkRed,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: customerId == null
+                                      ? null
+                                      : () async {
+                                          try {
+                                            var list = priceList;
+
+                                            list ??=
+                                                await _createPrivatePriceListForCustomer(
+                                                  customer,
+                                                );
+
+                                            if (!dialogContext.mounted) {
+                                              return;
+                                            }
+
+                                            Navigator.of(dialogContext).pop();
+
+                                            await _openPriceDialog(
+                                              product: product,
+                                              priceList: list,
+                                              existingPrice: price,
+                                              title:
+                                                  'Customer-Specific Price • ${_customerName(customer)}',
+                                            );
+
+                                            if (!mounted) return;
+
+                                            await _manageCustomerPrices(
+                                              product,
+                                            );
+                                          } catch (error) {
+                                            _message(error.toString());
+                                          }
+                                        },
+                                  icon: const Icon(Icons.edit_outlined),
+                                  label: Text(
+                                    price == null ? 'Set Price' : 'Change',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-                FilledButton(
-                  onPressed: () {
-                    final value = double.tryParse(controller.text.trim());
-                    if (value == null || value == 0) {
-                      return;
-                    }
-                    Navigator.of(dialogContext).pop({'type': adjustmentType, 'value': value});
-                  },
-                  child: const Text('Apply'),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         );
       },
     );
+  }
 
-    controller.dispose();
-    if (result == null) {
-      return;
+  Future<Map<String, dynamic>> _createPrivatePriceListForCustomer(
+    Map<String, dynamic> customer,
+  ) async {
+    final supplierId = _supplierBusinessId;
+    final customerId = customer['butcher_business_id']?.toString();
+
+    if (supplierId == null || customerId == null || customerId.isEmpty) {
+      throw Exception('Customer could not be identified.');
     }
-    setState(() => _isApplyingBulkChange = true);
-    try {
-      final client = Supabase.instance.client;
-      final type = result['type'] as String;
-      final value = result['value'] as double;
 
-      for (final row in _pricesByProductId.values) {
-        final raw = row['amount'];
-        final current = raw is num ? raw.toDouble() : double.tryParse('$raw');
-        if (current == null) continue;
-        final next = type == 'percent' ? current * (1 + value / 100) : current + value;
-        if (next < 0) continue;
-        await client.from('product_prices').update({
-          'amount': double.parse(next.toStringAsFixed(4)),
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', row['id']);
-      }
+    final existing = _privatePriceListForCustomer(customerId);
+    if (existing != null) return existing;
 
-      await _loadPrices();
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) setState(() => _isApplyingBulkChange = false);
+    final inserted = await Supabase.instance.client
+        .from('price_lists')
+        .insert({
+          'supplier_business_id': supplierId,
+          'name': '${_customerName(customer)} - Customer Price',
+          'visibility': 'private',
+          'active': true,
+        })
+        .select('''
+          id,
+          supplier_business_id,
+          name,
+          visibility,
+          active
+        ''')
+        .single();
+
+    final id = inserted['id']?.toString();
+    if (id == null || id.isEmpty) {
+      throw Exception('Customer-specific price list could not be created.');
     }
+
+    await Supabase.instance.client.from('price_list_customers').insert({
+      'price_list_id': id,
+      'butcher_business_id': customerId,
+    });
+
+    await _loadPage();
+
+    final loaded = _privatePriceListForCustomer(customerId);
+    if (loaded == null) {
+      throw Exception('Customer-specific price list could not be loaded.');
+    }
+
+    return loaded;
+  }
+
+  int _specialPriceCountForProduct(String productId) {
+    var count = 0;
+
+    for (final customer in _approvedCustomers) {
+      final customerId = customer['butcher_business_id']?.toString();
+      if (customerId == null) continue;
+
+      final list = _privatePriceListForCustomer(customerId);
+      if (list == null) continue;
+
+      final price = _priceForProductAndList(productId, list['id'].toString());
+
+      if (price != null) count++;
+    }
+
+    return count;
+  }
+
+  Widget _priceHeader({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E2DE)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: _darkRed, size: 20),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF686868),
+                    fontSize: 11.5,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceCell({
+    required Map<String, dynamic> product,
+    required String visibility,
+  }) {
+    final productId = product['id'].toString();
+    final list = _firstPriceListForVisibility(visibility);
+    final price = list == null
+        ? null
+        : _priceForProductAndList(productId, list['id'].toString());
+
+    final amount = price?['amount'];
+    final basis = _isCatchWeight(product)
+        ? 'kilogram'
+        : price?['price_basis']?.toString() ??
+              product['price_basis']?.toString() ??
+              'unit';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => _editMainPrice(product: product, visibility: visibility),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE3E3DF)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                amount == null
+                    ? 'Not set'
+                    : '${_money(amount)} / ${_basisLabel(basis)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: amount == null ? const Color(0xFF777777) : _darkRed,
+                ),
+              ),
+            ),
+            const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF666666)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _customerPriceCell(Map<String, dynamic> product) {
+    final productId = product['id'].toString();
+    final count = _specialPriceCountForProduct(productId);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => _manageCustomerPrices(product),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE3E3DF)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                count == 0
+                    ? 'No special prices'
+                    : '$count customer price${count == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: count == 0 ? const Color(0xFF777777) : _darkRed,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.people_alt_outlined,
+              size: 18,
+              color: Color(0xFF666666),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _message(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -465,9 +977,16 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text('Quick Pricing', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Quick Pricing',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         actions: [
-          IconButton(onPressed: _isLoading ? null : _loadPage, tooltip: 'Refresh', icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _isLoading ? null : _loadPage,
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh),
+          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -476,7 +995,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (_errorMessage != null) {
       return Center(
@@ -485,118 +1006,262 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: Color(0xFF741C1C)),
+              const Icon(Icons.error_outline, size: 60, color: _darkRed),
               const SizedBox(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 18),
-              FilledButton(onPressed: _loadPage, child: const Text('Try Again')),
+              FilledButton(
+                onPressed: _loadPage,
+                child: const Text('Try Again'),
+              ),
             ],
           ),
         ),
       );
     }
 
-    if (_priceLists.isEmpty) {
-      return const Center(child: Text('Create a price list before using Quick Pricing.'));
-    }
-
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1180),
+        constraints: const BoxConstraints(maxWidth: 1400),
         child: Column(
           children: [
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.all(18),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+              child: Column(
                 children: [
-                  Expanded(
-                    flex: 2,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedPriceListId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Price list', border: OutlineInputBorder()),
-                      items: _priceLists.map((priceList) {
-                        final id = priceList['id']?.toString() ?? '';
-                        final name = priceList['name']?.toString() ?? 'Price List';
-                        final visibility = _visibilityLabel(priceList['visibility']?.toString());
-                        return DropdownMenuItem(value: id, child: Text('$visibility • $name'));
-                      }).toList(),
-                      onChanged: (value) async {
-                        if (value == null) {
-                          return;
-                        }
-                        setState(() {
-                          _selectedPriceListId = value;
-                          _isLoading = true;
-                        });
-                        await _loadPrices();
-                      },
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: 'Search products',
+                      hintText: 'Search product name or SKU',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () => _searchController.clear(),
+                              icon: const Icon(Icons.close),
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(labelText: 'Search products', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _isApplyingBulkChange ? null : _showBulkAdjustDialog,
-                    icon: const Icon(Icons.percent),
-                    label: const Text('Bulk Change'),
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 850) {
+                        return Column(
+                          children: [
+                            _priceHeader(
+                              title: 'Standard Price',
+                              subtitle: 'Normal marketplace price',
+                              icon: Icons.public,
+                            ),
+                            const SizedBox(height: 8),
+                            _priceHeader(
+                              title: 'Trade Price',
+                              subtitle: 'For approved supplier customers',
+                              icon: Icons.handshake_outlined,
+                            ),
+                            const SizedBox(height: 8),
+                            _priceHeader(
+                              title: 'Customer-Specific Price',
+                              subtitle: 'Private negotiated customer prices',
+                              icon: Icons.person_outline,
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          const Expanded(flex: 4, child: SizedBox()),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: _priceHeader(
+                              title: 'Standard Price',
+                              subtitle: 'Normal marketplace price',
+                              icon: Icons.public,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: _priceHeader(
+                              title: 'Trade Price',
+                              subtitle: 'Approved customers',
+                              icon: Icons.handshake_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: _priceHeader(
+                              title: 'Customer-Specific',
+                              subtitle: 'Private negotiated prices',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-                itemCount: _filteredProducts.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final product = _filteredProducts[index];
-                  final productId = product['id']?.toString() ?? '';
-                  final price = _pricesByProductId[productId];
-                  final amount = price?['amount'];
-                  final basis = _effectivePriceBasis(product, price);
-                  final minimum = price?['minimum_quantity'];
-                  final minimumUnit = _effectiveMinimumUnit(product, price);
-
-                  return Card(
-                    elevation: 0,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      title: Text(product['product_name']?.toString() ?? 'Unnamed product', style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text([
-                        if (product['sku'] != null && product['sku'].toString().trim().isNotEmpty) 'SKU: ${product['sku']}',
-                        if (_isCatchWeight(product)) 'Order cartons • priced / kg',
-                        if (minimum != null) 'Minimum: ${minimum.toString()} ${_minimumUnitLabel(minimumUnit)}',
-                      ].join('  •  ')),
-                      trailing: SizedBox(
-                        width: 210,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                amount == null ? 'Not set' : '\$${double.parse(amount.toString()).toStringAsFixed(2)} / ${_basisLabel(basis)}',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: amount == null ? const Color(0xFF777777) : const Color(0xFF741C1C),
-                                ),
-                              ),
-                            ),
-                            IconButton(onPressed: () => _editPrice(product), icon: const Icon(Icons.edit_outlined)),
-                          ],
+              child: _filteredProducts.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No products match your search.',
+                        style: TextStyle(
+                          color: Color(0xFF666666),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                      itemCount: _filteredProducts.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final product = _filteredProducts[index];
+
+                        return Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(color: Color(0xFFE2E2DE)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final narrow = constraints.maxWidth < 850;
+
+                                final productInfo = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['product_name']?.toString() ??
+                                          'Unnamed product',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      product['sku']
+                                                  ?.toString()
+                                                  .trim()
+                                                  .isNotEmpty ==
+                                              true
+                                          ? 'SKU: ${product['sku']}'
+                                          : 'No SKU',
+                                      style: const TextStyle(
+                                        color: Color(0xFF6A6A6A),
+                                      ),
+                                    ),
+                                    if (_isCatchWeight(product)) ...[
+                                      const SizedBox(height: 5),
+                                      const Text(
+                                        'Carton order • \$/kg catch-weight pricing',
+                                        style: TextStyle(
+                                          color: Color(0xFF666666),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+
+                                if (narrow) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      productInfo,
+                                      const SizedBox(height: 14),
+                                      const Text(
+                                        'STANDARD PRICE',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF777777),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      _priceCell(
+                                        product: product,
+                                        visibility: 'public',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'TRADE PRICE',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF777777),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      _priceCell(
+                                        product: product,
+                                        visibility: 'approved_customers',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'CUSTOMER-SPECIFIC PRICE',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF777777),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      _customerPriceCell(product),
+                                    ],
+                                  );
+                                }
+
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(flex: 4, child: productInfo),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 2,
+                                      child: _priceCell(
+                                        product: product,
+                                        visibility: 'public',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      flex: 2,
+                                      child: _priceCell(
+                                        product: product,
+                                        visibility: 'approved_customers',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      flex: 2,
+                                      child: _customerPriceCell(product),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
