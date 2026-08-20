@@ -20,6 +20,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _suppliers = [];
+  Duration _reapplyCooldown = const Duration(hours: 24);
 
   @override
   void initState() {
@@ -46,6 +47,13 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     });
 
     try {
+      final cooldownSecondsResponse = await Supabase.instance.client.rpc(
+        'cutlink_vip_reapply_cooldown_seconds',
+      );
+
+      final cooldownSeconds =
+          int.tryParse(cooldownSecondsResponse?.toString() ?? '') ?? 86400;
+
       final response = await Supabase.instance.client.rpc(
         'list_suppliers_for_butcher_vip',
       );
@@ -53,6 +61,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       if (!mounted) return;
 
       setState(() {
+        _reapplyCooldown = Duration(seconds: cooldownSeconds);
         _suppliers = _maps(response);
         _loading = false;
       });
@@ -150,9 +159,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     final declined = _date(declinedAt);
     if (declined == null) return null;
 
-    final remaining = declined
-        .add(const Duration(hours: 24))
-        .difference(DateTime.now());
+    final remaining = declined.add(_reapplyCooldown).difference(DateTime.now());
 
     if (remaining.isNegative || remaining.inSeconds <= 0) return null;
     return remaining;
@@ -184,7 +191,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       final remaining = _cooldownRemaining(supplier['vip_declined_at']);
       if (remaining != null) {
         _message(
-          'You can apply again after the 24-hour cooldown. '
+          'You can apply again after the cooldown. '
           '${_cooldownText(remaining)}.',
         );
         return;
@@ -205,7 +212,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       final remaining = _cooldownRemaining(supplier['credit_declined_at']);
       if (remaining != null) {
         _message(
-          'You can apply for credit again after the 24-hour cooldown. '
+          'You can apply for credit again after the cooldown. '
           '${_cooldownText(remaining)}.',
         );
         return;
@@ -398,7 +405,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       actionLabel = 'VIP Pending';
       disabled = true;
     } else if (vipCooldown != null) {
-      actionLabel = '24h cooldown';
+      actionLabel = 'Cooldown';
       disabled = true;
     } else {
       actionLabel = 'Apply for VIP';

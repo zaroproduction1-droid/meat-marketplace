@@ -27,6 +27,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   bool _isAdmin = false;
 
   int _newSupplierOrderCount = 0;
+  int _pendingVipApplicationCount = 0;
 
   String? _errorMessage;
   String? _businessName;
@@ -133,6 +134,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       final businessType = business['business_type'] as String?;
 
       var newSupplierOrderCount = 0;
+      var pendingVipApplicationCount = 0;
 
       if (businessType == 'supplier') {
         final newOrders = await Supabase.instance.client
@@ -151,6 +153,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             newSupplierOrderCount += rawItems.length;
           }
         }
+
+        final pendingVipApplications = await Supabase.instance.client
+            .from('vip_trade_applications')
+            .select('id')
+            .eq('supplier_business_id', businessId)
+            .eq('status', 'pending');
+
+        pendingVipApplicationCount = pendingVipApplications.length;
       }
 
       if (!mounted) {
@@ -162,6 +172,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _businessType = businessType;
         _isAdmin = isAdmin;
         _newSupplierOrderCount = newSupplierOrderCount;
+        _pendingVipApplicationCount = pendingVipApplicationCount;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -369,8 +380,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           width: cardWidth,
                           icon: Icons.people_alt_outlined,
                           title: 'Customers & Accounts',
-                          description:
-                              'Approve butcher requests and manage account terms.',
+                          description: _pendingVipApplicationCount > 0
+                              ? '$_pendingVipApplicationCount VIP application${_pendingVipApplicationCount == 1 ? '' : 's'} waiting for review.'
+                              : 'Manage CutLink customers, VIP applications and account terms.',
+                          badgeCount: _pendingVipApplicationCount,
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(

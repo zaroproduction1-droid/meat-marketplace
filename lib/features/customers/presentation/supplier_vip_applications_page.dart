@@ -216,11 +216,16 @@ class _SupplierVipApplicationsPageState
     return 'CutLink Butcher';
   }
 
-  String _statusLabel(String? value) {
+  String _statusLabel(Map<String, dynamic> application) {
+    final value = application['status']?.toString();
+    final purpose = application['application_purpose']?.toString();
+
     return switch (value) {
       'pending' => 'Pending Review',
-      'approved' => 'VIP Approved',
-      'declined' => 'Declined',
+      'approved' =>
+        purpose == 'credit_upgrade' ? 'Credit Approved' : 'VIP Approved',
+      'declined' =>
+        purpose == 'credit_upgrade' ? 'Credit Declined' : 'Declined',
       'withdrawn' => 'Withdrawn',
       'superseded' => 'Superseded',
       _ => value ?? 'Unknown',
@@ -578,7 +583,7 @@ class _SupplierVipApplicationsPageState
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      _statusLabel(status),
+                      _statusLabel(application),
                       style: TextStyle(
                         color: statusColour,
                         fontSize: 12,
@@ -591,7 +596,7 @@ class _SupplierVipApplicationsPageState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Review',
+                        'Open Application',
                         style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                       SizedBox(width: 4),
@@ -648,6 +653,26 @@ class _SupplierVipApplicationDetailPageState
     if (legal != null && legal.isNotEmpty) return legal;
 
     return 'CutLink Butcher';
+  }
+
+  bool get _isCreditUpgrade =>
+      widget.application['application_purpose']?.toString() == 'credit_upgrade';
+
+  bool get _creditRequested =>
+      _isCreditUpgrade ||
+      widget.application['application_type']?.toString() ==
+          'vip_pricing_and_credit';
+
+  String get _approvalActionLabel {
+    if (_isCreditUpgrade) return 'Approve Credit Account';
+    if (_creditRequested) return 'Approve VIP + Credit';
+    return 'Approve VIP Pricing';
+  }
+
+  String get _approvalDialogTitle {
+    if (_isCreditUpgrade) return 'Approve Credit Account';
+    if (_creditRequested) return 'Approve VIP + Credit Application';
+    return 'Approve VIP Application';
   }
 
   String _value(dynamic value) {
@@ -713,10 +738,54 @@ class _SupplierVipApplicationDetailPageState
   Future<void> _approve() async {
     final result = await showDialog<Map<String, dynamic>?>(
       context: context,
-      builder: (_) => const _VipApprovalDialog(),
+      builder: (_) => _VipApprovalDialog(
+        title: _approvalDialogTitle,
+        creditRequested: _creditRequested,
+        creditUpgradeOnly: _isCreditUpgrade,
+        requestedTermsDays:
+            (widget.application['requested_payment_terms_days'] as num?)
+                ?.toInt(),
+        requestedCreditLimit:
+            (widget.application['requested_credit_limit'] as num?)?.toDouble(),
+      ),
     );
 
     if (result == null) return;
+    if (!mounted) return;
+
+    if (_creditRequested) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text(
+              _isCreditUpgrade
+                  ? 'Confirm credit approval'
+                  : 'Confirm VIP and credit approval',
+            ),
+            content: Text(
+              _isCreditUpgrade
+                  ? 'This will activate a credit account for ${_name()} using the approved payment terms and credit limit you entered.'
+                  : 'This will activate VIP pricing for ${_name()} and also approve the requested credit account using the terms you entered.',
+              style: const TextStyle(height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Go Back'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Confirm Approval'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) return;
+    }
 
     setState(() => _processing = true);
 
@@ -735,9 +804,15 @@ class _SupplierVipApplicationDetailPageState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_name()} approved for VIP pricing.')),
-      );
+      final message = _isCreditUpgrade
+          ? '${_name()} approved for a credit account.'
+          : _creditRequested
+          ? '${_name()} approved for VIP pricing and credit.'
+          : '${_name()} approved for VIP pricing.';
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
 
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
@@ -756,15 +831,21 @@ class _SupplierVipApplicationDetailPageState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text('Decline ${_name()}?'),
+          title: Text(
+            _isCreditUpgrade
+                ? 'Decline credit application for ${_name()}?'
+                : 'Decline ${_name()}?',
+          ),
           content: SizedBox(
             width: 520,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'This only declines the VIP application made to your supplier business. It does not affect the butcher’s CutLink account or their relationship with another supplier.',
-                  style: TextStyle(height: 1.4),
+                Text(
+                  _isCreditUpgrade
+                      ? 'This declines only the credit application. ${_name()} will keep any existing VIP pricing already approved by your supplier business.'
+                      : 'This only declines the VIP application made to your supplier business. It does not affect the butcher’s CutLink account or their relationship with another supplier.',
+                  style: const TextStyle(height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -790,7 +871,9 @@ class _SupplierVipApplicationDetailPageState
                 backgroundColor: const Color(0xFF9A3030),
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Decline Application'),
+              child: Text(
+                _isCreditUpgrade ? 'Decline Credit' : 'Decline Application',
+              ),
             ),
           ],
         );
@@ -816,7 +899,13 @@ class _SupplierVipApplicationDetailPageState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('VIP application declined.')),
+        SnackBar(
+          content: Text(
+            _isCreditUpgrade
+                ? 'Credit application declined. Existing VIP pricing remains unchanged.'
+                : 'VIP application declined.',
+          ),
+        ),
       );
 
       Navigator.of(context).pop(true);
@@ -851,9 +940,7 @@ class _SupplierVipApplicationDetailPageState
     );
 
     final pending = widget.application['status']?.toString() == 'pending';
-    final creditRequested =
-        widget.application['application_type']?.toString() ==
-        'vip_pricing_and_credit';
+    final creditRequested = _creditRequested;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
@@ -861,60 +948,10 @@ class _SupplierVipApplicationDetailPageState
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: Text(
-          _name(),
+          'Review Application • ${_name()}',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      bottomNavigationBar: pending
-          ? SafeArea(
-              child: Container(
-                color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 950),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _processing ? null : _decline,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF9A3030),
-                              minimumSize: const Size.fromHeight(50),
-                            ),
-                            icon: const Icon(Icons.close),
-                            label: const Text('Decline'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton.icon(
-                            onPressed: _processing ? null : _approve,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                              minimumSize: const Size.fromHeight(50),
-                            ),
-                            icon: _processing
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.check),
-                            label: const Text('Approve VIP Pricing'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 950),
@@ -927,7 +964,9 @@ class _SupplierVipApplicationDetailPageState
                   children: [
                     _detailRow(
                       'Request',
-                      creditRequested
+                      _isCreditUpgrade
+                          ? 'Credit Account Upgrade'
+                          : creditRequested
                           ? 'VIP Pricing + Credit Account'
                           : 'VIP Pricing Only',
                     ),
@@ -1120,6 +1159,63 @@ class _SupplierVipApplicationDetailPageState
                   ],
                 ),
               ),
+              if (pending) ...[
+                const SizedBox(height: 22),
+                _section(
+                  title: 'Supplier decision',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Review the full application above before making your decision.',
+                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _processing ? null : _decline,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF9A3030),
+                                minimumSize: const Size.fromHeight(50),
+                              ),
+                              icon: const Icon(Icons.close),
+                              label: Text(
+                                _isCreditUpgrade
+                                    ? 'Decline Credit'
+                                    : 'Decline Application',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton.icon(
+                              onPressed: _processing ? null : _approve,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                minimumSize: const Size.fromHeight(50),
+                              ),
+                              icon: _processing
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.check),
+                              label: Text(_approvalActionLabel),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1229,7 +1325,19 @@ class _SupplierVipApplicationDetailPageState
 }
 
 class _VipApprovalDialog extends StatefulWidget {
-  const _VipApprovalDialog();
+  const _VipApprovalDialog({
+    required this.title,
+    required this.creditRequested,
+    required this.creditUpgradeOnly,
+    this.requestedTermsDays,
+    this.requestedCreditLimit,
+  });
+
+  final String title;
+  final bool creditRequested;
+  final bool creditUpgradeOnly;
+  final int? requestedTermsDays;
+  final double? requestedCreditLimit;
 
   @override
   State<_VipApprovalDialog> createState() => _VipApprovalDialogState();
@@ -1237,11 +1345,28 @@ class _VipApprovalDialog extends StatefulWidget {
 
 class _VipApprovalDialogState extends State<_VipApprovalDialog> {
   String _riskRating = 'manual_review';
-  String _paymentMethod = 'cod';
+  late String _paymentMethod;
 
-  final _termsController = TextEditingController(text: '14');
-  final _creditLimitController = TextEditingController();
+  late final TextEditingController _termsController;
+  late final TextEditingController _creditLimitController;
   final _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _paymentMethod = widget.creditRequested ? 'account' : 'cod';
+
+    _termsController = TextEditingController(
+      text: '${widget.requestedTermsDays ?? 14}',
+    );
+
+    _creditLimitController = TextEditingController(
+      text: widget.requestedCreditLimit == null
+          ? ''
+          : widget.requestedCreditLimit!.toStringAsFixed(2),
+    );
+  }
 
   @override
   void dispose() {
@@ -1256,16 +1381,20 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
     final account = _paymentMethod == 'account';
 
     return AlertDialog(
-      title: const Text('Approve VIP Application'),
+      title: Text(widget.title),
       content: SizedBox(
         width: 600,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'VIP pricing will be enabled only for this butcher with your supplier business.',
-                style: TextStyle(height: 1.4),
+              Text(
+                widget.creditUpgradeOnly
+                    ? 'Existing VIP pricing remains active. This decision only controls the butcher’s credit account with your supplier business.'
+                    : widget.creditRequested
+                    ? 'VIP pricing and the credit account will apply only to this butcher with your supplier business.'
+                    : 'VIP pricing will be enabled only for this butcher with your supplier business.',
+                style: const TextStyle(height: 1.4),
               ),
               const SizedBox(height: 18),
               DropdownButtonFormField<String>(
@@ -1303,11 +1432,24 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                     child: Text('Credit account'),
                   ),
                 ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _paymentMethod = value);
-                },
+                onChanged: widget.creditRequested
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _paymentMethod = value);
+                      },
               ),
+              if (widget.creditRequested) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'This application requests credit, so approval requires a credit account payment method.',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
               if (account) ...[
                 const SizedBox(height: 14),
                 Row(
@@ -1400,7 +1542,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
               'internal_notes': _notesController.text.trim(),
             });
           },
-          child: const Text('Approve VIP'),
+          child: Text(widget.title),
         ),
       ],
     );

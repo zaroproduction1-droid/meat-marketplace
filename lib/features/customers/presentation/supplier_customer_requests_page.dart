@@ -43,15 +43,34 @@ class _SupplierCustomerRequestsPageState
         throw Exception('No signed-in user was found.');
       }
 
-      final membership = await client
+      final memberships = await client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
+          .eq('status', 'active');
 
-      final supplierBusinessId = membership['business_id'] as String;
+      final businessIds = <String>[
+        for (final membership in memberships)
+          if (membership['business_id'] != null)
+            membership['business_id'].toString(),
+      ];
+
+      if (businessIds.isEmpty) {
+        throw Exception('No active business membership was found.');
+      }
+
+      final supplierBusinesses = await client
+          .from('businesses')
+          .select('id')
+          .inFilter('id', businessIds)
+          .eq('business_type', 'supplier')
+          .eq('active', true);
+
+      if (supplierBusinesses.isEmpty) {
+        throw Exception('No active supplier business was found.');
+      }
+
+      final supplierBusinessId = supplierBusinesses.first['id'].toString();
 
       final relationshipResponse = await client
           .from('supplier_customer_relationships')
@@ -928,6 +947,112 @@ class _SupplierCustomerRequestsPageState
         .toList();
   }
 
+  Future<void> _openPendingVipApplicationForRelationship(
+    Map<String, dynamic> relationship,
+  ) async {
+    final supplierBusinessId = _supplierBusinessId;
+    final butcherBusinessId = relationship['butcher_business_id']?.toString();
+
+    if (supplierBusinessId == null ||
+        butcherBusinessId == null ||
+        butcherBusinessId.isEmpty) {
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client
+          .from('vip_trade_applications')
+          .select('''
+            id,
+            supplier_business_id,
+            butcher_business_id,
+            status,
+            application_type,
+            application_purpose,
+            butcher_trading_name_snapshot,
+            butcher_legal_name_snapshot,
+            butcher_abn_snapshot,
+            butcher_email_snapshot,
+            butcher_phone_snapshot,
+            butcher_address_snapshot,
+            primary_contact_name,
+            primary_contact_position,
+            years_trading,
+            estimated_monthly_purchases,
+            requested_payment_terms_days,
+            requested_credit_limit,
+            application_message,
+            trade_reference_contact_consent,
+            commercial_credit_assessment_consent,
+            consumer_credit_report_consent,
+            privacy_notice_accepted,
+            applicant_declaration_accepted,
+            submitted_at,
+            decided_at,
+            created_at,
+            vip_trade_application_references(
+              id,
+              reference_order,
+              business_name,
+              contact_name,
+              contact_position,
+              contact_email,
+              contact_phone,
+              years_trading_with_reference,
+              notes
+            ),
+            vip_trade_application_documents(
+              id,
+              document_type,
+              file_name,
+              storage_path,
+              mime_type,
+              file_size_bytes,
+              created_at
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('butcher_business_id', butcherBusinessId)
+          .eq('status', 'pending')
+          .order('submitted_at', ascending: false)
+          .limit(1);
+
+      final rows = List<Map<String, dynamic>>.from(response);
+
+      if (!mounted) return;
+
+      if (rows.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No pending VIP application was found for this butcher.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) =>
+              SupplierVipApplicationDetailPage(application: rows.first),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (changed == true) {
+        await _loadPage();
+      }
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   Future<void> _openVipApplications() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -1101,7 +1226,7 @@ class _SupplierCustomerRequestsPageState
             ),
             const SizedBox(height: 8),
             const Text(
-              'Approve butcher access and manage the commercial account used for orders.',
+              'Manage supplier-specific account settings for registered CutLink butchers.',
               style: TextStyle(color: Color(0xFF666666), height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -1143,7 +1268,7 @@ class _SupplierCustomerRequestsPageState
                   onPressed: _openAddExternalCustomerDialog,
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add Customer'),
+                  label: const Text('Add External Customer'),
                 ),
               ],
             ),
@@ -1203,158 +1328,160 @@ class _SupplierCustomerRequestsPageState
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4E5E5),
-                    borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: status == 'requested'
+            ? () => _openPendingVipApplicationForRelationship(relationship)
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4E5E5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.storefront_outlined,
+                      color: _darkRed,
+                    ),
                   ),
-                  child: const Icon(Icons.storefront_outlined, color: _darkRed),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _businessName(relationship),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _statusIcon(status),
-                            size: 18,
-                            color: _statusColor(status),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _businessName(relationship),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _formatStatus(status),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _statusIcon(status),
+                              size: 18,
                               color: _statusColor(status),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (status == 'approved') ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F6),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE1E1DE)),
-                ),
-                child: account == null
-                    ? const Text(
-                        'Customer account is being prepared. Refresh this page if it does not appear.',
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Commercial account',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatStatus(status),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: _statusColor(status),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 9),
-                          Text('Payment: ${_paymentText(account)}'),
-                          if (account['account_reference'] != null) ...[
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (status == 'approved') ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE1E1DE)),
+                  ),
+                  child: account == null
+                      ? const Text(
+                          'Customer account is being prepared. Refresh this page if it does not appear.',
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Commercial account',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            Text('Payment: ${_paymentText(account)}'),
+                            if (account['account_reference'] != null) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                'Account reference: ${account['account_reference']}',
+                              ),
+                            ],
+                            if (account['credit_limit'] != null) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                'Credit limit: \$${account['credit_limit']}',
+                              ),
+                            ],
                             const SizedBox(height: 5),
                             Text(
-                              'Account reference: ${account['account_reference']}',
+                              'Issue reporting window: ${account['issue_reporting_window_hours'] ?? 24} hours',
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: () => _editCustomerAccount(account),
+                              icon: const Icon(Icons.tune_outlined),
+                              label: const Text('Edit Account'),
                             ),
                           ],
-                          if (account['credit_limit'] != null) ...[
-                            const SizedBox(height: 5),
-                            Text('Credit limit: \$${account['credit_limit']}'),
-                          ],
-                          const SizedBox(height: 5),
-                          Text(
-                            'Issue reporting window: ${account['issue_reporting_window_hours'] ?? 24} hours',
+                        ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  if (status == 'requested')
+                    FilledButton.icon(
+                      onPressed: () =>
+                          _openPendingVipApplicationForRelationship(
+                            relationship,
                           ),
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: () => _editCustomerAccount(account),
-                            icon: const Icon(Icons.tune_outlined),
-                            label: const Text('Edit Account'),
-                          ),
-                        ],
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: const Icon(Icons.description_outlined),
+                      label: const Text('Review Application'),
+                    ),
+                  if (status == 'approved')
+                    OutlinedButton.icon(
+                      onPressed: () => _updateStatus(
+                        relationship: relationship,
+                        status: 'suspended',
                       ),
+                      icon: const Icon(Icons.block),
+                      label: const Text('Suspend Access'),
+                    ),
+                  if (status == 'suspended' || status == 'declined')
+                    OutlinedButton.icon(
+                      onPressed: () => _updateStatus(
+                        relationship: relationship,
+                        status: 'approved',
+                      ),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Approve Access'),
+                    ),
+                ],
               ),
             ],
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                if (status == 'requested')
-                  FilledButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'approved',
-                    ),
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    icon: const Icon(Icons.check),
-                    label: const Text('Approve'),
-                  ),
-                if (status == 'requested')
-                  OutlinedButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'declined',
-                    ),
-                    icon: const Icon(Icons.close),
-                    label: const Text('Decline'),
-                  ),
-                if (status == 'approved')
-                  OutlinedButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'suspended',
-                    ),
-                    icon: const Icon(Icons.block),
-                    label: const Text('Suspend Access'),
-                  ),
-                if (status == 'suspended' || status == 'declined')
-                  OutlinedButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'approved',
-                    ),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Approve Access'),
-                  ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
