@@ -6,7 +6,9 @@ import 'supplier_invoice_page.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierOrdersPage extends StatefulWidget {
-  const SupplierOrdersPage({super.key});
+  const SupplierOrdersPage({super.key, this.initialTabKey});
+
+  final String? initialTabKey;
 
   @override
   State<SupplierOrdersPage> createState() => _SupplierOrdersPageState();
@@ -75,7 +77,23 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+
+    var initialIndex = 0;
+    final requestedKey = widget.initialTabKey;
+
+    if (requestedKey != null) {
+      final foundIndex = _tabs.indexWhere((tab) => tab.key == requestedKey);
+
+      if (foundIndex >= 0) {
+        initialIndex = foundIndex;
+      }
+    }
+
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: initialIndex,
+    );
     _loadOrders();
   }
 

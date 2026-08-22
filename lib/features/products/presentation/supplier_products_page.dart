@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'add_product_page.dart';
 import 'edit_product_page.dart';
+import '../../../shared/widgets/interactive_animal_browser.dart';
+import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
 class SupplierProductsPage extends StatefulWidget {
   const SupplierProductsPage({super.key});
@@ -15,15 +17,17 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _sectionScrollController = ScrollController();
 
   bool _isLoading = true;
   String? _errorMessage;
+  String _selectedAnimalCode = CutLinkAnimals.beef;
+  String? _selectedAnimalRegionKey;
   String? _selectedSectionId;
   String? _selectedVisualLabel;
-  String? _hoveredSectionCode;
 
   List<Map<String, dynamic>> _products = [];
-  List<Map<String, dynamic>> _beefSections = [];
+  List<Map<String, dynamic>> _sections = [];
 
   @override
   void initState() {
@@ -36,6 +40,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
+    _sectionScrollController.dispose();
     super.dispose();
   }
 
@@ -95,24 +100,46 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         throw Exception('No active supplier business membership was found.');
       }
 
-      final beefAnimal = await client
+      final animalResponse = await client
           .from('meat_animals')
-          .select('id')
-          .eq('code', 'BEEF')
+          .select('id, code, name, display_order')
           .eq('is_active', true)
-          .maybeSingle();
+          .inFilter('code', const [
+            'BEEF',
+            'VEAL',
+            'LAMB',
+            'MUTTON',
+            'GOAT',
+            'CHICKEN',
+          ])
+          .order('display_order');
 
-      List<Map<String, dynamic>> beefSections = [];
+      final animals = List<Map<String, dynamic>>.from(animalResponse);
+      final animalCodeById = <String, String>{
+        for (final animal in animals)
+          if (animal['id'] != null && animal['code'] != null)
+            animal['id'].toString(): animal['code'].toString(),
+      };
 
-      if (beefAnimal != null) {
+      List<Map<String, dynamic>> sections = [];
+
+      if (animalCodeById.isNotEmpty) {
         final sectionResponse = await client
             .from('meat_sections')
-            .select('id, code, name, is_miscellaneous, display_order')
-            .eq('animal_id', beefAnimal['id'])
+            .select(
+              'id, animal_id, code, name, is_miscellaneous, display_order',
+            )
+            .inFilter('animal_id', animalCodeById.keys.toList())
             .eq('is_active', true)
             .order('display_order');
 
-        beefSections = List<Map<String, dynamic>>.from(sectionResponse);
+        sections = [
+          for (final raw in sectionResponse)
+            {
+              ...Map<String, dynamic>.from(raw),
+              'animal_code': animalCodeById[raw['animal_id']?.toString()] ?? '',
+            },
+        ];
       }
 
       final productResponse = await client
@@ -157,7 +184,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
       setState(() {
         _products = List<Map<String, dynamic>>.from(productResponse);
-        _beefSections = beefSections;
+        _sections = sections;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -177,10 +204,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
   }
 
-  Future<void> _openAddProductPage() async {
-    final changed = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const AddProductPage()));
+  Future<void> _openAddProductPage({String? sectionId}) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddProductPage(
+          initialAnimalCode: _selectedAnimalCode,
+          initialSectionId: sectionId,
+        ),
+      ),
+    );
 
     if (changed == true) {
       await _loadProducts();
@@ -313,9 +345,59 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return '$numberText ${unit == 'carton' ? 'cartons' : unit ?? ''}'.trim();
   }
 
+  String? _productAnimalCode(Map<String, dynamic> product) {
+    final animal = _map(product['meat_animals']);
+    final code = animal?['code']?.toString().trim().toUpperCase();
+
+    if (code != null && code.isNotEmpty) {
+      return code;
+    }
+
+    final sectionId = product['meat_section_id']?.toString();
+    if (sectionId != null && sectionId.isNotEmpty) {
+      for (final section in _sections) {
+        if (section['id']?.toString() == sectionId) {
+          final fallbackCode = section['animal_code']
+              ?.toString()
+              .trim()
+              .toUpperCase();
+          if (fallbackCode != null && fallbackCode.isNotEmpty) {
+            return fallbackCode;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String get _selectedAnimalName {
+    return CutLinkAnimals.all
+        .firstWhere(
+          (animal) => animal.code == _selectedAnimalCode,
+          orElse: () => CutLinkAnimals.all.first,
+        )
+        .name;
+  }
+
+  List<Map<String, dynamic>> get _selectedAnimalSections {
+    return _sections
+        .where(
+          (section) =>
+              section['animal_code']?.toString() == _selectedAnimalCode,
+        )
+        .toList()
+      ..sort(
+        (a, b) => ((a['display_order'] as num?)?.toInt() ?? 999).compareTo(
+          (b['display_order'] as num?)?.toInt() ?? 999,
+        ),
+      );
+  }
+
   int _sectionProductCount(String sectionId) {
     return _products.where((product) {
-      return product['meat_section_id']?.toString() == sectionId;
+      return _productAnimalCode(product) == _selectedAnimalCode &&
+          product['meat_section_id']?.toString() == sectionId;
     }).length;
   }
 
@@ -323,6 +405,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final search = _searchController.text.trim().toLowerCase();
 
     return _products.where((product) {
+      if (_productAnimalCode(product) != _selectedAnimalCode) {
+        return false;
+      }
+
       if (_selectedSectionId != null &&
           product['meat_section_id']?.toString() != _selectedSectionId) {
         return false;
@@ -348,7 +434,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   Map<String, dynamic>? _sectionByCode(String code) {
-    for (final section in _beefSections) {
+    for (final section in _selectedAnimalSections) {
       if (section['code']?.toString() == code) {
         return section;
       }
@@ -356,20 +442,88 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return null;
   }
 
-  void _selectSectionCode(String code, {String? visualLabel}) {
-    final section = _sectionByCode(code);
+  String? _beefSectionCodeForRegion(String regionKey) {
+    return switch (regionKey) {
+      CutLinkBeefCutKeys.cheek => 'MISC',
+      CutLinkBeefCutKeys.neck => 'NECK',
+      CutLinkBeefCutKeys.shoulder => 'SHOULDER',
+      CutLinkBeefCutKeys.chuck => 'CHUCK',
+      CutLinkBeefCutKeys.blade => 'BLADE',
+      CutLinkBeefCutKeys.brisket => 'BRISKET',
+      CutLinkBeefCutKeys.shinShank => 'SHANK',
+      CutLinkBeefCutKeys.ribs => 'RIB',
+      CutLinkBeefCutKeys.ribEye => 'RIBEYE',
+      CutLinkBeefCutKeys.plate => 'PLATE',
+      CutLinkBeefCutKeys.skirt => 'SKIRT',
+      CutLinkBeefCutKeys.loin => 'LOIN',
+      CutLinkBeefCutKeys.flank => 'FLANK',
+      CutLinkBeefCutKeys.rump => 'RUMP',
+      CutLinkBeefCutKeys.round => 'HIND',
+      CutLinkBeefCutKeys.silversideOutside => 'SILVERSIDE',
+      CutLinkBeefCutKeys.oxTail => 'MISC',
+      CutLinkBeefCutKeys.miscOffalOther => 'MISC',
+      _ => null,
+    };
+  }
+
+  String _beefRegionLabel(String regionKey) {
+    return switch (regionKey) {
+      CutLinkBeefCutKeys.cheek => 'Cheek',
+      CutLinkBeefCutKeys.neck => 'Neck',
+      CutLinkBeefCutKeys.shoulder => 'Shoulder',
+      CutLinkBeefCutKeys.chuck => 'Chuck',
+      CutLinkBeefCutKeys.blade => 'Blade',
+      CutLinkBeefCutKeys.brisket => 'Brisket',
+      CutLinkBeefCutKeys.shinShank => 'Shin / Shank',
+      CutLinkBeefCutKeys.ribs => 'Ribs',
+      CutLinkBeefCutKeys.ribEye => 'Rib Eye',
+      CutLinkBeefCutKeys.plate => 'Plate',
+      CutLinkBeefCutKeys.skirt => 'Skirt',
+      CutLinkBeefCutKeys.loin => 'Loin',
+      CutLinkBeefCutKeys.flank => 'Flank',
+      CutLinkBeefCutKeys.rump => 'Rump',
+      CutLinkBeefCutKeys.round => 'Round',
+      CutLinkBeefCutKeys.silversideOutside => 'Silverside / Outside',
+      CutLinkBeefCutKeys.oxTail => 'Ox Tail',
+      CutLinkBeefCutKeys.miscOffalOther => 'Miscellaneous / Offal',
+      _ => regionKey,
+    };
+  }
+
+  void _selectAnimal(String animalCode) {
+    if (animalCode == _selectedAnimalCode) return;
+
+    setState(() {
+      _selectedAnimalCode = animalCode;
+      _selectedAnimalRegionKey = null;
+      _selectedSectionId = null;
+      _selectedVisualLabel = null;
+      _searchController.clear();
+    });
+  }
+
+  void _selectAnimalRegion(String regionKey) {
+    if (_selectedAnimalCode != CutLinkAnimals.beef) {
+      return;
+    }
+
+    final sectionCode = _beefSectionCodeForRegion(regionKey);
+    if (sectionCode == null) return;
+
+    final section = _sectionByCode(sectionCode);
     if (section == null) return;
 
     setState(() {
-      final id = section['id'].toString();
-      _selectedSectionId = id;
-      _selectedVisualLabel = visualLabel ?? section['name']?.toString();
+      _selectedAnimalRegionKey = regionKey;
+      _selectedSectionId = section['id']?.toString();
+      _selectedVisualLabel = _beefRegionLabel(regionKey);
       _searchController.clear();
     });
   }
 
   void _selectSection(Map<String, dynamic> section) {
     setState(() {
+      _selectedAnimalRegionKey = null;
       _selectedSectionId = section['id'].toString();
       _selectedVisualLabel = section['name']?.toString();
       _searchController.clear();
@@ -378,9 +532,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   void _clearSectionSelection() {
     setState(() {
+      _selectedAnimalRegionKey = null;
       _selectedSectionId = null;
       _selectedVisualLabel = null;
-      _hoveredSectionCode = null;
     });
   }
 
@@ -388,7 +542,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final selected = _selectedSectionId;
     if (selected == null) return null;
 
-    for (final section in _beefSections) {
+    for (final section in _selectedAnimalSections) {
       if (section['id']?.toString() == selected) {
         return section['name']?.toString();
       }
@@ -411,20 +565,25 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: _isLoading ? null : () => _openAddProductPage(),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add Product'),
+            style: TextButton.styleFrom(
+              foregroundColor: _darkRed,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
+          ),
+          const SizedBox(width: 4),
           IconButton(
             onPressed: _isLoading ? null : _loadProducts,
             tooltip: 'Refresh',
+            visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddProductPage,
-        backgroundColor: _darkRed,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Product'),
       ),
       body: _buildBody(),
     );
@@ -495,14 +654,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               TextField(
                 controller: _searchController,
                 autofocus: false,
-                onChanged: (value) {
-                  if (value.trim().isNotEmpty && _selectedSectionId != null) {
-                    setState(() {
-                      _selectedSectionId = null;
-                      _selectedVisualLabel = null;
-                    });
-                  }
-                },
+                onChanged: (_) => _refresh(),
                 decoration: InputDecoration(
                   hintText:
                       'Search cut, specification, category, product name or SKU',
@@ -634,20 +786,21 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Browse Beef Stock',
-                                style: TextStyle(
+                                'Browse $_selectedAnimalName Stock',
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Click anywhere inside a cut section to filter your stock.',
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Use the arrows to switch animals. Select a cut '
+                                'region or section to filter your stock.',
                                 style: TextStyle(color: Color(0xFF666666)),
                               ),
                             ],
@@ -662,7 +815,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildCowImageBrowser(),
+                    InteractiveAnimalBrowser(
+                      selectedAnimalCode: _selectedAnimalCode,
+                      selectedRegionKey: _selectedAnimalRegionKey,
+                      onAnimalChanged: _selectAnimal,
+                      onRegionSelected: _selectAnimalRegion,
+                      maxWidth: 760,
+                    ),
                     const SizedBox(height: 16),
                     _buildSectionStrip(),
                   ],
@@ -682,7 +841,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                     Expanded(
                       child: Text(
                         _selectedSectionName == null
-                            ? 'All Stock'
+                            ? 'All $_selectedAnimalName Stock'
                             : '${_selectedSectionName!} Stock',
                         style: const TextStyle(
                           fontSize: 22,
@@ -708,14 +867,52 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 55, 24, 100),
-                child: Text(
-                  _selectedSectionName == null
-                      ? 'No stock has been added yet.'
-                      : 'No ${_selectedSectionName!} stock has been added yet.',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 52,
+                      color: Color(0xFF999999),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _selectedSectionName == null
+                          ? 'No $_selectedAnimalName stock has been added yet.'
+                          : 'No ${_selectedSectionName!} stock has been added yet.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (_selectedSectionId != null) ...[
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: () =>
+                            _openAddProductPage(sectionId: _selectedSectionId),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _darkRed,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.add),
+                        label: Text(
+                          'Add Product to ${_selectedSectionName ?? 'Section'}',
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        '$_selectedAnimalName and '
+                        '${_selectedSectionName ?? 'this section'} '
+                        'will be selected automatically.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -740,422 +937,59 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     );
   }
 
-  Widget _buildCowImageBrowser() {
-    final hotspots = <_CowHotspot>[
-      _CowHotspot(
-        code: 'NECK',
-        label: 'Neck',
-        points: const [
-          Offset(0.2093, 0.1768),
-          Offset(0.2707, 0.1796),
-          Offset(0.2645, 0.2302),
-          Offset(0.2576, 0.2947),
-          Offset(0.2528, 0.3591),
-          Offset(0.2279, 0.3913),
-          Offset(0.2017, 0.4052),
-          Offset(0.1727, 0.3361),
-          Offset(0.1865, 0.2947),
-          Offset(0.1975, 0.2348),
-        ],
-      ),
-      _CowHotspot(
-        code: 'CHUCK',
-        label: 'Chuck',
-        points: const [
-          Offset(0.2707, 0.1796),
-          Offset(0.4033, 0.1860),
-          Offset(0.4068, 0.2762),
-          Offset(0.4075, 0.3683),
-          Offset(0.4047, 0.4365),
-          Offset(0.3522, 0.4374),
-          Offset(0.3039, 0.4190),
-          Offset(0.2521, 0.3794),
-          Offset(0.2624, 0.2947),
-        ],
-      ),
-      _CowHotspot(
-        code: 'BLADE',
-        label: 'Blade',
-        points: const [
-          Offset(0.2521, 0.3794),
-          Offset(0.3039, 0.4190),
-          Offset(0.3522, 0.4374),
-          Offset(0.4047, 0.4365),
-          Offset(0.4068, 0.4788),
-          Offset(0.3660, 0.4972),
-          Offset(0.3142, 0.5110),
-          Offset(0.2555, 0.5129),
-          Offset(0.2348, 0.4880),
-          Offset(0.2175, 0.4098),
-        ],
-      ),
-      _CowHotspot(
-        code: 'BRISKET',
-        label: 'Brisket',
-        points: const [
-          Offset(0.2555, 0.5129),
-          Offset(0.3142, 0.5110),
-          Offset(0.3660, 0.4972),
-          Offset(0.4068, 0.4788),
-          Offset(0.4006, 0.5525),
-          Offset(0.3923, 0.5875),
-          Offset(0.3453, 0.5893),
-          Offset(0.3073, 0.5801),
-          Offset(0.2693, 0.5617),
-        ],
-      ),
-      _CowHotspot(
-        code: 'SHANK',
-        label: 'Shank',
-        points: const [
-          Offset(0.3073, 0.5801),
-          Offset(0.3453, 0.5893),
-          Offset(0.3923, 0.5875),
-          Offset(0.3854, 0.6538),
-          Offset(0.3785, 0.7274),
-          Offset(0.3702, 0.8103),
-          Offset(0.3384, 0.8103),
-          Offset(0.3315, 0.7182),
-          Offset(0.3246, 0.6446),
-        ],
-      ),
-      _CowHotspot(
-        code: 'RIB',
-        label: 'Rib',
-        points: const [
-          Offset(0.4033, 0.1860),
-          Offset(0.5684, 0.1980),
-          Offset(0.5753, 0.2670),
-          Offset(0.5780, 0.3500),
-          Offset(0.5753, 0.4383),
-          Offset(0.5041, 0.4420),
-          Offset(0.4351, 0.4466),
-          Offset(0.4047, 0.4365),
-        ],
-      ),
-      _CowHotspot(
-        code: 'PLATE',
-        label: 'Short Plate',
-        points: const [
-          Offset(0.4047, 0.4365),
-          Offset(0.5041, 0.4420),
-          Offset(0.5753, 0.4383),
-          Offset(0.5732, 0.5157),
-          Offset(0.5698, 0.5783),
-          Offset(0.4834, 0.5801),
-          Offset(0.4040, 0.5847),
-          Offset(0.4006, 0.5525),
-        ],
-      ),
-      _CowHotspot(
-        code: 'LOIN',
-        label: 'Loin',
-        points: const [
-          Offset(0.5684, 0.1980),
-          Offset(0.7280, 0.1860),
-          Offset(0.7320, 0.2578),
-          Offset(0.7341, 0.3223),
-          Offset(0.7355, 0.3591),
-          Offset(0.6975, 0.3517),
-          Offset(0.6423, 0.3536),
-          Offset(0.5780, 0.3591),
-          Offset(0.5753, 0.2670),
-        ],
-      ),
-      _CowHotspot(
-        code: 'LOIN',
-        label: 'Tenderloin',
-        points: const [
-          Offset(0.5780, 0.3591),
-          Offset(0.6423, 0.3536),
-          Offset(0.6975, 0.3517),
-          Offset(0.7355, 0.3591),
-          Offset(0.7459, 0.3729),
-          Offset(0.7389, 0.3959),
-          Offset(0.6906, 0.4033),
-          Offset(0.6354, 0.4033),
-          Offset(0.5801, 0.3978),
-        ],
-      ),
-      _CowHotspot(
-        code: 'FLANK',
-        label: 'Flank',
-        points: const [
-          Offset(0.5801, 0.3978),
-          Offset(0.6354, 0.4033),
-          Offset(0.6837, 0.4052),
-          Offset(0.6851, 0.4604),
-          Offset(0.6872, 0.5295),
-          Offset(0.6423, 0.5470),
-          Offset(0.5732, 0.5820),
-          Offset(0.5698, 0.5157),
-        ],
-      ),
-      _CowHotspot(
-        code: 'HIND',
-        label: 'Thick Flank',
-        points: const [
-          Offset(0.6837, 0.4052),
-          Offset(0.7389, 0.3959),
-          Offset(0.7597, 0.4190),
-          Offset(0.7838, 0.4696),
-          Offset(0.8080, 0.5433),
-          Offset(0.7690, 0.5525),
-          Offset(0.7251, 0.5341),
-          Offset(0.6872, 0.5295),
-        ],
-      ),
-      _CowHotspot(
-        code: 'RUMP',
-        label: 'Rump',
-        points: const [
-          Offset(0.7280, 0.1860),
-          Offset(0.8564, 0.1750),
-          Offset(0.8840, 0.1842),
-          Offset(0.9047, 0.2026),
-          Offset(0.9081, 0.2670),
-          Offset(0.9047, 0.3131),
-          Offset(0.8425, 0.3361),
-          Offset(0.7804, 0.3591),
-          Offset(0.7459, 0.3729),
-          Offset(0.7355, 0.3591),
-        ],
-      ),
-      _CowHotspot(
-        code: 'HIND',
-        label: 'Topside',
-        points: const [
-          Offset(0.7459, 0.3729),
-          Offset(0.7804, 0.3591),
-          Offset(0.8425, 0.3361),
-          Offset(0.9047, 0.3131),
-          Offset(0.9012, 0.3683),
-          Offset(0.8964, 0.4328),
-          Offset(0.8425, 0.4420),
-          Offset(0.7873, 0.4512),
-          Offset(0.7597, 0.4190),
-        ],
-      ),
-      _CowHotspot(
-        code: 'SILVERSIDE',
-        label: 'Silverside',
-        points: const [
-          Offset(0.7873, 0.4512),
-          Offset(0.8425, 0.4420),
-          Offset(0.8964, 0.4328),
-          Offset(0.8943, 0.4788),
-          Offset(0.8909, 0.5295),
-          Offset(0.8564, 0.5387),
-          Offset(0.8080, 0.5525),
-        ],
-      ),
-      _CowHotspot(
-        code: 'HIND',
-        label: 'Knuckle',
-        points: const [
-          Offset(0.8080, 0.5525),
-          Offset(0.8564, 0.5387),
-          Offset(0.8909, 0.5295),
-          Offset(0.8943, 0.5801),
-          Offset(0.8874, 0.5985),
-          Offset(0.8494, 0.6262),
-          Offset(0.8287, 0.5985),
-        ],
-      ),
-      _CowHotspot(
-        code: 'SHANK',
-        label: 'Hind Shank',
-        points: const [
-          Offset(0.8494, 0.6262),
-          Offset(0.8874, 0.5985),
-          Offset(0.8978, 0.6262),
-          Offset(0.8978, 0.7182),
-          Offset(0.8943, 0.8103),
-          Offset(0.8598, 0.8103),
-          Offset(0.8564, 0.7366),
-          Offset(0.8529, 0.6621),
-        ],
-      ),
-    ];
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E2DE)),
-          ),
-          padding: const EdgeInsets.all(8),
-          child: AspectRatio(
-            aspectRatio: 4 / 3,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = Size(constraints.maxWidth, constraints.maxHeight);
-
-                void updateHover(Offset localPosition) {
-                  final normalized = Offset(
-                    localPosition.dx / size.width,
-                    localPosition.dy / size.height,
-                  );
-
-                  String? hoveredCode;
-                  for (final hotspot in hotspots.reversed) {
-                    if (_pointInPolygon(normalized, hotspot.points)) {
-                      hoveredCode = hotspot.code;
-                      break;
-                    }
-                  }
-
-                  if (hoveredCode != _hoveredSectionCode) {
-                    setState(() {
-                      _hoveredSectionCode = hoveredCode;
-                    });
-                  }
-                }
-
-                void handleTap(Offset localPosition) {
-                  final normalized = Offset(
-                    localPosition.dx / size.width,
-                    localPosition.dy / size.height,
-                  );
-
-                  for (final hotspot in hotspots.reversed) {
-                    if (_pointInPolygon(normalized, hotspot.points)) {
-                      _selectSectionCode(
-                        hotspot.code,
-                        visualLabel: hotspot.label,
-                      );
-                      return;
-                    }
-                  }
-                }
-
-                return MouseRegion(
-                  cursor: _hoveredSectionCode == null
-                      ? SystemMouseCursors.basic
-                      : SystemMouseCursors.click,
-                  onHover: (event) => updateHover(event.localPosition),
-                  onExit: (_) {
-                    if (_hoveredSectionCode != null) {
-                      setState(() {
-                        _hoveredSectionCode = null;
-                      });
-                    }
-                  },
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) => handleTap(details.localPosition),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/images/cutlink_beef_map.png',
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                          ),
-                        ),
-                        IgnorePointer(
-                          child: CustomPaint(
-                            painter: _CowHotspotPainter(
-                              hotspots: hotspots,
-                              selectedSectionId: _selectedSectionId,
-                              hoveredSectionCode: _hoveredSectionCode,
-                              sectionIdForCode: (code) =>
-                                  _sectionByCode(code)?['id']?.toString(),
-                              accent: _darkRed,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 10,
-                          bottom: 10,
-                          child: _buildMiscButton(),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  bool _pointInPolygon(Offset point, List<Offset> polygon) {
-    var inside = false;
-
-    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      final xi = polygon[i].dx;
-      final yi = polygon[i].dy;
-      final xj = polygon[j].dx;
-      final yj = polygon[j].dy;
-
-      final intersects =
-          ((yi > point.dy) != (yj > point.dy)) &&
-          (point.dx <
-              (xj - xi) *
-                      (point.dy - yi) /
-                      ((yj - yi).abs() < 0.000001 ? 0.000001 : (yj - yi)) +
-                  xi);
-
-      if (intersects) {
-        inside = !inside;
-      }
+  Future<void> _scrollSectionStrip(double direction) async {
+    if (!_sectionScrollController.hasClients) {
+      return;
     }
 
-    return inside;
-  }
+    final position = _sectionScrollController.position;
+    final target = (_sectionScrollController.offset + (320 * direction))
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
 
-  Widget _buildMiscButton() {
-    Map<String, dynamic>? misc;
-
-    for (final section in _beefSections) {
-      if (section['is_miscellaneous'] == true) {
-        misc = section;
-        break;
-      }
-    }
-
-    final miscSection = misc;
-    if (miscSection == null) return const SizedBox.shrink();
-
-    final id = miscSection['id'].toString();
-    final selected = _selectedSectionId == id;
-
-    return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? const Color(0xFFF3E8E8) : Colors.white,
-        foregroundColor: selected ? _darkRed : const Color(0xFF444444),
-        side: BorderSide(color: selected ? _darkRed : const Color(0xFFD8D8D4)),
-      ),
-      onPressed: () {
-        _selectSection(miscSection);
-      },
-      icon: const Icon(Icons.medical_information_outlined),
-      label: Text(
-        'Misc / Offal (${_sectionProductCount(id)})',
-        style: const TextStyle(fontWeight: FontWeight.w800),
-      ),
+    await _sectionScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
     );
   }
 
   Widget _buildSectionStrip() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final section in _beefSections) ...[
-            _sectionChip(section),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
+    final sections = _selectedAnimalSections;
+
+    if (sections.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        IconButton(
+          tooltip: 'Previous cut sections',
+          onPressed: () => _scrollSectionStrip(-1),
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _sectionScrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final section in sections) ...[
+                  _sectionChip(section),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Next cut sections',
+          onPressed: () => _scrollSectionStrip(1),
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
     );
   }
 
@@ -1327,72 +1161,5 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         ],
       ),
     );
-  }
-}
-
-class _CowHotspot {
-  const _CowHotspot({
-    required this.code,
-    required this.label,
-    required this.points,
-  });
-
-  final String code;
-  final String label;
-  final List<Offset> points;
-}
-
-class _CowHotspotPainter extends CustomPainter {
-  const _CowHotspotPainter({
-    required this.hotspots,
-    required this.selectedSectionId,
-    required this.hoveredSectionCode,
-    required this.sectionIdForCode,
-    required this.accent,
-  });
-
-  final List<_CowHotspot> hotspots;
-  final String? selectedSectionId;
-  final String? hoveredSectionCode;
-  final String? Function(String code) sectionIdForCode;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final hotspot in hotspots) {
-      final sectionId = sectionIdForCode(hotspot.code);
-      final selected = sectionId != null && sectionId == selectedSectionId;
-      final hovered = hotspot.code == hoveredSectionCode;
-
-      if (!selected && !hovered) {
-        continue;
-      }
-
-      final path = Path();
-      final first = hotspot.points.first;
-
-      path.moveTo(first.dx * size.width, first.dy * size.height);
-
-      for (final point in hotspot.points.skip(1)) {
-        path.lineTo(point.dx * size.width, point.dy * size.height);
-      }
-
-      path.close();
-
-      final fill = Paint()
-        ..style = PaintingStyle.fill
-        ..color = selected
-            ? accent.withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.22);
-
-      canvas.drawPath(path, fill);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CowHotspotPainter oldDelegate) {
-    return oldDelegate.selectedSectionId != selectedSectionId ||
-        oldDelegate.hoveredSectionCode != hoveredSectionCode ||
-        oldDelegate.accent != accent;
   }
 }

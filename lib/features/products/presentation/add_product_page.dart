@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddProductPage extends StatefulWidget {
-  const AddProductPage({super.key});
+  const AddProductPage({
+    super.key,
+    this.initialAnimalCode,
+    this.initialSectionId,
+  });
+
+  final String? initialAnimalCode;
+  final String? initialSectionId;
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -116,6 +123,38 @@ class _AddProductPageState extends State<AddProductPage> {
         _animals = List<Map<String, dynamic>>.from(animals);
         _loading = false;
       });
+
+      final initialAnimalCode = widget.initialAnimalCode?.trim().toUpperCase();
+
+      if (initialAnimalCode != null && initialAnimalCode.isNotEmpty) {
+        Map<String, dynamic>? initialAnimal;
+
+        for (final animal in _animals) {
+          if (animal['code']?.toString().trim().toUpperCase() ==
+              initialAnimalCode) {
+            initialAnimal = animal;
+            break;
+          }
+        }
+
+        final initialAnimalId = initialAnimal?['id']?.toString();
+
+        if (initialAnimalId != null && initialAnimalId.isNotEmpty) {
+          await _selectAnimal(initialAnimalId);
+
+          if (!mounted) return;
+
+          final requestedSectionId = widget.initialSectionId;
+
+          if (requestedSectionId != null &&
+              requestedSectionId.isNotEmpty &&
+              _sections.any(
+                (section) => section['id']?.toString() == requestedSectionId,
+              )) {
+            await _selectSection(requestedSectionId);
+          }
+        }
+      }
     } on PostgrestException catch (e) {
       _finishWithError(e.message);
     } catch (e) {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/interactive_animal_browser.dart';
+import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 import 'supplier_create_order_page.dart';
-import 'supplier_invoice_page.dart';
-import 'supplier_work_order_page.dart';
+import 'supplier_orders_page.dart';
+import 'supplier_quotes_page.dart';
+import 'supplier_work_orders_page.dart';
 
 class SupplierSalesPage extends StatefulWidget {
   const SupplierSalesPage({super.key});
@@ -12,42 +15,36 @@ class SupplierSalesPage extends StatefulWidget {
   State<SupplierSalesPage> createState() => _SupplierSalesPageState();
 }
 
-class _SupplierSalesPageState extends State<SupplierSalesPage>
-    with SingleTickerProviderStateMixin {
+class _SupplierSalesPageState extends State<SupplierSalesPage> {
   static const _darkRed = Color(0xFF741C1C);
 
-  late final TabController _tabController;
-
-  final TextEditingController _stockSearchController = TextEditingController();
-  final TextEditingController _quoteHistorySearchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isLoading = true;
   String? _errorMessage;
-
+  String _selectedAnimalCode = CutLinkAnimals.beef;
+  String? _selectedAnimalRegionKey;
   List<Map<String, dynamic>> _products = [];
-  List<Map<String, dynamic>> _quotes = [];
-  List<Map<String, dynamic>> _marketplaceOrders = [];
-  List<Map<String, dynamic>> _workOrders = [];
-  List<Map<String, dynamic>> _invoices = [];
+
+  Map<String, dynamic>? _activeSale;
+  final List<Map<String, dynamic>> _activeSaleLines = [];
+  bool _activeSaleMinimized = false;
+
+  // Other open sale sessions are parked here while the salesperson works
+  // on the currently active sale. There is no fixed limit.
+  final List<Map<String, dynamic>> _parkedSales = [];
 
   @override
   void initState() {
     super.initState();
-
-    _tabController = TabController(length: 6, vsync: this);
-    _stockSearchController.addListener(_refresh);
-    _quoteHistorySearchController.addListener(_refresh);
-    _loadSalesDesk();
+    _searchController.addListener(_refresh);
+    _loadStock();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _stockSearchController.removeListener(_refresh);
-    _stockSearchController.dispose();
-    _quoteHistorySearchController.removeListener(_refresh);
-    _quoteHistorySearchController.dispose();
+    _searchController.removeListener(_refresh);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -55,6 +52,29 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Map<String, dynamic>? _nestedMap(dynamic raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+
+    return null;
+  }
+
+  List<Map<String, dynamic>> _nestedList(dynamic raw) {
+    if (raw is! List) {
+      return [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   Future<String> _resolveSupplierBusinessId() async {
@@ -99,7 +119,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     throw Exception('No active supplier business membership was found.');
   }
 
-  Future<void> _loadSalesDesk() async {
+  Future<void> _loadStock() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -109,159 +129,59 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
 
-      final results = await Future.wait([
-        client
-            .from('products')
-            .select('''
+      final response = await client
+          .from('products')
+          .select('''
+            id,
+            sku,
+            product_name,
+            available_quantity,
+            quantity_unit,
+            availability_status,
+            active,
+            order_unit,
+            price_basis,
+            weight_type,
+            catch_weight,
+            meat_animal_id,
+            meat_animals(
               id,
-              sku,
-              product_name,
-              available_quantity,
-              quantity_unit,
-              availability_status,
-              active,
-              order_unit,
+              code,
+              name
+            ),
+            meat_section_id,
+            meat_sections(
+              id,
+              code,
+              name,
+              is_miscellaneous
+            ),
+            product_prices(
+              id,
+              amount,
               price_basis,
-              weight_type,
-              catch_weight,
-              product_prices(
+              active,
+              price_lists(
                 id,
-                amount,
-                price_basis,
-                active,
-                price_lists(
-                  id,
-                  name,
-                  visibility,
-                  active
-                )
+                name,
+                visibility,
+                active
               )
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .eq('active', true)
-            .order('product_name'),
-        client
-            .from('orders')
-            .select('''
-              id,
-              order_number,
-              quote_revision,
-              quote_last_saved_at,
-              status,
-              order_source,
-              customer_reference,
-              delivery_fee,
-              fulfilment_method,
-              requested_fulfilment_date,
-              created_at,
-              supplier_customer_accounts(
-                id,
-                customer_name,
-                legal_name,
-                phone,
-                email
-              ),
-              order_items(
-                id,
-                product_name_snapshot,
-                quantity,
-                quantity_unit,
-                unit_price,
-                price_basis,
-                catch_weight_snapshot
-              )
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .eq('status', 'draft')
-            .order('created_at', ascending: false),
-        client
-            .from('orders')
-            .select('''
-              id,
-              order_number,
-              status,
-              order_source,
-              customer_reference,
-              delivery_fee,
-              fulfilment_method,
-              requested_fulfilment_date,
-              created_at,
-              submitted_at,
-              butcher_business_id,
-              businesses!orders_butcher_business_id_fkey(
-                id,
-                trading_name,
-                legal_name
-              ),
-              order_items(
-                id,
-                product_name_snapshot,
-                quantity,
-                quantity_unit,
-                unit_price,
-                price_basis,
-                catch_weight_snapshot
-              )
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .eq('status', 'submitted')
-            .eq('order_source', 'marketplace')
-            .order('submitted_at', ascending: false),
-        client
-            .from('warehouse_work_orders')
-            .select('''
-              id,
-              order_id,
-              work_order_number,
-              status,
-              created_at,
-              orders(
-                id,
-                order_number,
-                supplier_customer_accounts(
-                  id,
-                  customer_name,
-                  legal_name
-                ),
-                order_items(
-                  id,
-                  fulfilment_status
-                )
-              )
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .neq('status', 'completed')
-            .order('created_at', ascending: false),
-        client
-            .from('invoices')
-            .select('''
-              id,
-              invoice_number,
-              order_id,
-              status,
-              customer_name_snapshot,
-              products_subtotal,
-              delivery_fee,
-              tax_status,
-              total_amount,
-              invoice_date,
-              due_date,
-              created_at
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .order('created_at', ascending: false),
-      ]);
+            )
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('active', true)
+          .order('product_name');
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _products = _maps(results[0]);
-        _quotes = _maps(results[1]);
-        _marketplaceOrders = _maps(results[2]);
-        _workOrders = _maps(results[3]);
-        _invoices = _maps(results[4]);
+        _products = (response as List)
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList();
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -285,343 +205,146 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     }
   }
 
-  List<Map<String, dynamic>> _maps(dynamic raw) {
-    if (raw is! List) {
-      return [];
-    }
-
-    return raw
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
-  }
-
-  Map<String, dynamic>? _nestedMap(dynamic raw) {
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    if (raw is List && raw.isNotEmpty && raw.first is Map) {
-      return Map<String, dynamic>.from(raw.first as Map);
-    }
-
-    return null;
-  }
-
-  List<Map<String, dynamic>> _nestedList(dynamic raw) {
-    if (raw is! List) {
-      return [];
-    }
-
-    return raw
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
-  }
-
-  List<Map<String, dynamic>> get _filteredProducts {
-    final query = _stockSearchController.text.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      return _products;
-    }
-
-    return _products.where((product) {
-      final name = product['product_name']?.toString().toLowerCase() ?? '';
-      final sku = product['sku']?.toString().toLowerCase() ?? '';
-
-      return name.contains(query) || sku.contains(query);
-    }).toList();
-  }
-
-  bool _isCatchWeight(Map<String, dynamic> product) {
-    return product['catch_weight'] == true ||
-        product['weight_type']?.toString() == 'catch_weight';
-  }
-
-  Map<String, dynamic>? _standardPrice(Map<String, dynamic> product) {
-    final prices = _nestedList(product['product_prices']);
-
-    for (final price in prices) {
-      if (price['active'] != true) {
-        continue;
-      }
-
-      final list = _nestedMap(price['price_lists']);
-
-      if (list?['active'] == true &&
-          list?['visibility']?.toString() == 'public') {
-        return price;
-      }
-    }
-
-    return null;
-  }
-
-  String _money(dynamic value) {
-    final number = value is num
-        ? value.toDouble()
-        : double.tryParse(value?.toString() ?? '');
-
-    if (number == null) {
-      return '—';
-    }
-
-    final fixed = number.toStringAsFixed(2);
-    final parts = fixed.split('.');
-    final digits = parts.first;
-    final decimal = parts.last;
-
-    final buffer = StringBuffer();
-
-    for (var index = 0; index < digits.length; index++) {
-      final remaining = digits.length - index;
-      buffer.write(digits[index]);
-
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-
-    return '\$${buffer.toString()}.$decimal';
-  }
-
-  String _productAvailability(Map<String, dynamic> product) {
-    final status = product['availability_status']?.toString();
-
-    return switch (status) {
-      'in_stock' => 'In stock',
-      'limited' => 'Limited',
-      'out_of_stock' => 'Out of stock',
-      'made_to_order' => 'Made to order',
-      _ => 'Availability not set',
-    };
-  }
-
-  DateTime _startOfToday() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
-  }
-
-  DateTime? _quoteActivityDate(Map<String, dynamic> quote) {
-    final raw = quote['quote_last_saved_at'] ?? quote['created_at'];
-    if (raw == null) {
-      return null;
-    }
-
-    return DateTime.tryParse(raw.toString())?.toLocal();
-  }
-
-  List<Map<String, dynamic>> get _todaysQuotes {
-    final start = _startOfToday();
-    final tomorrow = start.add(const Duration(days: 1));
-
-    return _quotes.where((quote) {
-      final activity = _quoteActivityDate(quote);
-      return activity != null &&
-          !activity.isBefore(start) &&
-          activity.isBefore(tomorrow);
-    }).toList();
-  }
-
-  List<Map<String, dynamic>> get _quoteHistory {
-    final start = _startOfToday();
-    final query = _quoteHistorySearchController.text.trim().toLowerCase();
-
-    return _quotes.where((quote) {
-      final activity = _quoteActivityDate(quote);
-
-      if (activity == null || !activity.isBefore(start)) {
-        return false;
-      }
-
-      if (query.isEmpty) {
-        return true;
-      }
-
-      final account = _nestedMap(quote['supplier_customer_accounts']);
-      final items = _nestedList(quote['order_items']);
-
-      final searchText = <String>[
-        quote['order_number']?.toString() ?? '',
-        _quoteDisplayNumber(quote),
-        account?['customer_name']?.toString() ?? '',
-        account?['legal_name']?.toString() ?? '',
-        account?['phone']?.toString() ?? '',
-        account?['email']?.toString() ?? '',
-        quote['customer_reference']?.toString() ?? '',
-        quote['created_at']?.toString() ?? '',
-        quote['quote_last_saved_at']?.toString() ?? '',
-        for (final item in items)
-          item['product_name_snapshot']?.toString() ?? '',
-      ].join(' ').toLowerCase();
-
-      return searchText.contains(query);
-    }).toList();
-  }
-
-  String _marketplaceCustomerName(Map<String, dynamic> order) {
-    final business = _nestedMap(order['businesses']);
-
-    final tradingName = business?['trading_name']?.toString().trim();
-    final legalName = business?['legal_name']?.toString().trim();
-
-    if (tradingName != null && tradingName.isNotEmpty) {
-      return tradingName;
-    }
-
-    if (legalName != null && legalName.isNotEmpty) {
-      return legalName;
-    }
-
-    return 'Butcher';
-  }
-
-  String _displayDate(dynamic value) {
-    final parsed = value == null
-        ? null
-        : DateTime.tryParse(value.toString())?.toLocal();
-
-    if (parsed == null) {
-      return '';
-    }
-
-    final day = parsed.day.toString().padLeft(2, '0');
-    final month = parsed.month.toString().padLeft(2, '0');
-
-    return '$day/$month/${parsed.year}';
-  }
-
-  String _quoteDisplayNumber(Map<String, dynamic> quote) {
-    final number = quote['order_number']?.toString() ?? 'Quote';
-    final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
-
-    if (revision <= 0) {
-      return number;
-    }
-
-    return '$number #$revision';
-  }
-
-  Future<void> _editQuote(Map<String, dynamic> quote) async {
-    final orderId = quote['id']?.toString();
-
-    if (orderId == null || orderId.isEmpty) {
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SupplierCreateOrderPage(quoteOrderId: orderId),
-      ),
-    );
-
-    if (mounted) {
-      await _loadSalesDesk();
-    }
-  }
-
-  String _customerName(Map<String, dynamic> quote) {
-    final account = _nestedMap(quote['supplier_customer_accounts']);
-
-    final customerName = account?['customer_name']?.toString().trim();
-    final legalName = account?['legal_name']?.toString().trim();
-
-    if (customerName != null && customerName.isNotEmpty) {
-      return customerName;
-    }
-
-    if (legalName != null && legalName.isNotEmpty) {
-      return legalName;
-    }
-
-    return 'Customer';
-  }
-
-  Future<void> _openNewSale({String? productId}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) =>
-            SupplierCreateOrderPage(initialProductId: productId),
-      ),
-    );
-
-    if (mounted) {
-      await _loadSalesDesk();
-    }
-  }
-
-  Future<void> _acceptMarketplaceOrderAndCreateWorkOrder(
-    Map<String, dynamic> order,
-  ) async {
-    final orderId = order['id']?.toString();
-
-    if (orderId == null || orderId.isEmpty) {
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Accept & Create Work Order?'),
-        content: Text(
-          'Accept ${order['order_number'] ?? 'this marketplace order'} from '
-          '${_marketplaceCustomerName(order)} and send it to the warehouse?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Accept & Create Work Order'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) {
-      return;
-    }
-
+  Future<void> _loadQuoteIntoWorkspace(String quoteOrderId) async {
     try {
-      final now = DateTime.now().toUtc().toIso8601String();
+      final client = Supabase.instance.client;
+      final supplierBusinessId = await _resolveSupplierBusinessId();
 
-      final updated = await Supabase.instance.client
+      final raw = await client
           .from('orders')
-          .update({'status': 'accepted', 'accepted_at': now})
-          .eq('id', orderId)
-          .eq('status', 'submitted')
-          .select('id')
-          .maybeSingle();
-
-      if (updated == null) {
-        throw Exception(
-          'The marketplace order was not accepted. Refresh Sales and try again.',
-        );
-      }
-
-      await Supabase.instance.client.rpc(
-        'create_or_get_warehouse_work_order',
-        params: {'target_order_id': orderId},
-      );
+          .select('''
+            id,
+            order_number,
+            quote_revision,
+            status,
+            order_source,
+            source_reference,
+            customer_reference,
+            delivery_notes,
+            internal_notes,
+            payment_method_snapshot,
+            payment_terms_days_snapshot,
+            fulfilment_method,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
+            delivery_fee,
+            supplier_customer_account_id,
+            supplier_customer_accounts(
+              id,
+              customer_name,
+              legal_name,
+              payment_method,
+              payment_terms_days,
+              delivery_address_line_1,
+              delivery_address_line_2,
+              delivery_suburb,
+              delivery_state,
+              delivery_postcode
+            ),
+            order_items(
+              id,
+              product_id,
+              product_name_snapshot,
+              sku_snapshot,
+              quantity,
+              quantity_unit,
+              unit_price,
+              price_basis,
+              catch_weight_snapshot,
+              notes
+            )
+          ''')
+          .eq('id', quoteOrderId)
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'draft')
+          .single();
 
       if (!mounted) {
         return;
       }
 
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => SupplierWorkOrderPage(orderId: orderId),
+      final quote = Map<String, dynamic>.from(raw);
+      final account = _nestedMap(quote['supplier_customer_accounts']);
+      final items = _nestedList(quote['order_items']);
+
+      if (account == null) {
+        throw Exception('The quote customer account could not be loaded.');
+      }
+
+      final addressParts = <String>[
+        account['delivery_address_line_1']?.toString().trim() ?? '',
+        account['delivery_address_line_2']?.toString().trim() ?? '',
+        account['delivery_suburb']?.toString().trim() ?? '',
+        account['delivery_state']?.toString().trim() ?? '',
+        account['delivery_postcode']?.toString().trim() ?? '',
+      ].where((part) => part.isNotEmpty).toList();
+
+      setState(() {
+        _parkCurrentSale();
+
+        _activeSale = {
+          'quote_order_id': quote['id'],
+          'quote_number': quote['order_number'],
+          'quote_revision': quote['quote_revision'],
+          'supplier_customer_account_id':
+              quote['supplier_customer_account_id'] ?? account['id'],
+          'customer': account,
+          'customer_name':
+              account['customer_name']?.toString().trim().isNotEmpty == true
+              ? account['customer_name'].toString().trim()
+              : account['legal_name']?.toString().trim() ?? 'Customer',
+          'payment_method':
+              quote['payment_method_snapshot']?.toString() ?? 'cod',
+          'payment_terms_days':
+              (quote['payment_terms_days_snapshot'] as num?)?.toInt() ?? 0,
+          'fulfilment_method':
+              quote['fulfilment_method']?.toString() ?? 'pickup',
+          'requested_fulfilment_date': quote['requested_fulfilment_date']
+              ?.toString(),
+          'requested_fulfilment_time': quote['requested_fulfilment_time']
+              ?.toString(),
+          'delivery_address': addressParts.isEmpty
+              ? null
+              : addressParts.join(', '),
+          'delivery_notes': quote['delivery_notes']?.toString() ?? '',
+          'internal_notes': quote['internal_notes']?.toString() ?? '',
+          'source_reference': quote['source_reference']?.toString(),
+          'customer_reference': quote['customer_reference']?.toString(),
+          'delivery_fee': (quote['delivery_fee'] as num?)?.toDouble() ?? 0,
+          'order_source': quote['order_source']?.toString() ?? 'manual',
+        };
+
+        _activeSaleLines
+          ..clear()
+          ..addAll(
+            items.map(
+              (item) => {
+                'product_id': item['product_id'],
+                'product_name':
+                    item['product_name_snapshot']?.toString() ?? 'Product',
+                'sku': item['sku_snapshot']?.toString(),
+                'quantity': item['quantity'],
+                'quantity_unit': item['quantity_unit']?.toString() ?? 'unit',
+                'unit_price': item['unit_price'],
+                'price_basis': item['price_basis']?.toString() ?? 'unit',
+                'catch_weight_snapshot': item['catch_weight_snapshot'] == true,
+                'notes': item['notes']?.toString() ?? '',
+              },
+            ),
+          );
+
+        _activeSaleMinimized = false;
+        _selectedAnimalRegionKey = null;
+        _searchController.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Quote ${quote['order_number'] ?? ''} reopened in Sales.',
+          ),
         ),
       );
-
-      if (mounted) {
-        await _loadSalesDesk();
-        _tabController.animateTo(3);
-      }
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -641,65 +364,1214 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     }
   }
 
-  Future<void> _convertQuoteToWorkOrder(Map<String, dynamic> quote) async {
-    final quoteId = quote['id']?.toString();
+  String? _productAnimalCode(Map<String, dynamic> product) {
+    final rawAnimal = product['meat_animals'];
 
-    if (quoteId == null || quoteId.isEmpty) {
+    if (rawAnimal is Map) {
+      final animal = Map<String, dynamic>.from(rawAnimal);
+      final code = animal['code']?.toString().trim().toUpperCase();
+
+      if (code != null && code.isNotEmpty) {
+        return code;
+      }
+    }
+
+    // Existing Beef stock created before meat_animal_id was populated may
+    // still have a valid beef meat_section_id. Keep those visible under Beef.
+    if (product['meat_section_id'] != null) {
+      return CutLinkAnimals.beef;
+    }
+
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _filteredProducts {
+    final search = _searchController.text.trim().toLowerCase();
+
+    return _products.where((product) {
+      if (_productAnimalCode(product) != _selectedAnimalCode) {
+        return false;
+      }
+
+      if (_selectedAnimalCode == CutLinkAnimals.beef &&
+          _selectedAnimalRegionKey != null &&
+          !_productMatchesBeefCut(product, _selectedAnimalRegionKey!)) {
+        return false;
+      }
+
+      if (search.isEmpty) {
+        return true;
+      }
+
+      final name = product['product_name']?.toString().toLowerCase() ?? '';
+      final sku = product['sku']?.toString().toLowerCase() ?? '';
+
+      return name.contains(search) || sku.contains(search);
+    }).toList();
+  }
+
+  bool _productMatchesBeefCut(Map<String, dynamic> product, String cutKey) {
+    final rawSection = product['meat_sections'];
+
+    if (rawSection is! Map) {
+      return false;
+    }
+
+    final section = Map<String, dynamic>.from(rawSection);
+    final code = section['code']?.toString().trim().toLowerCase() ?? '';
+    final name = section['name']?.toString().trim().toLowerCase() ?? '';
+    final miscellaneous = section['is_miscellaneous'] == true;
+
+    final aliases = _sectionAliasesForCut(cutKey);
+
+    if (miscellaneous && cutKey == CutLinkBeefCutKeys.miscOffalOther) {
+      return true;
+    }
+
+    return aliases.contains(code) || aliases.contains(name);
+  }
+
+  Set<String> _sectionAliasesForCut(String cutKey) {
+    return switch (cutKey) {
+      CutLinkBeefCutKeys.cheek => {'cheek', 'misc', 'miscellaneous / offal'},
+      CutLinkBeefCutKeys.neck => {'neck'},
+      CutLinkBeefCutKeys.shoulder => {'shoulder'},
+      CutLinkBeefCutKeys.chuck => {'chuck'},
+      CutLinkBeefCutKeys.blade => {'blade', 'chuck'},
+      CutLinkBeefCutKeys.brisket => {'brisket'},
+      CutLinkBeefCutKeys.shinShank => {
+        'shin / shank',
+        'shin/shank',
+        'shin-shank',
+        'shin',
+        'shank',
+      },
+      CutLinkBeefCutKeys.ribs => {'ribs', 'rib'},
+      CutLinkBeefCutKeys.ribEye => {'rib eye', 'ribeye', 'rib-eye'},
+      CutLinkBeefCutKeys.plate => {'plate', 'short plate'},
+      CutLinkBeefCutKeys.skirt => {'skirt'},
+      CutLinkBeefCutKeys.loin => {'loin'},
+      CutLinkBeefCutKeys.flank => {'flank'},
+      CutLinkBeefCutKeys.rump => {'rump'},
+      CutLinkBeefCutKeys.round => {
+        'round',
+        'hind',
+        'topside / thick flank / knuckle',
+        'topside',
+        'thick flank',
+        'knuckle',
+      },
+      CutLinkBeefCutKeys.silversideOutside => {
+        'silverside / outside',
+        'silverside/outside',
+        'silverside-outside',
+        'silverside',
+        'outside',
+      },
+      CutLinkBeefCutKeys.oxTail => {
+        'ox tail',
+        'oxtail',
+        'ox-tail',
+        'misc',
+        'miscellaneous / offal',
+      },
+      CutLinkBeefCutKeys.miscOffalOther => {
+        'misc',
+        'miscellaneous / offal',
+        'miscellaneous / offal · other',
+        'miscellaneous/offal',
+        'misc / offal',
+        'offal',
+      },
+      _ => {cutKey.toLowerCase()},
+    };
+  }
+
+  String _beefCutLabel(String cutKey) {
+    return switch (cutKey) {
+      CutLinkBeefCutKeys.cheek => 'Cheek',
+      CutLinkBeefCutKeys.neck => 'Neck',
+      CutLinkBeefCutKeys.shoulder => 'Shoulder',
+      CutLinkBeefCutKeys.chuck => 'Chuck',
+      CutLinkBeefCutKeys.blade => 'Blade',
+      CutLinkBeefCutKeys.brisket => 'Brisket',
+      CutLinkBeefCutKeys.shinShank => 'Shin / Shank',
+      CutLinkBeefCutKeys.ribs => 'Ribs',
+      CutLinkBeefCutKeys.ribEye => 'Rib Eye',
+      CutLinkBeefCutKeys.plate => 'Plate',
+      CutLinkBeefCutKeys.skirt => 'Skirt',
+      CutLinkBeefCutKeys.loin => 'Loin',
+      CutLinkBeefCutKeys.flank => 'Flank',
+      CutLinkBeefCutKeys.rump => 'Rump',
+      CutLinkBeefCutKeys.round => 'Round',
+      CutLinkBeefCutKeys.silversideOutside => 'Silverside / Outside',
+      CutLinkBeefCutKeys.oxTail => 'Ox Tail',
+      CutLinkBeefCutKeys.miscOffalOther => 'Miscellaneous / Offal',
+      _ => cutKey,
+    };
+  }
+
+  String get _selectedAnimalName {
+    return CutLinkAnimals.all
+        .firstWhere(
+          (animal) => animal.code == _selectedAnimalCode,
+          orElse: () => CutLinkAnimals.all.first,
+        )
+        .name;
+  }
+
+  void _selectAnimal(String animalCode) {
+    if (animalCode == _selectedAnimalCode) {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Convert Quote to Work Order?'),
-        content: Text(
-          'Convert ${quote['order_number'] ?? 'this quote'} for '
-          '${_customerName(quote)} into a live warehouse work order?\n\n'
-          'The agreed rates remain locked. Catch-weight final totals stay pending until actual supplied weight is entered.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+    setState(() {
+      _selectedAnimalCode = animalCode;
+      _selectedAnimalRegionKey = null;
+      _searchController.clear();
+    });
+  }
+
+  void _selectAnimalRegion(String regionKey) {
+    setState(() {
+      _selectedAnimalRegionKey = regionKey;
+    });
+  }
+
+  void _clearAnimalRegion() {
+    if (_selectedAnimalRegionKey == null) {
+      return;
+    }
+
+    setState(() {
+      _selectedAnimalRegionKey = null;
+    });
+  }
+
+  bool _isCatchWeight(Map<String, dynamic> product) {
+    return product['weight_type']?.toString() == 'catch_weight' ||
+        product['catch_weight'] == true;
+  }
+
+  Map<String, dynamic>? _standardPrice(Map<String, dynamic> product) {
+    final rawPrices = product['product_prices'];
+
+    if (rawPrices is! List) {
+      return null;
+    }
+
+    for (final raw in rawPrices) {
+      if (raw is! Map) {
+        continue;
+      }
+
+      final price = Map<String, dynamic>.from(raw);
+
+      if (price['active'] != true) {
+        continue;
+      }
+
+      final rawList = price['price_lists'];
+
+      if (rawList is! Map) {
+        continue;
+      }
+
+      final list = Map<String, dynamic>.from(rawList);
+
+      if (list['active'] == true &&
+          list['visibility']?.toString() == 'public') {
+        return price;
+      }
+    }
+
+    return null;
+  }
+
+  String _money(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+
+    if (number == null) {
+      return 'No standard price';
+    }
+
+    final fixed = number.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final whole = parts.first;
+    final decimal = parts.last;
+
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < whole.length; i++) {
+      final remaining = whole.length - i;
+      buffer.write(whole[i]);
+
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+
+    return '\$${buffer.toString()}.$decimal';
+  }
+
+  String _basisLabel(Map<String, dynamic> product) {
+    if (_isCatchWeight(product)) {
+      return 'kg';
+    }
+
+    final basis = product['price_basis']?.toString();
+
+    switch (basis) {
+      case 'kilogram':
+        return 'kg';
+      case 'carton':
+        return 'carton';
+      case 'unit':
+        return 'unit';
+      default:
+        return basis ?? 'unit';
+    }
+  }
+
+  String _quantityLabel(Map<String, dynamic> product) {
+    final quantity = product['available_quantity'];
+    final unit = product['quantity_unit']?.toString();
+
+    if (quantity == null) {
+      return 'Availability not entered';
+    }
+
+    final number = quantity is num
+        ? quantity.toDouble()
+        : double.tryParse(quantity.toString());
+
+    final quantityText = number == null
+        ? quantity.toString()
+        : number == number.roundToDouble()
+        ? number.toInt().toString()
+        : number.toStringAsFixed(2);
+
+    final unitText = switch (unit) {
+      'carton' => 'cartons',
+      'kilogram' => 'kg',
+      'unit' => 'units',
+      _ => unit ?? '',
+    };
+
+    return '$quantityText${unitText.isEmpty ? '' : ' $unitText'}';
+  }
+
+  String _availabilityLabel(String? value) {
+    return switch (value) {
+      'in_stock' => 'In stock',
+      'limited' => 'Limited',
+      'out_of_stock' => 'Out of stock',
+      'made_to_order' => 'Made to order',
+      _ => 'Unknown',
+    };
+  }
+
+  Future<void> _openNewSale({Map<String, dynamic>? pendingProduct}) async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (context) => const SupplierCreateOrderPage()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result != null) {
+      setState(() {
+        _parkCurrentSale();
+        _activeSale = Map<String, dynamic>.from(result);
+        _activeSaleLines.clear();
+        _activeSaleMinimized = false;
+      });
+
+      if (pendingProduct != null) {
+        await _addProductToActiveSale(pendingProduct);
+      }
+    }
+
+    if (mounted) {
+      await _loadStock();
+    }
+  }
+
+  int get _openSaleCount => (_activeSale == null ? 0 : 1) + _parkedSales.length;
+
+  void _parkCurrentSale() {
+    final sale = _activeSale;
+    if (sale == null) {
+      return;
+    }
+
+    _parkedSales.add({
+      'sale': Map<String, dynamic>.from(sale),
+      'lines': [
+        for (final line in _activeSaleLines) Map<String, dynamic>.from(line),
+      ],
+      'minimized': _activeSaleMinimized,
+    });
+  }
+
+  void _switchToParkedSale(int index) {
+    if (index < 0 || index >= _parkedSales.length) {
+      return;
+    }
+
+    setState(() {
+      final selected = _parkedSales.removeAt(index);
+
+      if (_activeSale != null) {
+        _parkCurrentSale();
+      }
+
+      _activeSale = Map<String, dynamic>.from(selected['sale'] as Map);
+      _activeSaleLines
+        ..clear()
+        ..addAll(
+          (selected['lines'] as List).whereType<Map>().map(
+            (line) => Map<String, dynamic>.from(line),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Create Work Order'),
+        );
+      _activeSaleMinimized = selected['minimized'] == true;
+    });
+  }
+
+  String _parkedSaleCustomerName(Map<String, dynamic> parked) {
+    final sale = parked['sale'];
+    if (sale is! Map) {
+      return 'Customer';
+    }
+
+    return sale['customer_name']?.toString() ?? 'Customer';
+  }
+
+  int _parkedSaleLineCount(Map<String, dynamic> parked) {
+    final lines = parked['lines'];
+    return lines is List ? lines.length : 0;
+  }
+
+  String get _activeSaleCustomerName =>
+      _activeSale?['customer_name']?.toString() ?? 'Customer';
+
+  String _saleUnitLabel(String value) {
+    return switch (value) {
+      'carton' => 'cartons',
+      'kilogram' => 'kg',
+      'unit' => 'units',
+      _ => value,
+    };
+  }
+
+  String _saleBasisLabel(String value) {
+    return switch (value) {
+      'carton' => 'carton',
+      'kilogram' => 'kg',
+      'unit' => 'unit',
+      _ => value,
+    };
+  }
+
+  String _orderUnit(Map<String, dynamic> product) {
+    if (_isCatchWeight(product)) {
+      return 'carton';
+    }
+
+    final configured = product['order_unit']?.toString();
+    if (configured == 'carton' ||
+        configured == 'kilogram' ||
+        configured == 'unit') {
+      return configured!;
+    }
+
+    final stockUnit = product['quantity_unit']?.toString();
+    if (stockUnit == 'carton' ||
+        stockUnit == 'kilogram' ||
+        stockUnit == 'unit') {
+      return stockUnit!;
+    }
+
+    return 'unit';
+  }
+
+  String _salePriceBasis(Map<String, dynamic> product) {
+    if (_isCatchWeight(product)) {
+      return 'kilogram';
+    }
+
+    final configured = product['price_basis']?.toString();
+    if (configured == 'carton' ||
+        configured == 'kilogram' ||
+        configured == 'unit') {
+      return configured!;
+    }
+
+    return 'unit';
+  }
+
+  double _saleEstimatedTotal() {
+    var total = 0.0;
+
+    for (final line in _activeSaleLines) {
+      final quantity = line['quantity'] is num
+          ? (line['quantity'] as num).toDouble()
+          : double.tryParse('${line['quantity']}') ?? 0;
+      final rate = line['unit_price'] is num
+          ? (line['unit_price'] as num).toDouble()
+          : double.tryParse('${line['unit_price']}') ?? 0;
+
+      if (line['catch_weight_snapshot'] == true &&
+          line['price_basis']?.toString() == 'kilogram') {
+        continue;
+      }
+
+      total += quantity * rate;
+    }
+
+    return total;
+  }
+
+  int _activeSaleLineIndex(String productId) {
+    return _activeSaleLines.indexWhere(
+      (line) => line['product_id']?.toString() == productId,
+    );
+  }
+
+  Future<void> _addProductToActiveSale(Map<String, dynamic> product) async {
+    if (_activeSale == null) {
+      await _openNewSale(pendingProduct: product);
+      return;
+    }
+
+    final productId = product['id']?.toString();
+    if (productId == null || productId.isEmpty) {
+      return;
+    }
+
+    final existingIndex = _activeSaleLineIndex(productId);
+    final existing = existingIndex >= 0
+        ? _activeSaleLines[existingIndex]
+        : null;
+
+    final catchWeight = _isCatchWeight(product);
+    final quantityUnit = _orderUnit(product);
+    final priceBasis = _salePriceBasis(product);
+    final standardPrice = _standardPrice(product);
+    final quantityController = TextEditingController(
+      text: existing?['quantity']?.toString() ?? '1',
+    );
+    final rateController = TextEditingController(
+      text:
+          existing?['unit_price']?.toString() ??
+          standardPrice?['amount']?.toString() ??
+          '',
+    );
+    final notesController = TextEditingController(
+      text: existing?['notes']?.toString() ?? '',
+    );
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final quantity = double.tryParse(quantityController.text.trim());
+            final rate = double.tryParse(rateController.text.trim());
+            final whole = quantityUnit == 'carton' || quantityUnit == 'unit';
+            final validQuantity =
+                quantity != null &&
+                quantity > 0 &&
+                (!whole || quantity == quantity.roundToDouble());
+            final validRate = rate != null && rate >= 0;
+
+            return AlertDialog(
+              title: Text(
+                '${existing == null ? 'Add' : 'Update'} '
+                '${product['product_name']?.toString() ?? 'Product'}',
+              ),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sale: $_activeSaleCustomerName',
+                        style: const TextStyle(
+                          color: _darkRed,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (catchWeight) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F8F6),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'Catch-weight product: enter cartons ordered and '
+                            'the agreed \$/kg rate. Final kilograms and total '
+                            'will be confirmed during warehouse weighing.',
+                            style: TextStyle(height: 1.4),
+                          ),
+                        ),
+                      ],
+                      TextField(
+                        controller: quantityController,
+                        autofocus: true,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: !whole,
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Quantity',
+                          suffixText: _saleUnitLabel(quantityUnit),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: rateController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Agreed rate',
+                          prefixText: r'$ ',
+                          suffixText: '/ ${_saleBasisLabel(priceBasis)}',
+                          helperText: standardPrice == null
+                              ? 'Enter the agreed customer rate.'
+                              : 'Standard price: '
+                                    '${_money(standardPrice['amount'])} / '
+                                    '${_saleBasisLabel(priceBasis)}',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: notesController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'Line notes (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: validQuantity && validRate
+                      ? () => Navigator.of(dialogContext).pop({
+                          'product_id': productId,
+                          'product_name':
+                              product['product_name']?.toString() ??
+                              'Unnamed product',
+                          'sku': product['sku']?.toString(),
+                          'quantity': quantity,
+                          'quantity_unit': quantityUnit,
+                          'unit_price': rate,
+                          'price_basis': priceBasis,
+                          'catch_weight_snapshot': catchWeight,
+                          'notes': notesController.text.trim(),
+                        })
+                      : null,
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  icon: Icon(
+                    existing == null ? Icons.add : Icons.save_outlined,
+                  ),
+                  label: Text(existing == null ? 'Add to Sale' : 'Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    quantityController.dispose();
+    rateController.dispose();
+    notesController.dispose();
+
+    if (result == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      if (existingIndex >= 0) {
+        _activeSaleLines[existingIndex] = result;
+      } else {
+        _activeSaleLines.add(result);
+      }
+
+      _activeSaleMinimized = false;
+    });
+  }
+
+  Future<void> _handleAddToSale(Map<String, dynamic> product) async {
+    if (_openSaleCount == 0) {
+      await _openNewSale(pendingProduct: product);
+      return;
+    }
+
+    final choice = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 560),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Add to Sale',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Choose one of your $_openSaleCount open sales or start another.',
+                    style: const TextStyle(color: Color(0xFF666666)),
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        if (_activeSale != null)
+                          ListTile(
+                            leading: const CircleAvatar(
+                              backgroundColor: Color(0xFFF4E5E5),
+                              child: Icon(
+                                Icons.shopping_cart_checkout_outlined,
+                                color: _darkRed,
+                              ),
+                            ),
+                            title: Text(
+                              _activeSaleCustomerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${_activeSaleLines.length} item'
+                              '${_activeSaleLines.length == 1 ? '' : 's'} • Currently open',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(
+                              sheetContext,
+                            ).pop({'type': 'active'}),
+                          ),
+                        for (var i = 0; i < _parkedSales.length; i++)
+                          ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.receipt_long_outlined),
+                            ),
+                            title: Text(
+                              _parkedSaleCustomerName(_parkedSales[i]),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${_parkedSaleLineCount(_parkedSales[i])} item'
+                              '${_parkedSaleLineCount(_parkedSales[i]) == 1 ? '' : 's'} • Open sale',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(
+                              sheetContext,
+                            ).pop({'type': 'parked', 'index': i}),
+                          ),
+                        const Divider(),
+                        ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: Color(0xFFF4E5E5),
+                            child: Icon(
+                              Icons.add_business_outlined,
+                              color: _darkRed,
+                            ),
+                          ),
+                          title: const Text(
+                            'Start New Sale',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          subtitle: const Text(
+                            'Your existing open sales will stay saved in this workspace.',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () =>
+                              Navigator.of(sheetContext).pop({'type': 'new'}),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (choice == null || !mounted) {
+      return;
+    }
+
+    final type = choice['type']?.toString();
+
+    if (type == 'active') {
+      await _addProductToActiveSale(product);
+      return;
+    }
+
+    if (type == 'parked') {
+      final index = choice['index'];
+      if (index is int) {
+        _switchToParkedSale(index);
+        if (mounted) {
+          await _addProductToActiveSale(product);
+        }
+      }
+      return;
+    }
+
+    if (type == 'new') {
+      await _openNewSale(pendingProduct: product);
+    }
+  }
+
+  Future<void> _startAnotherSale({Map<String, dynamic>? pendingProduct}) async {
+    await _openNewSale(pendingProduct: pendingProduct);
+  }
+
+  void _removeSaleLine(int index) {
+    setState(() {
+      _activeSaleLines.removeAt(index);
+    });
+  }
+
+  void _closeActiveSale() {
+    setState(() {
+      _activeSale = null;
+      _activeSaleLines.clear();
+      _activeSaleMinimized = false;
+
+      if (_parkedSales.isNotEmpty) {
+        final next = _parkedSales.removeLast();
+        _activeSale = Map<String, dynamic>.from(next['sale'] as Map);
+        _activeSaleLines.addAll(
+          (next['lines'] as List).whereType<Map>().map(
+            (line) => Map<String, dynamic>.from(line),
+          ),
+        );
+        _activeSaleMinimized = next['minimized'] == true;
+      }
+    });
+  }
+
+  Widget _openSalesSwitcher() {
+    if (_openSaleCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.dynamic_feed_outlined, color: _darkRed),
+          const SizedBox(width: 10),
+          Text(
+            'Open Sales ($_openSaleCount)',
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (_activeSale != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        selected: true,
+                        label: Text(_activeSaleCustomerName),
+                        onSelected: (_) {},
+                      ),
+                    ),
+                  for (var i = 0; i < _parkedSales.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        avatar: const Icon(
+                          Icons.receipt_long_outlined,
+                          size: 17,
+                        ),
+                        label: Text(_parkedSaleCustomerName(_parkedSales[i])),
+                        onPressed: () => _switchToParkedSale(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () => _startAnotherSale(),
+            icon: const Icon(Icons.add),
+            label: const Text('New Sale'),
           ),
         ],
       ),
     );
+  }
 
-    if (confirmed != true) {
+  Widget _activeSalePanel() {
+    final sale = _activeSale;
+    if (sale == null) {
+      return const SizedBox.shrink();
+    }
+
+    final fulfilment = sale['fulfilment_method']?.toString() == 'delivery'
+        ? 'Delivery'
+        : 'Pickup';
+    final payment = switch (sale['payment_method']?.toString()) {
+      'account' => 'Account • ${sale['payment_terms_days'] ?? 0} days',
+      'prepaid' => 'Prepaid',
+      _ => 'COD',
+    };
+    final date =
+        sale['requested_fulfilment_date']?.toString() ?? 'Date not set';
+    final time =
+        sale['requested_fulfilment_time']?.toString() ?? 'Time not set';
+    final estimate = _saleEstimatedTotal();
+    final hasCatchWeight = _activeSaleLines.any(
+      (line) => line['catch_weight_snapshot'] == true,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _darkRed.withValues(alpha: 0.35)),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 12,
+            offset: Offset(0, 3),
+            color: Color(0x12000000),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              setState(() {
+                _activeSaleMinimized = !_activeSaleMinimized;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4E5E5),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_cart_checkout_outlined,
+                      color: _darkRed,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Open Sale • $_activeSaleCustomerName',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${_activeSaleLines.length} item'
+                          '${_activeSaleLines.length == 1 ? '' : 's'}'
+                          ' • $payment • $fulfilment'
+                          ' • $date $time',
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: _activeSaleMinimized
+                        ? 'Expand sale'
+                        : 'Minimise sale',
+                    onPressed: () {
+                      setState(() {
+                        _activeSaleMinimized = !_activeSaleMinimized;
+                      });
+                    },
+                    icon: Icon(
+                      _activeSaleMinimized
+                          ? Icons.expand_more
+                          : Icons.expand_less,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (!_activeSaleMinimized) ...[
+            const Divider(height: 1),
+            if (_activeSaleLines.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(22),
+                child: Text(
+                  'No products added yet. Use Add to Sale from the '
+                  'inventory on the right.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else
+              for (var index = 0; index < _activeSaleLines.length; index++)
+                ListTile(
+                  dense: true,
+                  title: Text(
+                    _activeSaleLines[index]['product_name']?.toString() ??
+                        'Product',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    '${_activeSaleLines[index]['quantity']} '
+                    '${_saleUnitLabel(_activeSaleLines[index]['quantity_unit']?.toString() ?? 'unit')}'
+                    ' • ${_money(_activeSaleLines[index]['unit_price'])}'
+                    ' / ${_saleBasisLabel(_activeSaleLines[index]['price_basis']?.toString() ?? 'unit')}',
+                  ),
+                  trailing: Wrap(
+                    spacing: 4,
+                    children: [
+                      IconButton(
+                        tooltip: 'Edit line',
+                        onPressed: () {
+                          final productId =
+                              _activeSaleLines[index]['product_id']?.toString();
+
+                          if (productId == null) return;
+
+                          final product = _products
+                              .where(
+                                (row) => row['id']?.toString() == productId,
+                              )
+                              .cast<Map<String, dynamic>?>()
+                              .firstWhere(
+                                (row) => row != null,
+                                orElse: () => null,
+                              );
+
+                          if (product != null) {
+                            _addProductToActiveSale(product);
+                          }
+                        },
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove line',
+                        onPressed: () => _removeSaleLine(index),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
+                ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      hasCatchWeight
+                          ? 'Estimated fixed-price lines: '
+                                '${_money(estimate)} • Catch-weight totals '
+                                'pending weighing'
+                          : 'Estimated total: ${_money(estimate)}',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _closeActiveSale,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Close Sale'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _activeSaleLines.isEmpty
+                        ? null
+                        : _reviewActiveSale,
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('Review Sale'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _activeSaleRpcItems() {
+    return _activeSaleLines
+        .map(
+          (line) => {
+            'product_id': line['product_id'],
+            'quantity': line['quantity'],
+            'quantity_unit': line['quantity_unit'],
+            'unit_price': line['unit_price'],
+            'price_basis': line['price_basis'],
+            'catch_weight_snapshot': line['catch_weight_snapshot'] == true,
+            'notes': line['notes'],
+          },
+        )
+        .toList();
+  }
+
+  Future<void> _saveActiveSaleAsQuote() async {
+    final sale = _activeSale;
+
+    if (sale == null || _activeSaleLines.isEmpty) {
+      return;
+    }
+
+    final customerAccountId = sale['supplier_customer_account_id']?.toString();
+
+    if (customerAccountId == null || customerAccountId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This sale does not have a valid customer account.'),
+        ),
+      );
       return;
     }
 
     try {
-      await Supabase.instance.client.rpc(
-        'convert_supplier_quote_to_sales_order',
-        params: {'target_order_id': quoteId},
-      );
+      final existingQuoteId = sale['quote_order_id']?.toString();
 
-      await Supabase.instance.client.rpc(
-        'create_or_get_warehouse_work_order',
-        params: {'target_order_id': quoteId},
-      );
+      if (existingQuoteId != null && existingQuoteId.isNotEmpty) {
+        await Supabase.instance.client.rpc(
+          'update_supplier_sales_desk_quote',
+          params: {
+            'target_order_id': existingQuoteId,
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': sale['order_source']?.toString() ?? 'manual',
+            'p_source_reference': sale['source_reference'],
+            'p_customer_reference': sale['customer_reference'],
+            'p_delivery_notes':
+                (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['delivery_notes']?.toString().trim(),
+            'p_internal_notes':
+                (sale['internal_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['internal_notes']?.toString().trim(),
+            'p_payment_method': sale['payment_method']?.toString(),
+            'p_payment_terms_days':
+                (sale['payment_terms_days'] as num?)?.toInt() ?? 0,
+            'p_fulfilment_method': sale['fulfilment_method']?.toString(),
+            'p_requested_fulfilment_date': sale['requested_fulfilment_date']
+                ?.toString(),
+            'p_delivery_fee': (sale['delivery_fee'] as num?)?.toDouble() ?? 0,
+            'p_items': _activeSaleRpcItems(),
+          },
+        );
+      } else {
+        await Supabase.instance.client.rpc(
+          'create_supplier_sales_desk_quote',
+          params: {
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': 'manual',
+            'p_source_reference': null,
+            'p_customer_reference': null,
+            'p_delivery_notes':
+                (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['delivery_notes']?.toString().trim(),
+            'p_internal_notes':
+                (sale['internal_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['internal_notes']?.toString().trim(),
+            'p_payment_method': sale['payment_method']?.toString(),
+            'p_payment_terms_days':
+                (sale['payment_terms_days'] as num?)?.toInt() ?? 0,
+            'p_fulfilment_method': sale['fulfilment_method']?.toString(),
+            'p_requested_fulfilment_date': sale['requested_fulfilment_date']
+                ?.toString(),
+            'p_requested_fulfilment_time': sale['requested_fulfilment_time']
+                ?.toString(),
+            'p_delivery_fee': 0,
+            'p_items': _activeSaleRpcItems(),
+          },
+        );
+      }
 
       if (!mounted) {
         return;
       }
 
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => SupplierWorkOrderPage(orderId: quoteId),
+      final customerName = _activeSaleCustomerName;
+      final wasExisting = sale['quote_order_id']?.toString().isNotEmpty == true;
+
+      _closeActiveSale();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            wasExisting
+                ? 'Quote updated for $customerName.'
+                : 'Quote saved for $customerName.',
+          ),
         ),
       );
-
-      if (mounted) {
-        await _loadSalesDesk();
-        _tabController.animateTo(3);
-      }
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -711,712 +1583,579 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
     }
   }
 
-  Future<void> _openWorkOrder(Map<String, dynamic> workOrder) async {
-    final orderId = workOrder['order_id']?.toString();
+  Future<void> _createWorkOrderFromActiveSale() async {
+    final sale = _activeSale;
 
-    if (orderId == null || orderId.isEmpty) {
+    if (sale == null || _activeSaleLines.isEmpty) {
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SupplierWorkOrderPage(orderId: orderId),
-      ),
-    );
+    final customerAccountId = sale['supplier_customer_account_id']?.toString();
 
-    if (mounted) {
-      await _loadSalesDesk();
-    }
-  }
-
-  Future<void> _openInvoice(Map<String, dynamic> invoice) async {
-    final orderId = invoice['order_id']?.toString();
-
-    if (orderId == null || orderId.isEmpty) {
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SupplierInvoicePage(orderId: orderId),
-      ),
-    );
-
-    if (mounted) {
-      await _loadSalesDesk();
-    }
-  }
-
-  Widget _newSaleTab() {
-    final products = _filteredProducts;
-
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 60),
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'New Sale',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Text(
-                      'Search your own stock while speaking to the customer, then save a quote or create a warehouse work order.',
-                      style: TextStyle(color: Color(0xFF666666), height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                onPressed: () => _openNewSale(),
-                icon: const Icon(Icons.add),
-                label: const Text('Start New Sale'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _stockSearchController,
-            decoration: InputDecoration(
-              hintText: 'Search product name or SKU',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _stockSearchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: _stockSearchController.clear,
-                      icon: const Icon(Icons.close),
-                    ),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (products.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 50),
-              child: Center(
-                child: Text(
-                  'No stock matches your search.',
-                  style: TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...products.map((product) {
-              final standardPrice = _standardPrice(product);
-              final catchWeight = _isCatchWeight(product);
-
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              product['product_name']?.toString() ??
-                                  'Unnamed product',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              product['sku']?.toString() ?? 'No SKU',
-                              style: const TextStyle(color: Color(0xFF666666)),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                Chip(
-                                  visualDensity: VisualDensity.compact,
-                                  label: Text(_productAvailability(product)),
-                                ),
-                                if (catchWeight)
-                                  const Chip(
-                                    visualDensity: VisualDensity.compact,
-                                    label: Text(
-                                      'Catch weight • final total after weighing',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 18),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Standard Price',
-                            style: TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            standardPrice == null
-                                ? 'Not set'
-                                : '${_money(standardPrice['amount'])} / ${catchWeight ? 'kg' : standardPrice['price_basis'] ?? product['price_basis'] ?? 'unit'}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          OutlinedButton.icon(
-                            onPressed: () => _openNewSale(
-                              productId: product['id']?.toString(),
-                            ),
-                            icon: const Icon(Icons.point_of_sale_outlined),
-                            label: const Text('Use in Sale'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-
-  Widget _marketplaceOrdersTab() {
-    if (_marketplaceOrders.isEmpty) {
-      return _emptyTab(
-        icon: Icons.storefront_outlined,
-        title: 'No new marketplace orders',
-        message:
-            'New butcher marketplace orders waiting for supplier acceptance will appear here.',
+    if (customerAccountId == null || customerAccountId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This sale does not have a valid customer account.'),
+        ),
       );
+      return;
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        itemCount: _marketplaceOrders.length,
-        itemBuilder: (context, index) {
-          final order = _marketplaceOrders[index];
-          final items = _nestedList(order['order_items']);
+    try {
+      final existingQuoteId = sale['quote_order_id']?.toString();
+      late String orderId;
 
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(12),
+      if (existingQuoteId != null && existingQuoteId.isNotEmpty) {
+        await Supabase.instance.client.rpc(
+          'update_supplier_sales_desk_quote',
+          params: {
+            'target_order_id': existingQuoteId,
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': sale['order_source']?.toString() ?? 'manual',
+            'p_source_reference': sale['source_reference'],
+            'p_customer_reference': sale['customer_reference'],
+            'p_delivery_notes':
+                (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['delivery_notes']?.toString().trim(),
+            'p_internal_notes':
+                (sale['internal_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['internal_notes']?.toString().trim(),
+            'p_payment_method': sale['payment_method']?.toString(),
+            'p_payment_terms_days':
+                (sale['payment_terms_days'] as num?)?.toInt() ?? 0,
+            'p_fulfilment_method': sale['fulfilment_method']?.toString(),
+            'p_requested_fulfilment_date': sale['requested_fulfilment_date']
+                ?.toString(),
+            'p_delivery_fee': (sale['delivery_fee'] as num?)?.toDouble() ?? 0,
+            'p_items': _activeSaleRpcItems(),
+          },
+        );
+
+        await Supabase.instance.client.rpc(
+          'convert_supplier_quote_to_sales_order',
+          params: {'target_order_id': existingQuoteId},
+        );
+
+        orderId = existingQuoteId;
+      } else {
+        final orderIdRaw = await Supabase.instance.client.rpc(
+          'create_supplier_sales_desk_order',
+          params: {
+            'p_supplier_customer_account_id': customerAccountId,
+            'p_order_source': 'manual',
+            'p_source_reference': null,
+            'p_customer_reference': null,
+            'p_delivery_notes':
+                (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['delivery_notes']?.toString().trim(),
+            'p_internal_notes':
+                (sale['internal_notes']?.toString().trim().isEmpty ?? true)
+                ? null
+                : sale['internal_notes']?.toString().trim(),
+            'p_payment_method': sale['payment_method']?.toString(),
+            'p_payment_terms_days':
+                (sale['payment_terms_days'] as num?)?.toInt() ?? 0,
+            'p_fulfilment_method': sale['fulfilment_method']?.toString(),
+            'p_requested_fulfilment_date': sale['requested_fulfilment_date']
+                ?.toString(),
+            'p_requested_fulfilment_time': sale['requested_fulfilment_time']
+                ?.toString(),
+            'p_delivery_fee': 0,
+            'p_items': _activeSaleRpcItems(),
+          },
+        );
+
+        orderId = orderIdRaw.toString();
+      }
+
+      await Supabase.instance.client.rpc(
+        'create_or_get_warehouse_work_order',
+        params: {'target_order_id': orderId},
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final customerName = _activeSaleCustomerName;
+
+      _closeActiveSale();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Work order created for $customerName.')),
+      );
+
+      await _openWorkOrders();
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _reviewActiveSale() async {
+    final sale = _activeSale;
+
+    if (sale == null || _activeSaleLines.isEmpty) {
+      return;
+    }
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final payment = switch (sale['payment_method']?.toString()) {
+          'account' => 'Account • ${sale['payment_terms_days'] ?? 0} days',
+          'prepaid' => 'Prepaid',
+          _ => 'COD',
+        };
+
+        final fulfilment = sale['fulfilment_method']?.toString() == 'delivery'
+            ? 'Delivery'
+            : 'Pickup';
+
+        final date = sale['requested_fulfilment_date']?.toString() ?? 'Not set';
+        final time = sale['requested_fulfilment_time']?.toString() ?? 'Not set';
+
+        return Dialog.fullscreen(
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF7F7F5),
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              leading: IconButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                icon: const Icon(Icons.close),
+              ),
+              title: Text(
+                'Review Sale • $_activeSaleCustomerName',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
+            body: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 980),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          order['order_number']?.toString() ??
-                              'Marketplace Order',
-                          style: const TextStyle(
-                            fontSize: 18,
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE0E0DD)),
+                          ),
+                          child: Wrap(
+                            spacing: 24,
+                            runSpacing: 14,
+                            children: [
+                              _reviewInfo('Customer', _activeSaleCustomerName),
+                              _reviewInfo('Payment', payment),
+                              _reviewInfo('Fulfilment', fulfilment),
+                              _reviewInfo('Date', date),
+                              _reviewInfo('Time', time),
+                              if (sale['delivery_address'] != null)
+                                _reviewInfo(
+                                  'Delivery address',
+                                  sale['delivery_address'].toString(),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        const Text(
+                          'Order Lines',
+                          style: TextStyle(
+                            fontSize: 22,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _marketplaceCustomerName(order),
-                          style: const TextStyle(
-                            color: _darkRed,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${items.length} line${items.length == 1 ? '' : 's'}'
-                          '${order['submitted_at'] == null ? '' : ' • Received ${_displayDate(order['submitted_at'])}'}',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        for (final item in items.take(4))
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              '${item['product_name_snapshot'] ?? 'Product'} • '
-                              '${item['quantity'] ?? ''} '
-                              '${item['quantity_unit'] ?? ''}',
+                        const SizedBox(height: 12),
+                        for (final line in _activeSaleLines)
+                          Card(
+                            elevation: 0,
+                            margin: const EdgeInsets.only(bottom: 10),
+                            shape: RoundedRectangleBorder(
+                              side: const BorderSide(color: Color(0xFFE0E0DD)),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                        if (items.length > 4)
-                          Text(
-                            '+ ${items.length - 4} more line${items.length - 4 == 1 ? '' : 's'}',
-                            style: const TextStyle(color: Color(0xFF666666)),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    onPressed: () =>
-                        _acceptMarketplaceOrderAndCreateWorkOrder(order),
-                    icon: const Icon(Icons.assignment_turned_in_outlined),
-                    label: const Text('Accept & Create Work Order'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _quotesTab() {
-    final quotes = _todaysQuotes;
-
-    if (quotes.isEmpty) {
-      return _emptyTab(
-        icon: Icons.description_outlined,
-        title: 'No quotes today',
-        message:
-            'Quotes created or revised today will appear here. Older quotes move automatically to Quote History.',
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        itemCount: quotes.length,
-        itemBuilder: (context, index) {
-          final quote = quotes[index];
-          final items = _nestedList(quote['order_items']);
-
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _editQuote(quote),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _quoteDisplayNumber(quote),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _customerName(quote),
-                            style: const TextStyle(
-                              color: _darkRed,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '${items.length} line${items.length == 1 ? '' : 's'}'
-                            ' • ${quote['fulfilment_method']?.toString() == 'pickup' ? 'Pickup' : 'Delivery'}'
-                            '${quote['requested_fulfilment_date'] == null ? '' : ' • ${quote['requested_fulfilment_date']}'}',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Catch-weight quote totals remain pending until actual supplied weight is recorded.',
-                            style: TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _editQuote(quote),
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Open / Edit Quote'),
-                        ),
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
-                          ),
-                          onPressed: () => _convertQuoteToWorkOrder(quote),
-                          icon: const Icon(Icons.assignment_outlined),
-                          label: const Text('Create Work Order'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _quoteHistoryTab() {
-    final quotes = _quoteHistory;
-
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'Quote History',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Older quotes are kept here and remain searchable. Opening and saving an old quote creates a new revision and brings it back into Today’s Quotes.',
-            style: TextStyle(color: Color(0xFF666666), height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _quoteHistorySearchController,
-            decoration: InputDecoration(
-              hintText: 'Search customer, quote number, phone, date or product',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _quoteHistorySearchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: _quoteHistorySearchController.clear,
-                      icon: const Icon(Icons.close),
-                    ),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (quotes.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 50),
-              child: Center(
-                child: Text(
-                  _quoteHistorySearchController.text.trim().isEmpty
-                      ? 'No older quotes yet.'
-                      : 'No old quotes match your search.',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...quotes.map((quote) {
-              final items = _nestedList(quote['order_items']);
-              final activity = _quoteActivityDate(quote);
-
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _editQuote(quote),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _quoteDisplayNumber(quote),
+                            child: ListTile(
+                              title: Text(
+                                line['product_name']?.toString() ?? 'Product',
                                 style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                _customerName(quote),
-                                style: const TextStyle(
-                                  color: _darkRed,
-                                  fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${items.length} line${items.length == 1 ? '' : 's'}'
-                                '${activity == null ? '' : ' • Last activity ${_displayDate(activity.toIso8601String())}'}',
-                                style: const TextStyle(
-                                  color: Color(0xFF666666),
-                                  fontWeight: FontWeight.w600,
+                              subtitle: Text(
+                                '${line['quantity']} '
+                                '${_saleUnitLabel(line['quantity_unit']?.toString() ?? 'unit')}'
+                                ' • ${_money(line['unit_price'])}'
+                                ' / ${_saleBasisLabel(line['price_basis']?.toString() ?? 'unit')}'
+                                '${line['catch_weight_snapshot'] == true ? ' • Final total pending weight' : ''}',
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE0E0DD)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _activeSaleLines.any(
+                                        (line) =>
+                                            line['catch_weight_snapshot'] ==
+                                            true,
+                                      )
+                                      ? 'Fixed-price estimate: '
+                                            '${_money(_saleEstimatedTotal())} • '
+                                            'Catch-weight totals pending warehouse weighing'
+                                      : 'Estimated total: '
+                                            '${_money(_saleEstimatedTotal())}',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        OutlinedButton.icon(
-                          onPressed: () => _editQuote(quote),
-                          icon: const Icon(Icons.open_in_new),
-                          label: const Text('Open Quote'),
+                        const SizedBox(height: 24),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final narrow = constraints.maxWidth < 650;
+
+                            final quoteButton = OutlinedButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop('quote'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                              ),
+                              icon: const Icon(Icons.description_outlined),
+                              label: const Text('Save as Quote'),
+                            );
+
+                            final workOrderButton = FilledButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop('work_order'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                              ),
+                              icon: const Icon(Icons.assignment_outlined),
+                              label: const Text('Create Work Order'),
+                            );
+
+                            if (narrow) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  quoteButton,
+                                  const SizedBox(height: 10),
+                                  workOrderButton,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: quoteButton),
+                                const SizedBox(width: 12),
+                                Expanded(child: workOrderButton),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
                 ),
-              );
-            }),
-        ],
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
-  }
 
-  Widget _workOrdersTab() {
-    if (_workOrders.isEmpty) {
-      return _emptyTab(
-        icon: Icons.assignment_outlined,
-        title: 'No work orders',
-        message: 'Live warehouse jobs created by Sales will appear here.',
-      );
+    if (!mounted || choice == null) {
+      return;
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        itemCount: _workOrders.length,
-        itemBuilder: (context, index) {
-          final workOrder = _workOrders[index];
-          final order = _nestedMap(workOrder['orders']);
-          final account = _nestedMap(order?['supplier_customer_accounts']);
-          final items = _nestedList(order?['order_items']);
-          final finalised = items
-              .where(
-                (item) => item['fulfilment_status']?.toString() == 'finalised',
-              )
-              .length;
-
-          final customer =
-              account?['customer_name']?.toString() ??
-              account?['legal_name']?.toString() ??
-              'Customer';
-
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(12),
+    if (choice == 'quote') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Save Quote?'),
+          content: Text(
+            'Save this sale as a quote for $_activeSaleCustomerName? '
+            'It will remain editable as a quote and will not enter the warehouse.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(18),
-              onTap: () => _openWorkOrder(workOrder),
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFF4E5E5),
-                foregroundColor: _darkRed,
-                child: Icon(Icons.assignment_outlined),
-              ),
-              title: Text(
-                workOrder['work_order_number']?.toString() ?? 'Work Order',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '$customer • ${order?['order_number'] ?? ''}\n'
-                  '$finalised / ${items.length} lines finalised',
-                ),
-              ),
-              trailing: Chip(
-                label: Text(
-                  workOrder['status']?.toString().replaceAll('_', ' ') ??
-                      'created',
-                ),
-              ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              child: const Text('Save Quote'),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _invoicesTab() {
-    if (_invoices.isEmpty) {
-      return _emptyTab(
-        icon: Icons.request_quote_outlined,
-        title: 'No invoices',
-        message:
-            'Invoices created after warehouse fulfilment will appear here.',
+          ],
+        ),
       );
+
+      if (confirmed == true && mounted) {
+        await _saveActiveSaleAsQuote();
+      }
+
+      return;
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        itemCount: _invoices.length,
-        itemBuilder: (context, index) {
-          final invoice = _invoices[index];
-          final total = invoice['total_amount'];
+    if (choice == 'work_order') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Create Work Order?'),
+          content: Text(
+            'Confirm this sale for $_activeSaleCustomerName and send it to '
+            'the warehouse for picking and weighing? Agreed rates will be locked.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              child: const Text('Create Work Order'),
+            ),
+          ],
+        ),
+      );
 
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(18),
-              onTap: () => _openInvoice(invoice),
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFF4E5E5),
-                foregroundColor: _darkRed,
-                child: Icon(Icons.request_quote_outlined),
-              ),
-              title: Text(
-                invoice['invoice_number']?.toString() ?? 'Invoice',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '${invoice['customer_name_snapshot'] ?? 'Customer'}'
-                  '${invoice['due_date'] == null ? '' : ' • Due ${invoice['due_date']}'}',
-                ),
-              ),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    total == null ? 'Pending' : _money(total),
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    invoice['status']?.toString().replaceAll('_', ' ') ??
-                        'draft',
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+      if (confirmed == true && mounted) {
+        await _createWorkOrderFromActiveSale();
+      }
+    }
   }
 
-  Widget _emptyTab({
-    required IconData icon,
-    required String title,
-    required String message,
-  }) {
-    return RefreshIndicator(
-      onRefresh: _loadSalesDesk,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+  Widget _reviewInfo(String label, String value) {
+    return SizedBox(
+      width: 210,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 110),
-          Icon(icon, size: 64, color: const Color(0xFFAAAAAA)),
-          const SizedBox(height: 14),
-          Center(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 7),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF666666)),
-            ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800, height: 1.3),
           ),
         ],
       ),
     );
   }
 
-  Widget _body() {
+  Future<void> _openQuotes() async {
+    final quoteOrderId = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (context) => const SupplierQuotesPage()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadStock();
+
+    if (quoteOrderId != null && quoteOrderId.isNotEmpty && mounted) {
+      await _loadQuoteIntoWorkspace(quoteOrderId);
+    }
+  }
+
+  Future<void> _openOrders({String? initialTabKey}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SupplierOrdersPage(initialTabKey: initialTabKey),
+      ),
+    );
+
+    if (mounted) {
+      await _loadStock();
+    }
+  }
+
+  Future<void> _openWorkOrders() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SupplierWorkOrdersPage()),
+    );
+
+    if (mounted) {
+      await _loadStock();
+    }
+  }
+
+  Widget _compactTopButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        visualDensity: VisualDensity.compact,
+        side: const BorderSide(color: Color(0xFFD8D8D4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    final standardPrice = _standardPrice(product);
+    final price = standardPrice?['amount'];
+    final catchWeight = _isCatchWeight(product);
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 700;
+
+            final details = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product['product_name']?.toString() ?? 'Unnamed product',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  product['sku']?.toString() ?? 'No SKU',
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(
+                        _availabilityLabel(
+                          product['availability_status']?.toString(),
+                        ),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Chip(
+                      label: Text(_quantityLabel(product)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    if (catchWeight)
+                      const Chip(
+                        label: Text('Catch weight • order by carton'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+              ],
+            );
+
+            final priceColumn = Column(
+              crossAxisAlignment: narrow
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  'Standard Price',
+                  style: TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  price == null
+                      ? 'Not set'
+                      : '${_money(price)} / ${_basisLabel(product)}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => _handleAddToSale(product),
+                  icon: const Icon(Icons.add_shopping_cart_outlined),
+                  label: const Text('Add to Sale'),
+                ),
+              ],
+            );
+
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [details, const SizedBox(height: 16), priceColumn],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 24),
+                priceColumn,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1433,7 +2172,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
               Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 18),
               FilledButton(
-                onPressed: _loadSalesDesk,
+                onPressed: _loadStock,
                 child: const Text('Try Again'),
               ),
             ],
@@ -1442,16 +2181,254 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
       );
     }
 
-    return TabBarView(
-      controller: _tabController,
-      children: [
-        _newSaleTab(),
-        _marketplaceOrdersTab(),
-        _quotesTab(),
-        _workOrdersTab(),
-        _invoicesTab(),
-        _quoteHistoryTab(),
-      ],
+    final filtered = _filteredProducts;
+
+    return RefreshIndicator(
+      onRefresh: _loadStock,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 60),
+        children: [
+          const Text(
+            'Sales',
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'Build supplier sales from your own stock, manage open sales and quotes, and receive marketplace orders.',
+            style: TextStyle(color: Color(0xFF666666), height: 1.4),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Create and manage supplier sales directly from this workspace.',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  _compactTopButton(
+                    icon: Icons.description_outlined,
+                    label: 'Quotes',
+                    onTap: _openQuotes,
+                  ),
+                  _compactTopButton(
+                    icon: Icons.storefront_outlined,
+                    label: 'Marketplace Orders',
+                    onTap: () => _openOrders(initialTabKey: 'new'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (_openSaleCount > 0) _openSalesSwitcher(),
+          if (_activeSale != null) _activeSalePanel(),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 980;
+
+              final cowPanel = Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE0E0DD)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Browse Stock by Animal',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Use the arrows to switch animal. Select an interactive '
+                      'region when that animal map is available.',
+                      style: TextStyle(color: Color(0xFF666666)),
+                    ),
+                    const SizedBox(height: 14),
+                    InteractiveAnimalBrowser(
+                      selectedAnimalCode: _selectedAnimalCode,
+                      selectedRegionKey: _selectedAnimalRegionKey,
+                      onAnimalChanged: _selectAnimal,
+                      onRegionSelected: _selectAnimalRegion,
+                      maxWidth: 760,
+                    ),
+                    if (_selectedAnimalRegionKey != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Selected: ${_beefCutLabel(_selectedAnimalRegionKey!)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: _darkRed,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _clearAnimalRegion,
+                            icon: const Icon(Icons.close),
+                            label: const Text('Show All'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              );
+
+              final inventoryPanel = Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE0E0DD)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Search Inventory',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Search $_selectedAnimalName stock by product name or SKU.',
+                      style: TextStyle(color: Color(0xFF666666)),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search product name or SKU',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: _searchController.clear,
+                                icon: const Icon(Icons.close),
+                              ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F8F6),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedAnimalRegionKey != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4E5E5),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.filter_alt_outlined,
+                              size: 18,
+                              color: _darkRed,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Showing ${_beefCutLabel(_selectedAnimalRegionKey!)}',
+                                style: const TextStyle(
+                                  color: _darkRed,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: narrow ? 240 : 500,
+                        maxHeight: narrow ? 520 : 640,
+                      ),
+                      child: filtered.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 40,
+                                ),
+                                child: Text(
+                                  _selectedAnimalRegionKey == null
+                                      ? 'No $_selectedAnimalName stock matches your search.'
+                                      : 'No stock is currently listed in this region.',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Scrollbar(
+                              thumbVisibility: true,
+                              child: ListView.builder(
+                                primary: false,
+                                padding: EdgeInsets.zero,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  return _buildProductCard(filtered[index]);
+                                },
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    cowPanel,
+                    const SizedBox(height: 16),
+                    inventoryPanel,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 11, child: cowPanel),
+                  const SizedBox(width: 18),
+                  Expanded(flex: 9, child: inventoryPanel),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1463,52 +2440,19 @@ class _SupplierSalesPageState extends State<SupplierSalesPage>
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'Sales',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          'Supplier Sales',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
-            onPressed: _loadSalesDesk,
+            onPressed: _loadStock,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
           const SizedBox(width: 8),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: _darkRed,
-          indicatorColor: _darkRed,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: [
-            const Tab(
-              icon: Icon(Icons.point_of_sale_outlined),
-              text: 'New Sale',
-            ),
-            Tab(
-              icon: const Icon(Icons.storefront_outlined),
-              text: 'Marketplace Orders (${_marketplaceOrders.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.description_outlined),
-              text: 'Today’s Quotes (${_todaysQuotes.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.assignment_outlined),
-              text: 'Work Orders (${_workOrders.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.request_quote_outlined),
-              text: 'Invoices (${_invoices.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.history),
-              text: 'Quote History (${_quoteHistory.length})',
-            ),
-          ],
-        ),
       ),
-      body: _body(),
+      body: _buildBody(),
     );
   }
 }

@@ -21,16 +21,32 @@ class SupplierInventoryPage extends StatelessWidget {
             'Supplier Inventory',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          bottom: const TabBar(
-            labelColor: _darkRed,
-            indicatorColor: _darkRed,
-            tabs: [
-              Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Inventory'),
-              Tab(
-                icon: Icon(Icons.price_change_outlined),
-                text: 'Quick Pricing',
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(42),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: _darkRed,
+                unselectedLabelColor: Color(0xFF666666),
+                indicatorColor: _darkRed,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelStyle: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+                labelPadding: EdgeInsets.symmetric(horizontal: 16),
+                tabs: [
+                  Tab(height: 40, text: 'Inventory'),
+                  Tab(height: 40, text: 'Quick Pricing'),
+                ],
               ),
-            ],
+            ),
           ),
         ),
         body: const TabBarView(

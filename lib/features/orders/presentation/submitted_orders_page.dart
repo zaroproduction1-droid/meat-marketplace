@@ -67,10 +67,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: _tabs.length,
-      vsync: this,
-    );
+    _tabController = TabController(length: _tabs.length, vsync: this);
     _loadOrders();
   }
 
@@ -158,7 +155,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               notes
             ),
 
-            order_issues!order_issues_order_id_fkey(
+            order_issues(
               id,
               status,
               issue_reason,
@@ -173,8 +170,6 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               approved_at,
               rejected_at,
               resolved_at,
-              butcher_confirmed_at,
-              butcher_confirmed_by_business_id,
               replacement_order_id,
               order_issue_items(
                 order_item_id,
@@ -286,6 +281,16 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         status == 'resolved';
   }
 
+  int _supplierUpdateCount() {
+    var count = 0;
+
+    for (final order in _orders) {
+      count += _issues(order).where(_hasSupplierUpdate).length;
+    }
+
+    return count;
+  }
+
   String _issueStatusLabel(String? status) {
     switch (status) {
       case 'requested':
@@ -374,11 +379,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final supplierUpdated = _hasSupplierUpdate(issue);
 
     final stages = <Map<String, dynamic>>[
-      {
-        'label': 'Reported',
-        'complete': true,
-        'active': status == 'requested',
-      },
+      {'label': 'Reported', 'complete': true, 'active': status == 'requested'},
       {
         'label': 'Supplier reviewing',
         'complete': supplierUpdated || status == 'reviewing',
@@ -386,7 +387,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       },
       {
         'label': status == 'rejected' ? 'Rejected' : 'Resolution arranged',
-        'complete': status == 'approved' ||
+        'complete':
+            status == 'approved' ||
             status == 'rejected' ||
             status == 'resolved',
         'active': status == 'approved' || status == 'rejected',
@@ -404,10 +406,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       children: [
         for (final stage in stages)
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 9,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
             decoration: BoxDecoration(
               color: stage['complete'] == true
                   ? const Color(0xFFE8F5E9)
@@ -443,8 +442,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     color: stage['label'] == 'Rejected'
                         ? const Color(0xFFB3261E)
                         : stage['complete'] == true
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFF666666),
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFF666666),
                   ),
                 ),
               ],
@@ -452,116 +451,6 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           ),
       ],
     );
-  }
-
-  bool _isIssueClosed(Map<String, dynamic> issue) {
-    final status = issue['status']?.toString();
-
-    if (status == 'rejected' || status == 'cancelled') {
-      return true;
-    }
-
-    if (status == 'resolved') {
-      return issue['butcher_confirmed_at'] != null;
-    }
-
-    return false;
-  }
-
-  bool _isIssueInButcherQueue(Map<String, dynamic> issue) {
-    final status = issue['status']?.toString();
-
-    if (status == 'rejected' || status == 'cancelled') {
-      return false;
-    }
-
-    if (status == 'resolved') {
-      return issue['butcher_confirmed_at'] == null;
-    }
-
-    return true;
-  }
-
-  Future<void> _confirmSupplierResolution(
-    Map<String, dynamic> order,
-    Map<String, dynamic> issue,
-  ) async {
-    final issueId = issue['id']?.toString();
-
-    if (issueId == null ||
-        issueId.isEmpty ||
-        issue['status']?.toString() != 'resolved' ||
-        issue['butcher_confirmed_at'] != null) {
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Issue Resolved?'),
-          content: Text(
-            'Confirm that ${_supplierName(order)} has completed the agreed '
-            'resolution and that you are satisfied this issue can be cleared.\n\n'
-            'The issue will disappear from your active Issues & Returns tab, '
-            'but it will remain in the original order history.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Not Yet'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-              ),
-              icon: const Icon(Icons.verified_outlined),
-              label: const Text('Confirm & Clear'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) {
-      return;
-    }
-
-    try {
-      await Supabase.instance.client.rpc(
-        'confirm_issue_resolution',
-        params: {
-          'target_issue_id': issueId,
-        },
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Issue cleared for ${order['order_number'] ?? 'this order'}.',
-          ),
-        ),
-      );
-
-      await _loadOrders();
-
-      if (mounted) {
-        _tabController.animateTo(5);
-      }
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    }
   }
 
   List<Map<String, dynamic>> _ordersForTab(String key) {
@@ -587,11 +476,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             .where((order) => order['status']?.toString() == 'delivered')
             .toList();
       case 'issues':
-        return _orders
-            .where(
-              (order) => _issues(order).any(_isIssueInButcherQueue),
-            )
-            .toList();
+        return _orders.where((order) => _issues(order).isNotEmpty).toList();
       case 'completed':
         return _orders
             .where((order) => order['status']?.toString() == 'completed')
@@ -608,13 +493,24 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   int _countForTab(String key) {
     if (key == 'issues') {
-      var count = 0;
+      final supplierUpdates = _supplierUpdateCount();
 
-      for (final order in _orders) {
-        count += _issues(order).where(_isIssueInButcherQueue).length;
+      if (supplierUpdates > 0) {
+        return supplierUpdates;
       }
 
-      return count;
+      var openCount = 0;
+
+      for (final order in _orders) {
+        openCount += _issues(order).where((issue) {
+          final status = issue['status']?.toString();
+          return status != 'resolved' &&
+              status != 'rejected' &&
+              status != 'cancelled';
+        }).length;
+      }
+
+      return openCount;
     }
 
     return _ordersForTab(key).length;
@@ -716,9 +612,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${order['order_number'] ?? 'Order'} was cancelled.',
-          ),
+          content: Text('${order['order_number'] ?? 'Order'} was cancelled.'),
         ),
       );
 
@@ -728,9 +622,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -740,9 +634,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
   }
 
-  List<Map<String, dynamic>> _issueMessages(
-    Map<String, dynamic> issue,
-  ) {
+  List<Map<String, dynamic>> _issueMessages(Map<String, dynamic> issue) {
     final raw = issue['order_issue_messages'];
 
     if (raw is! List) {
@@ -774,9 +666,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     return messages;
   }
 
-  Map<String, dynamic>? _replacementOrderForIssue(
-    Map<String, dynamic> issue,
-  ) {
+  Map<String, dynamic>? _replacementOrderForIssue(Map<String, dynamic> issue) {
     final replacementId = issue['replacement_order_id']?.toString();
 
     if (replacementId == null || replacementId.isEmpty) {
@@ -796,9 +686,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     return order['order_type']?.toString() == 'replacement';
   }
 
-  Map<String, dynamic>? _activeIssueForOrder(
-    Map<String, dynamic> order,
-  ) {
+  Map<String, dynamic>? _activeIssueForOrder(Map<String, dynamic> order) {
     final issues = _issues(order);
 
     if (issues.isEmpty) {
@@ -807,8 +695,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     for (final issue in issues.reversed) {
       final status = issue['status']?.toString();
-      if (status != 'resolved' &&
-          status != 'cancelled') {
+      if (status != 'resolved' && status != 'cancelled') {
         return issue;
       }
     }
@@ -897,9 +784,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Follow-up sent to the supplier.',
-                      ),
+                      content: Text('Follow-up sent to the supplier.'),
                     ),
                   );
 
@@ -910,9 +795,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   }
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text(error.message)),
-                    );
+                    ScaffoldMessenger.of(
+                      dialogContext,
+                    ).showSnackBar(SnackBar(content: Text(error.message)));
 
                     setDialogState(() {
                       sending = false;
@@ -940,9 +825,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _issueReasonLabel(
-                            issue['issue_reason']?.toString(),
-                          ),
+                          _issueReasonLabel(issue['issue_reason']?.toString()),
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
@@ -952,9 +835,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         if (_issueMessages(issue).isNotEmpty) ...[
                           const Text(
                             'Conversation',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 8),
                           for (final message in _issueMessages(issue))
@@ -965,14 +846,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               decoration: BoxDecoration(
                                 color:
                                     message['sender_role']?.toString() ==
-                                            'supplier'
-                                        ? const Color(0xFFEAF1FB)
-                                        : const Color(0xFFF3F3F1),
+                                        'supplier'
+                                    ? const Color(0xFFEAF1FB)
+                                    : const Color(0xFFF3F3F1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     message['sender_role']?.toString() ==
@@ -985,17 +865,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    message['message']?.toString() ?? '',
-                                  ),
+                                  Text(message['message']?.toString() ?? ''),
                                   if (_formatDate(
                                     message['created_at'],
                                   ).isNotEmpty) ...[
                                     const SizedBox(height: 4),
                                     Text(
-                                      _formatDate(
-                                        message['created_at'],
-                                      ),
+                                      _formatDate(message['created_at']),
                                       style: const TextStyle(
                                         color: Color(0xFF777777),
                                         fontSize: 11,
@@ -1036,9 +912,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       backgroundColor: const Color(0xFF741C1C),
                     ),
                     icon: const Icon(Icons.send_outlined),
-                    label: Text(
-                      sending ? 'Sending...' : 'Send Follow Up',
-                    ),
+                    label: Text(sending ? 'Sending...' : 'Send Follow Up'),
                   ),
                 ],
               );
@@ -1144,9 +1018,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This order has no products to report.'),
-        ),
+        const SnackBar(content: Text('This order has no products to report.')),
       );
       return;
     }
@@ -1175,9 +1047,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 if (selectedItemIds.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Select at least one affected product.',
-                      ),
+                      content: Text('Select at least one affected product.'),
                     ),
                   );
                   return;
@@ -1186,9 +1056,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 if (description.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Describe what is wrong with the order.',
-                      ),
+                      content: Text('Describe what is wrong with the order.'),
                     ),
                   );
                   return;
@@ -1231,24 +1099,17 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   await Supabase.instance.client
                       .from('order_issue_items')
                       .insert(
-                        selectedItemIds
-                            .map(
-                              (orderItemId) {
-                                final selectedItem = items.firstWhere(
-                                  (item) =>
-                                      item['id']?.toString() ==
-                                      orderItemId,
-                                );
+                        selectedItemIds.map((orderItemId) {
+                          final selectedItem = items.firstWhere(
+                            (item) => item['id']?.toString() == orderItemId,
+                          );
 
-                                return {
-                                  'order_issue_id': issueId,
-                                  'order_item_id': orderItemId,
-                                  'affected_quantity':
-                                      selectedItem['quantity'],
-                                };
-                              },
-                            )
-                            .toList(),
+                          return {
+                            'order_issue_id': issueId,
+                            'order_item_id': orderItemId,
+                            'affected_quantity': selectedItem['quantity'],
+                          };
+                        }).toList(),
                       );
 
                   if (!mounted || !dialogContext.mounted) {
@@ -1273,9 +1134,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   }
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text(error.message)),
-                    );
+                    ScaffoldMessenger.of(
+                      dialogContext,
+                    ).showSnackBar(SnackBar(content: Text(error.message)));
 
                     setDialogState(() {
                       saving = false;
@@ -1285,9 +1146,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   if (dialogContext.mounted) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          'Unable to report this issue: $error',
-                        ),
+                        content: Text('Unable to report this issue: $error'),
                       ),
                     );
 
@@ -1338,9 +1197,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         const SizedBox(height: 18),
                         const Text(
                           'Affected products',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 8),
                         for (final item in items)
@@ -1357,8 +1214,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               '${_formatNumber(item['quantity'])} '
                               '${_unitLabel(item['quantity_unit']?.toString())}',
                             ),
-                            controlAffinity:
-                                ListTileControlAffinity.leading,
+                            controlAffinity: ListTileControlAffinity.leading,
                             onChanged: saving
                                 ? null
                                 : (selected) {
@@ -1432,7 +1288,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         DropdownButtonFormField<String>(
                           initialValue: requestedOutcome,
                           decoration: const InputDecoration(
-                            labelText: 'What would you like the supplier to do?',
+                            labelText:
+                                'What would you like the supplier to do?',
                             border: OutlineInputBorder(),
                           ),
                           items: const [
@@ -1512,9 +1369,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             ),
                           )
                         : const Icon(Icons.report_problem_outlined),
-                    label: Text(
-                      saving ? 'Submitting...' : 'Submit Issue',
-                    ),
+                    label: Text(saving ? 'Submitting...' : 'Submit Issue'),
                   ),
                 ],
               );
@@ -1562,10 +1417,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         children: [
           const Text(
             'Order progress',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1608,23 +1460,24 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         spacing: 24,
         runSpacing: 12,
         children: [
-          _InfoBlock(
-            label: 'Payment terms',
-            value: _paymentTermsText(order),
-          ),
+          _InfoBlock(label: 'Payment terms', value: _paymentTermsText(order)),
           _InfoBlock(
             label: 'Delivery zone',
-            value: order['delivery_zone_name_snapshot']?.toString() ??
+            value:
+                order['delivery_zone_name_snapshot']?.toString() ??
                 'Not recorded',
           ),
           _InfoBlock(
             label: 'Delivery postcode',
-            value: order['delivery_postcode_snapshot']?.toString() ??
+            value:
+                order['delivery_postcode_snapshot']?.toString() ??
                 'Not recorded',
           ),
           _InfoBlock(
             label: 'Issue reporting window',
-            value: window == null ? 'Not recorded' : '${_formatNumber(window)} hours',
+            value: window == null
+                ? 'Not recorded'
+                : '${_formatNumber(window)} hours',
           ),
         ],
       ),
@@ -1634,9 +1487,6 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   Widget _buildIssues(Map<String, dynamic> order) {
     final issues = _issues(order);
     final orderItems = _items(order);
-    final openIssues =
-        issues.where((issue) => !_isIssueClosed(issue)).toList();
-    final closedIssues = issues.where(_isIssueClosed).toList();
 
     if (issues.isEmpty) {
       return const SizedBox.shrink();
@@ -1646,387 +1496,315 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        const Text(
-          'Issues & Returns',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-          ),
-        ),
-        if (openIssues.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text(
-            'Open Issues',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF741C1C),
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final issue in openIssues)
-            _buildButcherIssueCard(order, orderItems, issue),
-        ],
-        if (closedIssues.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          const Text(
-            'Closed Issues',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF666666),
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final issue in closedIssues)
-            _buildButcherIssueCard(order, orderItems, issue),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildButcherIssueCard(
-    Map<String, dynamic> order,
-    List<Map<String, dynamic>> orderItems,
-    Map<String, dynamic> issue,
-  ) {
-    final closed = _isIssueClosed(issue);
-    final supplierUpdated = _hasSupplierUpdate(issue);
-    final messages = _issueMessages(issue);
-    final replacement = _replacementOrderForIssue(issue);
-
-    final linkedItems = issue['order_issue_items'];
-    final affectedNames = <String>[];
-
-    if (linkedItems is List) {
-      final linkedIds = linkedItems
-          .whereType<Map>()
-          .map((link) => link['order_item_id']?.toString())
-          .whereType<String>()
-          .toSet();
-
-      for (final item in orderItems) {
-        if (linkedIds.contains(item['id']?.toString())) {
-          affectedNames.add(
-            item['product_name_snapshot']?.toString() ??
-                'Unnamed product',
-          );
-        }
-      }
-    }
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: closed
-            ? const Color(0xFFF5F5F3)
-            : supplierUpdated
-                ? const Color(0xFFF7FAFF)
-                : const Color(0xFFFFF8E8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: closed
-              ? const Color(0xFFD7D7D2)
-              : supplierUpdated
-                  ? const Color(0xFFB8CDE8)
-                  : const Color(0xFFE5D19A),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                _issueReasonLabel(issue['issue_reason']?.toString()),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Issues & Returns',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
+            ),
+            if (issues.any(_hasSupplierUpdate))
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 5,
+                  horizontal: 10,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _issueStatusBackground(
-                    issue['status']?.toString(),
-                  ),
+                  color: const Color(0xFFEAF1FB),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  _issueStatusLabel(issue['status']?.toString()),
-                  style: TextStyle(
-                    color: _issueStatusForeground(
-                      issue['status']?.toString(),
-                    ),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              Chip(
-                avatar: Icon(
-                  closed ? Icons.lock_outline : Icons.circle_outlined,
-                  size: 15,
-                ),
-                label: Text(closed ? 'CLOSED' : 'OPEN'),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildIssueProgress(issue),
-          if (affectedNames.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Affected: ${affectedNames.join(', ')}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-          if (issue['description'] != null &&
-              issue['description'].toString().trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(issue['description'].toString()),
-          ],
-          if (messages.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Text(
-              'Conversation',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            for (final message in messages)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 7),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: message['sender_role']?.toString() == 'supplier'
-                      ? const Color(0xFFEAF1FB)
-                      : const Color(0xFFF3F3F1),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Text(
-                  '${message['sender_role']?.toString() == 'supplier' ? 'Supplier' : 'Butcher'}: '
-                  '${message['message'] ?? ''}',
-                ),
-              ),
-          ],
-          if (replacement != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFFB7D7BA),
-                ),
-              ),
-              child: Wrap(
-                spacing: 14,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  const Chip(
-                    avatar: Icon(Icons.autorenew, size: 16),
-                    label: Text('REPLACEMENT ORDER'),
-                  ),
-                  Text(
-                    replacement['order_number']?.toString() ??
-                        'Replacement',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    'Status: ${_statusLabel(replacement['status']?.toString())}',
-                  ),
-                  const Text(
-                    'No extra charge',
-                    style: TextStyle(
-                      color: Color(0xFF2E7D32),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (issue['status']?.toString() == 'resolved' &&
-              issue['butcher_confirmed_at'] == null) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E8),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFFE5C37A),
-                ),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final info = const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Supplier marked this resolution as completed',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        'Check that the replacement, refund, credit or other '
-                        'agreed outcome has actually been completed before clearing the issue.',
-                        style: TextStyle(
-                          color: Color(0xFF666666),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  );
-
-                  final button = FilledButton.icon(
-                    onPressed: () =>
-                        _confirmSupplierResolution(order, issue),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                    ),
-                    icon: const Icon(Icons.verified_outlined),
-                    label: const Text('Confirm & Clear'),
-                  );
-
-                  if (constraints.maxWidth < 650) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        info,
-                        const SizedBox(height: 12),
-                        button,
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    children: [
-                      Expanded(child: info),
-                      const SizedBox(width: 14),
-                      button,
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-          if (issue['butcher_confirmed_at'] != null) ...[
-            const SizedBox(height: 12),
-            const Chip(
-              avatar: Icon(
-                Icons.verified_outlined,
-                size: 16,
-              ),
-              label: Text('Confirmed by butcher'),
-            ),
-          ],
-
-          if (supplierUpdated) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFFD9E3F0),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Supplier response',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.mark_email_unread_outlined,
+                      size: 15,
                       color: Color(0xFF315A8C),
                     ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    issue['supplier_response']
-                                ?.toString()
-                                .trim()
-                                .isNotEmpty ==
-                            true
-                        ? issue['supplier_response'].toString()
-                        : 'The supplier has updated this issue.',
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 10,
-                    children: [
-                      _InfoBlock(
-                        label: 'Resolution',
-                        value: _resolutionLabel(
-                          issue['resolution_type']?.toString(),
-                        ),
-                      ),
-                      if (_asDouble(issue['credit_amount']) > 0)
-                        _InfoBlock(
-                          label: 'Credit',
-                          value:
-                              '${_money(issue['credit_amount'])} inc GST',
-                        ),
-                      _InfoBlock(
-                        label: 'Supplier pickup',
-                        value: issue['pickup_required'] == true
-                            ? 'Required'
-                            : 'Not required',
-                      ),
-                      _InfoBlock(
-                        label: 'Replacement',
-                        value: issue['replacement_required'] == true
-                            ? 'Required'
-                            : 'Not required',
-                      ),
-                    ],
-                  ),
-                  if (_issueUpdateDate(issue).isNotEmpty) ...[
-                    const SizedBox(height: 10),
+                    SizedBox(width: 5),
                     Text(
-                      '${closed ? 'Closed' : 'Updated'} '
-                      '${_issueUpdateDate(issue)}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      'Supplier update',
+                      style: TextStyle(
+                        color: Color(0xFF315A8C),
                         fontSize: 12,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ] else ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Waiting for supplier response.',
-              style: TextStyle(
-                color: Color(0xFF666666),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
           ],
-        ],
-      ),
+        ),
+        const SizedBox(height: 10),
+        for (final issue in issues)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _hasSupplierUpdate(issue)
+                  ? const Color(0xFFF7FAFF)
+                  : const Color(0xFFFFF8E8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _hasSupplierUpdate(issue)
+                    ? const Color(0xFFB8CDE8)
+                    : const Color(0xFFE5D19A),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      _issueReasonLabel(issue['issue_reason']?.toString()),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _issueStatusBackground(
+                          issue['status']?.toString(),
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _issueStatusLabel(issue['status']?.toString()),
+                        style: TextStyle(
+                          color: _issueStatusForeground(
+                            issue['status']?.toString(),
+                          ),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    if (_hasSupplierUpdate(issue))
+                      const Chip(
+                        avatar: Icon(
+                          Icons.notifications_active_outlined,
+                          size: 16,
+                        ),
+                        label: Text('Supplier replied'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildIssueProgress(issue),
+
+                if (issue['order_issue_items'] is List) ...[
+                  Builder(
+                    builder: (context) {
+                      final links = (issue['order_issue_items'] as List)
+                          .whereType<Map>()
+                          .map((link) => link['order_item_id']?.toString())
+                          .whereType<String>()
+                          .toSet();
+
+                      final names = orderItems
+                          .where(
+                            (item) => links.contains(item['id']?.toString()),
+                          )
+                          .map(
+                            (item) =>
+                                item['product_name_snapshot']?.toString() ??
+                                'Unnamed product',
+                          )
+                          .toList();
+
+                      if (names.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          'Affected: ${names.join(', ')}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+
+                if (issue['description'] != null &&
+                    issue['description'].toString().trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(issue['description'].toString()),
+                ],
+
+                if (_issueMessages(issue).isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Conversation',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final message in _issueMessages(issue))
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 7),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: message['sender_role']?.toString() == 'supplier'
+                            ? const Color(0xFFEAF1FB)
+                            : const Color(0xFFF3F3F1),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Text(
+                        '${message['sender_role']?.toString() == 'supplier' ? 'Supplier' : 'Butcher'}: '
+                        '${message['message'] ?? ''}',
+                      ),
+                    ),
+                ],
+
+                if (_replacementOrderForIssue(issue) != null) ...[
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final replacement = _replacementOrderForIssue(issue)!;
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFB7D7BA)),
+                        ),
+                        child: Wrap(
+                          spacing: 14,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Chip(
+                              avatar: Icon(Icons.autorenew, size: 16),
+                              label: Text('REPLACEMENT ORDER'),
+                            ),
+                            Text(
+                              replacement['order_number']?.toString() ??
+                                  'Replacement',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Status: ${_statusLabel(replacement['status']?.toString())}',
+                            ),
+                            const Text(
+                              'No extra charge',
+                              style: TextStyle(
+                                color: Color(0xFF2E7D32),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+
+                if (_hasSupplierUpdate(issue)) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFD9E3F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Supplier response',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF315A8C),
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          issue['supplier_response']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
+                                  true
+                              ? issue['supplier_response'].toString()
+                              : 'The supplier has updated the status of this issue.',
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 18,
+                          runSpacing: 10,
+                          children: [
+                            _InfoBlock(
+                              label: 'Resolution',
+                              value: _resolutionLabel(
+                                issue['resolution_type']?.toString(),
+                              ),
+                            ),
+                            if (_asDouble(issue['credit_amount']) > 0)
+                              _InfoBlock(
+                                label: 'Credit',
+                                value:
+                                    '${_money(issue['credit_amount'])} inc GST',
+                              ),
+                            _InfoBlock(
+                              label: 'Supplier pickup',
+                              value: issue['pickup_required'] == true
+                                  ? 'Required'
+                                  : 'Not required',
+                            ),
+                            _InfoBlock(
+                              label: 'Replacement',
+                              value: issue['replacement_required'] == true
+                                  ? 'Required'
+                                  : 'Not required',
+                            ),
+                          ],
+                        ),
+                        if (_issueUpdateDate(issue).isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'Updated ${_issueUpdateDate(issue)}',
+                            style: const TextStyle(
+                              color: Color(0xFF666666),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Waiting for supplier response.',
+                    style: TextStyle(
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -2259,10 +2037,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     labelColor: const Color(0xFF741C1C),
                     unselectedLabelColor: const Color(0xFF666666),
                     indicatorColor: const Color(0xFF741C1C),
-                    tabs: [
-                      for (final tab in _tabs)
-                        _buildTab(tab),
-                    ],
+                    tabs: [for (final tab in _tabs) _buildTab(tab)],
                   ),
                 ),
               ),
@@ -2284,14 +2059,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           if (count > 0) ...[
             const SizedBox(width: 7),
             Container(
-              constraints: const BoxConstraints(
-                minWidth: 22,
-                minHeight: 22,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 2,
-              ),
+              constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: tab.key == 'pending' || tab.key == 'issues'
                     ? const Color(0xFFB3261E)
@@ -2318,9 +2087,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
@@ -2338,16 +2105,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               const SizedBox(height: 18),
               const Text(
                 'Orders could not be loaded',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: _loadOrders,
@@ -2361,10 +2122,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     return TabBarView(
       controller: _tabController,
-      children: [
-        for (final tab in _tabs)
-          _buildTabContent(tab),
-      ],
+      children: [for (final tab in _tabs) _buildTabContent(tab)],
     );
   }
 
@@ -2378,11 +2136,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                tab.icon,
-                size: 68,
-                color: const Color(0xFF741C1C),
-              ),
+              Icon(tab.icon, size: 68, color: const Color(0xFF741C1C)),
               const SizedBox(height: 16),
               Text(
                 'No ${tab.label.toLowerCase()} orders',
@@ -2405,8 +2159,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           child: ListView.separated(
             padding: const EdgeInsets.all(24),
             itemCount: orders.length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: 16),
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               return _buildOrderCard(orders[index]);
             },
@@ -2429,16 +2182,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 10,
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          20,
-        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         title: Row(
           children: [
             Expanded(
@@ -2467,10 +2212,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       runSpacing: 6,
                       children: [
                         const Chip(
-                          avatar: Icon(
-                            Icons.autorenew,
-                            size: 15,
-                          ),
+                          avatar: Icon(Icons.autorenew, size: 15),
                           label: Text('REPLACEMENT'),
                           visualDensity: VisualDensity.compact,
                         ),
@@ -2492,10 +2234,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ),
             const SizedBox(width: 12),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 11,
-                vertical: 7,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
               decoration: BoxDecoration(
                 color: _statusBackground(status),
                 borderRadius: BorderRadius.circular(999),
@@ -2517,17 +2256,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             spacing: 16,
             runSpacing: 6,
             children: [
-              Text(
-                '${items.length} item${items.length == 1 ? '' : 's'}',
-              ),
+              Text('${items.length} item${items.length == 1 ? '' : 's'}'),
               Text(
                 'Total ${_money(order['total_amount'])} inc GST',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              if (statusDate.isNotEmpty)
-                Text(statusDate),
+              if (statusDate.isNotEmpty) Text(statusDate),
               if (_issues(order).any(_hasSupplierUpdate))
                 const Text(
                   'Supplier updated issue',
@@ -2562,9 +2296,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               decoration: BoxDecoration(
                 color: const Color(0xFFF9F9F7),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFE4E4E1),
-                ),
+                border: Border.all(color: const Color(0xFFE4E4E1)),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -2576,9 +2308,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       Text(
                         item['product_name_snapshot']?.toString() ??
                             'Unnamed product',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       if (item['sku_snapshot'] != null &&
                           item['sku_snapshot']
@@ -2588,9 +2318,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         const SizedBox(height: 4),
                         Text(
                           'SKU: ${item['sku_snapshot']}',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                          ),
+                          style: const TextStyle(color: Color(0xFF666666)),
                         ),
                       ],
                       const SizedBox(height: 7),
@@ -2599,9 +2327,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         '${_unitLabel(item['quantity_unit']?.toString())}'
                         ' × ${_money(item['unit_price'])}'
                         '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
-                        style: const TextStyle(
-                          color: Color(0xFF555555),
-                        ),
+                        style: const TextStyle(color: Color(0xFF555555)),
                       ),
                     ],
                   );
@@ -2617,11 +2343,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   if (narrow) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        left,
-                        const SizedBox(height: 10),
-                        right,
-                      ],
+                      children: [left, const SizedBox(height: 10), right],
                     );
                   }
 
@@ -2689,9 +2411,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.cancel_outlined),
                 label: const Text('Cancel Order'),
@@ -2705,9 +2425,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             Builder(
               builder: (context) {
                 final existingIssue = _activeIssueForOrder(order);
-                final followingUp = existingIssue != null &&
-                    _sendingFollowUpIssueId ==
-                        existingIssue['id']?.toString();
+                final followingUp =
+                    existingIssue != null &&
+                    _sendingFollowUpIssueId == existingIssue['id']?.toString();
 
                 return Container(
                   width: double.infinity,
@@ -2715,39 +2435,34 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   decoration: BoxDecoration(
                     color: existingIssue == null
                         ? (_isWithinIssueWindow(order)
-                            ? const Color(0xFFF7F7F5)
-                            : const Color(0xFFFFF4E5))
+                              ? const Color(0xFFF7F7F5)
+                              : const Color(0xFFFFF4E5))
                         : const Color(0xFFEAF1FB),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: existingIssue == null
                           ? (_isWithinIssueWindow(order)
-                              ? const Color(0xFFE0E0E0)
-                              : const Color(0xFFE5C37A))
+                                ? const Color(0xFFE0E0E0)
+                                : const Color(0xFFE5C37A))
                           : const Color(0xFFB8CDE8),
                     ),
                   ),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final message = Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             existingIssue == null
                                 ? 'Problem with this delivery?'
                                 : 'Existing issue lodged',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 5),
                           Text(
                             existingIssue == null
                                 ? _issueWindowText(order)
-                                : (_isIssueClosed(existingIssue)
-                                    ? 'This issue is closed. Following up will reopen the same case instead of creating a new complaint.'
-                                    : 'Continue the existing complaint instead of creating another request.'),
+                                : 'Continue the existing complaint instead of creating another request.',
                             style: const TextStyle(
                               color: Color(0xFF666666),
                               height: 1.4,
@@ -2759,17 +2474,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       final button = FilledButton.icon(
                         onPressed: existingIssue == null
                             ? (_reportingIssueOrderId == orderId
-                                ? null
-                                : () => _reportIssue(order))
+                                  ? null
+                                  : () => _reportIssue(order))
                             : (followingUp
-                                ? null
-                                : () => _followUpIssue(
-                                      order,
-                                      existingIssue,
-                                    )),
+                                  ? null
+                                  : () => _followUpIssue(order, existingIssue)),
                         style: FilledButton.styleFrom(
-                          backgroundColor:
-                              const Color(0xFF741C1C),
+                          backgroundColor: const Color(0xFF741C1C),
                         ),
                         icon: Icon(
                           existingIssue == null
@@ -2779,16 +2490,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         label: Text(
                           existingIssue == null
                               ? 'Report Issue / Return'
-                              : (_isIssueClosed(existingIssue)
-                                  ? 'Follow Up / Reopen Issue'
-                                  : 'Follow Up Issue'),
+                              : 'Follow Up Issue',
                         ),
                       );
 
                       if (constraints.maxWidth < 700) {
                         return Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             message,
                             const SizedBox(height: 12),
@@ -2814,7 +2522,6 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       ),
     );
   }
-
 }
 
 class _ButcherOrderTab {
@@ -2847,37 +2554,27 @@ class _TimelineChip extends StatelessWidget {
     final background = closed
         ? const Color(0xFFFDECEC)
         : complete
-            ? const Color(0xFFE8F5E9)
-            : const Color(0xFFF1F1EF);
+        ? const Color(0xFFE8F5E9)
+        : const Color(0xFFF1F1EF);
 
     final foreground = closed
         ? const Color(0xFFB3261E)
         : complete
-            ? const Color(0xFF2E7D32)
-            : const Color(0xFF777777);
+        ? const Color(0xFF2E7D32)
+        : const Color(0xFF777777);
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: active
-            ? Border.all(
-                color: foreground,
-                width: 1.5,
-              )
-            : null,
+        border: active ? Border.all(color: foreground, width: 1.5) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            complete
-                ? Icons.check_circle
-                : Icons.radio_button_unchecked,
+            complete ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 16,
             color: foreground,
           ),
@@ -2897,10 +2594,7 @@ class _TimelineChip extends StatelessWidget {
 }
 
 class _InfoBlock extends StatelessWidget {
-  const _InfoBlock({
-    required this.label,
-    required this.value,
-  });
+  const _InfoBlock({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -2921,12 +2615,7 @@ class _InfoBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -2955,16 +2644,8 @@ class _TotalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: style,
-            ),
-          ),
-          Text(
-            value,
-            style: style,
-          ),
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
         ],
       ),
     );
