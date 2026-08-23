@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/widgets/interactive_animal_browser.dart';
@@ -6,7 +7,7 @@ import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 import 'supplier_create_order_page.dart';
 import 'supplier_orders_page.dart';
 import 'supplier_quotes_page.dart';
-import 'supplier_work_orders_page.dart';
+import 'supplier_work_order_page.dart';
 
 class SupplierSalesPage extends StatefulWidget {
   const SupplierSalesPage({super.key});
@@ -25,7 +26,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
   String? _selectedSpecificationId;
+  String? _selectedGradeId;
+
+  final ScrollController _specificationScrollController = ScrollController();
+
   List<Map<String, dynamic>> _products = [];
+  int _newMarketplaceItemCount = 0;
 
   Map<String, dynamic>? _activeSale;
   final List<Map<String, dynamic>> _activeSaleLines = [];
@@ -46,6 +52,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
+    _specificationScrollController.dispose();
     super.dispose();
   }
 
@@ -130,7 +137,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
 
-      final response = await client
+      final productResponse = await client
           .from('products')
           .select('''
             id,
@@ -186,15 +193,35 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           .eq('active', true)
           .order('product_name');
 
+      final marketplaceResponse = await client
+          .from('orders')
+          .select('''
+            id,
+            order_items(id)
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('order_source', 'marketplace')
+          .eq('status', 'submitted');
+
+      var marketplaceItemCount = 0;
+
+      for (final raw in marketplaceResponse) {
+        final items = raw['order_items'];
+        if (items is List) {
+          marketplaceItemCount += items.length;
+        }
+      }
+
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _products = (response as List)
+        _products = (productResponse as List)
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
             .toList();
+        _newMarketplaceItemCount = marketplaceItemCount;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -228,6 +255,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           .select('''
             id,
             order_number,
+            quote_number,
             quote_revision,
             status,
             order_source,
@@ -297,7 +325,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
         _activeSale = {
           'quote_order_id': quote['id'],
-          'quote_number': quote['order_number'],
+          'quote_number': quote['quote_number'] ?? quote['order_number'],
           'quote_revision': quote['quote_revision'],
           'supplier_customer_account_id':
               quote['supplier_customer_account_id'] ?? account['id'],
@@ -443,6 +471,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final byId = <String, String>{};
 
     for (final product in _animalRegionProducts) {
+      if (_selectedGradeId != null &&
+          product['meat_grade_id']?.toString() != _selectedGradeId) {
+        continue;
+      }
+
       final id = _specificationId(product);
       if (id.isEmpty) continue;
       byId[id] = _specificationName(product);
@@ -461,10 +494,35 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return rows;
   }
 
+  List<Map<String, String>> get _availableGrades {
+    final byId = <String, Map<String, String>>{};
+
+    for (final product in _animalRegionProducts) {
+      final gradeId = product['meat_grade_id']?.toString();
+      if (gradeId == null || gradeId.isEmpty) continue;
+
+      final code = _gradeCode(product);
+      final name = _gradeName(product);
+
+      byId[gradeId] = {'id': gradeId, 'code': code, 'name': name};
+    }
+
+    final rows = byId.values.toList();
+
+    rows.sort((a, b) => (a['code'] ?? '').compareTo(b['code'] ?? ''));
+
+    return rows;
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _searchController.text.trim().toLowerCase();
 
     final results = _animalRegionProducts.where((product) {
+      if (_selectedGradeId != null &&
+          product['meat_grade_id']?.toString() != _selectedGradeId) {
+        return false;
+      }
+
       if (_selectedSpecificationId != null &&
           _specificationId(product) != _selectedSpecificationId) {
         return false;
@@ -617,6 +675,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       _selectedAnimalCode = animalCode;
       _selectedAnimalRegionKey = null;
       _selectedSpecificationId = null;
+      _selectedGradeId = null;
       _searchController.clear();
     });
   }
@@ -1779,7 +1838,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         SnackBar(content: Text('Work order created for $customerName.')),
       );
 
-      await _openWorkOrders();
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SupplierWorkOrderPage(orderId: orderId),
+        ),
+      );
+
+      if (mounted) {
+        await _loadStock();
+      }
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -2102,14 +2169,64 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
   }
 
-  Future<void> _openWorkOrders() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const SupplierWorkOrdersPage()),
+  Widget _marketplaceOrdersButton() {
+    return OutlinedButton(
+      onPressed: () => _openOrders(initialTabKey: 'new'),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        visualDensity: VisualDensity.compact,
+        side: const BorderSide(color: Color(0xFFD8D8D4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.storefront_outlined, size: 18),
+          const SizedBox(width: 8),
+          const Text(
+            'Marketplace Orders',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          if (_newMarketplaceItemCount > 0) ...[
+            const SizedBox(width: 8),
+            TweenAnimationBuilder<double>(
+              key: ValueKey(_newMarketplaceItemCount),
+              tween: Tween<double>(begin: 0.72, end: 1),
+              duration: const Duration(milliseconds: 650),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) =>
+                  Transform.scale(scale: value, child: child),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB3261E),
+                  borderRadius: BorderRadius.circular(99),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  _newMarketplaceItemCount > 99
+                      ? '99+'
+                      : _newMarketplaceItemCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
-
-    if (mounted) {
-      await _loadStock();
-    }
   }
 
   Widget _compactTopButton({
@@ -2130,6 +2247,401 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
+  Future<void> _scrollSpecifications(double direction) async {
+    if (!_specificationScrollController.hasClients) return;
+
+    final position = _specificationScrollController.position;
+    final target = (position.pixels + (direction * 280)).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+
+    await _specificationScrollController.animateTo(
+      target.toDouble(),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _openGradeDropdown(BuildContext buttonContext) async {
+    final grades = _availableGrades;
+    final renderBox = buttonContext.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(buttonContext).context.findRenderObject() as RenderBox?;
+
+    if (renderBox == null || overlay == null) return;
+
+    final offset = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+
+    String typedQuery = '';
+
+    final selected = await showMenu<String>(
+      context: buttonContext,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + renderBox.size.height + 4,
+        overlay.size.width - offset.dx - renderBox.size.width,
+        overlay.size.height - offset.dy,
+      ),
+      constraints: const BoxConstraints(
+        minWidth: 245,
+        maxWidth: 320,
+        maxHeight: 360,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: StatefulBuilder(
+            builder: (context, setPopupState) {
+              final filtered = grades.where((grade) {
+                if (typedQuery.isEmpty) return true;
+
+                final code = (grade['code'] ?? '').toLowerCase();
+                final name = (grade['name'] ?? '').toLowerCase();
+                final query = typedQuery.toLowerCase();
+
+                return code.contains(query) || name.contains(query);
+              }).toList();
+
+              final focusNode = FocusNode();
+
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (focusNode.canRequestFocus) {
+                  focusNode.requestFocus();
+                }
+              });
+
+              void chooseFirstMatch() {
+                if (filtered.isEmpty) return;
+                Navigator.of(context).pop(filtered.first['id']);
+              }
+
+              KeyEventResult handleKey(FocusNode node, KeyEvent event) {
+                if (event is! KeyDownEvent) {
+                  return KeyEventResult.ignored;
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.enter) {
+                  chooseFirstMatch();
+                  return KeyEventResult.handled;
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.backspace) {
+                  if (typedQuery.isNotEmpty) {
+                    setPopupState(() {
+                      typedQuery = typedQuery.substring(
+                        0,
+                        typedQuery.length - 1,
+                      );
+                    });
+                  }
+                  return KeyEventResult.handled;
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  Navigator.of(context).pop();
+                  return KeyEventResult.handled;
+                }
+
+                final character = event.character;
+                if (character != null &&
+                    character.isNotEmpty &&
+                    character.runes.first >= 32) {
+                  setPopupState(() {
+                    typedQuery += character;
+                  });
+                  return KeyEventResult.handled;
+                }
+
+                return KeyEventResult.ignored;
+              }
+
+              return Focus(
+                focusNode: focusNode,
+                onKeyEvent: handleKey,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 245,
+                    maxWidth: 320,
+                    maxHeight: 340,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.keyboard_outlined,
+                              size: 17,
+                              color: Color(0xFF777777),
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                typedQuery.isEmpty
+                                    ? 'Type to search grades'
+                                    : 'Searching: $typedQuery',
+                                style: TextStyle(
+                                  color: typedQuery.isEmpty
+                                      ? const Color(0xFF777777)
+                                      : _darkRed,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Column(
+                            children: [
+                              if (typedQuery.isEmpty)
+                                InkWell(
+                                  onTap: () =>
+                                      Navigator.of(context).pop('__all__'),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 11,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 30,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: _selectedGradeId == null
+                                                ? _darkRed
+                                                : const Color(0xFFF3F3F1),
+                                            borderRadius: BorderRadius.circular(
+                                              7,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'ALL',
+                                            style: TextStyle(
+                                              color: _selectedGradeId == null
+                                                  ? Colors.white
+                                                  : const Color(0xFF444444),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Expanded(
+                                          child: Text(
+                                            'All Grades',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (filtered.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(18),
+                                  child: Text(
+                                    'No matching grade',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF777777),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                )
+                              else
+                                for (final grade in filtered)
+                                  InkWell(
+                                    onTap: () =>
+                                        Navigator.of(context).pop(grade['id']),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 9,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 48,
+                                            height: 32,
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  _selectedGradeId ==
+                                                      grade['id']
+                                                  ? _darkRed
+                                                  : const Color(0xFFF4E5E5),
+                                              borderRadius:
+                                                  BorderRadius.circular(7),
+                                              border: Border.all(
+                                                color: const Color(0xFFD7B8B8),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              grade['code'] ?? '—',
+                                              style: TextStyle(
+                                                color:
+                                                    _selectedGradeId ==
+                                                        grade['id']
+                                                    ? Colors.white
+                                                    : _darkRed,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              (grade['name'] ?? '').isEmpty
+                                                  ? grade['code'] ?? 'Grade'
+                                                  : grade['name']!,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                          if (_selectedGradeId == grade['id'])
+                                            const Icon(
+                                              Icons.check,
+                                              size: 18,
+                                              color: _darkRed,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (typedQuery.isNotEmpty && filtered.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                          child: Text(
+                            'Press Enter for ${filtered.first['code']}',
+                            style: const TextStyle(
+                              color: Color(0xFF777777),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+
+    if (!mounted || selected == null) return;
+
+    setState(() {
+      if (selected == '__all__') {
+        _selectedGradeId = null;
+      } else {
+        _selectedGradeId = selected;
+      }
+
+      _selectedSpecificationId = null;
+    });
+  }
+
+  String _selectedGradeDropdownLabel() {
+    if (_selectedGradeId == null) return 'All Grades';
+
+    for (final grade in _availableGrades) {
+      if (grade['id'] == _selectedGradeId) {
+        final code = grade['code'] ?? '';
+        final name = grade['name'] ?? '';
+
+        if (name.trim().isEmpty) return code;
+        return '$code - $name';
+      }
+    }
+
+    return 'All Grades';
+  }
+
+  Widget _buildGradeFilterStrip() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Builder(
+        builder: (buttonContext) {
+          return InkWell(
+            onTap: () => _openGradeDropdown(buttonContext),
+            borderRadius: BorderRadius.circular(9),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 145, maxWidth: 250),
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: _selectedGradeId == null
+                      ? const Color(0xFFD7D7D3)
+                      : _darkRed,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.tune, size: 16, color: _darkRed),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      _selectedGradeDropdownLabel(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: Color(0xFF555555),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSpecificationStrip() {
     final specifications = _availableSpecifications;
 
@@ -2137,74 +2649,99 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return const SizedBox.shrink();
     }
 
-    return SizedBox(
-      height: 38,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              selected: _selectedSpecificationId == null,
-              showCheckmark: false,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
-              side: BorderSide(
-                color: _selectedSpecificationId == null
-                    ? _darkRed
-                    : const Color(0xFFD9D9D5),
-              ),
-              selectedColor: _darkRed,
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                color: _selectedSpecificationId == null
-                    ? Colors.white
-                    : const Color(0xFF3E3E3E),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-              label: const Text('All'),
-              onSelected: (_) {
-                setState(() => _selectedSpecificationId = null);
-              },
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () => _scrollSpecifications(-1),
+          tooltip: 'Previous cuts',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Expanded(
+          child: SizedBox(
+            height: 38,
+            child: ListView(
+              controller: _specificationScrollController,
+              scrollDirection: Axis.horizontal,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChoiceChip(
+                    selected: _selectedSpecificationId == null,
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 0,
+                    ),
+                    side: BorderSide(
+                      color: _selectedSpecificationId == null
+                          ? _darkRed
+                          : const Color(0xFFD9D9D5),
+                    ),
+                    selectedColor: _darkRed,
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: _selectedSpecificationId == null
+                          ? Colors.white
+                          : const Color(0xFF3E3E3E),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    label: const Text('All'),
+                    onSelected: (_) {
+                      setState(() => _selectedSpecificationId = null);
+                    },
+                  ),
+                ),
+                for (final specification in specifications)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      selected: _selectedSpecificationId == specification['id'],
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 0,
+                      ),
+                      side: BorderSide(
+                        color: _selectedSpecificationId == specification['id']
+                            ? _darkRed
+                            : const Color(0xFFD9D9D5),
+                      ),
+                      selectedColor: _darkRed,
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: _selectedSpecificationId == specification['id']
+                            ? Colors.white
+                            : const Color(0xFF3E3E3E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      label: Text(specification['name'] ?? 'Cut'),
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedSpecificationId = specification['id'];
+                        });
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
-          for (final specification in specifications)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: ChoiceChip(
-                selected: _selectedSpecificationId == specification['id'],
-                showCheckmark: false,
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
-                side: BorderSide(
-                  color: _selectedSpecificationId == specification['id']
-                      ? _darkRed
-                      : const Color(0xFFD9D9D5),
-                ),
-                selectedColor: _darkRed,
-                backgroundColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: _selectedSpecificationId == specification['id']
-                      ? Colors.white
-                      : const Color(0xFF3E3E3E),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-                label: Text(specification['name'] ?? 'Cut'),
-                onSelected: (_) {
-                  setState(() {
-                    _selectedSpecificationId = specification['id'];
-                  });
-                },
-              ),
-            ),
-        ],
-      ),
+        ),
+        IconButton(
+          onPressed: () => _scrollSpecifications(1),
+          tooltip: 'Next cuts',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
     );
   }
 
@@ -2528,11 +3065,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     label: 'Quotes',
                     onTap: _openQuotes,
                   ),
-                  _compactTopButton(
-                    icon: Icons.storefront_outlined,
-                    label: 'Marketplace Orders',
-                    onTap: () => _openOrders(initialTabKey: 'new'),
-                  ),
+                  _marketplaceOrdersButton(),
                 ],
               ),
             ],
@@ -2643,6 +3176,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    _buildGradeFilterStrip(),
+                    const SizedBox(height: 10),
                     _buildSpecificationStrip(),
                     const SizedBox(height: 12),
                     if (_selectedAnimalRegionKey != null)

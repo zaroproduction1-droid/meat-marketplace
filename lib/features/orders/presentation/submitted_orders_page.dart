@@ -28,13 +28,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       icon: Icons.schedule_outlined,
     ),
     _ButcherOrderTab(
-      label: 'Accepted',
-      key: 'accepted',
-      icon: Icons.check_circle_outline,
-    ),
-    _ButcherOrderTab(
-      label: 'Processing',
-      key: 'processing',
+      label: 'Preparing',
+      key: 'preparing',
       icon: Icons.inventory_2_outlined,
     ),
     _ButcherOrderTab(
@@ -43,24 +38,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       icon: Icons.local_shipping_outlined,
     ),
     _ButcherOrderTab(
-      label: 'Delivered',
-      key: 'delivered',
-      icon: Icons.move_to_inbox_outlined,
-    ),
-    _ButcherOrderTab(
-      label: 'Issues & Returns',
-      key: 'issues',
-      icon: Icons.report_problem_outlined,
-    ),
-    _ButcherOrderTab(
-      label: 'Completed',
+      label: 'Delivered / Complete',
       key: 'completed',
       icon: Icons.task_alt,
-    ),
-    _ButcherOrderTab(
-      label: 'Closed',
-      key: 'closed',
-      icon: Icons.archive_outlined,
     ),
   ];
 
@@ -108,6 +88,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             butcher_business_id,
             supplier_business_id,
             status,
+            order_source,
+            fulfilment_method,
             order_type,
             replacement_for_order_id,
             replacement_issue_id,
@@ -130,6 +112,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             submitted_at,
             accepted_at,
             declined_at,
+            supplier_rejection_reason,
+            butcher_rejection_acknowledged_at,
             dispatched_at,
             delivered_at,
             completed_at,
@@ -142,6 +126,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               trading_name
             ),
 
+            invoices(
+              id,
+              invoice_number,
+              status,
+              sent_to_butcher_at
+            ),
             order_items(
               id,
               product_id,
@@ -192,9 +182,24 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return;
       }
 
+      final visibleOrders = List<Map<String, dynamic>>.from(response).where((
+        order,
+      ) {
+        final supplierRejected =
+            order['status']?.toString() == 'declined' &&
+            order['order_source']?.toString() == 'marketplace';
+
+        if (supplierRejected &&
+            order['butcher_rejection_acknowledged_at'] != null) {
+          return false;
+        }
+
+        return true;
+      }).toList();
+
       setState(() {
         _butcherBusinessId = butcherBusinessId;
-        _orders = List<Map<String, dynamic>>.from(response);
+        _orders = visibleOrders;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -456,38 +461,35 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   List<Map<String, dynamic>> _ordersForTab(String key) {
     switch (key) {
       case 'pending':
-        return _orders
-            .where((order) => order['status']?.toString() == 'submitted')
-            .toList();
-      case 'accepted':
-        return _orders
-            .where((order) => order['status']?.toString() == 'accepted')
-            .toList();
-      case 'processing':
-        return _orders
-            .where((order) => order['status']?.toString() == 'processing')
-            .toList();
+        return _orders.where((order) {
+          final status = order['status']?.toString();
+
+          // New orders and supplier-declined orders awaiting acknowledgement
+          // stay in Pending so the butcher cannot miss the cancellation reason.
+          return status == 'submitted' || status == 'declined';
+        }).toList();
+
+      case 'preparing':
+        return _orders.where((order) {
+          final status = order['status']?.toString();
+          return status == 'accepted' || status == 'processing';
+        }).toList();
+
       case 'dispatched':
         return _orders
             .where((order) => order['status']?.toString() == 'dispatched')
             .toList();
-      case 'delivered':
-        return _orders
-            .where((order) => order['status']?.toString() == 'delivered')
-            .toList();
-      case 'issues':
-        return _orders.where((order) => _issues(order).isNotEmpty).toList();
+
       case 'completed':
         return _orders
             .where((order) => order['status']?.toString() == 'completed')
             .toList();
-      case 'closed':
-        return _orders.where((order) {
-          final status = order['status']?.toString();
-          return status == 'declined' || status == 'cancelled';
-        }).toList();
+
+      case 'issues':
+        return _orders.where((order) => _issues(order).isNotEmpty).toList();
+
       default:
-        return [];
+        return const <Map<String, dynamic>>[];
     }
   }
 
@@ -552,6 +554,37 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return 'Other';
       default:
         return reason ?? 'Issue';
+    }
+  }
+
+  Future<void> _acknowledgeSupplierRejection(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+
+    if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
+      return;
+    }
+
+    setState(() => _updatingOrderId = orderId);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'acknowledge_marketplace_order_rejection',
+        params: {'target_order_id': orderId},
+      );
+
+      if (!mounted) return;
+
+      await _loadOrders();
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
@@ -1432,7 +1465,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 ),
               if (closed)
                 _TimelineChip(
-                  label: _statusLabel(status),
+                  label: _buyerLifecycleLabel(order),
                   complete: true,
                   active: true,
                   closed: true,
@@ -1863,11 +1896,6 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     return double.tryParse('$value') ?? 0;
   }
 
-  double _exGstAmount(Map<String, dynamic> order) {
-    final total = _asDouble(order['total_amount']);
-    return total / 1.10;
-  }
-
   String _money(dynamic value) {
     final number = value is num ? value.toDouble() : double.tryParse('$value');
 
@@ -1904,6 +1932,35 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
   }
 
+  Map<String, dynamic>? _invoiceForOrder(Map<String, dynamic> order) {
+    final raw = order['invoices'];
+
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+
+    return null;
+  }
+
+  String _buyerLifecycleLabel(Map<String, dynamic> order) {
+    final status = order['status']?.toString();
+    final pickup = order['fulfilment_method']?.toString() == 'pickup';
+
+    if (pickup && status == 'processing' && _invoiceForOrder(order) != null) {
+      return 'Ready for Pickup';
+    }
+
+    if (status == 'completed') {
+      return pickup ? 'Picked Up / Complete' : 'Delivered / Complete';
+    }
+
+    return _statusLabel(status);
+  }
+
   String _statusLabel(String? status) {
     switch (status) {
       case 'submitted':
@@ -1919,7 +1976,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'delivered':
         return 'Delivered';
       case 'completed':
-        return 'Completed';
+        return 'Delivered / Complete';
       case 'cancelled':
         return 'Cancelled';
       default:
@@ -2005,6 +2062,72 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
   }
 
+  Future<void> _openIssuesPanel() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (issuesContext) => Scaffold(
+          backgroundColor: const Color(0xFFF7F7F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: const Text(
+              'Issues & Returns',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          body: Builder(
+            builder: (_) {
+              final issueOrders = _ordersForTab('issues');
+
+              if (issueOrders.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 64,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        SizedBox(height: 14),
+                        Text(
+                          'No open issues or returns',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(24),
+                    itemCount: issueOrders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 14),
+                    itemBuilder: (_, index) =>
+                        _buildOrderCard(issueOrders[index]),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _loadOrders();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2017,6 +2140,43 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: _openIssuesPanel,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.report_problem_outlined),
+                if (_countForTab('issues') > 0)
+                  Positioned(
+                    right: -9,
+                    top: -8,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB3261E),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        _countForTab('issues') > 99
+                            ? '99+'
+                            : _countForTab('issues').toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: const Text('Issues & Returns'),
+          ),
           IconButton(
             onPressed: _loadOrders,
             tooltip: 'Refresh orders',
@@ -2173,351 +2333,637 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final items = _items(order);
     final status = order['status']?.toString();
     final statusDate = _bestDate(order);
-    final orderId = order['id']?.toString();
+    final invoice = _invoiceForOrder(order);
+    final pickup = order['fulfilment_method']?.toString() == 'pickup';
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        title: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openOrderWorkspace(order),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _hasOpenIssues(order)
+                  ? const Color(0xFFD8A0A0)
+                  : const Color(0xFFE0E0DD),
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 820;
+
+              final identity = Row(
                 children: [
-                  Text(
-                    order['order_number']?.toString() ?? 'Order',
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _statusBackground(status),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      pickup
+                          ? Icons.shopping_bag_outlined
+                          : Icons.local_shipping_outlined,
+                      color: _statusForeground(status),
+                      size: 21,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                order['order_number']?.toString() ?? 'Order',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            if (_isReplacementOrder(order)) ...[
+                              const SizedBox(width: 7),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3E9F7),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  'REPLACEMENT',
+                                  style: TextStyle(
+                                    color: Color(0xFF6A3D78),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _supplierName(order),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF741C1C),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              final facts = Wrap(
+                spacing: 20,
+                runSpacing: 7,
+                children: [
+                  _CompactBuyerOrderFact(
+                    label: 'STATUS',
+                    value: _buyerLifecycleLabel(order),
+                  ),
+                  _CompactBuyerOrderFact(
+                    label: 'ITEMS',
+                    value:
+                        '${items.length} line${items.length == 1 ? '' : 's'}',
+                  ),
+                  _CompactBuyerOrderFact(
+                    label: 'FULFILMENT',
+                    value: pickup ? 'Pickup' : 'Delivery',
+                  ),
+                  if (statusDate.isNotEmpty)
+                    _CompactBuyerOrderFact(label: 'UPDATED', value: statusDate),
+                ],
+              );
+
+              final totalText = invoice?['total_amount'] != null
+                  ? _money(invoice?['total_amount'])
+                  : _money(order['total_amount']);
+
+              final trailing = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_issues(order).any(_hasSupplierUpdate))
+                    const Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: Icon(
+                        Icons.mark_chat_unread_outlined,
+                        color: Color(0xFF315A8C),
+                        size: 19,
+                      ),
+                    )
+                  else if (_hasOpenIssues(order))
+                    const Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: Icon(
+                        Icons.report_problem_outlined,
+                        color: Color(0xFFB3261E),
+                        size: 19,
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'TOTAL INC GST',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        totalText,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.chevron_right, color: Color(0xFF741C1C)),
+                ],
+              );
+
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    identity,
+                    const SizedBox(height: 10),
+                    facts,
+                    const SizedBox(height: 8),
+                    Align(alignment: Alignment.centerRight, child: trailing),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  SizedBox(width: 290, child: identity),
+                  const SizedBox(width: 18),
+                  Expanded(child: facts),
+                  const SizedBox(width: 14),
+                  trailing,
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openOrderWorkspace(Map<String, dynamic> order) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => _buildOrderWorkspace(order)),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadOrders();
+  }
+
+  Widget _buildOrderWorkspace(Map<String, dynamic> order) {
+    final items = _items(order);
+    final status = order['status']?.toString();
+    final orderId = order['id']?.toString();
+    final pickup = order['fulfilment_method']?.toString() == 'pickup';
+
+    Widget productsPanel() {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 19,
+                    color: Color(0xFF741C1C),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Order Items',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
+                  const Spacer(),
                   Text(
-                    _supplierName(order),
+                    '${items.length} line${items.length == 1 ? '' : 's'}',
                     style: const TextStyle(
-                      color: Color(0xFF741C1C),
+                      color: Color(0xFF777777),
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (_isReplacementOrder(order)) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        const Chip(
-                          avatar: Icon(Icons.autorenew, size: 15),
-                          label: Text('REPLACEMENT'),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        if (order['replacement_for_order_number_snapshot'] !=
-                            null)
-                          Text(
-                            'For ${order['replacement_for_order_number_snapshot']}',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-              decoration: BoxDecoration(
-                color: _statusBackground(status),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _statusLabel(status),
-                style: TextStyle(
-                  color: _statusForeground(status),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Wrap(
-            spacing: 16,
-            runSpacing: 6,
-            children: [
-              Text('${items.length} item${items.length == 1 ? '' : 's'}'),
-              Text(
-                'Total ${_money(order['total_amount'])} inc GST',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if (statusDate.isNotEmpty) Text(statusDate),
-              if (_issues(order).any(_hasSupplierUpdate))
-                const Text(
-                  'Supplier updated issue',
-                  style: TextStyle(
-                    color: Color(0xFF315A8C),
-                    fontWeight: FontWeight.w800,
-                  ),
-                )
-              else if (_hasOpenIssues(order))
-                const Text(
-                  'Issue open',
-                  style: TextStyle(
-                    color: Color(0xFFB3261E),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        children: [
-          const Divider(),
-          const SizedBox(height: 12),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(10),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 7),
+                itemBuilder: (_, index) {
+                  final item = items[index];
 
-          _buildTimeline(order),
-          _buildCommercialDetails(order),
-
-          for (final item in items)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9F9F7),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE4E4E1)),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final narrow = constraints.maxWidth < 620;
-
-                  final left = Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['product_name_snapshot']?.toString() ??
-                            'Unnamed product',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      if (item['sku_snapshot'] != null &&
-                          item['sku_snapshot']
-                              .toString()
-                              .trim()
-                              .isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9F9F7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE4E4E1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['product_name_snapshot']?.toString() ??
+                                    'Unnamed product',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if (item['sku_snapshot']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
+                                  true) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'SKU ${item['sku_snapshot']}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF777777),
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_formatNumber(item['quantity'])} '
+                                '${_unitLabel(item['quantity_unit']?.toString())}'
+                                ' × ${_money(item['unit_price'])}'
+                                '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
+                                style: const TextStyle(
+                                  color: Color(0xFF555555),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Text(
-                          'SKU: ${item['sku_snapshot']}',
-                          style: const TextStyle(color: Color(0xFF666666)),
+                          '${_money(item['line_subtotal'])} inc GST',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 7),
-                      Text(
-                        '${_formatNumber(item['quantity'])} '
-                        '${_unitLabel(item['quantity_unit']?.toString())}'
-                        ' × ${_money(item['unit_price'])}'
-                        '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
-                        style: const TextStyle(color: Color(0xFF555555)),
-                      ),
-                    ],
-                  );
-
-                  final right = Text(
-                    '${_money(item['line_subtotal'])} inc GST',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
                     ),
-                  );
-
-                  if (narrow) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [left, const SizedBox(height: 10), right],
-                    );
-                  }
-
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: left),
-                      const SizedBox(width: 16),
-                      right,
-                    ],
                   );
                 },
               ),
             ),
-
-          _buildIssues(order),
-
-          const SizedBox(height: 8),
-
-          Align(
-            alignment: Alignment.centerRight,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: Column(
-                children: [
-                  _TotalRow(
-                    label: 'Products (inc GST)',
-                    value: _money(order['subtotal']),
-                  ),
-                  _TotalRow(
-                    label: 'Delivery (inc GST)',
-                    value: _asDouble(order['delivery_fee']) == 0
-                        ? 'Free'
-                        : _money(order['delivery_fee']),
-                  ),
-                  const Divider(),
-                  _TotalRow(
-                    label: 'Total inc GST',
-                    value: _money(order['total_amount']),
-                    bold: true,
-                  ),
-                  const SizedBox(height: 8),
-                  _TotalRow(
-                    label: 'Total ex GST',
-                    value: _money(_exGstAmount(order)),
-                  ),
-                  _TotalRow(
-                    label: 'GST included',
-                    value: _money(order['gst_amount']),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          if (status == 'submitted') ...[
-            const SizedBox(height: 18),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: _updatingOrderId == orderId
-                    ? null
-                    : () => _cancelOrder(order),
-                icon: _updatingOrderId == orderId
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.cancel_outlined),
-                label: const Text('Cancel Order'),
-              ),
-            ),
           ],
+        ),
+      );
+    }
 
-          if ((status == 'delivered' || status == 'completed') &&
-              !_isReplacementOrder(order)) ...[
-            const SizedBox(height: 18),
-            Builder(
-              builder: (context) {
-                final existingIssue = _activeIssueForOrder(order);
-                final followingUp =
-                    existingIssue != null &&
-                    _sendingFollowUpIssueId == existingIssue['id']?.toString();
+    Widget controlPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: ListView(
+          children: [
+            _buildTimeline(order),
+            _buildCommercialDetails(order),
 
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: existingIssue == null
-                        ? (_isWithinIssueWindow(order)
-                              ? const Color(0xFFF7F7F5)
-                              : const Color(0xFFFFF4E5))
-                        : const Color(0xFFEAF1FB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: existingIssue == null
-                          ? (_isWithinIssueWindow(order)
-                                ? const Color(0xFFE0E0E0)
-                                : const Color(0xFFE5C37A))
-                          : const Color(0xFFB8CDE8),
+            if (status == 'declined' &&
+                order['order_source']?.toString() == 'marketplace') ...[
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDECEC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE7B7B3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Cancelled by supplier',
+                      style: TextStyle(
+                        color: Color(0xFFB3261E),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final message = Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            existingIssue == null
-                                ? 'Problem with this delivery?'
-                                : 'Existing issue lodged',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            existingIssue == null
-                                ? _issueWindowText(order)
-                                : 'Continue the existing complaint instead of creating another request.',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      );
-
-                      final button = FilledButton.icon(
-                        onPressed: existingIssue == null
-                            ? (_reportingIssueOrderId == orderId
-                                  ? null
-                                  : () => _reportIssue(order))
-                            : (followingUp
-                                  ? null
-                                  : () => _followUpIssue(order, existingIssue)),
+                    const SizedBox(height: 6),
+                    Text(
+                      order['supplier_rejection_reason']
+                                  ?.toString()
+                                  .trim()
+                                  .isNotEmpty ==
+                              true
+                          ? order['supplier_rejection_reason'].toString()
+                          : 'The supplier was unable to accept this order.',
+                      style: const TextStyle(fontSize: 12, height: 1.35),
+                    ),
+                    const SizedBox(height: 9),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _updatingOrderId == orderId
+                            ? null
+                            : () async {
+                                await _acknowledgeSupplierRejection(order);
+                                if (!mounted) {
+                                  return;
+                                }
+                                Navigator.of(context).pop();
+                              },
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF741C1C),
                         ),
-                        icon: Icon(
-                          existingIssue == null
-                              ? Icons.report_problem_outlined
-                              : Icons.forum_outlined,
-                        ),
-                        label: Text(
-                          existingIssue == null
-                              ? 'Report Issue / Return'
-                              : 'Follow Up Issue',
-                        ),
-                      );
+                        icon: const Icon(Icons.check),
+                        label: const Text('OK, Remove Order'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
-                      if (constraints.maxWidth < 700) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            message,
-                            const SizedBox(height: 12),
-                            button,
-                          ],
-                        );
-                      }
+            _buildIssues(order),
 
-                      return Row(
-                        children: [
-                          Expanded(child: message),
-                          const SizedBox(width: 16),
-                          button,
-                        ],
-                      );
-                    },
-                  ),
-                );
-              },
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 9),
+
+            _TotalRow(
+              label: 'Products (inc GST)',
+              value: _money(order['subtotal']),
             ),
+            _TotalRow(
+              label: 'Delivery (inc GST)',
+              value: _asDouble(order['delivery_fee']) == 0
+                  ? 'Free'
+                  : _money(order['delivery_fee']),
+            ),
+            const Divider(height: 16),
+            _TotalRow(
+              label: 'Total inc GST',
+              value: _money(order['total_amount']),
+              bold: true,
+            ),
+            _TotalRow(
+              label: 'GST included',
+              value: _money(order['gst_amount']),
+            ),
+
+            if (status == 'submitted') ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _updatingOrderId == orderId
+                    ? null
+                    : () async {
+                        await _cancelOrder(order);
+                        if (!mounted) {
+                          return;
+                        }
+                        Navigator.of(context).pop();
+                      },
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Cancel Order'),
+              ),
+            ],
+
+            if ((status == 'delivered' || status == 'completed') &&
+                !_isReplacementOrder(order)) ...[
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final existingIssue = _activeIssueForOrder(order);
+                  final followingUp =
+                      existingIssue != null &&
+                      _sendingFollowUpIssueId ==
+                          existingIssue['id']?.toString();
+
+                  return FilledButton.icon(
+                    onPressed: existingIssue == null
+                        ? (_reportingIssueOrderId == orderId
+                              ? null
+                              : () => _reportIssue(order))
+                        : (followingUp
+                              ? null
+                              : () => _followUpIssue(order, existingIssue)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF741C1C),
+                    ),
+                    icon: Icon(
+                      existingIssue == null
+                          ? Icons.report_problem_outlined
+                          : Icons.forum_outlined,
+                    ),
+                    label: Text(
+                      existingIssue == null
+                          ? (_isWithinIssueWindow(order)
+                                ? 'Report Issue / Return'
+                                : 'Contact Supplier About Issue')
+                          : 'Follow Up Issue',
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Text(
+          order['order_number']?.toString() ?? 'Order',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 920;
+
+          final header = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _supplierName(order),
+                        style: const TextStyle(
+                          color: Color(0xFF741C1C),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        pickup ? 'Pickup order' : 'Delivery order',
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusBackground(status),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _buyerLifecycleLabel(order),
+                    style: TextStyle(
+                      color: _statusForeground(status),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          if (!desktop) {
+            return ListView(
+              padding: const EdgeInsets.all(14),
+              children: [
+                header,
+                const SizedBox(height: 10),
+                SizedBox(height: 430, child: productsPanel()),
+                const SizedBox(height: 10),
+                SizedBox(height: 650, child: controlPanel()),
+              ],
+            );
+          }
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    header,
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(child: productsPanel()),
+                          const SizedBox(width: 12),
+                          SizedBox(width: 365, child: controlPanel()),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CompactBuyerOrderFact extends StatelessWidget {
+  const _CompactBuyerOrderFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );

@@ -106,6 +106,47 @@ class CutLinkInvoicePdf {
     );
   }
 
+  static String _itemDescription(Map<String, dynamic> item) {
+    final product =
+        item['product_name_snapshot']?.toString().trim() ?? 'Product';
+    final sku = item['sku_snapshot']?.toString().trim() ?? '';
+    final gradeCode = item['grade_code']?.toString().trim() ?? '';
+    final gradeName = item['grade_name']?.toString().trim() ?? '';
+    final specification = item['specification_name']?.toString().trim() ?? '';
+    final hamCode = item['ham_code']?.toString().trim() ?? '';
+    final section = item['section_name']?.toString().trim() ?? '';
+    final animal = item['animal_name']?.toString().trim() ?? '';
+
+    final lines = <String>[product];
+
+    if (gradeCode.isNotEmpty || gradeName.isNotEmpty) {
+      final grade = [
+        gradeCode,
+        if (gradeName.isNotEmpty && gradeName != gradeCode) gradeName,
+      ].where((value) => value.isNotEmpty).join(' - ');
+      lines.add('Grade: $grade');
+    }
+
+    if (specification.isNotEmpty || hamCode.isNotEmpty) {
+      lines.add(
+        [
+          if (specification.isNotEmpty) specification,
+          if (hamCode.isNotEmpty) 'HAM $hamCode',
+        ].join(' • '),
+      );
+    }
+
+    if (animal.isNotEmpty || section.isNotEmpty) {
+      lines.add(
+        [animal, section].where((value) => value.isNotEmpty).join(' • '),
+      );
+    }
+
+    if (sku.isNotEmpty) lines.add('SKU: $sku');
+
+    return lines.join('\n');
+  }
+
   static Future<Uint8List> build({
     required Map<String, dynamic> invoice,
     required List<Map<String, dynamic>> items,
@@ -382,7 +423,7 @@ class CutLinkInvoicePdf {
             data: [
               for (final item in items)
                 [
-                  item['product_name_snapshot']?.toString() ?? 'Product',
+                  _itemDescription(item),
                   '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''}',
                   _asDouble(item['actual_weight']) > 0
                       ? '${_asDouble(item['actual_weight']).toStringAsFixed(2)} ${item['actual_weight_unit'] ?? 'kg'}'
@@ -410,12 +451,42 @@ class CutLinkInvoicePdf {
                   _totalRow('GST included', _asDouble(invoice['tax_amount'])),
                   pw.Divider(),
                   _totalRow('Total inc GST', total, bold: true),
-                  _totalRow('Paid', paid),
-                  _totalRow('Outstanding', outstanding, bold: true),
+                  _totalRow('Payments received', paid),
+                  _totalRow('Balance due', outstanding, bold: true),
                 ],
               ),
             ),
           ),
+          if (paid > 0) ...[
+            pw.SizedBox(height: 10),
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: pw.Container(
+                width: 260,
+                padding: const pw.EdgeInsets.all(9),
+                decoration: pw.BoxDecoration(
+                  color: outstanding <= 0
+                      ? PdfColors.green50
+                      : PdfColors.blue50,
+                  border: pw.Border.all(
+                    color: outstanding <= 0
+                        ? PdfColors.green300
+                        : PdfColors.blue300,
+                  ),
+                ),
+                child: pw.Text(
+                  outstanding <= 0
+                      ? 'PAID IN FULL • ${_money(paid)} received'
+                      : 'PAYMENT RECEIVED • ${_money(paid)} paid • ${_money(outstanding)} remaining',
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
           if ((invoice['bank_account_name_snapshot']?.toString().trim() ?? '')
                   .isNotEmpty ||
               (invoice['bank_bsb_snapshot']?.toString().trim() ?? '')

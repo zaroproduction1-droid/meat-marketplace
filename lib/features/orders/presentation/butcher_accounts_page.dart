@@ -466,11 +466,11 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
     if (invoices.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(24),
         children: const [
-          SizedBox(height: 70),
-          Icon(Icons.receipt_long_outlined, size: 50, color: Color(0xFFAAAAAA)),
-          SizedBox(height: 14),
+          SizedBox(height: 55),
+          Icon(Icons.receipt_long_outlined, size: 46, color: Color(0xFFAAAAAA)),
+          SizedBox(height: 12),
           Center(
             child: Text(
               'No invoices in this section.',
@@ -484,23 +484,20 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
       itemCount: invoices.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final invoice = invoices[index];
         final statusColor = _statusColor(invoice);
+        final outstanding = _outstanding(invoice);
 
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0xFFE0E0E0)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -513,95 +510,168 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
                 ),
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              invoice['invoice_number']?.toString() ??
-                                  'Invoice',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _statusLabel(invoice),
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _supplierName(invoice),
-                          style: const TextStyle(
-                            color: _darkRed,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 20,
-                          runSpacing: 7,
-                          children: [
-                            Text('Invoice: ${_date(invoice['invoice_date'])}'),
-                            Text('Due: ${_date(invoice['due_date'])}'),
-                            Text(
-                              'Payment: ${invoice['payment_method_snapshot'] ?? '—'}',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFE0E0DD)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final narrow = constraints.maxWidth < 780;
+
+                  final identity = Row(
                     children: [
-                      Text(
-                        _money(_total(invoice)),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5EAEA),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_outlined,
+                          color: _darkRed,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      if (!_isPaid(invoice))
-                        Text(
-                          '${_money(_outstanding(invoice))} owing',
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    invoice['invoice_number']?.toString() ??
+                                        'Invoice',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    _statusLabel(invoice),
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _supplierName(invoice),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _darkRed,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
-                      const SizedBox(height: 8),
-                      const Icon(Icons.chevron_right),
+                      ),
                     ],
-                  ),
-                ],
+                  );
+
+                  final facts = Wrap(
+                    spacing: 20,
+                    runSpacing: 6,
+                    children: [
+                      _CompactButcherFact(
+                        label: 'DATE',
+                        value: _date(invoice['invoice_date']),
+                      ),
+                      _CompactButcherFact(
+                        label: 'DUE',
+                        value: _date(invoice['due_date']),
+                      ),
+                      _CompactButcherFact(
+                        label: 'PAYMENT',
+                        value:
+                            invoice['payment_method_snapshot']?.toString() ??
+                            '—',
+                      ),
+                    ],
+                  );
+
+                  final trailing = Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'OUTSTANDING',
+                            style: TextStyle(
+                              color: Color(0xFF777777),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            _money(outstanding),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: outstanding > 0
+                                  ? _darkRed
+                                  : const Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.chevron_right, color: _darkRed),
+                    ],
+                  );
+
+                  if (narrow) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        identity,
+                        const SizedBox(height: 9),
+                        facts,
+                        const SizedBox(height: 7),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: trailing,
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      SizedBox(width: 300, child: identity),
+                      const SizedBox(width: 18),
+                      Expanded(child: facts),
+                      const SizedBox(width: 12),
+                      trailing,
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -735,6 +805,40 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactButcherFact extends StatelessWidget {
+  const _CompactButcherFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -990,10 +1094,187 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
     final gst = _asDouble(_invoice['tax_amount']);
 
+    Widget itemsPanel() {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 11, 14, 9),
+              child: Row(
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 19, color: _darkRed),
+                  SizedBox(width: 8),
+                  Text(
+                    'Invoice Items',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(10),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final item = items[index];
+                  final actualWeight = _asDouble(item['actual_weight']);
+                  final unitPrice = _asDouble(item['locked_unit_price']);
+                  final lineAmount = _asDouble(item['line_amount']);
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 9,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['product_name_snapshot']?.toString() ??
+                                    'Product',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                actualWeight > 0
+                                    ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
+                                    : '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''} × ${_money(unitPrice)}',
+                                style: const TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _money(lineAmount),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget summaryPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListView(
+          children: [
+            Text(
+              widget.supplierName,
+              style: const TextStyle(
+                color: _darkRed,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _DetailValue(
+              label: 'Invoice date',
+              value: _date(_invoice['invoice_date']),
+            ),
+            const SizedBox(height: 8),
+            _DetailValue(label: 'Due date', value: _date(_invoice['due_date'])),
+            const SizedBox(height: 8),
+            _DetailValue(
+              label: 'Payment method',
+              value: _invoice['payment_method_snapshot']?.toString() ?? '—',
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            _amountRow(
+              'Products inc GST',
+              _asDouble(_invoice['products_subtotal']),
+            ),
+            _amountRow('Delivery inc GST', _asDouble(_invoice['delivery_fee'])),
+            _amountRow('GST included', gst),
+            const Divider(height: 18),
+            _amountRow('Total inc GST', _total, strong: true),
+            _amountRow('Paid', _paid),
+            _amountRow('Outstanding', _outstanding, strong: true),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: _canClaimPaid ? _markAsPaid : null,
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text(
+                _claimStatus == 'pending'
+                    ? 'Awaiting Confirmation'
+                    : _outstanding <= 0
+                    ? 'Paid'
+                    : 'Mark as Paid',
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _downloadPdf,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Invoice PDF'),
+            ),
+            if (_claimStatus == 'pending') ...[
+              const SizedBox(height: 10),
+              Text(
+                'Payment claim sent to the supplier for confirmation.',
+                style: const TextStyle(
+                  color: Color(0xFF9A6700),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ] else if (_claimStatus == 'rejected') ...[
+              const SizedBox(height: 10),
+              Text(
+                'The supplier did not confirm the previous payment claim.${(_invoice['payment_claim_review_note']?.toString().trim() ?? '').isEmpty ? '' : ' ${_invoice['payment_claim_review_note']}'}',
+                style: const TextStyle(
+                  color: _darkRed,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color(0xFFF7F7F5),
       appBar: AppBar(
-        title: Text(_invoice['invoice_number']?.toString() ?? 'Invoice'),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Text(
+          _invoice['invoice_number']?.toString() ?? 'Invoice',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         actions: [
           IconButton(
             tooltip: 'Download / Print PDF',
@@ -1002,192 +1283,37 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.supplierName,
-                    style: const TextStyle(
-                      color: _darkRed,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 28,
-                    runSpacing: 12,
-                    children: [
-                      _DetailValue(
-                        label: 'Invoice number',
-                        value: _invoice['invoice_number']?.toString() ?? '—',
-                      ),
-                      _DetailValue(
-                        label: 'Invoice date',
-                        value: _date(_invoice['invoice_date']),
-                      ),
-                      _DetailValue(
-                        label: 'Due date',
-                        value: _date(_invoice['due_date']),
-                      ),
-                      _DetailValue(
-                        label: 'Payment method',
-                        value:
-                            _invoice['payment_method_snapshot']?.toString() ??
-                            '—',
-                      ),
-                      _DetailValue(
-                        label: 'Payment terms',
-                        value: _invoice['payment_terms_days_snapshot'] == null
-                            ? '—'
-                            : '${_invoice['payment_terms_days_snapshot']} days',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: _canClaimPaid ? _markAsPaid : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _darkRed,
-                        ),
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: Text(
-                          _claimStatus == 'pending'
-                              ? 'Waiting for Supplier Confirmation'
-                              : _outstanding <= 0
-                              ? 'Paid'
-                              : 'Mark as Paid',
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _downloadPdf,
-                        icon: const Icon(Icons.picture_as_pdf_outlined),
-                        label: const Text('Download Invoice PDF'),
-                      ),
-                    ],
-                  ),
-                  if (_claimStatus == 'pending') ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'You marked ${_money(_asDouble(_invoice['customer_payment_claimed_amount']))} as paid. The supplier still needs to confirm the funds were received.',
-                      style: const TextStyle(
-                        color: Color(0xFF9A6700),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ] else if (_claimStatus == 'rejected') ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'The supplier did not confirm the previous payment claim.${(_invoice['payment_claim_review_note']?.toString().trim() ?? '').isEmpty ? '' : ' ${_invoice['payment_claim_review_note']}'}',
-                      style: const TextStyle(
-                        color: _darkRed,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Invoice Items',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 10),
-          ...items.map((item) {
-            final actualWeight = _asDouble(item['actual_weight']);
-            final unitPrice = _asDouble(item['locked_unit_price']);
-            final lineAmount = _asDouble(item['line_amount']);
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 900;
 
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 10),
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(12),
-              ),
+          if (!desktop) {
+            return ListView(
+              padding: const EdgeInsets.all(14),
+              children: [
+                SizedBox(height: 430, child: itemsPanel()),
+                const SizedBox(height: 12),
+                SizedBox(height: 500, child: summaryPanel()),
+              ],
+            );
+          }
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['product_name_snapshot']?.toString() ??
-                                'Product',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            actualWeight > 0
-                                ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
-                                : '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''} × ${_money(unitPrice)}',
-                            style: const TextStyle(color: Color(0xFF666666)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      _money(lineAmount),
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
+                    Expanded(child: itemsPanel()),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 340, child: summaryPanel()),
                   ],
                 ),
               ),
-            );
-          }),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(14),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  _amountRow(
-                    'Products inc GST',
-                    _asDouble(_invoice['products_subtotal']),
-                  ),
-                  _amountRow(
-                    'Delivery inc GST',
-                    _asDouble(_invoice['delivery_fee']),
-                  ),
-                  _amountRow('GST included', gst),
-                  const Divider(height: 24),
-                  _amountRow('Total inc GST', _total, strong: true),
-                  _amountRow('Paid', _paid),
-                  _amountRow('Outstanding', _outstanding, strong: true),
-                ],
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

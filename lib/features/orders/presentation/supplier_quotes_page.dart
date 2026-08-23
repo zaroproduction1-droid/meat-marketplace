@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'supplier_work_order_page.dart';
-
 class SupplierQuotesPage extends StatefulWidget {
   const SupplierQuotesPage({super.key});
 
@@ -90,6 +88,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
           .select('''
             id,
             order_number,
+            quote_number,
             quote_revision,
             quote_last_saved_at,
             status,
@@ -213,9 +212,12 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
   }
 
   String _quoteNumber(Map<String, dynamic> quote) {
-    final number = quote['order_number']?.toString() ?? 'Quote';
+    final number =
+        quote['quote_number']?.toString() ??
+        quote['order_number']?.toString() ??
+        'Quote';
     final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
-    return revision > 0 ? '$number #$revision' : number;
+    return revision > 0 ? '$number R$revision' : number;
   }
 
   String _customerName(Map<String, dynamic> quote) {
@@ -249,144 +251,84 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     Navigator.of(context).pop(id);
   }
 
-  Future<void> _convertToWorkOrder(Map<String, dynamic> quote) async {
-    final id = quote['id']?.toString();
-    if (id == null || id.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Work Order?'),
-        content: Text(
-          'Convert ${_quoteNumber(quote)} for ${_customerName(quote)} '
-          'into a live warehouse work order?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Create Work Order'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await Supabase.instance.client.rpc(
-        'convert_supplier_quote_to_sales_order',
-        params: {'target_order_id': id},
-      );
-
-      await Supabase.instance.client.rpc(
-        'create_or_get_warehouse_work_order',
-        params: {'target_order_id': id},
-      );
-
-      if (!mounted) return;
-
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => SupplierWorkOrderPage(orderId: id),
-        ),
-      );
-
-      if (mounted) await _loadQuotes();
-    } on PostgrestException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   Widget _quoteCard(Map<String, dynamic> quote) {
     final items = _nestedList(quote['order_items']);
     final activity = _activityDate(quote);
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0DD)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final narrow = constraints.maxWidth < 700;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openQuote(quote),
+        child: Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFFE0E0DD)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 700;
 
-            final details = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _quoteNumber(quote),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _customerName(quote),
-                  style: const TextStyle(
-                    color: _darkRed,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${items.length} line${items.length == 1 ? '' : 's'}'
-                  '${activity == null ? '' : ' • ${_displayDate(activity.toIso8601String())}'}'
-                  ' • ${quote['fulfilment_method']?.toString() == 'pickup' ? 'Pickup' : 'Delivery'}',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            );
+                final details = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _quoteNumber(quote),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _customerName(quote),
+                      style: const TextStyle(
+                        color: _darkRed,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${items.length} line${items.length == 1 ? '' : 's'}'
+                      '${activity == null ? '' : ' • ${_displayDate(activity.toIso8601String())}'}'
+                      ' • ${quote['fulfilment_method']?.toString() == 'pickup' ? 'Pickup' : 'Delivery'}',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                );
 
-            final actions = Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
+                final actions = FilledButton.icon(
                   onPressed: () => _openQuote(quote),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Open / Edit'),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _convertToWorkOrder(quote),
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.assignment_outlined, size: 18),
-                  label: const Text('Create Work Order'),
-                ),
-              ],
-            );
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Open in Sales'),
+                );
 
-            if (narrow) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [details, const SizedBox(height: 14), actions],
-              );
-            }
+                if (narrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [details, const SizedBox(height: 14), actions],
+                  );
+                }
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: details),
-                const SizedBox(width: 18),
-                actions,
-              ],
-            );
-          },
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: details),
+                    const SizedBox(width: 18),
+                    actions,
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

@@ -355,10 +355,17 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           .select()
           .single();
 
-      await Supabase.instance.client.rpc(
+      final createdInvoice = await Supabase.instance.client.rpc(
         'create_or_get_invoice_from_order',
         params: {'target_order_id': widget.orderId},
       );
+
+      final invoiceMap = Map<String, dynamic>.from(createdInvoice as Map);
+      final invoiceId = invoiceMap['id']?.toString();
+
+      if (invoiceId == null || invoiceId.isEmpty) {
+        throw Exception('Invoice was created but no invoice ID was returned.');
+      }
 
       if (!mounted) {
         return;
@@ -370,7 +377,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => SupplierInvoicePage(orderId: widget.orderId),
+          builder: (context) => SupplierInvoicePage(invoiceId: invoiceId),
         ),
       );
     } on PostgrestException catch (error) {
@@ -428,6 +435,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           .eq('id', workOrderId)
           .select()
           .single();
+
+      if (status == 'picking') {
+        await Supabase.instance.client
+            .from('orders')
+            .update({'status': 'processing', 'updated_at': now})
+            .eq('id', widget.orderId)
+            .inFilter('status', ['accepted', 'processing']);
+      }
 
       if (!mounted) {
         return;
@@ -1122,215 +1137,404 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     final status = _workOrder?['status']?.toString();
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  _order?['order_number']?.toString() ?? 'Order',
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.inventory_2_outlined, size: 17),
-                  label: Text(_workOrderStatusLabel(status)),
-                ),
-                if (_order?['pricing_status']?.toString() == 'pending_weight')
-                  const Chip(
-                    avatar: Icon(Icons.scale_outlined, size: 17),
-                    label: Text('Weight pending'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _customerName(),
-              style: const TextStyle(
-                color: _darkRed,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 22),
-            _InfoCard(
-              title: 'Customer / Delivery',
-              rows: [
-                _InfoRowData('Customer', _customerName()),
-                _InfoRowData('Fulfilment', _fulfilmentMethodLabel()),
-                _InfoRowData('Requested date', _requestedFulfilmentDateLabel()),
-                _InfoRowData('Order placed', _orderCreatedDateTimeLabel()),
-                _InfoRowData('Delivery address', _deliveryAddress()),
-                if ((_order?['customer_reference']?.toString().trim() ?? '')
-                    .isNotEmpty)
-                  _InfoRowData(
-                    'Customer reference',
-                    _order!['customer_reference'].toString(),
-                  ),
-                if ((_order?['delivery_notes']?.toString().trim() ?? '')
-                    .isNotEmpty)
-                  _InfoRowData(
-                    'Delivery notes',
-                    _order!['delivery_notes'].toString(),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Pick List',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            for (final item in _items) _buildItemCard(item),
-            const SizedBox(height: 20),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Warehouse Details',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _instructionsController,
-                      minLines: 3,
-                      maxLines: 6,
-                      enabled: !_isSaving,
-                      decoration: const InputDecoration(
-                        labelText: 'Warehouse instructions',
-                        hintText:
-                            'Picking notes, special handling, route or pallet instructions.',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 650;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= 900;
 
-                        final picked = TextField(
-                          controller: _pickedByController,
-                          enabled: !_isSaving,
-                          decoration: const InputDecoration(
-                            labelText: 'Picked by',
-                            border: OutlineInputBorder(),
-                          ),
-                        );
+        final header = _buildCompactWorkOrderHeader(status);
+        final controlPanel = _buildWarehouseControlPanel(status);
 
-                        final checked = TextField(
-                          controller: _checkedByController,
-                          enabled: !_isSaving,
-                          decoration: const InputDecoration(
-                            labelText: 'Checked by',
-                            border: OutlineInputBorder(),
-                          ),
-                        );
+        if (!desktop) {
+          final pickPanel = _buildPickWorkspace(boundedHeight: false);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
+            children: [
+              header,
+              const SizedBox(height: 12),
+              pickPanel,
+              const SizedBox(height: 12),
+              controlPanel,
+            ],
+          );
+        }
 
-                        if (narrow) {
-                          return Column(
-                            children: [
-                              picked,
-                              const SizedBox(height: 14),
-                              checked,
-                            ],
-                          );
-                        }
+        final pickPanel = _buildPickWorkspace(boundedHeight: true);
 
-                        return Row(
-                          children: [
-                            Expanded(child: picked),
-                            const SizedBox(width: 14),
-                            Expanded(child: checked),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1280),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              child: Column(
+                children: [
+                  header,
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        OutlinedButton.icon(
-                          onPressed: _isSaving
-                              ? null
-                              : () => _saveWorkOrderDetails(),
-                          icon: const Icon(Icons.save_outlined),
-                          label: const Text('Save Details'),
-                        ),
-                        if (status == 'created' || status == 'printed')
-                          FilledButton.icon(
-                            onPressed: _isSaving
-                                ? null
-                                : () =>
-                                      _saveWorkOrderDetails(status: 'picking'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                            ),
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text('Start Picking'),
-                          ),
-                        if (status == 'picking')
-                          FilledButton.icon(
-                            onPressed: !_allLinesFinalised || _isSaving
-                                ? null
-                                : _createInvoiceFromFinishedWorkOrder,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                            ),
-                            icon: const Icon(Icons.request_quote_outlined),
-                            label: Text(
-                              _allLinesFinalised
-                                  ? 'Finish Picking & Create Invoice'
-                                  : 'Finalise All Lines First',
-                            ),
-                          ),
-                        if (status == 'picked')
-                          FilledButton.icon(
-                            onPressed: _isSaving
-                                ? null
-                                : () {
-                                    Navigator.of(context).pushReplacement(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            SupplierInvoicePage(
-                                              orderId: widget.orderId,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                            ),
-                            icon: const Icon(Icons.request_quote_outlined),
-                            label: const Text('Open Invoice'),
-                          ),
+                        Expanded(flex: 7, child: pickPanel),
+                        const SizedBox(width: 12),
+                        SizedBox(width: 350, child: controlPanel),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactWorkOrderHeader(String? status) {
+    final pickup = _order?['fulfilment_method']?.toString() == 'pickup';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _workOrder?['work_order_number']?.toString() ??
+                            'Work Order',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4E5E5),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        _workOrderStatusLabel(status),
+                        style: const TextStyle(
+                          color: _darkRed,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_customerName()} • ${_order?['order_number'] ?? 'Order'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          _headerMetric(
+            pickup ? 'PICKUP' : 'DELIVERY',
+            pickup ? 'Collection' : _requestedFulfilmentDateLabel(),
+            pickup
+                ? Icons.shopping_bag_outlined
+                : Icons.local_shipping_outlined,
+          ),
+          _headerMetric(
+            'LINES',
+            '${_items.where((item) => item['fulfilment_status']?.toString() == 'finalised').length}/${_items.length}',
+            Icons.checklist_outlined,
+          ),
+          if (_order?['pricing_status']?.toString() == 'pending_weight')
+            _headerMetric('TOTAL', 'Pending weight', Icons.scale_outlined),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerMetric(String label, String value, IconData icon) {
+    return SizedBox(
+      width: 155,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: const BoxDecoration(
+          border: Border(left: BorderSide(color: Color(0xFFE5E5E2))),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFF777777)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      color: Color(0xFF888888),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPickWorkspace({required bool boundedHeight}) {
+    final list = ListView.separated(
+      padding: const EdgeInsets.all(10),
+      itemCount: _items.length,
+      shrinkWrap: !boundedHeight,
+      physics: boundedHeight
+          ? const ClampingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
+      separatorBuilder: (_, _) => const SizedBox(height: 7),
+      itemBuilder: (_, index) => _buildItemCard(_items[index]),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.inventory_2_outlined,
+                  size: 19,
+                  color: _darkRed,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Pick & Weigh',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                const Spacer(),
+                Text(
+                  '${_items.length} line${_items.length == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          if (boundedHeight) Expanded(child: list) else list,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarehouseControlPanel(String? status) {
+    final pickup = _order?['fulfilment_method']?.toString() == 'pickup';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Order Summary',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            _compactInfoLine('Customer', _customerName()),
+            _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
+            _compactInfoLine('Requested', _requestedFulfilmentDateLabel()),
+            _compactInfoLine('Placed', _orderCreatedDateTimeLabel()),
+            if (!pickup) _compactInfoLine('Address', _deliveryAddress()),
+            if ((_order?['customer_reference']?.toString().trim() ?? '')
+                .isNotEmpty)
+              _compactInfoLine(
+                'Reference',
+                _order!['customer_reference'].toString(),
+              ),
+            if ((_order?['delivery_notes']?.toString().trim() ?? '').isNotEmpty)
+              _compactInfoLine(
+                'Delivery notes',
+                _order!['delivery_notes'].toString(),
+              ),
+            const Divider(height: 22),
+            const Text(
+              'Warehouse',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _instructionsController,
+              minLines: 2,
+              maxLines: 3,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Instructions',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 9),
+            TextField(
+              controller: _pickedByController,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Picked by',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 9),
+            TextField(
+              controller: _checkedByController,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Checked by',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isSaving ? null : () => _saveWorkOrderDetails(),
+              icon: const Icon(Icons.save_outlined, size: 18),
+              label: const Text('Save Details'),
+            ),
+            const SizedBox(height: 8),
+            if (status == 'created' || status == 'printed')
+              FilledButton.icon(
+                onPressed: _isSaving
+                    ? null
+                    : () => _saveWorkOrderDetails(status: 'picking'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start Picking'),
+              ),
+            if (status == 'picking')
+              FilledButton.icon(
+                onPressed: !_allLinesFinalised || _isSaving
+                    ? null
+                    : _createInvoiceFromFinishedWorkOrder,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: const Icon(Icons.request_quote_outlined),
+                label: Text(
+                  !_allLinesFinalised
+                      ? 'Finalise All Lines First'
+                      : pickup
+                      ? 'Create Invoice • Ready for Pickup'
+                      : 'Create Invoice & Dispatch',
+                ),
+              ),
+            if (status == 'picked')
+              FilledButton.icon(
+                onPressed: _isSaving
+                    ? null
+                    : () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SupplierInvoicePage(orderId: widget.orderId),
+                          ),
+                        );
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: const Icon(Icons.request_quote_outlined),
+                label: const Text('Open Invoice'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactInfoLine(String label, String value) {
+    if (value.trim().isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF777777),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1338,141 +1542,134 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   Widget _buildItemCard(Map<String, dynamic> item) {
     final catchWeight = _isCatchWeight(item);
     final finalised = item['fulfilment_status']?.toString() == 'finalised';
+    final productName = item['product_name_snapshot']?.toString() ?? 'Product';
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: finalised ? const Color(0xFFB8D8BE) : const Color(0xFFE0E0E0),
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              finalised ? Icons.check_box : Icons.check_box_outline_blank,
-              color: finalised ? Colors.green : const Color(0xFF777777),
+    return Material(
+      color: finalised ? const Color(0xFFF7FBF7) : Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: _isSaving ? null : () => _editLineFulfilment(item),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: finalised
+                  ? const Color(0xFFB8D8BE)
+                  : const Color(0xFFE2E2DE),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['product_name_snapshot']?.toString() ?? 'Product',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if ((item['sku_snapshot']?.toString().trim() ?? '')
-                      .isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'SKU: ${item['sku_snapshot']}',
-                      style: const TextStyle(color: Color(0xFF666666)),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Text(
-                    'Ordered: ${_formatNumber(item['quantity'])} '
-                    '${_unitLabel(item['quantity_unit']?.toString())}',
-                  ),
-                  if (item['supplied_quantity'] != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Supplied: ${_formatNumber(item['supplied_quantity'])} '
-                      '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
-                    ),
-                  ],
-                  if (catchWeight) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      item['actual_weight'] == null
-                          ? 'Actual weight: pending'
-                          : 'Actual weight: ${_formatNumber(item['actual_weight'])} kg',
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item['final_line_amount'] == null
-                          ? 'Final amount: pending weight'
-                          : 'Final amount: ${_money(item['final_line_amount'])}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                  if ((item['notes']?.toString().trim() ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Notes: ${item['notes']}',
-                      style: const TextStyle(color: Color(0xFF666666)),
-                    ),
-                  ],
-                ],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                finalised ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: 20,
+                color: finalised
+                    ? const Color(0xFF2E7D32)
+                    : const Color(0xFF999999),
               ),
-            ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: _isSaving ? null : () => _editLineFulfilment(item),
-              icon: const Icon(Icons.scale_outlined),
-              label: Text(finalised ? 'Edit' : 'Enter'),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      productName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if ((item['sku_snapshot']?.toString().trim() ?? '')
+                        .isNotEmpty)
+                      Text(
+                        'SKU ${item['sku_snapshot']}',
+                        style: const TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 10.5,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: _lineMetric(
+                  'ORDERED',
+                  '${_formatNumber(item['quantity'])} '
+                      '${_unitLabel(item['quantity_unit']?.toString())}',
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: _lineMetric(
+                  'SUPPLIED',
+                  item['supplied_quantity'] == null
+                      ? 'Pending'
+                      : '${_formatNumber(item['supplied_quantity'])} '
+                            '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
+                ),
+              ),
+              if (catchWeight)
+                Expanded(
+                  flex: 2,
+                  child: _lineMetric(
+                    'ACTUAL KG',
+                    item['actual_weight'] == null
+                        ? 'Pending'
+                        : '${_formatNumber(item['actual_weight'])} kg',
+                  ),
+                ),
+              Expanded(
+                flex: 2,
+                child: _lineMetric(
+                  'FINAL',
+                  item['final_line_amount'] == null
+                      ? (catchWeight ? 'Pending' : '—')
+                      : _money(item['final_line_amount']),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                finalised ? Icons.edit_outlined : Icons.scale_outlined,
+                size: 19,
+                color: _darkRed,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class _InfoRowData {
-  const _InfoRowData(this.label, this.value);
-
-  final String label;
-  final String value;
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.rows});
-
-  final String title;
-  final List<_InfoRowData> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+  Widget _lineMetric(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF888888),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.35,
             ),
-            const SizedBox(height: 12),
-            for (final row in rows) ...[
-              Text(
-                row.label,
-                style: const TextStyle(
-                  color: Color(0xFF666666),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(row.value),
-              const SizedBox(height: 10),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }

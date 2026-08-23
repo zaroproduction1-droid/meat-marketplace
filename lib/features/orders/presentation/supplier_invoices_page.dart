@@ -18,6 +18,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
   bool _isLoading = true;
   String? _errorMessage;
+
   List<Map<String, dynamic>> _invoices = [];
 
   final _searchController = TextEditingController();
@@ -303,15 +304,18 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
   }
 
   Future<void> _openInvoice(Map<String, dynamic> invoice) async {
-    final orderId = invoice['order_id']?.toString();
+    final invoiceId = invoice['id']?.toString();
 
-    if (orderId == null || orderId.isEmpty) {
+    if (invoiceId == null || invoiceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This invoice could not be identified.')),
+      );
       return;
     }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SupplierInvoicePage(orderId: orderId),
+        builder: (context) => SupplierInvoicePage(invoiceId: invoiceId),
       ),
     );
 
@@ -371,120 +375,146 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     final orderNumber = _orderNumber(invoice);
     final orderSource = _orderSource(invoice);
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _openInvoice(invoice),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () async {
+          await _openInvoice(invoice);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE0E0DD)),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 760;
+              final narrow = constraints.maxWidth < 850;
 
-              final details = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              final identity = Row(
                 children: [
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        invoice['invoice_number']?.toString() ?? 'Invoice',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      _statusChip(status),
-                      if (!taxConfigured)
-                        const Chip(
-                          avatar: Icon(Icons.warning_amber_outlined, size: 17),
-                          label: Text('Tax pending'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    invoice['customer_name_snapshot']?.toString() ?? 'Customer',
-                    style: const TextStyle(
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5EAEA),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_outlined,
                       color: _darkRed,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
+                      size: 21,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 24,
-                    runSpacing: 8,
-                    children: [
-                      if (orderNumber.isNotEmpty)
-                        _MiniInfo(label: 'Sales order', value: orderNumber),
-                      if (orderSource.isNotEmpty)
-                        _MiniInfo(label: 'Source', value: orderSource),
-                      _MiniInfo(
-                        label: 'Invoice date',
-                        value: invoice['invoice_date']?.toString() ?? '',
-                      ),
-                      _MiniInfo(
-                        label: 'Due date',
-                        value: invoice['due_date']?.toString() ?? '',
-                      ),
-                      _MiniInfo(label: 'Payment', value: _paymentText(invoice)),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                invoice['invoice_number']?.toString() ??
+                                    'Invoice',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _statusChip(status),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          invoice['customer_name_snapshot']?.toString() ??
+                              'Customer',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               );
 
-              final amount = Column(
-                crossAxisAlignment: narrow
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
+              final facts = Wrap(
+                spacing: 18,
+                runSpacing: 7,
                 children: [
-                  const Text(
-                    'Invoice Total',
-                    style: TextStyle(
-                      color: Color(0xFF666666),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  if (orderNumber.isNotEmpty)
+                    _MiniInfo(label: 'Order', value: orderNumber),
+                  if (orderSource.isNotEmpty)
+                    _MiniInfo(label: 'Source', value: orderSource),
+                  _MiniInfo(
+                    label: 'Invoice date',
+                    value: invoice['invoice_date']?.toString() ?? '',
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    total == null ? 'Pending tax' : _money(total),
-                    style: const TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  _MiniInfo(label: 'Payment', value: _paymentText(invoice)),
+                  if (!taxConfigured)
+                    const _MiniInfo(label: 'GST', value: 'Pending'),
+                ],
+              );
+
+              final trailing = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'TOTAL',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        total == null ? 'Pending' : _money(total),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => _openInvoice(invoice),
-                    icon: const Icon(Icons.open_in_new_outlined),
-                    label: const Text('Open Invoice'),
-                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.chevron_right, color: _darkRed),
                 ],
               );
 
               if (narrow) {
                 return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [details, const SizedBox(height: 18), amount],
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    identity,
+                    const SizedBox(height: 10),
+                    facts,
+                    const SizedBox(height: 8),
+                    Align(alignment: Alignment.centerRight, child: trailing),
+                  ],
                 );
               }
 
               return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: details),
-                  const SizedBox(width: 24),
-                  amount,
+                  SizedBox(width: 330, child: identity),
+                  const SizedBox(width: 18),
+                  Expanded(child: facts),
+                  const SizedBox(width: 14),
+                  trailing,
                 ],
               );
             },
@@ -528,7 +558,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 12),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
               child: Row(
                 children: [
                   const Expanded(
@@ -538,7 +568,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                         Text(
                           'Invoices',
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -559,7 +589,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -634,10 +664,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                     )
                   : RefreshIndicator(
                       onRefresh: _loadInvoices,
-                      child: ListView.builder(
+                      child: ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
                         itemCount: filtered.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           return _buildInvoiceCard(filtered[index]);
                         },

@@ -43,34 +43,15 @@ class _SupplierCustomerRequestsPageState
         throw Exception('No signed-in user was found.');
       }
 
-      final memberships = await client
+      final membership = await client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .limit(1)
+          .single();
 
-      final businessIds = <String>[
-        for (final membership in memberships)
-          if (membership['business_id'] != null)
-            membership['business_id'].toString(),
-      ];
-
-      if (businessIds.isEmpty) {
-        throw Exception('No active business membership was found.');
-      }
-
-      final supplierBusinesses = await client
-          .from('businesses')
-          .select('id')
-          .inFilter('id', businessIds)
-          .eq('business_type', 'supplier')
-          .eq('active', true);
-
-      if (supplierBusinesses.isEmpty) {
-        throw Exception('No active supplier business was found.');
-      }
-
-      final supplierBusinessId = supplierBusinesses.first['id'].toString();
+      final supplierBusinessId = membership['business_id'] as String;
 
       final relationshipResponse = await client
           .from('supplier_customer_relationships')
@@ -862,45 +843,6 @@ class _SupplierCustomerRequestsPageState
     return result;
   }
 
-  Future<void> _setAccountActive(
-    Map<String, dynamic> account,
-    bool active,
-  ) async {
-    try {
-      await Supabase.instance.client
-          .from('supplier_customer_accounts')
-          .update({
-            'active': active,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', account['id']);
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            active
-                ? 'Customer account reactivated.'
-                : 'Customer account deactivated.',
-          ),
-        ),
-      );
-
-      await _loadPage();
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   String _formatStatus(String? status) {
     return switch (status) {
       'requested' => 'Pending',
@@ -945,112 +887,6 @@ class _SupplierCustomerRequestsPageState
     return _customerAccounts
         .where((account) => account['account_source']?.toString() == 'manual')
         .toList();
-  }
-
-  Future<void> _openPendingVipApplicationForRelationship(
-    Map<String, dynamic> relationship,
-  ) async {
-    final supplierBusinessId = _supplierBusinessId;
-    final butcherBusinessId = relationship['butcher_business_id']?.toString();
-
-    if (supplierBusinessId == null ||
-        butcherBusinessId == null ||
-        butcherBusinessId.isEmpty) {
-      return;
-    }
-
-    try {
-      final response = await Supabase.instance.client
-          .from('vip_trade_applications')
-          .select('''
-            id,
-            supplier_business_id,
-            butcher_business_id,
-            status,
-            application_type,
-            application_purpose,
-            butcher_trading_name_snapshot,
-            butcher_legal_name_snapshot,
-            butcher_abn_snapshot,
-            butcher_email_snapshot,
-            butcher_phone_snapshot,
-            butcher_address_snapshot,
-            primary_contact_name,
-            primary_contact_position,
-            years_trading,
-            estimated_monthly_purchases,
-            requested_payment_terms_days,
-            requested_credit_limit,
-            application_message,
-            trade_reference_contact_consent,
-            commercial_credit_assessment_consent,
-            consumer_credit_report_consent,
-            privacy_notice_accepted,
-            applicant_declaration_accepted,
-            submitted_at,
-            decided_at,
-            created_at,
-            vip_trade_application_references(
-              id,
-              reference_order,
-              business_name,
-              contact_name,
-              contact_position,
-              contact_email,
-              contact_phone,
-              years_trading_with_reference,
-              notes
-            ),
-            vip_trade_application_documents(
-              id,
-              document_type,
-              file_name,
-              storage_path,
-              mime_type,
-              file_size_bytes,
-              created_at
-            )
-          ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .eq('butcher_business_id', butcherBusinessId)
-          .eq('status', 'pending')
-          .order('submitted_at', ascending: false)
-          .limit(1);
-
-      final rows = List<Map<String, dynamic>>.from(response);
-
-      if (!mounted) return;
-
-      if (rows.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No pending VIP application was found for this butcher.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      final changed = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (context) =>
-              SupplierVipApplicationDetailPage(application: rows.first),
-        ),
-      );
-
-      if (!mounted) return;
-
-      if (changed == true) {
-        await _loadPage();
-      }
-    } on PostgrestException catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    }
   }
 
   Future<void> _openVipApplications() async {
@@ -1212,79 +1048,184 @@ class _SupplierCustomerRequestsPageState
       );
     }
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1050),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            _vipApplicationsPanel(),
-            const SizedBox(height: 20),
-            const Text(
-              'CutLink Customers',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= 920;
+
+        Widget cutLinkList() {
+          if (_relationships.isEmpty) {
+            return _emptyCard(
+              icon: Icons.people_outline,
+              title: 'No CutLink customer requests',
+              description: 'Butcher access requests will appear here.',
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            itemCount: _relationships.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) =>
+                _buildRelationshipCard(_relationships[index]),
+          );
+        }
+
+        Widget externalList() {
+          if (_manualAccounts.isEmpty) {
+            return _emptyCard(
+              icon: Icons.person_add_alt_1_outlined,
+              title: 'No external customers',
+              description:
+                  'Add customers here for phone, email or sales-rep orders.',
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            itemCount: _manualAccounts.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) =>
+                _buildAccountCard(_manualAccounts[index]),
+          );
+        }
+
+        Widget panel({
+          required String title,
+          required String subtitle,
+          required Widget child,
+          Widget? action,
+        }) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Manage supplier-specific account settings for registered CutLink butchers.',
-              style: TextStyle(color: Color(0xFF666666), height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            if (_relationships.isEmpty)
-              _emptyCard(
-                icon: Icons.people_outline,
-                title: 'No CutLink customer requests',
-                description: 'Butcher access requests will appear here.',
-              )
-            else
-              for (final relationship in _relationships)
-                _buildRelationshipCard(relationship),
-            const SizedBox(height: 32),
-            const Divider(),
-            const SizedBox(height: 28),
-            Row(
+            child: Column(
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
+                  child: Row(
                     children: [
-                      Text(
-                        'External Customers',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Customers entered by the supplier for phone, email, sales rep or manual orders.',
-                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
-                      ),
+                      ?action,
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                FilledButton.icon(
-                  onPressed: _openAddExternalCustomerDialog,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add External Customer'),
-                ),
+                const Divider(height: 1),
+                Expanded(child: child),
               ],
             ),
-            const SizedBox(height: 16),
-            if (_manualAccounts.isEmpty)
-              _emptyCard(
-                icon: Icons.person_add_alt_1_outlined,
-                title: 'No external customers',
-                description:
-                    'Add a customer here when they order by phone, email or through a sales representative.',
-              )
-            else
-              for (final account in _manualAccounts) _buildAccountCard(account),
-          ],
-        ),
-      ),
+          );
+        }
+
+        final vip = _vipApplicationsPanel();
+
+        if (!desktop) {
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+            children: [
+              vip,
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 420,
+                child: panel(
+                  title: 'CutLink Customers',
+                  subtitle: 'Registered butcher relationships and terms.',
+                  child: cutLinkList(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 420,
+                child: panel(
+                  title: 'External Customers',
+                  subtitle:
+                      'Supplier-private phone, email and manual customers.',
+                  action: FilledButton.icon(
+                    onPressed: _openAddExternalCustomerDialog,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.add, size: 17),
+                    label: const Text('Add'),
+                  ),
+                  child: externalList(),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+              child: Column(
+                children: [
+                  vip,
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: panel(
+                            title: 'CutLink Customers',
+                            subtitle:
+                                'Registered butcher relationships and commercial account settings.',
+                            child: cutLinkList(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: panel(
+                            title: 'External Customers',
+                            subtitle:
+                                'Supplier-private customers for direct sales.',
+                            action: FilledButton.icon(
+                              onPressed: _openAddExternalCustomerDialog,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.add, size: 17),
+                              label: const Text('Add External'),
+                            ),
+                            child: externalList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1324,165 +1265,134 @@ class _SupplierCustomerRequestsPageState
   Widget _buildRelationshipCard(Map<String, dynamic> relationship) {
     final status = relationship['status']?.toString();
     final account = _accountForRelationship(relationship);
+    final accountText = account == null
+        ? 'No account'
+        : '${_paymentText(account)}'
+              '${account['credit_limit'] == null ? '' : ' • Limit \$${account['credit_limit']}'}';
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 14),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDFDFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E5E1)),
       ),
-      child: InkWell(
-        onTap: status == 'requested'
-            ? () => _openPendingVipApplicationForRelationship(relationship)
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4E5E5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.storefront_outlined,
-                      color: _darkRed,
-                    ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4E5E5),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.storefront_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _businessName(relationship),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _businessName(relationship),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(
+                      _statusIcon(status),
+                      size: 14,
+                      color: _statusColor(status),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatStatus(status),
+                      style: TextStyle(
+                        color: _statusColor(status),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (status == 'approved') ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          accountText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF666666),
+                            fontSize: 11.5,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _statusIcon(status),
-                              size: 18,
-                              color: _statusColor(status),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatStatus(status),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: _statusColor(status),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (status == 'approved') ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F6),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE1E1DE)),
-                  ),
-                  child: account == null
-                      ? const Text(
-                          'Customer account is being prepared. Refresh this page if it does not appear.',
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Commercial account',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 9),
-                            Text('Payment: ${_paymentText(account)}'),
-                            if (account['account_reference'] != null) ...[
-                              const SizedBox(height: 5),
-                              Text(
-                                'Account reference: ${account['account_reference']}',
-                              ),
-                            ],
-                            if (account['credit_limit'] != null) ...[
-                              const SizedBox(height: 5),
-                              Text(
-                                'Credit limit: \$${account['credit_limit']}',
-                              ),
-                            ],
-                            const SizedBox(height: 5),
-                            Text(
-                              'Issue reporting window: ${account['issue_reporting_window_hours'] ?? 24} hours',
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton.icon(
-                              onPressed: () => _editCustomerAccount(account),
-                              icon: const Icon(Icons.tune_outlined),
-                              label: const Text('Edit Account'),
-                            ),
-                          ],
-                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  if (status == 'requested')
-                    FilledButton.icon(
-                      onPressed: () =>
-                          _openPendingVipApplicationForRelationship(
-                            relationship,
-                          ),
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                      icon: const Icon(Icons.description_outlined),
-                      label: const Text('Review Application'),
-                    ),
-                  if (status == 'approved')
-                    OutlinedButton.icon(
-                      onPressed: () => _updateStatus(
-                        relationship: relationship,
-                        status: 'suspended',
-                      ),
-                      icon: const Icon(Icons.block),
-                      label: const Text('Suspend Access'),
-                    ),
-                  if (status == 'suspended' || status == 'declined')
-                    OutlinedButton.icon(
-                      onPressed: () => _updateStatus(
-                        relationship: relationship,
-                        status: 'approved',
-                      ),
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Approve Access'),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          if (status == 'requested') ...[
+            IconButton(
+              tooltip: 'Approve',
+              onPressed: () =>
+                  _updateStatus(relationship: relationship, status: 'approved'),
+              icon: const Icon(Icons.check_circle_outline),
+              color: const Color(0xFF2E7D32),
+            ),
+            IconButton(
+              tooltip: 'Decline',
+              onPressed: () =>
+                  _updateStatus(relationship: relationship, status: 'declined'),
+              icon: const Icon(Icons.cancel_outlined),
+              color: _darkRed,
+            ),
+          ] else
+            PopupMenuButton<String>(
+              tooltip: 'Customer actions',
+              onSelected: (value) {
+                if (value == 'edit' && account != null) {
+                  _editCustomerAccount(account);
+                } else if (value == 'suspend') {
+                  _updateStatus(
+                    relationship: relationship,
+                    status: 'suspended',
+                  );
+                } else if (value == 'approve') {
+                  _updateStatus(relationship: relationship, status: 'approved');
+                }
+              },
+              itemBuilder: (_) => [
+                if (account != null)
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Edit Account'),
+                  ),
+                if (status == 'approved')
+                  const PopupMenuItem(
+                    value: 'suspend',
+                    child: Text('Suspend Access'),
+                  ),
+                if (status == 'suspended' || status == 'declined')
+                  const PopupMenuItem(
+                    value: 'approve',
+                    child: Text('Approve Access'),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -1490,100 +1400,68 @@ class _SupplierCustomerRequestsPageState
   Widget _buildAccountCard(Map<String, dynamic> account) {
     final active = account['active'] == true;
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4E5E5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.person_outline, color: _darkRed),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _editCustomerAccount(account),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDFDFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE5E5E1)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4E5E5),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _accountName(account),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        active
-                            ? 'Active external customer'
-                            : 'Inactive customer',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: active ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: _darkRed,
+                  size: 19,
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text('Payment: ${_paymentText(account)}'),
-            if (account['account_reference'] != null) ...[
-              const SizedBox(height: 5),
-              Text('Account reference: ${account['account_reference']}'),
-            ],
-            if (account['phone'] != null) ...[
-              const SizedBox(height: 5),
-              Text('Phone: ${account['phone']}'),
-            ],
-            if (account['email'] != null) ...[
-              const SizedBox(height: 5),
-              Text('Email: ${account['email']}'),
-            ],
-            if (account['delivery_suburb'] != null ||
-                account['delivery_postcode'] != null) ...[
-              const SizedBox(height: 5),
-              Text(
-                'Delivery: ${[account['delivery_suburb'], account['delivery_state'], account['delivery_postcode']].where((value) => value != null && value.toString().trim().isNotEmpty).join(' ')}',
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _accountName(account),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${active ? 'Active' : 'Inactive'} • ${_paymentText(account)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: active
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFF777777),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: _darkRed),
             ],
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _editCustomerAccount(account),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit Customer'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _setAccountActive(account, !active),
-                  icon: Icon(
-                    active
-                        ? Icons.person_off_outlined
-                        : Icons.person_add_alt_outlined,
-                  ),
-                  label: Text(active ? 'Deactivate' : 'Reactivate'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
