@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/interactive_animal_browser.dart';
+import '../../../shared/widgets/interactive_beef_cuts_map.dart';
+
 class QuickPriceManagementPage extends StatefulWidget {
   const QuickPriceManagementPage({super.key});
 
@@ -14,6 +17,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
+
+  String _selectedAnimalCode = CutLinkAnimals.beef;
+  String? _selectedAnimalRegionKey;
+  String? _selectedSectionId;
+  String? _selectedSpecificationId;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -102,8 +110,32 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
             price_basis,
             weight_type,
             catch_weight,
+            meat_animal_id,
+            meat_section_id,
             meat_specification_id,
-            meat_grade_id
+            meat_grade_id,
+            meat_animals(
+              id,
+              code,
+              name
+            ),
+            meat_sections(
+              id,
+              code,
+              name,
+              is_miscellaneous,
+              display_order
+            ),
+            meat_specifications(
+              id,
+              name,
+              specification_type
+            ),
+            meat_grades(
+              id,
+              code,
+              name
+            )
           ''')
           .eq('supplier_business_id', supplierBusinessId)
           .eq('active', true)
@@ -189,17 +221,204 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     }
   }
 
+  Map<String, dynamic>? _nestedMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+    return null;
+  }
+
+  String _productAnimalCode(Map<String, dynamic> product) {
+    return _nestedMap(
+          product['meat_animals'],
+        )?['code']?.toString().trim().toUpperCase() ??
+        '';
+  }
+
+  String _sectionName(Map<String, dynamic> product) {
+    return _nestedMap(product['meat_sections'])?['name']?.toString() ??
+        'Unclassified';
+  }
+
+  String _specificationName(Map<String, dynamic> product) {
+    return _nestedMap(product['meat_specifications'])?['name']?.toString() ??
+        product['product_name']?.toString() ??
+        'Unspecified cut';
+  }
+
+  String _gradeCode(Map<String, dynamic> product) {
+    final code = _nestedMap(product['meat_grades'])?['code']?.toString().trim();
+    return code == null || code.isEmpty ? 'N/A' : code;
+  }
+
+  String _gradeName(Map<String, dynamic> product) {
+    return _nestedMap(product['meat_grades'])?['name']?.toString().trim() ?? '';
+  }
+
+  List<Map<String, dynamic>> get _selectedAnimalProducts {
+    return _products.where((product) {
+      return _productAnimalCode(product) == _selectedAnimalCode;
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _selectedAnimalSections {
+    final byId = <String, Map<String, dynamic>>{};
+
+    for (final product in _selectedAnimalProducts) {
+      final section = _nestedMap(product['meat_sections']);
+      final id = section?['id']?.toString();
+      if (section == null || id == null || id.isEmpty) continue;
+      byId[id] = section;
+    }
+
+    final result = byId.values.toList();
+    result.sort((a, b) {
+      final ao = int.tryParse(a['display_order']?.toString() ?? '') ?? 9999;
+      final bo = int.tryParse(b['display_order']?.toString() ?? '') ?? 9999;
+      if (ao != bo) return ao.compareTo(bo);
+      return (a['name']?.toString() ?? '').compareTo(
+        b['name']?.toString() ?? '',
+      );
+    });
+    return result;
+  }
+
+  List<Map<String, dynamic>> get _availableSpecifications {
+    final byId = <String, Map<String, dynamic>>{};
+
+    for (final product in _selectedAnimalProducts) {
+      if (_selectedSectionId != null &&
+          product['meat_section_id']?.toString() != _selectedSectionId) {
+        continue;
+      }
+
+      final specification = _nestedMap(product['meat_specifications']);
+      final id = specification?['id']?.toString();
+      if (specification == null || id == null || id.isEmpty) continue;
+      byId[id] = specification;
+    }
+
+    final result = byId.values.toList();
+    result.sort(
+      (a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo(
+        (b['name']?.toString() ?? '').toLowerCase(),
+      ),
+    );
+    return result;
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _searchController.text.trim().toLowerCase();
-    if (search.isEmpty) return _products;
 
-    return _products.where((product) {
-      final values = [product['product_name'], product['sku']];
+    final result = _selectedAnimalProducts.where((product) {
+      if (_selectedSectionId != null &&
+          product['meat_section_id']?.toString() != _selectedSectionId) {
+        return false;
+      }
 
-      return values.any((value) {
-        return value != null && value.toString().toLowerCase().contains(search);
-      });
+      if (_selectedSpecificationId != null &&
+          product['meat_specification_id']?.toString() !=
+              _selectedSpecificationId) {
+        return false;
+      }
+
+      if (search.isEmpty) return true;
+
+      final values = [
+        product['product_name'],
+        product['sku'],
+        _sectionName(product),
+        _specificationName(product),
+        _gradeCode(product),
+        _gradeName(product),
+      ];
+
+      return values.any(
+        (value) =>
+            value != null && value.toString().toLowerCase().contains(search),
+      );
     }).toList();
+
+    result.sort((a, b) {
+      final specCompare = _specificationName(
+        a,
+      ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
+      if (specCompare != 0) return specCompare;
+      return _gradeCode(a).compareTo(_gradeCode(b));
+    });
+
+    return result;
+  }
+
+  Map<String, dynamic>? _sectionByCode(String code) {
+    for (final section in _selectedAnimalSections) {
+      if (section['code']?.toString() == code) return section;
+    }
+    return null;
+  }
+
+  String? _beefSectionCodeForRegion(String regionKey) {
+    return switch (regionKey) {
+      CutLinkBeefCutKeys.cheek => 'MISC',
+      CutLinkBeefCutKeys.neck => 'NECK',
+      CutLinkBeefCutKeys.shoulder => 'SHOULDER',
+      CutLinkBeefCutKeys.chuck => 'CHUCK',
+      CutLinkBeefCutKeys.blade => 'BLADE',
+      CutLinkBeefCutKeys.brisket => 'BRISKET',
+      CutLinkBeefCutKeys.shinShank => 'SHANK',
+      CutLinkBeefCutKeys.ribs => 'RIB',
+      CutLinkBeefCutKeys.ribEye => 'RIBEYE',
+      CutLinkBeefCutKeys.plate => 'PLATE',
+      CutLinkBeefCutKeys.skirt => 'SKIRT',
+      CutLinkBeefCutKeys.loin => 'LOIN',
+      CutLinkBeefCutKeys.flank => 'FLANK',
+      CutLinkBeefCutKeys.rump => 'RUMP',
+      CutLinkBeefCutKeys.round => 'HIND',
+      CutLinkBeefCutKeys.silversideOutside => 'SILVERSIDE',
+      CutLinkBeefCutKeys.oxTail => 'MISC',
+      CutLinkBeefCutKeys.miscOffalOther => 'MISC',
+      _ => null,
+    };
+  }
+
+  void _selectAnimal(String animalCode) {
+    if (animalCode == _selectedAnimalCode) return;
+
+    setState(() {
+      _selectedAnimalCode = animalCode;
+      _selectedAnimalRegionKey = null;
+      _selectedSectionId = null;
+      _selectedSpecificationId = null;
+      _searchController.clear();
+    });
+  }
+
+  void _selectAnimalRegion(String regionKey) {
+    if (_selectedAnimalCode != CutLinkAnimals.beef) return;
+
+    final sectionCode = _beefSectionCodeForRegion(regionKey);
+    if (sectionCode == null) return;
+
+    final section = _sectionByCode(sectionCode);
+    if (section == null) return;
+
+    setState(() {
+      _selectedAnimalRegionKey = regionKey;
+      _selectedSectionId = section['id']?.toString();
+      _selectedSpecificationId = null;
+      _searchController.clear();
+    });
+  }
+
+  void _selectSection(Map<String, dynamic> section) {
+    setState(() {
+      _selectedAnimalRegionKey = null;
+      _selectedSectionId = section['id']?.toString();
+      _selectedSpecificationId = null;
+      _searchController.clear();
+    });
   }
 
   bool _isCatchWeight(Map<String, dynamic> product) {
@@ -838,6 +1057,307 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     return count;
   }
 
+  Widget _buildSectionStrip() {
+    final sections = _selectedAnimalSections;
+    if (sections.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              selected: _selectedSectionId == null,
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              label: const Text('All cuts'),
+              selectedColor: _darkRed,
+              backgroundColor: Colors.white,
+              labelStyle: TextStyle(
+                color: _selectedSectionId == null
+                    ? Colors.white
+                    : const Color(0xFF444444),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+              onSelected: (_) {
+                setState(() {
+                  _selectedAnimalRegionKey = null;
+                  _selectedSectionId = null;
+                  _selectedSpecificationId = null;
+                });
+              },
+            ),
+          ),
+          for (final section in sections)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                selected: _selectedSectionId == section['id']?.toString(),
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                label: Text(section['name']?.toString() ?? 'Cut'),
+                selectedColor: _darkRed,
+                backgroundColor: Colors.white,
+                labelStyle: TextStyle(
+                  color: _selectedSectionId == section['id']?.toString()
+                      ? Colors.white
+                      : const Color(0xFF444444),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+                onSelected: (_) => _selectSection(section),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecificationStrip() {
+    final specifications = _availableSpecifications;
+    if (specifications.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              selected: _selectedSpecificationId == null,
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              label: const Text('All subcategories'),
+              selectedColor: _darkRed,
+              backgroundColor: Colors.white,
+              labelStyle: TextStyle(
+                color: _selectedSpecificationId == null
+                    ? Colors.white
+                    : const Color(0xFF555555),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+              onSelected: (_) {
+                setState(() => _selectedSpecificationId = null);
+              },
+            ),
+          ),
+          for (final specification in specifications)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                selected:
+                    _selectedSpecificationId == specification['id']?.toString(),
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                label: Text(specification['name']?.toString() ?? 'Subcategory'),
+                selectedColor: _darkRed,
+                backgroundColor: Colors.white,
+                labelStyle: TextStyle(
+                  color:
+                      _selectedSpecificationId ==
+                          specification['id']?.toString()
+                      ? Colors.white
+                      : const Color(0xFF555555),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+                onSelected: (_) {
+                  setState(() {
+                    _selectedSpecificationId = specification['id']?.toString();
+                  });
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickPriceProductCard(Map<String, dynamic> product) {
+    final gradeCode = _gradeCode(product);
+    final gradeName = _gradeName(product);
+    final specification = _specificationName(product);
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFE2E2DE)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 850;
+
+            final productInfo = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 72,
+                  constraints: const BoxConstraints(minHeight: 62),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4E5E5),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: const Color(0xFFD7B8B8)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        gradeCode,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _darkRed,
+                          fontSize: gradeCode.length > 3 ? 20 : 25,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (gradeName.isNotEmpty &&
+                          gradeName.toLowerCase() !=
+                              gradeCode.toLowerCase()) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          gradeName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                            fontSize: 9,
+                            height: 1.05,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        specification,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${_sectionName(product)}'
+                        '${product['sku']?.toString().trim().isNotEmpty == true ? '  •  SKU ${product['sku']}' : ''}',
+                        style: const TextStyle(
+                          color: Color(0xFF6A6A6A),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (_isCatchWeight(product)) ...[
+                        const SizedBox(height: 5),
+                        const Text(
+                          r'Carton order • $/kg catch-weight pricing',
+                          style: TextStyle(
+                            color: Color(0xFF777777),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  productInfo,
+                  const SizedBox(height: 12),
+                  const Text(
+                    'STANDARD PRICE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF777777),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  _priceCell(product: product, visibility: 'public'),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'TRADE PRICE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF777777),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  _priceCell(
+                    product: product,
+                    visibility: 'approved_customers',
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'CUSTOMER SPECIFIC',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF777777),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  _customerPriceCell(product),
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(flex: 4, child: productInfo),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: _priceCell(product: product, visibility: 'public'),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: _priceCell(
+                    product: product,
+                    visibility: 'approved_customers',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(flex: 2, child: _customerPriceCell(product)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _priceHeader({
     required String title,
     required String subtitle,
@@ -1020,249 +1540,129 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
       );
     }
 
+    final products = _filteredProducts;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1400),
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
           children: [
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE0E0DD)),
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Text(
+                    'Find a cut and change its price quickly',
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Choose the animal and cut, or search by cut, subcategory, grade or SKU.',
+                    style: TextStyle(color: Color(0xFF666666), fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 14),
+                  InteractiveAnimalBrowser(
+                    selectedAnimalCode: _selectedAnimalCode,
+                    selectedRegionKey: _selectedAnimalRegionKey,
+                    onAnimalChanged: _selectAnimal,
+                    onRegionSelected: _selectAnimalRegion,
+                    maxWidth: 700,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSectionStrip(),
+                  const SizedBox(height: 8),
+                  _buildSpecificationStrip(),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      labelText: 'Search products',
-                      hintText: 'Search product name or SKU',
+                      labelText: 'Search quick pricing',
+                      hintText: 'Example: Chuck Roll, YG, Rib Eye or SKU',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchController.text.isEmpty
                           ? null
                           : IconButton(
-                              onPressed: () => _searchController.clear(),
+                              onPressed: _searchController.clear,
                               icon: const Icon(Icons.close),
                             ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      isDense: true,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth < 850) {
-                        return Column(
-                          children: [
-                            _priceHeader(
-                              title: 'Standard Price',
-                              subtitle: 'Normal marketplace price',
-                              icon: Icons.public,
-                            ),
-                            const SizedBox(height: 8),
-                            _priceHeader(
-                              title: 'Trade Price',
-                              subtitle: 'For approved supplier customers',
-                              icon: Icons.handshake_outlined,
-                            ),
-                            const SizedBox(height: 8),
-                            _priceHeader(
-                              title: 'Customer-Specific Price',
-                              subtitle: 'Private negotiated customer prices',
-                              icon: Icons.person_outline,
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          const Expanded(flex: 4, child: SizedBox()),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: _priceHeader(
-                              title: 'Standard Price',
-                              subtitle: 'Normal marketplace price',
-                              icon: Icons.public,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: _priceHeader(
-                              title: 'Trade Price',
-                              subtitle: 'Approved customers',
-                              icon: Icons.handshake_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: _priceHeader(
-                              title: 'Customer-Specific',
-                              subtitle: 'Private negotiated prices',
-                              icon: Icons.person_outline,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
                   ),
                 ],
               ),
             ),
-            Expanded(
-              child: _filteredProducts.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No products match your search.',
-                        style: TextStyle(
-                          color: Color(0xFF666666),
-                          fontWeight: FontWeight.w700,
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 850) {
+                  return const SizedBox.shrink();
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      const Expanded(flex: 4, child: SizedBox()),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: _priceHeader(
+                          title: 'Standard Price',
+                          subtitle: 'Normal marketplace price',
+                          icon: Icons.public,
                         ),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                      itemCount: _filteredProducts.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final product = _filteredProducts[index];
-
-                        return Card(
-                          elevation: 0,
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            side: const BorderSide(color: Color(0xFFE2E2DE)),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final narrow = constraints.maxWidth < 850;
-
-                                final productInfo = Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product['product_name']?.toString() ??
-                                          'Unnamed product',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      product['sku']
-                                                  ?.toString()
-                                                  .trim()
-                                                  .isNotEmpty ==
-                                              true
-                                          ? 'SKU: ${product['sku']}'
-                                          : 'No SKU',
-                                      style: const TextStyle(
-                                        color: Color(0xFF6A6A6A),
-                                      ),
-                                    ),
-                                    if (_isCatchWeight(product)) ...[
-                                      const SizedBox(height: 5),
-                                      const Text(
-                                        'Carton order • \$/kg catch-weight pricing',
-                                        style: TextStyle(
-                                          color: Color(0xFF666666),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                );
-
-                                if (narrow) {
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      productInfo,
-                                      const SizedBox(height: 14),
-                                      const Text(
-                                        'STANDARD PRICE',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF777777),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      _priceCell(
-                                        product: product,
-                                        visibility: 'public',
-                                      ),
-                                      const SizedBox(height: 12),
-                                      const Text(
-                                        'TRADE PRICE',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF777777),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      _priceCell(
-                                        product: product,
-                                        visibility: 'approved_customers',
-                                      ),
-                                      const SizedBox(height: 12),
-                                      const Text(
-                                        'CUSTOMER-SPECIFIC PRICE',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF777777),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      _customerPriceCell(product),
-                                    ],
-                                  );
-                                }
-
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(flex: 4, child: productInfo),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _priceCell(
-                                        product: product,
-                                        visibility: 'public',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _priceCell(
-                                        product: product,
-                                        visibility: 'approved_customers',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _customerPriceCell(product),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: _priceHeader(
+                          title: 'Trade Price',
+                          subtitle: 'Approved customers',
+                          icon: Icons.handshake_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: _priceHeader(
+                          title: 'Customer Specific',
+                          subtitle: 'Private negotiated prices',
+                          icon: Icons.person_outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
+            const SizedBox(height: 8),
+            if (products.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 42),
+                alignment: Alignment.center,
+                child: const Text(
+                  'No products match this animal, cut or search.',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else
+              for (final product in products) ...[
+                _buildQuickPriceProductCard(product),
+                const SizedBox(height: 8),
+              ],
           ],
         ),
       ),

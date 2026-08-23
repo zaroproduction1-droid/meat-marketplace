@@ -19,6 +19,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _sectionScrollController = ScrollController();
 
+  final Map<String, TextEditingController> _matrixStockControllers = {};
+  final Map<String, TextEditingController> _matrixStandardControllers = {};
+  final Map<String, TextEditingController> _matrixTradeControllers = {};
+  final Map<String, String> _matrixAvailability = {};
+  final Set<String> _savingSpecificationIds = {};
+
+  String? _supplierBusinessId;
+  List<Map<String, dynamic>> _priceLists = [];
+
   bool _isLoading = true;
   String? _errorMessage;
   String _selectedAnimalCode = CutLinkAnimals.beef;
@@ -41,6 +50,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
     _sectionScrollController.dispose();
+    for (final controller in [
+      ..._matrixStockControllers.values,
+      ..._matrixStandardControllers.values,
+      ..._matrixTradeControllers.values,
+    ]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -99,6 +115,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
         throw Exception('No active supplier business membership was found.');
       }
+
+      final priceListResponse = await client
+          .from('price_lists')
+          .select('id, supplier_business_id, name, visibility, active')
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('active', true)
+          .order('name');
 
       final animalResponse = await client
           .from('meat_animals')
@@ -169,8 +192,18 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             meat_sections(id, code, name, is_miscellaneous),
             meat_specifications(id, name, specification_type),
             meat_grades(id, code, name),
+            supplier_spec_grade_offers(
+              id,
+              specification_id,
+              grade_id,
+              standard_price_inc_gst,
+              minimum_order_quantity,
+              is_available,
+              is_active
+            ),
             product_prices(
               id,
+              price_list_id,
               amount,
               price_basis,
               active,
@@ -182,7 +215,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
       if (!mounted) return;
 
+      _resetMatrixEditors();
+
       setState(() {
+        _supplierBusinessId = supplierBusinessId;
+        _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _products = List<Map<String, dynamic>>.from(productResponse);
         _sections = sections;
         _isLoading = false;
@@ -204,12 +241,16 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
   }
 
-  Future<void> _openAddProductPage({String? sectionId}) async {
+  Future<void> _openAddProductPage({
+    String? sectionId,
+    String? specificationId,
+  }) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddProductPage(
           initialAnimalCode: _selectedAnimalCode,
           initialSectionId: sectionId,
+          initialSpecificationId: specificationId,
         ),
       ),
     );
@@ -264,85 +305,304 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return '$code • $name';
   }
 
-  Map<String, dynamic>? _standardPrice(Map<String, dynamic> product) {
-    final rawPrices = product['product_prices'];
+  void _resetMatrixEditors() {
+    for (final controller in [
+      ..._matrixStockControllers.values,
+      ..._matrixStandardControllers.values,
+      ..._matrixTradeControllers.values,
+    ]) {
+      controller.dispose();
+    }
+    _matrixStockControllers.clear();
+    _matrixStandardControllers.clear();
+    _matrixTradeControllers.clear();
+    _matrixAvailability.clear();
+  }
 
-    if (rawPrices is! List) return null;
+  TextEditingController _matrixController(
+    Map<String, TextEditingController> store,
+    String key,
+    String initialValue,
+  ) {
+    return store.putIfAbsent(
+      key,
+      () => TextEditingController(text: initialValue),
+    );
+  }
 
-    for (final raw in rawPrices) {
-      if (raw is! Map) continue;
-
-      final price = Map<String, dynamic>.from(raw);
-
-      if (price['active'] != true) continue;
-
-      final rawList = price['price_lists'];
-      if (rawList is! Map) continue;
-
-      final priceList = Map<String, dynamic>.from(rawList);
-
-      if (priceList['active'] == true &&
-          priceList['visibility']?.toString() == 'public') {
-        return price;
+  Map<String, dynamic>? _offer(Map<String, dynamic> product) {
+    final raw = product['supplier_spec_grade_offers'];
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map && item['is_active'] == true) {
+          return Map<String, dynamic>.from(item);
+        }
+      }
+      if (raw.isNotEmpty && raw.first is Map) {
+        return Map<String, dynamic>.from(raw.first as Map);
       }
     }
-
     return null;
   }
 
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
+  Map<String, dynamic>? _priceForVisibility(
+    Map<String, dynamic> product,
+    String visibility,
+  ) {
+    final rawPrices = product['product_prices'];
+    if (rawPrices is! List) return null;
 
-    if (number == null) return 'Not set';
-
-    final parts = number.toStringAsFixed(2).split('.');
-    final whole = parts.first;
-    final buffer = StringBuffer();
-
-    for (var index = 0; index < whole.length; index++) {
-      if (index > 0 && (whole.length - index) % 3 == 0) {
-        buffer.write(',');
+    for (final raw in rawPrices) {
+      if (raw is! Map || raw['active'] != true) continue;
+      final price = Map<String, dynamic>.from(raw);
+      final rawList = price['price_lists'];
+      if (rawList is! Map) continue;
+      final priceList = Map<String, dynamic>.from(rawList);
+      if (priceList['active'] == true &&
+          priceList['visibility']?.toString() == visibility) {
+        return price;
       }
-      buffer.write(whole[index]);
     }
-
-    return '\$${buffer.toString()}.${parts.last}';
+    return null;
   }
 
-  String _basisLabel(String? value) => switch (value) {
-    'kilogram' => 'kg',
-    'carton' => 'carton',
-    'unit' => 'unit',
-    'piece' => 'piece',
-    'pack' => 'pack',
-    _ => 'kg',
-  };
+  String _matrixNumber(dynamic value) {
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '');
+    if (number == null) return '';
+    if (number == number.roundToDouble()) return number.toInt().toString();
+    return number.toStringAsFixed(2);
+  }
 
-  String _stockLabel(Map<String, dynamic> product) {
-    final quantity = product['available_quantity'];
-    final unit = product['quantity_unit']?.toString();
+  String _matrixStandardInitial(Map<String, dynamic> product) {
+    final publicPrice = _priceForVisibility(product, 'public');
+    if (publicPrice != null) {
+      return _matrixNumber(publicPrice['amount']);
+    }
+    return _matrixNumber(_offer(product)?['standard_price_inc_gst']);
+  }
 
-    if (quantity == null) {
-      return switch (product['availability_status']?.toString()) {
-        'in_stock' => 'In stock',
-        'limited' => 'Limited stock',
-        'out_of_stock' => 'Out of stock',
-        'made_to_order' => 'Made to order',
-        _ => 'Stock not set',
-      };
+  String _matrixTradeInitial(Map<String, dynamic> product) {
+    return _matrixNumber(
+      _priceForVisibility(product, 'approved_customers')?['amount'],
+    );
+  }
+
+  String _gradeCode(Map<String, dynamic> product) {
+    return _map(product['meat_grades'])?['code']?.toString().trim() ?? 'N/A';
+  }
+
+  Map<String, List<Map<String, dynamic>>> get _groupedFilteredProducts {
+    final grouped = <String, List<Map<String, dynamic>>>{};
+
+    for (final product in _filteredProducts) {
+      final specificationId = product['meat_specification_id']
+          ?.toString()
+          .trim();
+      final key = specificationId == null || specificationId.isEmpty
+          ? 'product:${product['id']}'
+          : specificationId;
+      grouped.putIfAbsent(key, () => []).add(product);
     }
 
-    final number = quantity is num
-        ? quantity.toDouble()
-        : double.tryParse(quantity.toString());
+    for (final products in grouped.values) {
+      products.sort((a, b) => _gradeCode(a).compareTo(_gradeCode(b)));
+    }
 
-    if (number == null) return 'Stock not set';
+    return grouped;
+  }
 
-    final numberText = number == number.roundToDouble()
-        ? number.toInt().toString()
-        : number.toStringAsFixed(2);
+  Map<String, dynamic>? _firstPriceListForVisibility(String visibility) {
+    for (final priceList in _priceLists) {
+      if (priceList['visibility']?.toString() == visibility &&
+          priceList['active'] == true) {
+        return priceList;
+      }
+    }
+    return null;
+  }
 
-    return '$numberText ${unit == 'carton' ? 'cartons' : unit ?? ''}'.trim();
+  Future<Map<String, dynamic>> _ensurePriceList({
+    required String visibility,
+    required String defaultName,
+  }) async {
+    final existing = _firstPriceListForVisibility(visibility);
+    if (existing != null) return existing;
+
+    final supplierId = _supplierBusinessId;
+    if (supplierId == null || supplierId.isEmpty) {
+      throw Exception('Supplier business could not be identified.');
+    }
+
+    final inserted = await Supabase.instance.client
+        .from('price_lists')
+        .insert({
+          'supplier_business_id': supplierId,
+          'name': defaultName,
+          'visibility': visibility,
+          'active': true,
+        })
+        .select('id, supplier_business_id, name, visibility, active')
+        .single();
+
+    final row = Map<String, dynamic>.from(inserted);
+    _priceLists.add(row);
+    return row;
+  }
+
+  Future<void> _saveMatrixProduct(Map<String, dynamic> product) async {
+    final productId = product['id']?.toString();
+    if (productId == null || productId.isEmpty) {
+      throw Exception('Product could not be identified.');
+    }
+
+    final stockController = _matrixController(
+      _matrixStockControllers,
+      productId,
+      _matrixNumber(product['available_quantity']),
+    );
+    final standardController = _matrixController(
+      _matrixStandardControllers,
+      productId,
+      _matrixStandardInitial(product),
+    );
+    final tradeController = _matrixController(
+      _matrixTradeControllers,
+      productId,
+      _matrixTradeInitial(product),
+    );
+
+    final stock = double.tryParse(stockController.text.trim());
+    final standard = double.tryParse(standardController.text.trim());
+    final tradeText = tradeController.text.trim();
+    final trade = tradeText.isEmpty ? null : double.tryParse(tradeText);
+    final availability =
+        _matrixAvailability[productId] ??
+        product['availability_status']?.toString() ??
+        'out_of_stock';
+
+    if (stock == null || stock < 0) {
+      throw Exception(
+        '${_specificationName(product)} • ${_gradeCode(product)}: enter valid stock.',
+      );
+    }
+    if (standard == null || standard < 0) {
+      throw Exception(
+        '${_specificationName(product)} • ${_gradeCode(product)}: enter a valid Standard price.',
+      );
+    }
+    if (tradeText.isNotEmpty && (trade == null || trade < 0)) {
+      throw Exception(
+        '${_specificationName(product)} • ${_gradeCode(product)}: enter a valid Trade price.',
+      );
+    }
+
+    final client = Supabase.instance.client;
+
+    await client
+        .from('products')
+        .update({
+          'available_quantity': stock,
+          'quantity_unit': 'carton',
+          'availability_status': availability,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', productId);
+
+    final standardList = await _ensurePriceList(
+      visibility: 'public',
+      defaultName: 'Standard Pricing',
+    );
+    final standardListId = standardList['id']?.toString();
+    if (standardListId == null || standardListId.isEmpty) {
+      throw Exception('Standard price list could not be identified.');
+    }
+
+    await client.from('product_prices').upsert({
+      'price_list_id': standardListId,
+      'product_id': productId,
+      'amount': standard,
+      'price_basis': 'kilogram',
+      'minimum_quantity': 1,
+      'minimum_quantity_unit': 'carton',
+      'active': true,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'price_list_id,product_id');
+
+    if (trade != null) {
+      final tradeList = await _ensurePriceList(
+        visibility: 'approved_customers',
+        defaultName: 'Trade Pricing',
+      );
+      final tradeListId = tradeList['id']?.toString();
+      if (tradeListId == null || tradeListId.isEmpty) {
+        throw Exception('Trade price list could not be identified.');
+      }
+
+      await client.from('product_prices').upsert({
+        'price_list_id': tradeListId,
+        'product_id': productId,
+        'amount': trade,
+        'price_basis': 'kilogram',
+        'minimum_quantity': 1,
+        'minimum_quantity_unit': 'carton',
+        'active': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'price_list_id,product_id');
+    }
+
+    final offer = _offer(product);
+    if (offer != null && offer['id'] != null) {
+      await client
+          .from('supplier_spec_grade_offers')
+          .update({
+            'standard_price_inc_gst': standard,
+            'is_available': availability != 'out_of_stock',
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', offer['id']);
+    }
+  }
+
+  Future<void> _saveSpecificationGrades(
+    String specificationId,
+    List<Map<String, dynamic>> products,
+  ) async {
+    if (_savingSpecificationIds.contains(specificationId)) return;
+
+    setState(() => _savingSpecificationIds.add(specificationId));
+
+    try {
+      for (final product in products) {
+        await _saveMatrixProduct(product);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_specificationName(products.first)} grades updated.',
+          ),
+        ),
+      );
+      await _loadProducts();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _savingSpecificationIds.remove(specificationId));
+      }
+    }
   }
 
   String? _productAnimalCode(Map<String, dynamic> product) {
@@ -754,16 +1014,25 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                     ),
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(22, 10, 22, 110),
-                  itemCount: _filteredProducts.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1250),
-                        child: _buildProductCard(_filteredProducts[index]),
-                      ),
+              : Builder(
+                  builder: (context) {
+                    final groups = _groupedFilteredProducts.entries.toList();
+                    return ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(22, 10, 22, 110),
+                      itemCount: groups.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final group = groups[index];
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1250),
+                            child: _buildGradeMatrixCard(
+                              group.key,
+                              group.value,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -918,20 +1187,26 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             ),
           )
         else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(22, 8, 22, 110),
-            sliver: SliverList.separated(
-              itemCount: _filteredProducts.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1250),
-                    child: _buildProductCard(_filteredProducts[index]),
-                  ),
-                );
-              },
-            ),
+          Builder(
+            builder: (context) {
+              final groups = _groupedFilteredProducts.entries.toList();
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 110),
+                sliver: SliverList.separated(
+                  itemCount: groups.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final group = groups[index];
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1250),
+                        child: _buildGradeMatrixCard(group.key, group.value),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
       ],
     );
@@ -1013,153 +1288,336 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
-    final standardPrice = _standardPrice(product);
-    final specification = _specificationName(product);
-    final category = _gradeName(product);
-    final section = _sectionName(product);
+  Widget _buildGradeMatrixCard(
+    String specificationId,
+    List<Map<String, dynamic>> products,
+  ) {
+    final first = products.first;
+    final specification = _specificationName(first);
+    final section = _sectionName(first);
+    final saving = _savingSpecificationIds.contains(specificationId);
 
     return Card(
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE2E2DE)),
+        side: const BorderSide(color: Color(0xFFE0E0DC)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _openEditProductPage(product),
-        child: Padding(
-          padding: const EdgeInsets.all(17),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 720;
-
-              final info = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product['product_name']?.toString() ?? 'Unnamed product',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    [
-                      section,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       specification,
-                      if (category.isNotEmpty) category,
-                    ].join(' • '),
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _smallChip(
-                        Icons.qr_code_2_outlined,
-                        product['sku']?.toString().trim().isNotEmpty == true
-                            ? 'SKU ${product['sku']}'
-                            : 'No SKU',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
                       ),
-                      _smallChip(
-                        Icons.inventory_outlined,
-                        _stockLabel(product),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '$section • ${products.length} grade${products.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
                       ),
-                      if (product['weight_type']?.toString() ==
-                              'catch_weight' ||
-                          product['catch_weight'] == true)
-                        _smallChip(
-                          Icons.monitor_weight_outlined,
-                          'Catch weight',
-                        ),
-                    ],
-                  ),
-                ],
-              );
-
-              final price = Column(
-                crossAxisAlignment: narrow
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () => _openAddProductPage(
+                              sectionId: first['meat_section_id']?.toString(),
+                              specificationId: first['meat_specification_id']
+                                  ?.toString(),
+                            ),
+                      icon: const Icon(Icons.add, size: 17),
+                      label: const Text('Add Grade'),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () => _saveSpecificationGrades(
+                              specificationId,
+                              products,
+                            ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _darkRed,
+                        foregroundColor: Colors.white,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: saving
+                          ? const SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.save_outlined, size: 17),
+                      label: Text(saving ? 'Saving' : 'Save Grades'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F8F6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: const Row(
                 children: [
-                  const Text(
-                    'STANDARD PRICE',
-                    style: TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.4,
+                  SizedBox(
+                    width: 78,
+                    child: Text(
+                      'GRADE',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    standardPrice == null
-                        ? 'Not set'
-                        : '${_money(standardPrice['amount'])} / ${_basisLabel(standardPrice['price_basis']?.toString())}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: standardPrice == null
-                          ? const Color(0xFF777777)
-                          : _darkRed,
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'STOCK',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      r'STANDARD $/KG',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      r'TRADE $/KG',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'STATUS',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 38),
                 ],
-              );
-
-              if (narrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [info, const SizedBox(height: 14), price],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(child: info),
-                  const SizedBox(width: 18),
-                  price,
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, color: Color(0xFF666666)),
-                ],
-              );
-            },
-          ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (var index = 0; index < products.length; index++) ...[
+              _buildGradeMatrixRow(products[index]),
+              if (index != products.length - 1)
+                const Divider(height: 12, color: Color(0xFFE9E9E5)),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _smallChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE1E1DD)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: const Color(0xFF666666)),
-          const SizedBox(width: 5),
-          Text(
-            label,
+  Widget _buildGradeMatrixRow(Map<String, dynamic> product) {
+    final productId = product['id'].toString();
+    final stockController = _matrixController(
+      _matrixStockControllers,
+      productId,
+      _matrixNumber(product['available_quantity']),
+    );
+    final standardController = _matrixController(
+      _matrixStandardControllers,
+      productId,
+      _matrixStandardInitial(product),
+    );
+    final tradeController = _matrixController(
+      _matrixTradeControllers,
+      productId,
+      _matrixTradeInitial(product),
+    );
+    final availability = _matrixAvailability.putIfAbsent(
+      productId,
+      () => product['availability_status']?.toString() ?? 'out_of_stock',
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 800;
+
+        final gradeBadge = Container(
+          width: narrow ? null : 68,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3E8E8),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: const Color(0xFFD8BEBE)),
+          ),
+          child: Text(
+            _gradeCode(product),
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF555555),
-              fontWeight: FontWeight.w700,
+              color: _darkRed,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ],
-      ),
+        );
+
+        final stockField = TextField(
+          controller: stockController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            isDense: true,
+            suffixText: 'ctn',
+            border: OutlineInputBorder(),
+          ),
+        );
+
+        final standardField = TextField(
+          controller: standardController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            isDense: true,
+            prefixText: r'$ ',
+            border: OutlineInputBorder(),
+          ),
+        );
+
+        final tradeField = TextField(
+          controller: tradeController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            isDense: true,
+            prefixText: r'$ ',
+            hintText: 'Optional',
+            border: OutlineInputBorder(),
+          ),
+        );
+
+        final statusField = DropdownButtonFormField<String>(
+          initialValue: availability,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            isDense: true,
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'in_stock', child: Text('In stock')),
+            DropdownMenuItem(value: 'low_stock', child: Text('Low stock')),
+            DropdownMenuItem(
+              value: 'out_of_stock',
+              child: Text('Out of stock'),
+            ),
+            DropdownMenuItem(
+              value: 'made_to_order',
+              child: Text('Made to order'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _matrixAvailability[productId] = value);
+          },
+        );
+
+        final editButton = IconButton(
+          tooltip: 'Open full product editor',
+          onPressed: () => _openEditProductPage(product),
+          icon: const Icon(Icons.open_in_new, size: 18),
+          visualDensity: VisualDensity.compact,
+        );
+
+        if (narrow) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [gradeBadge, const Spacer(), editButton]),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: stockField),
+                    const SizedBox(width: 8),
+                    Expanded(child: standardField),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: tradeField),
+                    const SizedBox(width: 8),
+                    Expanded(child: statusField),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(width: 78, child: Align(child: gradeBadge)),
+              Expanded(flex: 2, child: stockField),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: standardField),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: tradeField),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: statusField),
+              SizedBox(width: 38, child: editButton),
+            ],
+          ),
+        );
+      },
     );
   }
 }

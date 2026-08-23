@@ -24,6 +24,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String? _errorMessage;
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
+  String? _selectedSpecificationId;
   List<Map<String, dynamic>> _products = [];
 
   Map<String, dynamic>? _activeSale;
@@ -155,6 +156,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               code,
               name,
               is_miscellaneous
+            ),
+            meat_specification_id,
+            meat_specifications(
+              id,
+              name,
+              specification_type
+            ),
+            meat_grade_id,
+            meat_grades(
+              id,
+              code,
+              name
             ),
             product_prices(
               id,
@@ -385,9 +398,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return null;
   }
 
-  List<Map<String, dynamic>> get _filteredProducts {
-    final search = _searchController.text.trim().toLowerCase();
-
+  List<Map<String, dynamic>> get _animalRegionProducts {
     return _products.where((product) {
       if (_productAnimalCode(product) != _selectedAnimalCode) {
         return false;
@@ -399,15 +410,92 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return false;
       }
 
+      return true;
+    }).toList();
+  }
+
+  String _specificationId(Map<String, dynamic> product) {
+    return product['meat_specification_id']?.toString() ?? '';
+  }
+
+  String _specificationName(Map<String, dynamic> product) {
+    final specification = _nestedMap(product['meat_specifications']);
+    return specification?['name']?.toString().trim().isNotEmpty == true
+        ? specification!['name'].toString().trim()
+        : product['product_name']?.toString().trim().isNotEmpty == true
+        ? product['product_name'].toString().trim()
+        : 'Unspecified cut';
+  }
+
+  String _gradeCode(Map<String, dynamic> product) {
+    final grade = _nestedMap(product['meat_grades']);
+    final code = grade?['code']?.toString().trim();
+    return code == null || code.isEmpty ? 'N/A' : code;
+  }
+
+  String _gradeName(Map<String, dynamic> product) {
+    final grade = _nestedMap(product['meat_grades']);
+    final name = grade?['name']?.toString().trim();
+    return name == null || name.isEmpty ? '' : name;
+  }
+
+  List<Map<String, String>> get _availableSpecifications {
+    final byId = <String, String>{};
+
+    for (final product in _animalRegionProducts) {
+      final id = _specificationId(product);
+      if (id.isEmpty) continue;
+      byId[id] = _specificationName(product);
+    }
+
+    final rows = [
+      for (final entry in byId.entries) {'id': entry.key, 'name': entry.value},
+    ];
+
+    rows.sort(
+      (a, b) => (a['name'] ?? '').toLowerCase().compareTo(
+        (b['name'] ?? '').toLowerCase(),
+      ),
+    );
+
+    return rows;
+  }
+
+  List<Map<String, dynamic>> get _filteredProducts {
+    final search = _searchController.text.trim().toLowerCase();
+
+    final results = _animalRegionProducts.where((product) {
+      if (_selectedSpecificationId != null &&
+          _specificationId(product) != _selectedSpecificationId) {
+        return false;
+      }
+
       if (search.isEmpty) {
         return true;
       }
 
       final name = product['product_name']?.toString().toLowerCase() ?? '';
       final sku = product['sku']?.toString().toLowerCase() ?? '';
+      final specification = _specificationName(product).toLowerCase();
+      final gradeCode = _gradeCode(product).toLowerCase();
+      final gradeName = _gradeName(product).toLowerCase();
 
-      return name.contains(search) || sku.contains(search);
+      return name.contains(search) ||
+          sku.contains(search) ||
+          specification.contains(search) ||
+          gradeCode.contains(search) ||
+          gradeName.contains(search);
     }).toList();
+
+    results.sort((a, b) {
+      final specificationCompare = _specificationName(
+        a,
+      ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
+      if (specificationCompare != 0) return specificationCompare;
+      return _gradeCode(a).compareTo(_gradeCode(b));
+    });
+
+    return results;
   }
 
   bool _productMatchesBeefCut(Map<String, dynamic> product, String cutKey) {
@@ -528,6 +616,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     setState(() {
       _selectedAnimalCode = animalCode;
       _selectedAnimalRegionKey = null;
+      _selectedSpecificationId = null;
       _searchController.clear();
     });
   }
@@ -535,6 +624,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void _selectAnimalRegion(String regionKey) {
     setState(() {
       _selectedAnimalRegionKey = regionKey;
+      _selectedSpecificationId = null;
     });
   }
 
@@ -545,6 +635,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     setState(() {
       _selectedAnimalRegionKey = null;
+      _selectedSpecificationId = null;
     });
   }
 
@@ -2039,118 +2130,334 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
+  Widget _buildSpecificationStrip() {
+    final specifications = _availableSpecifications;
+
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              selected: _selectedSpecificationId == null,
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
+              side: BorderSide(
+                color: _selectedSpecificationId == null
+                    ? _darkRed
+                    : const Color(0xFFD9D9D5),
+              ),
+              selectedColor: _darkRed,
+              backgroundColor: Colors.white,
+              labelStyle: TextStyle(
+                color: _selectedSpecificationId == null
+                    ? Colors.white
+                    : const Color(0xFF3E3E3E),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+              label: const Text('All'),
+              onSelected: (_) {
+                setState(() => _selectedSpecificationId = null);
+              },
+            ),
+          ),
+          for (final specification in specifications)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                selected: _selectedSpecificationId == specification['id'],
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
+                side: BorderSide(
+                  color: _selectedSpecificationId == specification['id']
+                      ? _darkRed
+                      : const Color(0xFFD9D9D5),
+                ),
+                selectedColor: _darkRed,
+                backgroundColor: Colors.white,
+                labelStyle: TextStyle(
+                  color: _selectedSpecificationId == specification['id']
+                      ? Colors.white
+                      : const Color(0xFF3E3E3E),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+                label: Text(specification['name'] ?? 'Cut'),
+                onSelected: (_) {
+                  setState(() {
+                    _selectedSpecificationId = specification['id'];
+                  });
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductCard(Map<String, dynamic> product) {
     final standardPrice = _standardPrice(product);
     final price = standardPrice?['amount'];
     final catchWeight = _isCatchWeight(product);
+    final gradeCode = _gradeCode(product);
+    final gradeName = _gradeName(product);
+    final specification = _specificationName(product);
+    final availability = _availabilityLabel(
+      product['availability_status']?.toString(),
+    );
+    final available =
+        product['availability_status']?.toString() != 'out_of_stock';
 
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
+      color: available ? Colors.white : const Color(0xFFFAFAF8),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: available ? const Color(0xFFDEDEDA) : const Color(0xFFE8E8E4),
+        ),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final narrow = constraints.maxWidth < 700;
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: available ? () => _handleAddToSale(product) : null,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 620;
 
-            final details = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product['product_name']?.toString() ?? 'Unnamed product',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+              final gradeBadge = Container(
+                width: narrow ? 82 : 92,
+                constraints: const BoxConstraints(minHeight: 72),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: available
+                      ? const Color(0xFFF4E5E5)
+                      : const Color(0xFFF0F0ED),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: available
+                        ? const Color(0xFFD7B8B8)
+                        : const Color(0xFFD9D9D5),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  product['sku']?.toString() ?? 'No SKU',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Chip(
-                      label: Text(
-                        _availabilityLabel(
-                          product['availability_status']?.toString(),
+                    Text(
+                      gradeCode,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: available ? _darkRed : const Color(0xFF777777),
+                        fontSize: gradeCode.length > 3 ? 24 : 30,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (gradeName.isNotEmpty &&
+                        gradeName.toLowerCase() != gradeCode.toLowerCase()) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        gradeName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 9.5,
+                          height: 1.05,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    Chip(
-                      label: Text(_quantityLabel(product)),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    if (catchWeight)
-                      const Chip(
-                        label: Text('Catch weight • order by carton'),
-                        visualDensity: VisualDensity.compact,
-                      ),
+                    ],
                   ],
                 ),
-              ],
-            );
-
-            final priceColumn = Column(
-              crossAxisAlignment: narrow
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.end,
-              children: [
-                const Text(
-                  'Standard Price',
-                  style: TextStyle(
-                    color: Color(0xFF777777),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  price == null
-                      ? 'Not set'
-                      : '${_money(price)} / ${_basisLabel(product)}',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () => _handleAddToSale(product),
-                  icon: const Icon(Icons.add_shopping_cart_outlined),
-                  label: const Text('Add to Sale'),
-                ),
-              ],
-            );
-
-            if (narrow) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [details, const SizedBox(height: 16), priceColumn],
               );
-            }
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: details),
-                const SizedBox(width: 24),
-                priceColumn,
-              ],
-            );
-          },
+              final productDetails = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    specification,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    product['sku']?.toString().trim().isNotEmpty == true
+                        ? 'SKU ${product['sku']}'
+                        : 'No SKU',
+                    style: const TextStyle(
+                      color: Color(0xFF777777),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 5,
+                    children: [
+                      _salesInfoPill(
+                        icon: Icons.inventory_2_outlined,
+                        label: _quantityLabel(product),
+                        emphasized: available,
+                      ),
+                      _salesInfoPill(
+                        icon: available
+                            ? Icons.check_circle_outline
+                            : Icons.cancel_outlined,
+                        label: availability,
+                      ),
+                      if (catchWeight)
+                        _salesInfoPill(
+                          icon: Icons.scale_outlined,
+                          label: 'Catch weight',
+                        ),
+                    ],
+                  ),
+                ],
+              );
+
+              final pricing = Column(
+                crossAxisAlignment: narrow
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'STANDARD',
+                    style: TextStyle(
+                      color: Color(0xFF777777),
+                      fontSize: 9.5,
+                      letterSpacing: .6,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    price == null
+                        ? 'Price not set'
+                        : '${_money(price)} / ${_basisLabel(product)}',
+                    style: TextStyle(
+                      color: price == null
+                          ? const Color(0xFF777777)
+                          : const Color(0xFF202020),
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  FilledButton.icon(
+                    onPressed: available
+                        ? () => _handleAddToSale(product)
+                        : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      foregroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.add_shopping_cart_outlined,
+                      size: 17,
+                    ),
+                    label: const Text(
+                      'Add to Sale',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              );
+
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        gradeBadge,
+                        const SizedBox(width: 11),
+                        Expanded(child: productDetails),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    pricing,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  gradeBadge,
+                  const SizedBox(width: 12),
+                  Expanded(child: productDetails),
+                  const SizedBox(width: 16),
+                  pricing,
+                ],
+              );
+            },
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _salesInfoPill({
+    required IconData icon,
+    required String label,
+    bool emphasized = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: emphasized ? const Color(0xFFF4E5E5) : const Color(0xFFF4F4F1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 13,
+            color: emphasized ? _darkRed : const Color(0xFF666666),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: emphasized ? _darkRed : const Color(0xFF5F5F5F),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2257,8 +2564,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ),
                     const SizedBox(height: 5),
                     const Text(
-                      'Use the arrows to switch animal. Select an interactive '
-                      'region when that animal map is available.',
+                      'Choose an animal, then select its cut region to narrow '
+                      'the stock shown to the salesperson.',
                       style: TextStyle(color: Color(0xFF666666)),
                     ),
                     const SizedBox(height: 14),
@@ -2313,14 +2620,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      'Search $_selectedAnimalName stock by product name or SKU.',
+                      'Find the cut, grade or SKU the customer is asking for.',
                       style: TextStyle(color: Color(0xFF666666)),
                     ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        hintText: 'Search product name or SKU',
+                        hintText: 'Search cut, grade or SKU',
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _searchController.text.isEmpty
                             ? null
@@ -2335,7 +2642,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    _buildSpecificationStrip(),
+                    const SizedBox(height: 12),
                     if (_selectedAnimalRegionKey != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 14),

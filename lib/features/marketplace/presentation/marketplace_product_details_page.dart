@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../orders/presentation/draft_orders_page.dart';
-import 'compare_offers_page.dart';
 
 class MarketplaceProductDetailsPage extends StatefulWidget {
   const MarketplaceProductDetailsPage({super.key, required this.product});
@@ -29,37 +28,20 @@ class _MarketplaceProductDetailsPageState
 
   String? _relationshipStatus;
   String? _butcherBusinessId;
-  String? _butcherPostcode;
 
   Map<String, dynamic>? _cataloguePathRecord;
-  Map<String, dynamic>? _deliverySettings;
-  Map<String, dynamic>? _deliveryZone;
-
-  bool _isLoadingDelivery = true;
-  String? _deliveryConfigurationError;
-  List<int> _deliveryDays = <int>[];
 
   @override
   void initState() {
     super.initState();
     _loadRelationshipStatus();
     _loadCataloguePath();
-    _loadDeliveryInformation();
   }
 
   @override
   void dispose() {
     _quantityController.dispose();
     super.dispose();
-  }
-
-  Future<void> _openCompareOffers() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) =>
-            CompareOffersPage(selectedProduct: widget.product),
-      ),
-    );
   }
 
   Future<void> _loadCataloguePath() async {
@@ -190,494 +172,6 @@ class _MarketplaceProductDetailsPageState
         const SnackBar(content: Text('Unable to check supplier access.')),
       );
     }
-  }
-
-  Future<void> _loadDeliveryInformation() async {
-    if (mounted) {
-      setState(() {
-        _isLoadingDelivery = true;
-        _deliveryConfigurationError = null;
-      });
-    }
-
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-
-      if (user == null) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingDelivery = false;
-        });
-        return;
-      }
-
-      final memberships = await Supabase.instance.client
-          .from('business_memberships')
-          .select('business_id')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
-
-      if (memberships.isEmpty) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingDelivery = false;
-        });
-        return;
-      }
-
-      final butcherBusinessId = memberships.first['business_id']?.toString();
-
-      if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingDelivery = false;
-        });
-        return;
-      }
-
-      final businessRows = await Supabase.instance.client
-          .from('businesses')
-          .select('postcode')
-          .eq('id', butcherBusinessId)
-          .limit(1);
-
-      String? postcode;
-
-      if (businessRows.isNotEmpty) {
-        final value = businessRows.first['postcode']?.toString().trim();
-
-        if (value != null && value.isNotEmpty) {
-          postcode = value;
-        }
-      }
-
-      final supplierBusinessId = widget.product['supplier_business_id']
-          ?.toString();
-
-      if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingDelivery = false;
-        });
-        return;
-      }
-
-      final settingsRows = await Supabase.instance.client
-          .from('supplier_delivery_settings')
-          .select('''
-            supplier_business_id,
-            minimum_order_amount,
-            default_lead_time_days,
-            order_cutoff_time,
-            pickup_available,
-            delivery_notes,
-            active
-          ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .limit(1);
-
-      Map<String, dynamic>? settings;
-
-      if (settingsRows.isNotEmpty) {
-        settings = Map<String, dynamic>.from(settingsRows.first);
-      }
-
-      final daysRows = await Supabase.instance.client
-          .from('supplier_delivery_days')
-          .select('weekday, active')
-          .eq('supplier_business_id', supplierBusinessId)
-          .eq('active', true)
-          .order('weekday');
-
-      final deliveryDays = <int>[];
-
-      for (final rawDay in daysRows) {
-        final value = rawDay['weekday'];
-
-        if (value is int && value >= 1 && value <= 7) {
-          deliveryDays.add(value);
-        } else {
-          final parsed = int.tryParse('$value');
-
-          if (parsed != null && parsed >= 1 && parsed <= 7) {
-            deliveryDays.add(parsed);
-          }
-        }
-      }
-
-      Map<String, dynamic>? zone;
-      String? configurationError;
-
-      if (postcode != null && settings != null && settings['active'] == true) {
-        final zoneRows = await Supabase.instance.client
-            .from('supplier_delivery_zones')
-            .select('''
-              id,
-              supplier_business_id,
-              zone_name,
-              minimum_order_amount,
-              delivery_fee,
-              lead_time_days,
-              active,
-              notes,
-              supplier_delivery_zone_postcodes!inner(
-                postcode
-              )
-            ''')
-            .eq('supplier_business_id', supplierBusinessId)
-            .eq('active', true)
-            .eq('supplier_delivery_zone_postcodes.postcode', postcode);
-
-        if (zoneRows.length == 1) {
-          zone = Map<String, dynamic>.from(zoneRows.first);
-        } else if (zoneRows.length > 1) {
-          configurationError =
-              'This postcode is assigned to more than one active delivery '
-              'zone. The supplier needs to correct their delivery settings.';
-        }
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _butcherPostcode = postcode;
-        _deliverySettings = settings;
-        _deliveryZone = zone;
-        _deliveryDays = deliveryDays;
-        _deliveryConfigurationError = configurationError;
-        _isLoadingDelivery = false;
-      });
-    } on PostgrestException catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _deliveryConfigurationError =
-            'Delivery information could not be loaded: ${error.message}';
-        _isLoadingDelivery = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _deliveryConfigurationError =
-            'Delivery information could not be loaded.';
-        _isLoadingDelivery = false;
-      });
-    }
-  }
-
-  dynamic _effectiveDeliveryMinimum() {
-    if (_deliveryZone != null &&
-        _deliveryZone!['minimum_order_amount'] != null) {
-      return _deliveryZone!['minimum_order_amount'];
-    }
-
-    return _deliverySettings?['minimum_order_amount'];
-  }
-
-  dynamic _effectiveLeadTime() {
-    if (_deliveryZone != null && _deliveryZone!['lead_time_days'] != null) {
-      return _deliveryZone!['lead_time_days'];
-    }
-
-    return _deliverySettings?['default_lead_time_days'];
-  }
-
-  int? _effectiveLeadTimeDays() {
-    final raw = _effectiveLeadTime();
-
-    if (raw is int) {
-      return raw;
-    }
-
-    if (raw is num) {
-      return raw.toInt();
-    }
-
-    return int.tryParse('${raw ?? ''}');
-  }
-
-  DateTime? _nextAvailableDeliveryDate() {
-    final settings = _deliverySettings;
-
-    if (settings == null ||
-        settings['active'] != true ||
-        _deliveryZone == null ||
-        _deliveryConfigurationError != null ||
-        _deliveryDays.isEmpty) {
-      return null;
-    }
-
-    final leadDays = _effectiveLeadTimeDays();
-
-    if (leadDays == null) {
-      return null;
-    }
-
-    final now = DateTime.now();
-    var earliest = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).add(Duration(days: leadDays));
-
-    final cutoff = settings['order_cutoff_time']?.toString();
-
-    if (cutoff != null && cutoff.trim().isNotEmpty) {
-      final parts = cutoff.split(':');
-
-      if (parts.length >= 2) {
-        final hour = int.tryParse(parts[0]);
-        final minute = int.tryParse(parts[1]);
-
-        if (hour != null && minute != null) {
-          final cutoffToday = DateTime(
-            now.year,
-            now.month,
-            now.day,
-            hour,
-            minute,
-          );
-
-          if (now.isAfter(cutoffToday)) {
-            earliest = earliest.add(const Duration(days: 1));
-          }
-        }
-      }
-    }
-
-    for (var offset = 0; offset <= 35; offset++) {
-      final candidate = earliest.add(Duration(days: offset));
-
-      if (_deliveryDays.contains(candidate.weekday)) {
-        return candidate;
-      }
-    }
-
-    return null;
-  }
-
-  String _formatDeliveryDate(DateTime value) {
-    const weekdays = <String>[
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-
-    const months = <String>[
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    return '${weekdays[value.weekday - 1]} '
-        '${value.day} ${months[value.month - 1]} ${value.year}';
-  }
-
-  String _deliveryDaysText() {
-    if (_deliveryDays.isEmpty) {
-      return 'Not configured';
-    }
-
-    const shortNames = <String>[
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ];
-
-    return _deliveryDays.map((weekday) => shortNames[weekday - 1]).join(', ');
-  }
-
-  Widget _buildDeliveryInformationCard() {
-    if (_isLoadingDelivery) {
-      return _section(
-        title: 'Delivery',
-        children: const [
-          _DetailRow(
-            label: 'Status',
-            value: 'Checking delivery information...',
-          ),
-        ],
-      );
-    }
-
-    final settings = _deliverySettings;
-
-    if (settings == null || settings['active'] != true) {
-      return _section(
-        title: 'Delivery',
-        children: [
-          const _DetailRow(
-            label: 'Status',
-            value: 'Supplier delivery is not configured',
-          ),
-          _DetailRow(
-            label: 'Pickup',
-            value: settings?['pickup_available'] == true
-                ? 'Available'
-                : 'Not available',
-          ),
-        ],
-      );
-    }
-
-    if (_butcherPostcode == null || _butcherPostcode!.trim().isEmpty) {
-      return _section(
-        title: 'Delivery',
-        children: [
-          const _DetailRow(
-            label: 'Status',
-            value:
-                'Add a postcode to your butcher business profile to check delivery',
-          ),
-          _DetailRow(
-            label: 'Pickup',
-            value: settings['pickup_available'] == true
-                ? 'Available'
-                : 'Not available',
-          ),
-        ],
-      );
-    }
-
-    if (_deliveryConfigurationError != null) {
-      return _section(
-        title: 'Delivery',
-        children: [
-          _DetailRow(label: 'Status', value: _deliveryConfigurationError!),
-          _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
-          _DetailRow(
-            label: 'Pickup',
-            value: settings['pickup_available'] == true
-                ? 'Available'
-                : 'Not available',
-          ),
-        ],
-      );
-    }
-
-    final zone = _deliveryZone;
-
-    if (zone == null) {
-      return _section(
-        title: 'Delivery',
-        children: [
-          _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
-          const _DetailRow(
-            label: 'Status',
-            value: 'Delivery not configured for your postcode',
-          ),
-          _DetailRow(
-            label: 'Pickup',
-            value: settings['pickup_available'] == true
-                ? 'Available'
-                : 'Not available',
-          ),
-        ],
-      );
-    }
-
-    final zoneName = zone['zone_name']?.toString();
-    final leadDays = _effectiveLeadTimeDays();
-    final minimum = _effectiveDeliveryMinimum();
-    final deliveryFee = zone['delivery_fee'];
-    final cutoff = settings['order_cutoff_time']?.toString();
-    final notes = settings['delivery_notes']?.toString().trim();
-    final zoneNotes = zone['notes']?.toString().trim();
-    final nextDelivery = _nextAvailableDeliveryDate();
-
-    String feeText = 'Not configured';
-
-    if (deliveryFee != null) {
-      final fee = deliveryFee is num
-          ? deliveryFee.toDouble()
-          : double.tryParse('$deliveryFee');
-
-      if (fee != null) {
-        feeText = fee == 0 ? 'Free' : _formatMoney(fee);
-      }
-    }
-
-    final children = <Widget>[
-      _DetailRow(label: 'Your postcode', value: _butcherPostcode!),
-      _DetailRow(
-        label: 'Delivery zone',
-        value: zoneName == null || zoneName.trim().isEmpty
-            ? 'Unnamed zone'
-            : zoneName.trim(),
-      ),
-      _DetailRow(
-        label: 'Next available delivery',
-        value: nextDelivery == null
-            ? 'Not configured'
-            : _formatDeliveryDate(nextDelivery),
-      ),
-      _DetailRow(label: 'Delivery days', value: _deliveryDaysText()),
-      _DetailRow(
-        label: 'Estimated lead time',
-        value: leadDays == null
-            ? 'Not configured'
-            : '$leadDays day${leadDays == 1 ? '' : 's'}',
-      ),
-      _DetailRow(
-        label: 'Minimum Order Value for Delivery',
-        value: minimum == null
-            ? 'Not configured'
-            : '${_formatMoney(minimum)} inc GST',
-      ),
-      _DetailRow(
-        label: 'Delivery fee',
-        value: feeText == 'Free'
-            ? feeText
-            : feeText == 'Not configured'
-            ? feeText
-            : '$feeText inc GST',
-      ),
-      _DetailRow(
-        label: 'Order cut-off',
-        value: cutoff == null || cutoff.isEmpty
-            ? 'Not configured'
-            : cutoff.substring(0, cutoff.length >= 5 ? 5 : cutoff.length),
-      ),
-      _DetailRow(
-        label: 'Pickup',
-        value: settings['pickup_available'] == true
-            ? 'Available'
-            : 'Not available',
-      ),
-    ];
-
-    if (zoneNotes != null && zoneNotes.isNotEmpty) {
-      children.add(_DetailRow(label: 'Zone notes', value: zoneNotes));
-    }
-
-    if (notes != null && notes.isNotEmpty) {
-      children.add(_DetailRow(label: 'Delivery notes', value: notes));
-    }
-
-    return _section(title: 'Delivery', children: children);
   }
 
   Future<void> _requestSupplierAccess() async {
@@ -1077,7 +571,7 @@ class _MarketplaceProductDetailsPageState
       children: [
         if (isDiscountedPrice) ...[
           Text(
-            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)} inc GST',
+            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)}',
             style: const TextStyle(
               fontSize: 15,
               color: Color(0xFF777777),
@@ -1088,7 +582,7 @@ class _MarketplaceProductDetailsPageState
           const SizedBox(height: 4),
         ],
         Text(
-          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)} inc GST',
+          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)}',
           style: TextStyle(
             fontSize: priceFontSize,
             fontWeight: FontWeight.w800,
@@ -1122,10 +616,12 @@ class _MarketplaceProductDetailsPageState
   }
 
   String _orderQuantityUnit(Map<String, dynamic>? visiblePrice) {
-    final basis = visiblePrice?['price_basis']?.toString();
+    final configuredOrderUnit = widget.product['order_unit']?.toString();
 
-    if (basis == 'kilogram' || basis == 'carton' || basis == 'unit') {
-      return basis!;
+    if (configuredOrderUnit == 'kilogram' ||
+        configuredOrderUnit == 'carton' ||
+        configuredOrderUnit == 'unit') {
+      return configuredOrderUnit!;
     }
 
     final productUnit = widget.product['quantity_unit']?.toString();
@@ -1136,7 +632,23 @@ class _MarketplaceProductDetailsPageState
       return productUnit!;
     }
 
+    final basis = visiblePrice?['price_basis']?.toString();
+
+    if (basis == 'kilogram' || basis == 'carton' || basis == 'unit') {
+      return basis!;
+    }
+
     return 'unit';
+  }
+
+  bool _isCatchWeightProduct() {
+    return widget.product['weight_type']?.toString() == 'catch_weight' ||
+        widget.product['catch_weight'] == true;
+  }
+
+  bool _isCatchWeightKgPricing(Map<String, dynamic>? visiblePrice) {
+    return _isCatchWeightProduct() &&
+        visiblePrice?['price_basis']?.toString() == 'kilogram';
   }
 
   String _orderQuantityUnitLabel(String value) {
@@ -1150,6 +662,134 @@ class _MarketplaceProductDetailsPageState
       default:
         return value;
     }
+  }
+
+  Map<String, dynamic>? _taxonomyMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+    return null;
+  }
+
+  String _newAnimalName() {
+    return _taxonomyMap(
+          widget.product['meat_animals'],
+        )?['name']?.toString().trim() ??
+        '';
+  }
+
+  String _newSectionName() {
+    return _taxonomyMap(
+          widget.product['meat_sections'],
+        )?['name']?.toString().trim() ??
+        '';
+  }
+
+  String _newSpecificationName() {
+    final value = _taxonomyMap(
+      widget.product['meat_specifications'],
+    )?['name']?.toString().trim();
+
+    if (value != null && value.isNotEmpty) {
+      return value;
+    }
+
+    return widget.product['product_name']?.toString().trim() ??
+        'Unnamed product';
+  }
+
+  String _newGradeCode() {
+    final value = _taxonomyMap(
+      widget.product['meat_grades'],
+    )?['code']?.toString().trim();
+
+    if (value != null && value.isNotEmpty) return value;
+
+    final legacy = widget.product['grade']?.toString().trim();
+    if (legacy != null && legacy.isNotEmpty) {
+      final dash = legacy.indexOf(' - ');
+      return dash > 0 ? legacy.substring(0, dash).trim() : legacy;
+    }
+
+    return 'N/A';
+  }
+
+  String _newGradeName() {
+    final value = _taxonomyMap(
+      widget.product['meat_grades'],
+    )?['name']?.toString().trim();
+
+    if (value != null && value.isNotEmpty) return value;
+    return '';
+  }
+
+  String _orderLineProductNameSnapshot() {
+    final specification = _newSpecificationName();
+    final grade = _newGradeCode();
+
+    if (grade == 'N/A') {
+      return specification;
+    }
+
+    return '$specification • $grade';
+  }
+
+  Widget _gradeIdentityBadge() {
+    final code = _newGradeCode();
+    final name = _newGradeName();
+
+    return Container(
+      width: 104,
+      constraints: const BoxConstraints(minHeight: 88),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4E5E5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD7B8B8)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'GRADE',
+            style: TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 9,
+              letterSpacing: .8,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            code,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF741C1C),
+              fontSize: code.length > 3 ? 25 : 33,
+              height: 1,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (name.isNotEmpty && name.toLowerCase() != code.toLowerCase()) ...[
+            const SizedBox(height: 6),
+            Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF666666),
+                fontSize: 9.5,
+                height: 1.05,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Future<void> _addToOrder() async {
@@ -1199,12 +839,26 @@ class _MarketplaceProductDetailsPageState
       return;
     }
 
+    final quantityUnit = _orderQuantityUnit(visiblePrice);
+    final catchWeightKgPricing = _isCatchWeightKgPricing(visiblePrice);
+    final requiresWholeNumber =
+        quantityUnit == 'carton' || quantityUnit == 'unit';
+
+    if (requiresWholeNumber && quantity != quantity.roundToDouble()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cartons and units must be entered as whole numbers.'),
+        ),
+      );
+      return;
+    }
+
     final minimumRaw = visiblePrice['minimum_quantity'];
     final minimum = minimumRaw is num
         ? minimumRaw.toDouble()
         : double.tryParse(minimumRaw?.toString() ?? '');
 
-    if (minimum != null && quantity < minimum) {
+    if (!catchWeightKgPricing && minimum != null && quantity < minimum) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Minimum order quantity is ${_formatNumber(minimum)}.'),
@@ -1241,8 +895,10 @@ class _MarketplaceProductDetailsPageState
       return;
     }
 
-    final quantityUnit = _orderQuantityUnit(visiblePrice);
-    final priceBasis = visiblePrice['price_basis']?.toString();
+    final catchWeightSnapshot = _isCatchWeightProduct();
+    final priceBasis = catchWeightSnapshot
+        ? 'kilogram'
+        : visiblePrice['price_basis']?.toString();
 
     setState(() {
       _isAddingToOrder = true;
@@ -1287,8 +943,7 @@ class _MarketplaceProductDetailsPageState
           .eq('product_id', productId)
           .limit(1);
 
-      final productName =
-          widget.product['product_name']?.toString() ?? 'Unnamed product';
+      final productName = _orderLineProductNameSnapshot();
       final sku = widget.product['sku']?.toString();
 
       if (existingItems.isNotEmpty) {
@@ -1306,6 +961,7 @@ class _MarketplaceProductDetailsPageState
               'quantity_unit': quantityUnit,
               'unit_price': unitPrice,
               'price_basis': priceBasis,
+              'catch_weight_snapshot': catchWeightSnapshot,
             })
             .eq('id', existingItems.first['id']);
       } else {
@@ -1318,6 +974,7 @@ class _MarketplaceProductDetailsPageState
           'quantity_unit': quantityUnit,
           'unit_price': unitPrice,
           'price_basis': priceBasis,
+          'catch_weight_snapshot': catchWeightSnapshot,
         });
       }
 
@@ -1598,11 +1255,6 @@ class _MarketplaceProductDetailsPageState
         ),
         actions: [
           IconButton(
-            onPressed: _openCompareOffers,
-            tooltip: 'Compare offers',
-            icon: const Icon(Icons.compare_arrows_outlined),
-          ),
-          IconButton(
             onPressed: _openDraftOrdersPage,
             tooltip: 'Draft orders',
             icon: const Icon(Icons.shopping_cart_outlined),
@@ -1631,24 +1283,46 @@ class _MarketplaceProductDetailsPageState
                         builder: (context, constraints) {
                           final narrow = constraints.maxWidth < 650;
 
-                          final titleBlock = Column(
+                          final titleBlock = Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                product['product_name'] as String? ??
-                                    'Unnamed product',
-                                style: const TextStyle(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                _supplierName(),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  color: Color(0xFF741C1C),
-                                  fontWeight: FontWeight.w700,
+                              _gradeIdentityBadge(),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _newSpecificationName(),
+                                      style: const TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    if (_newSectionName().isNotEmpty)
+                                      Text(
+                                        [
+                                          if (_newAnimalName().isNotEmpty)
+                                            _newAnimalName(),
+                                          _newSectionName(),
+                                        ].join(' • '),
+                                        style: const TextStyle(
+                                          color: Color(0xFF666666),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _supplierName(),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        color: Color(0xFF741C1C),
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1813,6 +1487,45 @@ class _MarketplaceProductDetailsPageState
                         ],
                       ),
 
+                      if (product['meat_specification_id'] != null &&
+                          product['meat_grade_id'] != null)
+                        _section(
+                          title: 'Exact Marketplace Selection',
+                          children: [
+                            _DetailRow(
+                              label: 'Animal',
+                              value: _newAnimalName().isEmpty
+                                  ? 'Not specified'
+                                  : _newAnimalName(),
+                            ),
+                            _DetailRow(
+                              label: 'Cut section',
+                              value: _newSectionName().isEmpty
+                                  ? 'Not specified'
+                                  : _newSectionName(),
+                            ),
+                            _DetailRow(
+                              label: 'Specification',
+                              value: _newSpecificationName(),
+                            ),
+                            _DetailRow(
+                              label: 'Grade / category',
+                              value: _newGradeName().isEmpty
+                                  ? _newGradeCode()
+                                  : '${_newGradeCode()} — ${_newGradeName()}',
+                            ),
+                            const Text(
+                              'This exact supplier + specification + grade is what will be locked into the order.',
+                              style: TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 12.5,
+                                height: 1.4,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+
                       _section(
                         title: 'Meat Specifications',
                         children: [
@@ -1822,7 +1535,9 @@ class _MarketplaceProductDetailsPageState
                           ),
                           _DetailRow(
                             label: 'Grade',
-                            value: _textValue('grade'),
+                            value: _newGradeName().isEmpty
+                                ? _newGradeCode()
+                                : '${_newGradeCode()} — ${_newGradeName()}',
                           ),
                           _DetailRow(
                             label: 'Breed / program',
@@ -1904,8 +1619,6 @@ class _MarketplaceProductDetailsPageState
                           ],
                         ),
 
-                      _buildDeliveryInformationCard(),
-
                       _section(
                         title: 'Add to Order',
                         children: [
@@ -1918,14 +1631,20 @@ class _MarketplaceProductDetailsPageState
                                 quantityUnit,
                               );
                               final minimum = price?['minimum_quantity'];
+                              final catchWeightKgPricing =
+                                  _isCatchWeightKgPricing(price);
+                              final requiresWholeNumber =
+                                  quantityUnit == 'carton' ||
+                                  quantityUnit == 'unit';
 
                               final unitPrice = amount is num
                                   ? amount.toDouble()
                                   : double.tryParse(amount?.toString() ?? '');
 
-                              final estimatedTotal = unitPrice == null
-                                  ? null
-                                  : unitPrice * _orderQuantityPreview;
+                              final estimatedTotal =
+                                  !catchWeightKgPricing && unitPrice != null
+                                  ? unitPrice * _orderQuantityPreview
+                                  : null;
 
                               if (amount == null || unitPrice == null) {
                                 return const Text(
@@ -1962,8 +1681,8 @@ class _MarketplaceProductDetailsPageState
                                         child: TextField(
                                           controller: _quantityController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
+                                              TextInputType.numberWithOptions(
+                                                decimal: !requiresWholeNumber,
                                               ),
                                           onChanged: (value) {
                                             final parsed = double.tryParse(
@@ -1980,7 +1699,9 @@ class _MarketplaceProductDetailsPageState
                                           decoration: InputDecoration(
                                             labelText: 'Quantity',
                                             suffixText: unitLabel,
-                                            helperText: minimum == null
+                                            helperText: catchWeightKgPricing
+                                                ? 'Enter the number of cartons to order. Final weight is confirmed by the supplier.'
+                                                : minimum == null
                                                 ? null
                                                 : 'Minimum ${_formatNumber(minimum)}',
                                             border: const OutlineInputBorder(),
@@ -2037,7 +1758,7 @@ class _MarketplaceProductDetailsPageState
                                           CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'Price (inc GST)',
+                                          'Price',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
@@ -2056,31 +1777,66 @@ class _MarketplaceProductDetailsPageState
                                         const SizedBox(height: 14),
                                         const Divider(height: 1),
                                         const SizedBox(height: 14),
-                                        const Text(
-                                          'Estimated total',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF666666),
+                                        if (catchWeightKgPricing) ...[
+                                          const Text(
+                                            'Final total',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF666666),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          estimatedTotal == null
-                                              ? '\$0.00'
-                                              : _formatMoney(estimatedTotal),
-                                          style: const TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w900,
+                                          const SizedBox(height: 5),
+                                          const Text(
+                                            'Pending final weight',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          '${_formatNumber(_orderQuantityPreview)} $unitLabel × ${_formatMoney(unitPrice)}',
-                                          style: const TextStyle(
-                                            color: Color(0xFF666666),
+                                          const SizedBox(height: 7),
+                                          Text(
+                                            '${_formatNumber(_orderQuantityPreview)} $unitLabel ordered at ${_formatMoney(unitPrice)} / kg',
+                                            style: const TextStyle(
+                                              color: Color(0xFF666666),
+                                              height: 1.4,
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(height: 7),
+                                          const Text(
+                                            'The supplier confirms the actual kilograms when the order is prepared.',
+                                            style: TextStyle(
+                                              color: Color(0xFF666666),
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                        ] else ...[
+                                          const Text(
+                                            'Order total',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF666666),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            estimatedTotal == null
+                                                ? '\$0.00'
+                                                : _formatMoney(estimatedTotal),
+                                            style: const TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            '${_formatNumber(_orderQuantityPreview)} $unitLabel × ${_formatMoney(unitPrice)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF666666),
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   );

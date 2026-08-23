@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'supplier_create_order_page.dart';
 import 'supplier_invoice_page.dart';
 import 'supplier_work_order_page.dart';
 
@@ -27,11 +26,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   List<Map<String, dynamic>> _orders = [];
 
   static const _tabs = <_OrderTabDefinition>[
-    _OrderTabDefinition(
-      label: 'Quotes',
-      icon: Icons.description_outlined,
-      key: 'quotes',
-    ),
     _OrderTabDefinition(
       label: 'New',
       icon: Icons.notifications_none,
@@ -189,8 +183,16 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             updated_at,
 
             businesses!orders_butcher_business_id_fkey(
+              id,
               legal_name,
-              trading_name
+              trading_name,
+              business_email,
+              business_phone,
+              address_line_1,
+              address_line_2,
+              suburb,
+              state,
+              postcode
             ),
 
             supplier_customer_accounts(
@@ -409,44 +411,219 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     return _ordersForTab(key).length;
   }
 
+  Map<String, dynamic>? _mapValue(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _canonicalButcherBusiness(Map<String, dynamic> order) {
+    if (order['butcher_business_id'] == null) {
+      return null;
+    }
+
+    return _mapValue(order['businesses']);
+  }
+
+  Map<String, dynamic>? _supplierCustomerAccount(Map<String, dynamic> order) {
+    return _mapValue(order['supplier_customer_accounts']);
+  }
+
   String _customerName(Map<String, dynamic> order) {
-    final rawBusiness = order['businesses'];
+    final butcher = _canonicalButcherBusiness(order);
 
-    if (rawBusiness is Map) {
-      final customer = Map<String, dynamic>.from(rawBusiness);
+    if (butcher != null) {
+      final tradingName = butcher['trading_name']?.toString().trim();
 
-      final tradingName = customer['trading_name']?.toString();
-
-      if (tradingName != null && tradingName.trim().isNotEmpty) {
-        return tradingName.trim();
+      if (tradingName != null && tradingName.isNotEmpty) {
+        return tradingName;
       }
 
-      final legalName = customer['legal_name']?.toString();
+      final legalName = butcher['legal_name']?.toString().trim();
 
-      if (legalName != null && legalName.trim().isNotEmpty) {
-        return legalName.trim();
+      if (legalName != null && legalName.isNotEmpty) {
+        return legalName;
       }
     }
 
-    final rawAccount = order['supplier_customer_accounts'];
+    final account = _supplierCustomerAccount(order);
 
-    if (rawAccount is Map) {
-      final account = Map<String, dynamic>.from(rawAccount);
+    if (account != null) {
+      final customerName = account['customer_name']?.toString().trim();
 
-      final customerName = account['customer_name']?.toString();
-
-      if (customerName != null && customerName.trim().isNotEmpty) {
-        return customerName.trim();
+      if (customerName != null && customerName.isNotEmpty) {
+        return customerName;
       }
 
-      final legalName = account['legal_name']?.toString();
+      final legalName = account['legal_name']?.toString().trim();
 
-      if (legalName != null && legalName.trim().isNotEmpty) {
-        return legalName.trim();
+      if (legalName != null && legalName.isNotEmpty) {
+        return legalName;
       }
     }
 
-    return 'Unknown customer';
+    return order['butcher_business_id'] != null
+        ? 'Registered CutLink butcher'
+        : 'External customer';
+  }
+
+  String _businessAddress(Map<String, dynamic> business) {
+    final lines = <String>[];
+
+    final line1 = business['address_line_1']?.toString().trim();
+    final line2 = business['address_line_2']?.toString().trim();
+
+    if (line1 != null && line1.isNotEmpty) lines.add(line1);
+    if (line2 != null && line2.isNotEmpty) lines.add(line2);
+
+    final locality = <String>[
+      if ((business['suburb']?.toString().trim() ?? '').isNotEmpty)
+        business['suburb'].toString().trim(),
+      if ((business['state']?.toString().trim() ?? '').isNotEmpty)
+        business['state'].toString().trim(),
+      if ((business['postcode']?.toString().trim() ?? '').isNotEmpty)
+        business['postcode'].toString().trim(),
+    ].join(' ');
+
+    if (locality.isNotEmpty) lines.add(locality);
+
+    return lines.isEmpty ? 'Not provided' : lines.join(', ');
+  }
+
+  String _displayValue(dynamic value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? 'Not provided' : text;
+  }
+
+  Widget _customerIdentityCard(Map<String, dynamic> order) {
+    final butcher = _canonicalButcherBusiness(order);
+    final account = _supplierCustomerAccount(order);
+
+    if (butcher != null) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E1DE)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(
+                  Icons.storefront_outlined,
+                  size: 19,
+                  color: Color(0xFF741C1C),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Registered CutLink butcher',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _customerDetailLine(
+              'Trading name',
+              _displayValue(butcher['trading_name']),
+            ),
+            _customerDetailLine(
+              'Legal name',
+              _displayValue(butcher['legal_name']),
+            ),
+            _customerDetailLine(
+              'Email',
+              _displayValue(butcher['business_email']),
+            ),
+            _customerDetailLine(
+              'Phone',
+              _displayValue(butcher['business_phone']),
+            ),
+            _customerDetailLine('Address', _businessAddress(butcher)),
+            if (account != null) ...[
+              const Divider(height: 22),
+              _customerDetailLine(
+                'Supplier relationship',
+                _displayValue(account['account_source']),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    if (account != null) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E1DE)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Supplier customer',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            _customerDetailLine(
+              'Customer',
+              _displayValue(account['customer_name'] ?? account['legal_name']),
+            ),
+            _customerDetailLine(
+              'Source',
+              _displayValue(account['account_source']),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _customerDetailLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 138,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF666666),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _isCatchWeightItem(Map<String, dynamic> item) {
@@ -2008,37 +2185,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'Customer Orders',
+          'Marketplace Orders',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
-          FilledButton.icon(
-            onPressed: _isLoading
-                ? null
-                : () async {
-                    final createdOrderId = await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SupplierCreateOrderPage(),
-                      ),
-                    );
-
-                    if (!mounted || createdOrderId == null) {
-                      return;
-                    }
-
-                    await _loadOrders();
-
-                    if (mounted) {
-                      _tabController.animateTo(1);
-                    }
-                  },
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF741C1C),
-            ),
-            icon: const Icon(Icons.add),
-            label: const Text('New Quote / Sale'),
-          ),
-          const SizedBox(width: 8),
           IconButton(
             onPressed: _loadOrders,
             tooltip: 'Refresh orders',
@@ -2405,6 +2555,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         children: [
           const Divider(),
           const SizedBox(height: 12),
+
+          _customerIdentityCard(order),
 
           if (order['customer_reference'] != null &&
               order['customer_reference'].toString().trim().isNotEmpty)

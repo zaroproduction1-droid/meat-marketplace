@@ -6,10 +6,12 @@ class AddProductPage extends StatefulWidget {
     super.key,
     this.initialAnimalCode,
     this.initialSectionId,
+    this.initialSpecificationId,
   });
 
   final String? initialAnimalCode;
   final String? initialSectionId;
+  final String? initialSpecificationId;
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -152,6 +154,19 @@ class _AddProductPageState extends State<AddProductPage> {
                 (section) => section['id']?.toString() == requestedSectionId,
               )) {
             await _selectSection(requestedSectionId);
+
+            if (!mounted) return;
+
+            final requestedSpecificationId = widget.initialSpecificationId;
+            if (requestedSpecificationId != null &&
+                requestedSpecificationId.isNotEmpty &&
+                _specifications.any(
+                  (specification) =>
+                      specification['id']?.toString() ==
+                      requestedSpecificationId,
+                )) {
+              await _selectSpecification(requestedSpecificationId);
+            }
           }
         }
       }
