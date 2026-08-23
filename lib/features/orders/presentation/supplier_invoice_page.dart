@@ -495,13 +495,26 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invoice sent to the butcher’s CutLink account.'),
-        ),
-      );
+      final updatedInvoice = Map<String, dynamic>.from(_invoice ?? const {});
+      updatedInvoice['sent_to_butcher_at'] = DateTime.now()
+          .toUtc()
+          .toIso8601String();
 
-      await _loadPage();
+      setState(() {
+        _invoice = updatedInvoice;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invoice sent to the butcher’s CutLink account.'),
+          ),
+        );
+      });
     } on PostgrestException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(

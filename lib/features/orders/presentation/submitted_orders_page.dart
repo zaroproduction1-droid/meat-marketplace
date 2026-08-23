@@ -16,6 +16,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   String? _updatingOrderId;
   String? _reportingIssueOrderId;
   String? _sendingFollowUpIssueId;
+  final TextEditingController _searchController = TextEditingController();
 
   late final TabController _tabController;
 
@@ -48,11 +49,21 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _searchController.addListener(_handleSearchChanged);
     _loadOrders();
+  }
+
+  void _handleSearchChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _searchController
+      ..removeListener(_handleSearchChanged)
+      ..dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -145,7 +156,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               notes
             ),
 
-            order_issues(
+            order_issues!order_issues_order_id_fkey(
               id,
               status,
               issue_reason,
@@ -160,6 +171,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               approved_at,
               rejected_at,
               resolved_at,
+              butcher_confirmed_at,
+              butcher_confirmed_by_business_id,
               replacement_order_id,
               order_issue_items(
                 order_item_id,
@@ -493,6 +506,31 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
   }
 
+  List<Map<String, dynamic>> _filteredOrdersForTab(String key) {
+    final orders = _ordersForTab(key);
+    final query = _searchController.text.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return orders;
+    }
+
+    return orders.where((order) {
+      final items = _items(order);
+      final values = <String>[
+        order['order_number']?.toString() ?? '',
+        _supplierName(order),
+        order['customer_reference']?.toString() ?? '',
+        order['delivery_zone_name_snapshot']?.toString() ?? '',
+        order['delivery_postcode_snapshot']?.toString() ?? '',
+        _buyerLifecycleLabel(order),
+        ...items.map((item) => item['product_name_snapshot']?.toString() ?? ''),
+        ...items.map((item) => item['sku_snapshot']?.toString() ?? ''),
+      ];
+
+      return values.any((value) => value.toLowerCase().contains(query));
+    }).toList();
+  }
+
   int _countForTab(String key) {
     if (key == 'issues') {
       final supplierUpdates = _supplierUpdateCount();
@@ -736,6 +774,130 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     return issues.last;
   }
 
+  Widget _issueChatBubble(Map<String, dynamic> message) {
+    final supplier = message['sender_role']?.toString() == 'supplier';
+    final body = message['message']?.toString().trim() ?? '';
+    final date = _formatDate(message['created_at']);
+
+    return Align(
+      alignment: supplier ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 560),
+        margin: const EdgeInsets.only(bottom: 9),
+        child: Column(
+          crossAxisAlignment: supplier
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text(
+                supplier ? 'Supplier' : 'You',
+                style: TextStyle(
+                  color: supplier
+                      ? const Color(0xFF315A8C)
+                      : const Color(0xFF741C1C),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
+              decoration: BoxDecoration(
+                color: supplier
+                    ? const Color(0xFFEAF1FB)
+                    : const Color(0xFFF5EAEA),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: Radius.circular(supplier ? 3 : 12),
+                  bottomRight: Radius.circular(supplier ? 12 : 3),
+                ),
+                border: Border.all(
+                  color: supplier
+                      ? const Color(0xFFC6D7EB)
+                      : const Color(0xFFD7B8B8),
+                ),
+              ),
+              child: Text(
+                body,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: Color(0xFF2F2F2F),
+                ),
+              ),
+            ),
+            if (date.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Text(
+                  date,
+                  style: const TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 9.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _issueSectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+    Widget? trailing,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: const Color(0xFFE1E1DD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5EAEA),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 17, color: const Color(0xFF741C1C)),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 11),
+          child,
+        ],
+      ),
+    );
+  }
+
   Future<void> _followUpIssue(
     Map<String, dynamic> order,
     Map<String, dynamic> issue,
@@ -751,6 +913,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     final controller = TextEditingController();
     bool sending = false;
+    bool messageSent = false;
 
     try {
       await showDialog<void>(
@@ -760,29 +923,21 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           return StatefulBuilder(
             builder: (context, setDialogState) {
               Future<void> send() async {
-                if (sending) {
-                  return;
-                }
+                if (sending) return;
 
                 final message = controller.text.trim();
 
                 if (message.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter your follow-up message.'),
-                    ),
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Enter a message first.')),
                   );
                   return;
                 }
 
-                setDialogState(() {
-                  sending = true;
-                });
+                setDialogState(() => sending = true);
 
                 if (mounted) {
-                  setState(() {
-                    _sendingFollowUpIssueId = issueId;
-                  });
+                  setState(() => _sendingFollowUpIssueId = issueId);
                 }
 
                 try {
@@ -809,157 +964,227 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         .eq('id', issueId);
                   }
 
-                  if (!mounted || !dialogContext.mounted) {
-                    return;
-                  }
+                  if (!mounted || !dialogContext.mounted) return;
 
+                  messageSent = true;
                   Navigator.of(dialogContext).pop();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Follow-up sent to the supplier.'),
-                    ),
-                  );
-
-                  await _loadOrders();
-
-                  if (mounted) {
-                    _tabController.animateTo(5);
-                  }
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
                     ScaffoldMessenger.of(
                       dialogContext,
                     ).showSnackBar(SnackBar(content: Text(error.message)));
-
-                    setDialogState(() {
-                      sending = false;
-                    });
-                  }
-                } finally {
-                  if (mounted) {
-                    setState(() {
-                      _sendingFollowUpIssueId = null;
-                    });
+                    setDialogState(() => sending = false);
                   }
                 }
               }
 
-              return AlertDialog(
-                title: Text(
-                  'Follow Up Issue\n'
-                  '${order['order_number'] ?? ''}',
+              final messages = _issueMessages(issue);
+
+              return Dialog(
+                backgroundColor: const Color(0xFFF7F7F5),
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 24,
                 ),
-                content: SizedBox(
-                  width: 620,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _issueReasonLabel(issue['issue_reason']?.toString()),
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SizedBox(
+                  width: 720,
+                  height: 650,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(14),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        if (_issueMessages(issue).isNotEmpty) ...[
-                          const Text(
-                            'Conversation',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 8),
-                          for (final message in _issueMessages(issue))
+                        child: Row(
+                          children: [
                             Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
+                              width: 38,
+                              height: 38,
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color:
-                                    message['sender_role']?.toString() ==
-                                        'supplier'
-                                    ? const Color(0xFFEAF1FB)
-                                    : const Color(0xFFF3F3F1),
-                                borderRadius: BorderRadius.circular(10),
+                                color: const Color(0xFFF5EAEA),
+                                borderRadius: BorderRadius.circular(9),
                               ),
+                              child: const Icon(
+                                Icons.forum_outlined,
+                                size: 19,
+                                color: Color(0xFF741C1C),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    message['sender_role']?.toString() ==
-                                            'supplier'
-                                        ? 'Supplier'
-                                        : 'You',
+                                    _issueReasonLabel(
+                                      issue['issue_reason']?.toString(),
+                                    ),
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(message['message']?.toString() ?? ''),
-                                  if (_formatDate(
-                                    message['created_at'],
-                                  ).isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _formatDate(message['created_at']),
-                                      style: const TextStyle(
-                                        color: Color(0xFF777777),
-                                        fontSize: 11,
-                                      ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${order['order_number'] ?? 'Order'} • ${_supplierName(order)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 10.5,
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ),
-                          const SizedBox(height: 8),
-                        ],
-                        TextField(
-                          controller: controller,
-                          minLines: 3,
-                          maxLines: 6,
-                          enabled: !sending,
-                          decoration: const InputDecoration(
-                            labelText: 'Follow-up message',
-                            hintText:
-                                'Ask for an update or add more information to the existing issue.',
-                            border: OutlineInputBorder(),
+                            IconButton(
+                              onPressed: sending
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: messages.isEmpty
+                            ? const Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 42,
+                                      color: Color(0xFFAAAAAA),
+                                    ),
+                                    SizedBox(height: 9),
+                                    Text(
+                                      'No messages yet',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  14,
+                                  14,
+                                  8,
+                                ),
+                                children: [
+                                  for (final message in messages)
+                                    _issueChatBubble(message),
+                                ],
+                              ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            top: BorderSide(color: Color(0xFFE0E0DD)),
+                          ),
+                          borderRadius: BorderRadius.vertical(
+                            bottom: Radius.circular(14),
                           ),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: controller,
+                                minLines: 1,
+                                maxLines: 4,
+                                enabled: !sending,
+                                decoration: InputDecoration(
+                                  hintText: 'Message supplier...',
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8F8F6),
+                                  isDense: true,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDADAD6),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDADAD6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 44,
+                              child: FilledButton(
+                                onPressed: sending ? null : send,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF741C1C),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: sending
+                                    ? const SizedBox(
+                                        width: 17,
+                                        height: 17,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.send_outlined),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: sending
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Close'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: sending ? null : send,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF741C1C),
-                    ),
-                    icon: const Icon(Icons.send_outlined),
-                    label: Text(sending ? 'Sending...' : 'Send Follow Up'),
-                  ),
-                ],
               );
             },
           );
         },
       );
+
+      if (messageSent && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        if (!mounted) return;
+
+        await _loadOrders();
+
+        if (!mounted) return;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Message sent to supplier.')),
+          );
+        });
+      }
     } finally {
       controller.dispose();
 
       if (mounted) {
-        setState(() {
-          _sendingFollowUpIssueId = null;
-        });
+        setState(() => _sendingFollowUpIssueId = null);
       }
     }
   }
@@ -1526,317 +1751,348 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Issues & Returns',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-              ),
-            ),
-            if (issues.any(_hasSupplierUpdate))
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+        for (final issue in issues) ...[
+          Builder(
+            builder: (context) {
+              final messages = _issueMessages(issue);
+              final supplierUpdated = _hasSupplierUpdate(issue);
+              final issueId = issue['id']?.toString();
+              final sending =
+                  issueId != null && _sendingFollowUpIssueId == issueId;
+
+              final linkedItems = issue['order_issue_items'] is List
+                  ? (issue['order_issue_items'] as List)
+                        .whereType<Map>()
+                        .map((link) => link['order_item_id']?.toString())
+                        .whereType<String>()
+                        .toSet()
+                  : <String>{};
+
+              final affectedNames = orderItems
+                  .where((item) => linkedItems.contains(item['id']?.toString()))
+                  .map(
+                    (item) =>
+                        item['product_name_snapshot']?.toString() ??
+                        'Unnamed product',
+                  )
+                  .toList();
+
+              final replacement = _replacementOrderForIssue(issue);
+
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF1FB),
-                  borderRadius: BorderRadius.circular(999),
+                  color: const Color(0xFFF8F8F6),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE0E0DD)),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.mark_email_unread_outlined,
-                      size: 15,
-                      color: Color(0xFF315A8C),
-                    ),
-                    SizedBox(width: 5),
-                    Text(
-                      'Supplier update',
-                      style: TextStyle(
-                        color: Color(0xFF315A8C),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        for (final issue in issues)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _hasSupplierUpdate(issue)
-                  ? const Color(0xFFF7FAFF)
-                  : const Color(0xFFFFF8E8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _hasSupplierUpdate(issue)
-                    ? const Color(0xFFB8CDE8)
-                    : const Color(0xFFE5D19A),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      _issueReasonLabel(issue['issue_reason']?.toString()),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _issueStatusBackground(
-                          issue['status']?.toString(),
-                        ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _issueStatusLabel(issue['status']?.toString()),
-                        style: TextStyle(
-                          color: _issueStatusForeground(
-                            issue['status']?.toString(),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: supplierUpdated
+                                ? const Color(0xFFEAF1FB)
+                                : const Color(0xFFFFF4E5),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
+                          child: Icon(
+                            supplierUpdated
+                                ? Icons.mark_chat_unread_outlined
+                                : Icons.report_problem_outlined,
+                            size: 20,
+                            color: supplierUpdated
+                                ? const Color(0xFF315A8C)
+                                : const Color(0xFF9A5B00),
+                          ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _issueReasonLabel(
+                                  issue['issue_reason']?.toString(),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Reported ${_formatDate(issue['reported_at'])}',
+                                style: const TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _issueStatusBackground(
+                              issue['status']?.toString(),
+                            ),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _issueStatusLabel(issue['status']?.toString()),
+                            style: TextStyle(
+                              color: _issueStatusForeground(
+                                issue['status']?.toString(),
+                              ),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildIssueProgress(issue),
+                    const SizedBox(height: 10),
+
+                    _issueSectionCard(
+                      title: 'Issue Summary',
+                      icon: Icons.description_outlined,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (affectedNames.isNotEmpty) ...[
+                            const Text(
+                              'Affected products',
+                              style: TextStyle(
+                                color: Color(0xFF777777),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              affectedNames.join(', '),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                          ],
+                          if (issue['description']
+                                  ?.toString()
+                                  .trim()
+                                  .isNotEmpty ==
+                              true) ...[
+                            const Text(
+                              'Description',
+                              style: TextStyle(
+                                color: Color(0xFF777777),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              issue['description'].toString(),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (_hasSupplierUpdate(issue))
-                      const Chip(
-                        avatar: Icon(
-                          Icons.notifications_active_outlined,
-                          size: 16,
-                        ),
-                        label: Text('Supplier replied'),
-                        visualDensity: VisualDensity.compact,
+                    const SizedBox(height: 9),
+
+                    _issueSectionCard(
+                      title: 'Conversation',
+                      icon: Icons.forum_outlined,
+                      trailing: TextButton.icon(
+                        onPressed: sending
+                            ? null
+                            : () => _followUpIssue(order, issue),
+                        icon: const Icon(Icons.reply_outlined, size: 16),
+                        label: Text(sending ? 'Sending' : 'Reply'),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildIssueProgress(issue),
-
-                if (issue['order_issue_items'] is List) ...[
-                  Builder(
-                    builder: (context) {
-                      final links = (issue['order_issue_items'] as List)
-                          .whereType<Map>()
-                          .map((link) => link['order_item_id']?.toString())
-                          .whereType<String>()
-                          .toSet();
-
-                      final names = orderItems
-                          .where(
-                            (item) => links.contains(item['id']?.toString()),
-                          )
-                          .map(
-                            (item) =>
-                                item['product_name_snapshot']?.toString() ??
-                                'Unnamed product',
-                          )
-                          .toList();
-
-                      if (names.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          'Affected: ${names.join(', ')}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-
-                if (issue['description'] != null &&
-                    issue['description'].toString().trim().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(issue['description'].toString()),
-                ],
-
-                if (_issueMessages(issue).isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Conversation',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final message in _issueMessages(issue))
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 7),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: message['sender_role']?.toString() == 'supplier'
-                            ? const Color(0xFFEAF1FB)
-                            : const Color(0xFFF3F3F1),
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Text(
-                        '${message['sender_role']?.toString() == 'supplier' ? 'Supplier' : 'Butcher'}: '
-                        '${message['message'] ?? ''}',
-                      ),
+                      child: messages.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'No messages yet. Send the supplier a message if you need an update.',
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            )
+                          : Column(
+                              children: [
+                                for (final message in messages)
+                                  _issueChatBubble(message),
+                              ],
+                            ),
                     ),
-                ],
+                    const SizedBox(height: 9),
 
-                if (_replacementOrderForIssue(issue) != null) ...[
-                  const SizedBox(height: 12),
-                  Builder(
-                    builder: (context) {
-                      final replacement = _replacementOrderForIssue(issue)!;
+                    _issueSectionCard(
+                      title: 'Resolution',
+                      icon: Icons.task_alt_outlined,
+                      child: supplierUpdated
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (issue['supplier_response']
+                                        ?.toString()
+                                        .trim()
+                                        .isNotEmpty ==
+                                    true) ...[
+                                  Text(
+                                    issue['supplier_response'].toString(),
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                                Wrap(
+                                  spacing: 18,
+                                  runSpacing: 10,
+                                  children: [
+                                    _InfoBlock(
+                                      label: 'Resolution',
+                                      value: _resolutionLabel(
+                                        issue['resolution_type']?.toString(),
+                                      ),
+                                    ),
+                                    if (_asDouble(issue['credit_amount']) > 0)
+                                      _InfoBlock(
+                                        label: 'Credit',
+                                        value:
+                                            '${_money(issue['credit_amount'])} inc GST',
+                                      ),
+                                    _InfoBlock(
+                                      label: 'Supplier pickup',
+                                      value: issue['pickup_required'] == true
+                                          ? 'Required'
+                                          : 'Not required',
+                                    ),
+                                    _InfoBlock(
+                                      label: 'Replacement',
+                                      value:
+                                          issue['replacement_required'] == true
+                                          ? 'Required'
+                                          : 'Not required',
+                                    ),
+                                  ],
+                                ),
+                                if (_issueUpdateDate(issue).isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Updated ${_issueUpdateDate(issue)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF777777),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            )
+                          : const Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule_outlined,
+                                  size: 17,
+                                  color: Color(0xFF9A5B00),
+                                ),
+                                SizedBox(width: 7),
+                                Text(
+                                  'Waiting for supplier response.',
+                                  style: TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
 
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                    if (replacement != null) ...[
+                      const SizedBox(height: 9),
+                      Container(
+                        padding: const EdgeInsets.all(11),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8F5E9),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFB7D7BA)),
                         ),
-                        child: Wrap(
-                          spacing: 14,
-                          runSpacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                        child: Row(
                           children: [
-                            const Chip(
-                              avatar: Icon(Icons.autorenew, size: 16),
-                              label: Text('REPLACEMENT ORDER'),
+                            const Icon(
+                              Icons.autorenew,
+                              size: 19,
+                              color: Color(0xFF2E7D32),
                             ),
-                            Text(
-                              replacement['order_number']?.toString() ??
-                                  'Replacement',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Replacement Order',
+                                    style: TextStyle(
+                                      color: Color(0xFF2E7D32),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${replacement['order_number'] ?? 'Replacement'} • ${_statusLabel(replacement['status']?.toString())}',
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            Text(
-                              'Status: ${_statusLabel(replacement['status']?.toString())}',
                             ),
                             const Text(
                               'No extra charge',
                               style: TextStyle(
                                 color: Color(0xFF2E7D32),
-                                fontWeight: FontWeight.w800,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ],
-
-                if (_hasSupplierUpdate(issue)) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFD9E3F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Supplier response',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF315A8C),
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          issue['supplier_response']
-                                      ?.toString()
-                                      .trim()
-                                      .isNotEmpty ==
-                                  true
-                              ? issue['supplier_response'].toString()
-                              : 'The supplier has updated the status of this issue.',
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 18,
-                          runSpacing: 10,
-                          children: [
-                            _InfoBlock(
-                              label: 'Resolution',
-                              value: _resolutionLabel(
-                                issue['resolution_type']?.toString(),
-                              ),
-                            ),
-                            if (_asDouble(issue['credit_amount']) > 0)
-                              _InfoBlock(
-                                label: 'Credit',
-                                value:
-                                    '${_money(issue['credit_amount'])} inc GST',
-                              ),
-                            _InfoBlock(
-                              label: 'Supplier pickup',
-                              value: issue['pickup_required'] == true
-                                  ? 'Required'
-                                  : 'Not required',
-                            ),
-                            _InfoBlock(
-                              label: 'Replacement',
-                              value: issue['replacement_required'] == true
-                                  ? 'Required'
-                                  : 'Not required',
-                            ),
-                          ],
-                        ),
-                        if (_issueUpdateDate(issue).isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            'Updated ${_issueUpdateDate(issue)}',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Waiting for supplier response.',
-                    style: TextStyle(
-                      color: Color(0xFF666666),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
+        ],
       ],
     );
   }
@@ -2063,63 +2319,319 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   }
 
   Future<void> _openIssuesPanel() async {
+    String? selectedOrderId;
+
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (issuesContext) => Scaffold(
-          backgroundColor: const Color(0xFFF7F7F5),
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            title: const Text(
-              'Issues & Returns',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-          body: Builder(
-            builder: (_) {
+        builder: (issuesContext) {
+          return StatefulBuilder(
+            builder: (context, setIssuesState) {
               final issueOrders = _ordersForTab('issues');
 
-              if (issueOrders.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 64,
-                          color: Color(0xFF2E7D32),
+              if (selectedOrderId == null && issueOrders.isNotEmpty) {
+                selectedOrderId = issueOrders.first['id']?.toString();
+              }
+
+              Map<String, dynamic>? selectedOrder;
+              for (final order in issueOrders) {
+                if (order['id']?.toString() == selectedOrderId) {
+                  selectedOrder = order;
+                  break;
+                }
+              }
+
+              Widget queueRow(Map<String, dynamic> order) {
+                final selected = order['id']?.toString() == selectedOrderId;
+                final openIssues = _issues(order).where((issue) {
+                  final status = issue['status']?.toString();
+                  return status != 'resolved' &&
+                      status != 'rejected' &&
+                      status != 'cancelled';
+                }).length;
+
+                return Material(
+                  color: selected
+                      ? const Color(0xFFF5EAEA)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                  child: InkWell(
+                    onTap: () {
+                      setIssuesState(() {
+                        selectedOrderId = order['id']?.toString();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(9),
+                    child: Container(
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFFC79898)
+                              : const Color(0xFFE3E3DF),
                         ),
-                        SizedBox(height: 14),
-                        Text(
-                          'No open issues or returns',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: openIssues > 0
+                                  ? const Color(0xFFFDECEC)
+                                  : const Color(0xFFF1F6F1),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: Icon(
+                              openIssues > 0
+                                  ? Icons.report_problem_outlined
+                                  : Icons.check_circle_outline,
+                              size: 18,
+                              color: openIssues > 0
+                                  ? const Color(0xFFB3261E)
+                                  : const Color(0xFF2E7D32),
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order['order_number']?.toString() ?? 'Order',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _supplierName(order),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (openIssues > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB3261E),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '$openIssues',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 );
               }
 
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: issueOrders.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (_, index) =>
-                        _buildOrderCard(issueOrders[index]),
+              Widget workspace() {
+                if (selectedOrder == null) {
+                  return const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 56,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'No issues or returns',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final order = selectedOrder;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE0E0DD)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order['order_number']?.toString() ??
+                                        'Order',
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _supplierName(order),
+                                    style: const TextStyle(
+                                      color: Color(0xFF741C1C),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _openOrderWorkspace(order),
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              label: const Text('Open Order'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: _buildIssues(order),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Scaffold(
+                backgroundColor: const Color(0xFFF7F7F5),
+                appBar: AppBar(
+                  backgroundColor: Colors.white,
+                  surfaceTintColor: Colors.white,
+                  title: const Text(
+                    'Issues & Returns',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 14),
+                      child: Center(
+                        child: Text(
+                          '${_countForTab('issues')} open',
+                          style: const TextStyle(
+                            color: Color(0xFF741C1C),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                body: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1180),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final narrow = constraints.maxWidth < 850;
+
+                          final queue = Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE0E0DD),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.fromLTRB(13, 11, 13, 9),
+                                  child: Text(
+                                    'Orders with Issues',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: issueOrders.isEmpty
+                                      ? const Center(
+                                          child: Text(
+                                            'No issues or returns.',
+                                            style: TextStyle(
+                                              color: Color(0xFF777777),
+                                            ),
+                                          ),
+                                        )
+                                      : ListView.separated(
+                                          padding: const EdgeInsets.all(8),
+                                          itemCount: issueOrders.length,
+                                          separatorBuilder: (_, _) =>
+                                              const SizedBox(height: 6),
+                                          itemBuilder: (_, index) =>
+                                              queueRow(issueOrders[index]),
+                                        ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (narrow) {
+                            return ListView(
+                              children: [
+                                SizedBox(height: 310, child: queue),
+                                const SizedBox(height: 10),
+                                SizedBox(height: 620, child: workspace()),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(width: 330, child: queue),
+                              const SizedBox(width: 10),
+                              Expanded(child: workspace()),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               );
             },
-          ),
-        ),
+          );
+        },
       ),
     );
 
@@ -2136,8 +2648,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'CutLink Orders',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          'Orders',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
           TextButton.icon(
@@ -2187,18 +2699,57 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         bottom: _isLoading || _errorMessage != null
             ? null
             : PreferredSize(
-                preferredSize: const Size.fromHeight(58),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    labelColor: const Color(0xFF741C1C),
-                    unselectedLabelColor: const Color(0xFF666666),
-                    indicatorColor: const Color(0xFF741C1C),
-                    tabs: [for (final tab in _tabs) _buildTab(tab)],
-                  ),
+                preferredSize: const Size.fromHeight(112),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 7),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1180),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText:
+                                'Search order number, supplier, product, SKU or reference',
+                            prefixIcon: const Icon(Icons.search, size: 19),
+                            suffixIcon: _searchController.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    onPressed: _searchController.clear,
+                                    icon: const Icon(Icons.close, size: 18),
+                                  ),
+                            isDense: true,
+                            filled: true,
+                            fillColor: const Color(0xFFF8F8F6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(9),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFDADAD6),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(9),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFDADAD6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        labelColor: const Color(0xFF741C1C),
+                        unselectedLabelColor: const Color(0xFF666666),
+                        indicatorColor: const Color(0xFF741C1C),
+                        tabs: [for (final tab in _tabs) _buildTab(tab)],
+                      ),
+                    ),
+                  ],
                 ),
               ),
       ),
@@ -2287,7 +2838,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   }
 
   Widget _buildTabContent(_ButcherOrderTab tab) {
-    final orders = _ordersForTab(tab.key);
+    final orders = _filteredOrdersForTab(tab.key);
 
     if (orders.isEmpty) {
       return Center(
@@ -2317,9 +2868,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1150),
           child: ListView.separated(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
             itemCount: orders.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               return _buildOrderCard(orders[index]);
             },

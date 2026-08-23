@@ -1906,7 +1906,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(18),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
@@ -1929,7 +1929,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 10),
                         const Text(
                           'Order Lines',
                           style: TextStyle(
@@ -1964,7 +1964,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           ),
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.all(18),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
@@ -3014,7 +3014,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
               const SizedBox(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const SizedBox(height: 8),
               FilledButton(
                 onPressed: _loadStock,
                 child: const Text('Try Again'),
@@ -3031,245 +3031,257 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       onRefresh: _loadStock,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 60),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 40),
         children: [
-          const Text(
-            'Sales',
-            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Build supplier sales from your own stock, manage open sales and quotes, and receive marketplace orders.',
-            style: TextStyle(color: Color(0xFF666666), height: 1.4),
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Create and manage supplier sales directly from this workspace.',
-                  style: TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.end,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1220),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _compactTopButton(
-                    icon: Icons.description_outlined,
-                    label: 'Quotes',
-                    onTap: _openQuotes,
+                  const Text(
+                    'Sales',
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
                   ),
-                  _marketplaceOrdersButton(),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (_openSaleCount > 0) _openSalesSwitcher(),
-          if (_activeSale != null) _activeSalePanel(),
-          const SizedBox(height: 6),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 980;
-
-              final cowPanel = Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE0E0DD)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Browse Stock by Animal',
-                      style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Build supplier sales from your own stock, manage open sales and quotes, and receive marketplace orders.',
+                    style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Create and manage supplier sales directly from this workspace.',
+                          style: TextStyle(
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Choose an animal, then select its cut region to narrow '
-                      'the stock shown to the salesperson.',
-                      style: TextStyle(color: Color(0xFF666666)),
-                    ),
-                    const SizedBox(height: 14),
-                    InteractiveAnimalBrowser(
-                      selectedAnimalCode: _selectedAnimalCode,
-                      selectedRegionKey: _selectedAnimalRegionKey,
-                      onAnimalChanged: _selectAnimal,
-                      onRegionSelected: _selectAnimalRegion,
-                      maxWidth: 760,
-                    ),
-                    if (_selectedAnimalRegionKey != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
+                      const SizedBox(width: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Selected: ${_beefCutLabel(_selectedAnimalRegionKey!)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: _darkRed,
-                              ),
-                            ),
+                          _compactTopButton(
+                            icon: Icons.description_outlined,
+                            label: 'Quotes',
+                            onTap: _openQuotes,
                           ),
-                          TextButton.icon(
-                            onPressed: _clearAnimalRegion,
-                            icon: const Icon(Icons.close),
-                            label: const Text('Show All'),
-                          ),
+                          _marketplaceOrdersButton(),
                         ],
                       ),
                     ],
-                  ],
-                ),
-              );
+                  ),
+                  const SizedBox(height: 18),
+                  if (_openSaleCount > 0) _openSalesSwitcher(),
+                  if (_activeSale != null) _activeSalePanel(),
+                  const SizedBox(height: 6),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 940;
 
-              final inventoryPanel = Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE0E0DD)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Search Inventory',
-                      style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Find the cut, grade or SKU the customer is asking for.',
-                      style: TextStyle(color: Color(0xFF666666)),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search cut, grade or SKU',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchController.text.isEmpty
-                            ? null
-                            : IconButton(
-                                onPressed: _searchController.clear,
-                                icon: const Icon(Icons.close),
-                              ),
-                        filled: true,
-                        fillColor: const Color(0xFFF8F8F6),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildGradeFilterStrip(),
-                    const SizedBox(height: 10),
-                    _buildSpecificationStrip(),
-                    const SizedBox(height: 12),
-                    if (_selectedAnimalRegionKey != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                      final cowPanel = Container(
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4E5E5),
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE0E0DD)),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.filter_alt_outlined,
-                              size: 18,
-                              color: _darkRed,
+                            const Text(
+                              'Browse Stock by Animal',
+                              style: TextStyle(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Showing ${_beefCutLabel(_selectedAnimalRegionKey!)}',
-                                style: const TextStyle(
-                                  color: _darkRed,
-                                  fontWeight: FontWeight.w800,
+                            const SizedBox(height: 5),
+                            const Text(
+                              'Choose an animal, then select its cut region to narrow '
+                              'the stock shown to the salesperson.',
+                              style: TextStyle(color: Color(0xFF666666)),
+                            ),
+                            const SizedBox(height: 14),
+                            InteractiveAnimalBrowser(
+                              selectedAnimalCode: _selectedAnimalCode,
+                              selectedRegionKey: _selectedAnimalRegionKey,
+                              onAnimalChanged: _selectAnimal,
+                              onRegionSelected: _selectAnimalRegion,
+                              maxWidth: 700,
+                            ),
+                            if (_selectedAnimalRegionKey != null) ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Selected: ${_beefCutLabel(_selectedAnimalRegionKey!)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: _darkRed,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _clearAnimalRegion,
+                                    icon: const Icon(Icons.close),
+                                    label: const Text('Show All'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+
+                      final inventoryPanel = Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE0E0DD)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Search Inventory',
+                              style: TextStyle(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Find the cut, grade or SKU the customer is asking for.',
+                              style: TextStyle(color: Color(0xFF666666)),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: 'Search cut, grade or SKU',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _searchController.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: _searchController.clear,
+                                        icon: const Icon(Icons.close),
+                                      ),
+                                filled: true,
+                                fillColor: const Color(0xFFF8F8F6),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildGradeFilterStrip(),
+                            const SizedBox(height: 10),
+                            _buildSpecificationStrip(),
+                            const SizedBox(height: 12),
+                            if (_selectedAnimalRegionKey != null)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF4E5E5),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.filter_alt_outlined,
+                                      size: 18,
+                                      color: _darkRed,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Showing ${_beefCutLabel(_selectedAnimalRegionKey!)}',
+                                        style: const TextStyle(
+                                          color: _darkRed,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: narrow ? 240 : 430,
+                                maxHeight: narrow ? 500 : 560,
+                              ),
+                              child: filtered.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 40,
+                                        ),
+                                        child: Text(
+                                          _selectedAnimalRegionKey == null
+                                              ? 'No $_selectedAnimalName stock matches your search.'
+                                              : 'No stock is currently listed in this region.',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF666666),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Scrollbar(
+                                      thumbVisibility: true,
+                                      child: ListView.builder(
+                                        primary: false,
+                                        padding: EdgeInsets.zero,
+                                        itemCount: filtered.length,
+                                        itemBuilder: (context, index) {
+                                          return _buildProductCard(
+                                            filtered[index],
+                                          );
+                                        },
+                                      ),
+                                    ),
                             ),
                           ],
                         ),
-                      ),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: narrow ? 240 : 500,
-                        maxHeight: narrow ? 520 : 640,
-                      ),
-                      child: filtered.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 40,
-                                ),
-                                child: Text(
-                                  _selectedAnimalRegionKey == null
-                                      ? 'No $_selectedAnimalName stock matches your search.'
-                                      : 'No stock is currently listed in this region.',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Scrollbar(
-                              thumbVisibility: true,
-                              child: ListView.builder(
-                                primary: false,
-                                padding: EdgeInsets.zero,
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) {
-                                  return _buildProductCard(filtered[index]);
-                                },
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-              );
+                      );
 
-              if (narrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    cowPanel,
-                    const SizedBox(height: 16),
-                    inventoryPanel,
-                  ],
-                );
-              }
+                      if (narrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            cowPanel,
+                            const SizedBox(height: 16),
+                            inventoryPanel,
+                          ],
+                        );
+                      }
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 11, child: cowPanel),
-                  const SizedBox(width: 18),
-                  Expanded(flex: 9, child: inventoryPanel),
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 11, child: cowPanel),
+                          const SizedBox(width: 18),
+                          Expanded(flex: 9, child: inventoryPanel),
+                        ],
+                      );
+                    },
+                  ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'marketplace_product_details_page.dart';
+import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -15,6 +16,12 @@ class MarketplaceProductsPage extends StatefulWidget {
 
 class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _supplierSearchController =
+      TextEditingController();
+
+  final ScrollController _cutScrollController = ScrollController();
+  final ScrollController _subcategoryScrollController = ScrollController();
+  final ScrollController _gradeScrollController = ScrollController();
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -27,6 +34,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   String? _selectedSectionId;
   String? _selectedSpecificationId;
   String? _selectedGradeId;
+  String _sortMode = 'recommended';
+  bool _availableOnly = false;
+  String? _butcherBusinessId;
+  String? _addingProductId;
+  final Map<String, int> _cartQuantities = <String, int>{};
 
   final Map<String, Map<String, dynamic>> _cataloguePathsByProductId = {};
 
@@ -34,14 +46,293 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   void initState() {
     super.initState();
     _searchController.addListener(_applySearch);
+    _supplierSearchController.addListener(_applySearch);
+    _loadButcherBusinessId();
     _loadProducts();
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_applySearch);
+    _supplierSearchController.removeListener(_applySearch);
     _searchController.dispose();
+    _supplierSearchController.dispose();
+    _cutScrollController.dispose();
+    _subcategoryScrollController.dispose();
+    _gradeScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadButcherBusinessId() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      final membership = await Supabase.instance.client
+          .from('business_memberships')
+          .select('business_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .limit(1)
+          .single();
+
+      if (!mounted) return;
+
+      setState(() {
+        _butcherBusinessId = membership['business_id']?.toString();
+      });
+    } catch (_) {
+      // The add-to-cart action will show a clear message if this is unavailable.
+    }
+  }
+
+  String _orderQuantityUnitFor(
+    Map<String, dynamic> product,
+    Map<String, dynamic>? visiblePrice,
+  ) {
+    final configured = product['order_unit']?.toString();
+    if (configured == 'kilogram' ||
+        configured == 'carton' ||
+        configured == 'unit') {
+      return configured!;
+    }
+
+    final productUnit = product['quantity_unit']?.toString();
+    if (productUnit == 'kilogram' ||
+        productUnit == 'carton' ||
+        productUnit == 'unit') {
+      return productUnit!;
+    }
+
+    final basis = visiblePrice?['price_basis']?.toString();
+    if (basis == 'kilogram' || basis == 'carton' || basis == 'unit') {
+      return basis!;
+    }
+
+    return 'unit';
+  }
+
+  bool _isCatchWeightProduct(Map<String, dynamic> product) {
+    return product['weight_type']?.toString() == 'catch_weight' ||
+        product['catch_weight'] == true;
+  }
+
+  String _orderLineName(Map<String, dynamic> product) {
+    final specification = _specificationName(product);
+    final grade = _gradeCode(product);
+
+    return grade.trim().isEmpty || grade == 'N/A'
+        ? specification
+        : '$specification • $grade';
+  }
+
+  double _defaultCartQuantity(Map<String, dynamic>? visiblePrice) {
+    final raw = visiblePrice?['minimum_quantity'];
+    final minimum = raw is num
+        ? raw.toDouble()
+        : double.tryParse(raw?.toString() ?? '');
+
+    if (minimum != null && minimum > 1) {
+      return minimum.ceilToDouble();
+    }
+
+    return 1;
+  }
+
+  int _minimumCartQuantity(Map<String, dynamic> product) {
+    final price = _findVisiblePrice(product);
+    final raw = price?['minimum_quantity'];
+    final minimum = raw is num
+        ? raw.toDouble()
+        : double.tryParse(raw?.toString() ?? '');
+
+    if (minimum == null || minimum <= 1) return 1;
+    return minimum.ceil();
+  }
+
+  int _cartQuantity(Map<String, dynamic> product) {
+    final id = product['id']?.toString();
+    if (id == null) return _minimumCartQuantity(product);
+
+    return _cartQuantities[id] ?? _minimumCartQuantity(product);
+  }
+
+  void _changeCartQuantity(Map<String, dynamic> product, int delta) {
+    final id = product['id']?.toString();
+    if (id == null) return;
+
+    final minimum = _minimumCartQuantity(product);
+    final current = _cartQuantity(product);
+    final next = current + delta;
+
+    setState(() {
+      _cartQuantities[id] = next < minimum ? minimum : next;
+    });
+  }
+
+  Future<void> _openCart() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
+  }
+
+  Future<void> _addProductToCart(
+    Map<String, dynamic> product, {
+    int? requestedQuantity,
+  }) async {
+    final productId = product['id']?.toString();
+    if (productId == null || productId.isEmpty || _addingProductId != null) {
+      return;
+    }
+
+    final butcherBusinessId = _butcherBusinessId;
+    if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your butcher business could not be identified.'),
+        ),
+      );
+      return;
+    }
+
+    final visiblePrice = _findVisiblePrice(product);
+    final rawPrice = visiblePrice?['amount'];
+    final unitPrice = rawPrice is num
+        ? rawPrice.toDouble()
+        : double.tryParse(rawPrice?.toString() ?? '');
+
+    if (visiblePrice == null || unitPrice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This supplier offer does not have a visible price.'),
+        ),
+      );
+      return;
+    }
+
+    if (product['availability_status']?.toString() == 'out_of_stock') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This item is currently out of stock.')),
+      );
+      return;
+    }
+
+    final supplierBusinessId = product['supplier_business_id']?.toString();
+    if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Supplier information is missing.')),
+      );
+      return;
+    }
+
+    final quantity =
+        requestedQuantity?.toDouble() ?? _defaultCartQuantity(visiblePrice);
+    final quantityUnit = _orderQuantityUnitFor(product, visiblePrice);
+    final catchWeight = _isCatchWeightProduct(product);
+    final priceBasis = catchWeight
+        ? 'kilogram'
+        : visiblePrice['price_basis']?.toString();
+
+    setState(() => _addingProductId = productId);
+
+    try {
+      final client = Supabase.instance.client;
+
+      final drafts = await client
+          .from('orders')
+          .select('id, order_number')
+          .eq('butcher_business_id', butcherBusinessId)
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('status', 'draft')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      late String orderId;
+      String? orderNumber;
+
+      if (drafts.isNotEmpty) {
+        orderId = drafts.first['id'].toString();
+        orderNumber = drafts.first['order_number']?.toString();
+      } else {
+        final created = await client
+            .from('orders')
+            .insert({
+              'butcher_business_id': butcherBusinessId,
+              'supplier_business_id': supplierBusinessId,
+            })
+            .select('id, order_number')
+            .single();
+
+        orderId = created['id'].toString();
+        orderNumber = created['order_number']?.toString();
+      }
+
+      final existing = await client
+          .from('order_items')
+          .select('id, quantity')
+          .eq('order_id', orderId)
+          .eq('product_id', productId)
+          .limit(1);
+
+      final snapshot = {
+        'product_name_snapshot': _orderLineName(product),
+        'sku_snapshot': product['sku']?.toString(),
+        'quantity_unit': quantityUnit,
+        'unit_price': unitPrice,
+        'price_basis': priceBasis,
+        'catch_weight_snapshot': catchWeight,
+      };
+
+      if (existing.isNotEmpty) {
+        final rawExisting = existing.first['quantity'];
+        final existingQuantity = rawExisting is num
+            ? rawExisting.toDouble()
+            : double.tryParse(rawExisting?.toString() ?? '') ?? 0;
+
+        await client
+            .from('order_items')
+            .update({...snapshot, 'quantity': existingQuantity + quantity})
+            .eq('id', existing.first['id']);
+      } else {
+        await client.from('order_items').insert({
+          'order_id': orderId,
+          'product_id': productId,
+          ...snapshot,
+          'quantity': quantity,
+        });
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            orderNumber == null || orderNumber.trim().isEmpty
+                ? '${_specificationName(product)} added to cart.'
+                : '${_specificationName(product)} added to $orderNumber.',
+          ),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _addingProductId = null);
+      }
+    }
+  }
+
+  Future<void> _openProductInfo(Map<String, dynamic> product) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MarketplaceProductDetailsPage(product: product),
+      ),
+    );
   }
 
   Future<void> _loadProducts() async {
@@ -120,6 +411,17 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               id,
               code,
               name
+            ),
+
+            supplier_spec_grade_offers(
+              id,
+              product_id,
+              specification_id,
+              grade_id,
+              standard_price_inc_gst,
+              minimum_order_quantity,
+              is_available,
+              is_active
             ),
 
             product_variants(
@@ -387,6 +689,102 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return _nestedMap(product['meat_grades'])?['name']?.toString().trim() ?? '';
   }
 
+  List<Map<String, dynamic>> _activeSpecGradeOffers(
+    Map<String, dynamic> product,
+  ) {
+    final raw = product['supplier_spec_grade_offers'];
+
+    if (raw is Map) {
+      final offer = Map<String, dynamic>.from(raw);
+      return offer['is_active'] == true
+          ? <Map<String, dynamic>>[offer]
+          : <Map<String, dynamic>>[];
+    }
+
+    if (raw is List) {
+      return raw
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .where((offer) => offer['is_active'] == true)
+          .toList();
+    }
+
+    return <Map<String, dynamic>>[];
+  }
+
+  String? _directProductSpecificationId(Map<String, dynamic> product) {
+    final direct = product['meat_specification_id']?.toString();
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final nested = _nestedMap(
+      product['meat_specifications'],
+    )?['id']?.toString();
+    return nested == null || nested.isEmpty ? null : nested;
+  }
+
+  String? _directProductGradeId(Map<String, dynamic> product) {
+    final direct = product['meat_grade_id']?.toString();
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final nested = _nestedMap(product['meat_grades'])?['id']?.toString();
+    return nested == null || nested.isEmpty ? null : nested;
+  }
+
+  String? _productSectionId(Map<String, dynamic> product) {
+    final direct = product['meat_section_id']?.toString();
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final nested = _nestedMap(product['meat_sections'])?['id']?.toString();
+    return nested == null || nested.isEmpty ? null : nested;
+  }
+
+  bool _matchesSpecification(
+    Map<String, dynamic> product,
+    String specificationId,
+  ) {
+    if (_directProductSpecificationId(product) == specificationId) {
+      return true;
+    }
+
+    return _activeSpecGradeOffers(
+      product,
+    ).any((offer) => offer['specification_id']?.toString() == specificationId);
+  }
+
+  bool _matchesGrade(Map<String, dynamic> product, String gradeId) {
+    if (_directProductGradeId(product) == gradeId) {
+      return true;
+    }
+
+    return _activeSpecGradeOffers(
+      product,
+    ).any((offer) => offer['grade_id']?.toString() == gradeId);
+  }
+
+  bool _matchesExactSpecGrade(
+    Map<String, dynamic> product, {
+    required String specificationId,
+    required String gradeId,
+  }) {
+    final directSpec = _directProductSpecificationId(product);
+    final directGrade = _directProductGradeId(product);
+
+    if (directSpec == specificationId && directGrade == gradeId) {
+      return true;
+    }
+
+    return _activeSpecGradeOffers(product).any((offer) {
+      return offer['specification_id']?.toString() == specificationId &&
+          offer['grade_id']?.toString() == gradeId;
+    });
+  }
+
   List<Map<String, dynamic>> get _selectedAnimalProducts {
     return _products.where((product) {
       final animalCode = _animalCode(product);
@@ -397,6 +795,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       return animalCode == _selectedAnimalCode;
     }).toList();
+  }
+
+  String? get _selectedSectionName {
+    if (_selectedSectionId == null) {
+      return null;
+    }
+
+    for (final section in _selectedAnimalSections) {
+      if (section['id']?.toString() == _selectedSectionId) {
+        return section['name']?.toString();
+      }
+    }
+
+    return null;
   }
 
   List<Map<String, dynamic>> get _selectedAnimalSections {
@@ -431,7 +843,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          _productSectionId(product) != _selectedSectionId) {
         continue;
       }
 
@@ -458,13 +870,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          _productSectionId(product) != _selectedSectionId) {
         continue;
       }
 
       if (_selectedSpecificationId != null &&
-          product['meat_specification_id']?.toString() !=
-              _selectedSpecificationId) {
+          !_matchesSpecification(product, _selectedSpecificationId!)) {
         continue;
       }
 
@@ -561,51 +972,106 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   void _applySearch() {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     final search = _searchController.text.trim().toLowerCase();
+    final supplierSearch = _supplierSearchController.text.trim().toLowerCase();
+    final directSearch = search.isNotEmpty;
+    final cutScopedSearch = directSearch && _selectedSectionId != null;
+
+    double? visibleAmount(Map<String, dynamic> product) {
+      final price = _findVisiblePrice(product);
+      final raw = price?['amount'];
+
+      if (raw is num) return raw.toDouble();
+      return double.tryParse(raw?.toString() ?? '');
+    }
 
     setState(() {
       _filteredProducts = _products.where((product) {
-        if (_animalCode(product) != _selectedAnimalCode) {
+        if (directSearch) {
+          if (cutScopedSearch) {
+            if (_animalCode(product) != _selectedAnimalCode) {
+              return false;
+            }
+
+            if (_productSectionId(product) != _selectedSectionId) {
+              return false;
+            }
+          }
+        } else {
+          if (_animalCode(product) != _selectedAnimalCode) {
+            return false;
+          }
+
+          if (_selectedSectionId != null &&
+              _productSectionId(product) != _selectedSectionId) {
+            return false;
+          }
+
+          if (_selectedSpecificationId != null && _selectedGradeId != null) {
+            if (!_matchesExactSpecGrade(
+              product,
+              specificationId: _selectedSpecificationId!,
+              gradeId: _selectedGradeId!,
+            )) {
+              return false;
+            }
+          } else {
+            if (_selectedSpecificationId != null &&
+                !_matchesSpecification(product, _selectedSpecificationId!)) {
+              return false;
+            }
+
+            if (_selectedGradeId != null &&
+                !_matchesGrade(product, _selectedGradeId!)) {
+              return false;
+            }
+          }
+        }
+
+        if (_availableOnly) {
+          final status = product['availability_status']?.toString();
+          final rawQuantity = product['available_quantity'];
+          final quantity = rawQuantity is num
+              ? rawQuantity.toDouble()
+              : double.tryParse(rawQuantity?.toString() ?? '');
+
+          final offerAvailable = _activeSpecGradeOffers(
+            product,
+          ).any((offer) => offer['is_available'] == true);
+
+          final productAvailable =
+              status != 'out_of_stock' && (quantity == null || quantity > 0);
+
+          if (!productAvailable && !offerAvailable) {
+            return false;
+          }
+        }
+
+        final supplierName = _supplierName(product);
+        if (supplierSearch.isNotEmpty &&
+            !supplierName.toLowerCase().contains(supplierSearch)) {
           return false;
         }
 
-        if (_selectedSectionId != null &&
-            product['meat_section_id']?.toString() != _selectedSectionId) {
-          return false;
-        }
+        if (search.isEmpty) return true;
 
-        if (_selectedSpecificationId != null &&
-            product['meat_specification_id']?.toString() !=
-                _selectedSpecificationId) {
-          return false;
-        }
+        final specification = _specificationName(product).toLowerCase();
+        final productName =
+            product['product_name']?.toString().toLowerCase() ?? '';
+        final supplierSpecification =
+            product['supplier_specification']?.toString().toLowerCase() ?? '';
 
-        if (_selectedGradeId != null &&
-            product['meat_grade_id']?.toString() != _selectedGradeId) {
-          return false;
-        }
-
-        if (search.isEmpty) {
-          return true;
-        }
-
-        final supplier = product['businesses'];
-
-        String? tradingName;
-        String? legalName;
-
-        if (supplier is Map) {
-          tradingName = supplier['trading_name']?.toString();
-          legalName = supplier['legal_name']?.toString();
+        if (cutScopedSearch) {
+          return specification.contains(search) ||
+              productName.contains(search) ||
+              supplierSpecification.contains(search) ||
+              _gradeCode(product).toLowerCase().contains(search) ||
+              _gradeName(product).toLowerCase().contains(search);
         }
 
         final catalogueNames = _canonicalCatalogueNames(product);
-        final fullCataloguePath = _cataloguePath(product);
-
         final searchableValues = <dynamic>[
           product['product_name'],
           product['sku'],
@@ -622,39 +1088,84 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           product['fat_specification'],
           product['halal_status'],
           product['supplier_specification'],
-          tradingName,
-          legalName,
-          fullCataloguePath,
+          _cataloguePath(product),
           _sectionName(product),
           _specificationName(product),
           _gradeCode(product),
           _gradeName(product),
+          _supplierName(product),
           ...catalogueNames,
         ];
 
-        return searchableValues.any((value) {
-          return value != null &&
-              value.toString().toLowerCase().contains(search);
-        });
+        return searchableValues.any(
+          (value) =>
+              value != null && value.toString().toLowerCase().contains(search),
+        );
       }).toList();
 
-      _filteredProducts.sort((a, b) {
-        final specCompare = _specificationName(
-          a,
-        ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
+      switch (_sortMode) {
+        case 'price_low':
+          _filteredProducts.sort((a, b) {
+            final aPrice = visibleAmount(a);
+            final bPrice = visibleAmount(b);
+            if (aPrice == null && bPrice == null) return 0;
+            if (aPrice == null) return 1;
+            if (bPrice == null) return -1;
+            return aPrice.compareTo(bPrice);
+          });
+          break;
+        case 'price_high':
+          _filteredProducts.sort((a, b) {
+            final aPrice = visibleAmount(a);
+            final bPrice = visibleAmount(b);
+            if (aPrice == null && bPrice == null) return 0;
+            if (aPrice == null) return 1;
+            if (bPrice == null) return -1;
+            return bPrice.compareTo(aPrice);
+          });
+          break;
+        case 'supplier':
+          _filteredProducts.sort(
+            (a, b) => _supplierName(
+              a,
+            ).toLowerCase().compareTo(_supplierName(b).toLowerCase()),
+          );
+          break;
+        case 'grade':
+          _filteredProducts.sort((a, b) {
+            final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
+            if (gradeCompare != 0) return gradeCompare;
+            return _supplierName(
+              a,
+            ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
+          });
+          break;
+        default:
+          _filteredProducts.sort((a, b) {
+            final specCompare = _specificationName(
+              a,
+            ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
+            if (specCompare != 0) return specCompare;
 
-        if (specCompare != 0) return specCompare;
+            final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
+            if (gradeCompare != 0) return gradeCompare;
 
-        final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
-        if (gradeCompare != 0) return gradeCompare;
+            final aPrice = visibleAmount(a);
+            final bPrice = visibleAmount(b);
+            if (aPrice != null && bPrice != null) {
+              final priceCompare = aPrice.compareTo(bPrice);
+              if (priceCompare != 0) return priceCompare;
+            }
 
-        return _supplierName(
-          a,
-        ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
-      });
+            return _supplierName(
+              a,
+            ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
+          });
+      }
     });
   }
 
+  // ignore: unused_element
   bool _usesCanonicalCatalogue(Map<String, dynamic> product) {
     return product['product_variant_id'] != null;
   }
@@ -897,6 +1408,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     );
   }
 
+  // ignore: unused_element
   List<Widget> _marketplaceChips(
     Map<String, dynamic> product, {
     required bool usesCanonicalCatalogue,
@@ -1054,37 +1566,112 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     );
   }
 
+  Widget _arrowScrollStrip({
+    required ScrollController controller,
+    required double height,
+    required List<Widget> children,
+  }) {
+    Future<void> move(double direction) async {
+      if (!controller.hasClients) return;
+
+      final position = controller.position;
+      final target = (controller.offset + (direction * 240))
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+
+      await controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          _stripArrow(
+            icon: Icons.chevron_left,
+            tooltip: 'Scroll left',
+            onTap: () => move(-1),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: ListView(
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: children,
+            ),
+          ),
+          const SizedBox(width: 5),
+          _stripArrow(
+            icon: Icons.chevron_right,
+            tooltip: 'Scroll right',
+            onTap: () => move(1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stripArrow({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: const Color(0xFFF7F7F5),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Icon(icon, size: 19, color: const Color(0xFF741C1C)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionStrip() {
     final sections = _selectedAnimalSections;
 
     if (sections.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 37,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
+    return _arrowScrollStrip(
+      controller: _cutScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All cuts',
+          selected: _selectedSectionId == null,
+          onTap: () {
+            setState(() {
+              _selectedAnimalRegionKey = null;
+              _selectedSectionId = null;
+              _selectedSpecificationId = null;
+              _selectedGradeId = null;
+            });
+            _applySearch();
+          },
+        ),
+        for (final section in sections)
           _thinChoice(
-            label: 'All cuts',
-            selected: _selectedSectionId == null,
-            onTap: () {
-              setState(() {
-                _selectedAnimalRegionKey = null;
-                _selectedSectionId = null;
-                _selectedSpecificationId = null;
-                _selectedGradeId = null;
-              });
-              _applySearch();
-            },
+            label: section['name']?.toString() ?? 'Cut',
+            selected: _selectedSectionId == section['id']?.toString(),
+            onTap: () => _selectSection(section),
           ),
-          for (final section in sections)
-            _thinChoice(
-              label: section['name']?.toString() ?? 'Cut',
-              selected: _selectedSectionId == section['id']?.toString(),
-              onTap: () => _selectSection(section),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1093,37 +1680,35 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     if (specifications.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 36,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
+    return _arrowScrollStrip(
+      controller: _subcategoryScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All subcategories',
+          selected: _selectedSpecificationId == null,
+          onTap: () {
+            setState(() {
+              _selectedSpecificationId = null;
+              _selectedGradeId = null;
+            });
+            _applySearch();
+          },
+        ),
+        for (final specification in specifications)
           _thinChoice(
-            label: 'All subcategories',
-            selected: _selectedSpecificationId == null,
+            label: specification['name']?.toString() ?? 'Subcategory',
+            selected:
+                _selectedSpecificationId == specification['id']?.toString(),
             onTap: () {
               setState(() {
-                _selectedSpecificationId = null;
+                _selectedSpecificationId = specification['id']?.toString();
                 _selectedGradeId = null;
               });
               _applySearch();
             },
           ),
-          for (final specification in specifications)
-            _thinChoice(
-              label: specification['name']?.toString() ?? 'Subcategory',
-              selected:
-                  _selectedSpecificationId == specification['id']?.toString(),
-              onTap: () {
-                setState(() {
-                  _selectedSpecificationId = specification['id']?.toString();
-                  _selectedGradeId = null;
-                });
-                _applySearch();
-              },
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1132,50 +1717,48 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     if (grades.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _thinChoice(
-            label: 'All grades',
-            selected: _selectedGradeId == null,
-            onTap: () {
-              setState(() => _selectedGradeId = null);
-              _applySearch();
-            },
-          ),
-          for (final grade in grades)
-            Padding(
-              padding: const EdgeInsets.only(right: 7),
-              child: ChoiceChip(
-                selected: _selectedGradeId == grade['id']?.toString(),
-                showCheckmark: false,
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                selectedColor: const Color(0xFF741C1C),
-                backgroundColor: const Color(0xFFF4E5E5),
-                side: const BorderSide(color: Color(0xFFD7B8B8)),
-                label: Text(
-                  grade['code']?.toString() ?? 'N/A',
-                  style: TextStyle(
-                    color: _selectedGradeId == grade['id']?.toString()
-                        ? Colors.white
-                        : const Color(0xFF741C1C),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
+    return _arrowScrollStrip(
+      controller: _gradeScrollController,
+      height: 45,
+      children: [
+        _thinChoice(
+          label: 'All grades',
+          selected: _selectedGradeId == null,
+          onTap: () {
+            setState(() => _selectedGradeId = null);
+            _applySearch();
+          },
+        ),
+        for (final grade in grades)
+          Padding(
+            padding: const EdgeInsets.only(right: 7),
+            child: ChoiceChip(
+              selected: _selectedGradeId == grade['id']?.toString(),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              selectedColor: const Color(0xFF741C1C),
+              backgroundColor: const Color(0xFFF4E5E5),
+              side: const BorderSide(color: Color(0xFFD7B8B8)),
+              label: Text(
+                grade['code']?.toString() ?? 'N/A',
+                style: TextStyle(
+                  color: _selectedGradeId == grade['id']?.toString()
+                      ? Colors.white
+                      : const Color(0xFF741C1C),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
                 ),
-                onSelected: (_) {
-                  setState(() {
-                    _selectedGradeId = grade['id']?.toString();
-                  });
-                  _applySearch();
-                },
               ),
+              onSelected: (_) {
+                setState(() {
+                  _selectedGradeId = grade['id']?.toString();
+                });
+                _applySearch();
+              },
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -1237,6 +1820,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: _openCart,
+            icon: const Icon(Icons.shopping_cart_outlined),
+            label: const Text(
+              'Cart',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 4),
           IconButton(
             onPressed: _loadProducts,
             tooltip: 'Refresh products',
@@ -1253,154 +1845,200 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final price = _findVisiblePrice(product);
     final amount = price?['amount'];
     final priceBasis = price?['price_basis'] as String?;
-    final usesCanonicalCatalogue = _usesCanonicalCatalogue(product);
-    final chips = _marketplaceChips(
-      product,
-      usesCanonicalCatalogue: usesCanonicalCatalogue,
-    );
+    final productId = product['id']?.toString();
+    final adding = productId != null && _addingProductId == productId;
     final supplierSpecification = product['supplier_specification']?.toString();
 
-    return Card(
-      elevation: 0,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(12),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) =>
-                  MarketplaceProductDetailsPage(product: product),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 720;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 680;
 
-              final details = Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          final identity = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _gradeBadge(product),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _specificationName(product),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _supplierName(product),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF741C1C),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}'
+                      '${_availableText(product).isEmpty ? '' : ' • ${_availableText(product)}'}',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (supplierSpecification != null &&
+                        supplierSpecification.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        supplierSpecification.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          final actions = Column(
+            crossAxisAlignment: narrow
+                ? CrossAxisAlignment.stretch
+                : CrossAxisAlignment.end,
+            children: [
+              const Text(
+                'YOUR PRICE',
+                style: TextStyle(
+                  color: Color(0xFF777777),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                amount == null
+                    ? 'Contact supplier'
+                    : '\$${_formatNumber(amount)}'
+                          '${_formatPriceBasis(priceBasis).isEmpty ? '' : ' / ${_formatPriceBasis(priceBasis)}'}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                alignment: narrow ? WrapAlignment.start : WrapAlignment.end,
                 children: [
-                  _gradeBadge(product),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  OutlinedButton.icon(
+                    onPressed: () => _openProductInfo(product),
+                    icon: const Icon(Icons.info_outline, size: 17),
+                    label: const Text('Info'),
+                  ),
+                  Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F7F5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE0E0DD)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          _specificationName(product),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                        IconButton(
+                          onPressed: () => _changeCartQuantity(product, -1),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
                           ),
+                          icon: const Icon(Icons.remove, size: 16),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _supplierName(product),
-                          style: const TextStyle(
-                            color: Color(0xFF741C1C),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 12,
-                          ),
-                        ),
-                        if (supplierSpecification != null &&
-                            supplierSpecification.trim().isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            supplierSpecification.trim(),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                        SizedBox(
+                          width: 36,
+                          child: Text(
+                            '${_cartQuantity(product)}',
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Color(0xFF666666),
-                              fontSize: 11.5,
-                              height: 1.3,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 9),
-                        Wrap(spacing: 6, runSpacing: 6, children: chips),
+                        ),
+                        IconButton(
+                          onPressed: () => _changeCartQuantity(product, 1),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          icon: const Icon(Icons.add, size: 16),
+                        ),
                       ],
                     ),
                   ),
-                ],
-              );
-
-              final priceBlock = Column(
-                crossAxisAlignment: narrow
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'YOUR PRICE',
-                    style: TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 10,
-                      letterSpacing: .5,
-                      fontWeight: FontWeight.w900,
+                  FilledButton.icon(
+                    onPressed: adding
+                        ? null
+                        : () => _addProductToCart(
+                            product,
+                            requestedQuantity: _cartQuantity(product),
+                          ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF741C1C),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    amount == null
-                        ? 'Contact supplier'
-                        : '\$${_formatNumber(amount)}'
-                              '${_formatPriceBasis(priceBasis).isEmpty ? '' : ' / ${_formatPriceBasis(priceBasis)}'}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View supplier offer',
-                        style: TextStyle(
-                          color: Color(0xFF741C1C),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 19,
-                        color: Color(0xFF741C1C),
-                      ),
-                    ],
+                    icon: adding
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.add_shopping_cart, size: 17),
+                    label: Text(adding ? 'Adding' : 'Add to Cart'),
                   ),
                 ],
-              );
+              ),
+            ],
+          );
 
-              if (narrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [details, const SizedBox(height: 14), priceBlock],
-                );
-              }
+          if (narrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [identity, const SizedBox(height: 10), actions],
+            );
+          }
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: details),
-                  const SizedBox(width: 20),
-                  priceBlock,
-                ],
-              );
-            },
-          ),
-        ),
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: identity),
+              const SizedBox(width: 14),
+              SizedBox(width: 190, child: actions),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1435,87 +2073,713 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       );
     }
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1180),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 42),
+    final cutSelected = _selectedSectionId != null;
+    final subcategorySelected = _selectedSpecificationId != null;
+    final gradeSelected = _selectedGradeId != null;
+    final exactSelection = subcategorySelected && gradeSelected;
+
+    // ignore: unused_element
+    Widget filterLabel(String label) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF666666),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+
+    Widget animalPanel() {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 11, 14, 0),
+              child: Text(
+                'Browse by Animal',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Browse meat by animal, cut and grade',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Choose the exact specification and grade before comparing supplier prices.',
-                    style: TextStyle(color: Color(0xFF666666), fontSize: 12.5),
-                  ),
-                  const SizedBox(height: 14),
-                  InteractiveAnimalBrowser(
-                    selectedAnimalCode: _selectedAnimalCode,
-                    selectedRegionKey: _selectedAnimalRegionKey,
-                    onAnimalChanged: _selectAnimal,
-                    onRegionSelected: _selectAnimalRegion,
-                    maxWidth: 720,
-                  ),
-                  const SizedBox(height: 14),
-                  _buildSectionStrip(),
-                  const SizedBox(height: 7),
-                  _buildSpecificationStrip(),
-                  const SizedBox(height: 7),
-                  _buildGradeStrip(),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Search cut, grade, supplier, brand, origin or SKU',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isEmpty
-                          ? null
-                          : IconButton(
-                              onPressed: _searchController.clear,
-                              icon: const Icon(Icons.close),
-                            ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 2, 14, 7),
+              child: Text(
+                'Choose the animal, cut, subcategory and grade.',
+                style: TextStyle(color: Color(0xFF666666), fontSize: 10.5),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InteractiveAnimalBrowser(
+                      selectedAnimalCode: _selectedAnimalCode,
+                      selectedRegionKey: _selectedAnimalRegionKey,
+                      onAnimalChanged: _selectAnimal,
+                      onRegionSelected: _selectAnimalRegion,
+                      maxWidth: 650,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'CUT',
+                      style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
                       ),
-                      isDense: true,
+                    ),
+                    const SizedBox(height: 4),
+                    _buildSectionStrip(),
+                    if (cutSelected) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'SUBCATEGORY',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildSpecificationStrip(),
+                    ],
+                    if (subcategorySelected) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'GRADE',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildGradeStrip(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget availableToggle() {
+      return InkWell(
+        onTap: () {
+          setState(() => _availableOnly = !_availableOnly);
+          _applySearch();
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: _availableOnly ? const Color(0xFFF5EAEA) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _availableOnly
+                  ? const Color(0xFFB98585)
+                  : const Color(0xFFDADAD6),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _availableOnly ? Icons.inventory_2 : Icons.inventory_2_outlined,
+                size: 16,
+                color: _availableOnly
+                    ? const Color(0xFF741C1C)
+                    : const Color(0xFF666666),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Available only',
+                style: TextStyle(
+                  color: _availableOnly
+                      ? const Color(0xFF741C1C)
+                      : const Color(0xFF555555),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget universalSearchBar() {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(11, 0, 11, 10),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: _selectedSectionId == null
+                ? 'Search all products — e.g. Scotch Fillet, Brisket...'
+                : 'Search within ${_selectedSectionName ?? 'this cut'}...',
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    onPressed: _searchController.clear,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+            isDense: true,
+            filled: true,
+            fillColor: const Color(0xFFFBFBF9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(9),
+              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(9),
+              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget resultsToolbar() {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(11, 8, 11, 10),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFBFBF9),
+          border: Border(
+            top: BorderSide(color: Color(0xFFE0E0DD)),
+            bottom: BorderSide(color: Color(0xFFE0E0DD)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 560;
+
+                final supplierField = TextField(
+                  controller: _supplierSearchController,
+                  decoration: InputDecoration(
+                    hintText: 'Filter supplier',
+                    prefixIcon: const Icon(Icons.storefront_outlined, size: 18),
+                    suffixIcon: _supplierSearchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: _supplierSearchController.clear,
+                            icon: const Icon(Icons.close, size: 17),
+                          ),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFDADAD6)),
                     ),
                   ),
+                );
+
+                String sortLabel(String value) => switch (value) {
+                  'price_low' => 'Cheapest',
+                  'price_high' => 'Highest',
+                  'grade' => 'Grade',
+                  'supplier' => 'Supplier A–Z',
+                  _ => 'Recommended',
+                };
+
+                IconData sortIcon(String value) => switch (value) {
+                  'price_low' => Icons.south_east,
+                  'price_high' => Icons.north_east,
+                  'grade' => Icons.workspace_premium_outlined,
+                  'supplier' => Icons.storefront_outlined,
+                  _ => Icons.auto_awesome_outlined,
+                };
+
+                final sortField = PopupMenuButton<String>(
+                  initialValue: _sortMode,
+                  onSelected: (value) {
+                    setState(() => _sortMode = value);
+                    _applySearch();
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'recommended',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.auto_awesome_outlined),
+                        title: Text('Recommended'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'price_low',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.south_east),
+                        title: Text('Cheapest price'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'price_high',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.north_east),
+                        title: Text('Highest price'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'grade',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.workspace_premium_outlined),
+                        title: Text('Grade'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'supplier',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.storefront_outlined),
+                        title: Text('Supplier A–Z'),
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    height: 47,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFDADAD6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          sortIcon(_sortMode),
+                          size: 17,
+                          color: const Color(0xFF741C1C),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            sortLabel(_sortMode),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 18),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (narrow) {
+                  return Column(
+                    children: [
+                      supplierField,
+                      const SizedBox(height: 7),
+                      sortField,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(flex: 6, child: supplierField),
+                    const SizedBox(width: 7),
+                    Expanded(flex: 4, child: sortField),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                availableToggle(),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    _supplierSearchController.clear();
+                    setState(() {
+                      _sortMode = 'recommended';
+                      _availableOnly = false;
+                    });
+                    _applySearch();
+                  },
+                  child: const Text('Clear filters'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget rightChoiceCard({
+      required IconData icon,
+      required String title,
+      String? subtitle,
+      required VoidCallback onTap,
+      Widget? trailing,
+    }) {
+      return Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5EAEA),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icon, size: 18, color: const Color(0xFF741C1C)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF777777),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing,
+                ] else
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 19,
+                    color: Color(0xFF741C1C),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget subcategoryStage() {
+      final specifications = _availableSpecifications;
+
+      if (specifications.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(26),
+            child: Text(
+              'No subcategories are linked to this cut yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF777777),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: specifications.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) {
+          final specification = specifications[index];
+          final name = specification['name']?.toString() ?? 'Subcategory';
+
+          return rightChoiceCard(
+            icon: Icons.category_outlined,
+            title: name,
+            subtitle: 'Choose this subcategory to view its grades.',
+            onTap: () {
+              setState(() {
+                _selectedSpecificationId = specification['id']?.toString();
+                _selectedGradeId = null;
+              });
+              _applySearch();
+            },
+          );
+        },
+      );
+    }
+
+    Widget gradeStage() {
+      final grades = _availableGrades;
+
+      if (grades.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(26),
+            child: Text(
+              'No grades are linked to this subcategory yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF777777),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: grades.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) {
+          final grade = grades[index];
+          final code = grade['code']?.toString() ?? 'N/A';
+          final name = grade['name']?.toString() ?? '';
+
+          return rightChoiceCard(
+            icon: Icons.workspace_premium_outlined,
+            title: code,
+            subtitle: name,
+            onTap: () {
+              setState(() {
+                _selectedGradeId = grade['id']?.toString();
+              });
+              _applySearch();
+            },
+          );
+        },
+      );
+    }
+
+    Widget supplierStockStage() {
+      if (_filteredProducts.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.search_off_outlined,
+                  size: 46,
+                  color: Color(0xFFAAAAAA),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'No supplier offers match this selection',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'No active supplier product is linked to this exact subcategory and grade.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF777777), height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: _filteredProducts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) =>
+            _buildMarketplaceProductCard(_filteredProducts[index]),
+      );
+    }
+
+    Widget resultsPanel() {
+      final directSearch = _searchController.text.trim().isNotEmpty;
+
+      final title = directSearch
+          ? 'Search Results'
+          : !cutSelected
+          ? 'Choose a Cut'
+          : !subcategorySelected
+          ? 'Subcategories'
+          : !gradeSelected
+          ? 'Choose Grade'
+          : 'Supplier Stock';
+
+      final subtitle = directSearch
+          ? 'Matching products from all suppliers.'
+          : !cutSelected
+          ? 'Select a cut from the animal diagram or cut row.'
+          : !subcategorySelected
+          ? 'Choose the exact subcategory for this cut.'
+          : !gradeSelected
+          ? 'Choose the commercial grade/category.'
+          : 'Compare matching supplier offers and pricing.';
+
+      final showingStock = directSearch || exactSelection;
+
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showingStock)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5EAEA),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${_filteredProducts.length} result${_filteredProducts.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: Color(0xFF741C1C),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            if (_filteredProducts.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 42),
-                child: Text(
-                  'No marketplace products match this animal, cut, grade or search.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF666666),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              )
-            else
-              for (final product in _filteredProducts) ...[
-                _buildMarketplaceProductCard(product),
-                const SizedBox(height: 10),
-              ],
+            universalSearchBar(),
+            if (showingStock) resultsToolbar(),
+            Expanded(
+              child: directSearch
+                  ? supplierStockStage()
+                  : !cutSelected
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.touch_app_outlined,
+                              size: 48,
+                              color: Color(0xFFAAAAAA),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Select a cut or search above',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : !subcategorySelected
+                  ? subcategoryStage()
+                  : !gradeSelected
+                  ? gradeStage()
+                  : supplierStockStage(),
+            ),
           ],
+        ),
+      );
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1240),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 930;
+
+              if (narrow) {
+                return ListView(
+                  children: [
+                    SizedBox(height: 640, child: animalPanel()),
+                    const SizedBox(height: 10),
+                    SizedBox(height: 720, child: resultsPanel()),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: animalPanel()),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 5, child: resultsPanel()),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

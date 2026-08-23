@@ -928,6 +928,181 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     return messages;
   }
 
+  List<Map<String, dynamic>> _issueConversationEntries(
+    Map<String, dynamic> issue,
+  ) {
+    final entries = <Map<String, dynamic>>[];
+
+    void addSystem(String text, dynamic at) {
+      if (text.trim().isEmpty) return;
+      entries.add({'kind': 'system', 'message': text, 'created_at': at});
+    }
+
+    final reportedAt = issue['reported_at'];
+    addSystem(
+      'Issue reported: ${_issueReasonLabel(issue['issue_reason']?.toString())}.',
+      reportedAt,
+    );
+
+    for (final message in _issueMessages(issue)) {
+      entries.add({...message, 'kind': 'message'});
+    }
+
+    final status = issue['status']?.toString();
+    final supplierHasReplied = _issueMessages(
+      issue,
+    ).any((message) => message['sender_role']?.toString() == 'supplier');
+
+    if (status == 'requested' && !supplierHasReplied) {
+      addSystem('Waiting for supplier response.', reportedAt);
+    }
+
+    final approvedAt = issue['approved_at'];
+    if (approvedAt != null) {
+      final resolution = _resolutionLabel(issue['resolution_type']?.toString());
+      addSystem(
+        'Resolution proposed: $resolution. Waiting for the butcher to review the supplier response.',
+        approvedAt,
+      );
+    }
+
+    final rejectedAt = issue['rejected_at'];
+    if (rejectedAt != null) {
+      addSystem('Issue rejected by supplier.', rejectedAt);
+    }
+
+    final resolvedAt = issue['resolved_at'];
+    if (resolvedAt != null) {
+      addSystem('Resolution completed. Issue closed.', resolvedAt);
+    }
+
+    final butcherConfirmedAt = issue['butcher_confirmed_at'];
+    if (butcherConfirmedAt != null) {
+      addSystem(
+        'Butcher confirmed the resolution was completed satisfactorily.',
+        butcherConfirmedAt,
+      );
+    }
+
+    entries.sort((a, b) {
+      final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '');
+      final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '');
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return -1;
+      if (bDate == null) return 1;
+      return aDate.compareTo(bDate);
+    });
+
+    return entries;
+  }
+
+  Widget _supplierIssueConversationEntry(Map<String, dynamic> entry) {
+    final kind = entry['kind']?.toString();
+    final createdAt = _formatDate(entry['created_at']);
+
+    if (kind == 'system') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            const Expanded(child: Divider()),
+            const SizedBox(width: 9),
+            Flexible(
+              flex: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F1EE),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${entry['message'] ?? ''}${createdAt.isEmpty ? '' : ' • $createdAt'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 9.8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            const Expanded(child: Divider()),
+          ],
+        ),
+      );
+    }
+
+    final butcher = entry['sender_role']?.toString() == 'butcher';
+    return Align(
+      alignment: butcher ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 560),
+        margin: const EdgeInsets.only(bottom: 9),
+        child: Column(
+          crossAxisAlignment: butcher
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Text(
+                butcher ? 'Butcher' : 'You',
+                style: TextStyle(
+                  color: butcher
+                      ? const Color(0xFF315A8C)
+                      : const Color(0xFF741C1C),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
+              decoration: BoxDecoration(
+                color: butcher
+                    ? const Color(0xFFEAF1FB)
+                    : const Color(0xFFF5EAEA),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: Radius.circular(butcher ? 3 : 12),
+                  bottomRight: Radius.circular(butcher ? 12 : 3),
+                ),
+                border: Border.all(
+                  color: butcher
+                      ? const Color(0xFFC6D7EB)
+                      : const Color(0xFFD7B8B8),
+                ),
+              ),
+              child: Text(
+                entry['message']?.toString() ?? '',
+                style: const TextStyle(fontSize: 11.5, height: 1.4),
+              ),
+            ),
+            if (createdAt.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Text(
+                  createdAt,
+                  style: const TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 9.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _createReplacementFulfilment(
     Map<String, dynamic> order,
     Map<String, dynamic> issue,
@@ -1094,14 +1269,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           .update({'status': 'resolved', 'resolved_at': now})
           .eq('id', issueId);
 
-      await Supabase.instance.client.from('order_issue_messages').insert({
-        'order_issue_id': issueId,
-        'sender_business_id': supplierBusinessId,
-        'sender_role': 'supplier',
-        'message':
-            'Resolution completed and issue closed. Resolution: $resolution.',
-      });
-
       if (!mounted) {
         return;
       }
@@ -1161,19 +1328,20 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       return;
     }
 
-    final responseController = TextEditingController(
-      text: issue['supplier_response']?.toString() ?? '',
-    );
+    final responseController = TextEditingController();
     final creditController = TextEditingController(
       text: issue['credit_amount']?.toString() ?? '',
     );
 
-    String action = 'approve';
+    String action = issue['status']?.toString() == 'approved'
+        ? 'approve'
+        : 'approve';
     String resolutionType =
         issue['resolution_type']?.toString() ?? 'replacement';
     bool pickupRequired = issue['pickup_required'] == true;
     bool replacementRequired = issue['replacement_required'] == true;
     bool saving = false;
+    bool saved = false;
 
     try {
       await showDialog<void>(
@@ -1183,9 +1351,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           return StatefulBuilder(
             builder: (context, setDialogState) {
               Future<void> save() async {
-                if (saving) {
-                  return;
-                }
+                if (saving) return;
 
                 final response = responseController.text.trim();
                 final creditText = creditController.text.trim();
@@ -1194,16 +1360,16 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     : double.tryParse(creditText);
 
                 if (response.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
-                      content: Text('Enter a response for the butcher.'),
+                      content: Text('Enter a message for the butcher.'),
                     ),
                   );
                   return;
                 }
 
                 if (creditText.isNotEmpty && (credit == null || credit < 0)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
                       content: Text('Enter a valid credit amount.'),
                     ),
@@ -1211,19 +1377,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   return;
                 }
 
-                setDialogState(() {
-                  saving = true;
-                });
-
-                if (mounted) {
-                  setState(() {
-                    _updatingIssueId = issueId;
-                  });
-                }
+                setDialogState(() => saving = true);
+                if (mounted) setState(() => _updatingIssueId = issueId);
 
                 try {
                   final now = DateTime.now().toUtc().toIso8601String();
-
                   final update = <String, dynamic>{
                     'supplier_response': response,
                     'resolution_type': resolutionType,
@@ -1237,7 +1395,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     update['approved_at'] = now;
                     update['rejected_at'] = null;
                     update['resolved_at'] = null;
-                  } else if (action == 'reject') {
+                  } else {
                     update['status'] = 'rejected';
                     update['rejected_at'] = now;
                     update['approved_at'] = null;
@@ -1258,257 +1416,278 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         'message': response,
                       });
 
-                  if (!mounted || !dialogContext.mounted) {
-                    return;
-                  }
-
+                  if (!dialogContext.mounted) return;
+                  saved = true;
                   Navigator.of(dialogContext).pop();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Issue updated for '
-                        '${order['order_number'] ?? 'this order'}.',
-                      ),
-                    ),
-                  );
-
-                  await _loadOrders();
-
-                  // Issues now live in the dedicated Issues page.
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
                     ScaffoldMessenger.of(
                       dialogContext,
                     ).showSnackBar(SnackBar(content: Text(error.message)));
-
-                    setDialogState(() {
-                      saving = false;
-                    });
-                  }
-                } finally {
-                  if (mounted) {
-                    setState(() {
-                      _updatingIssueId = null;
-                    });
+                    setDialogState(() => saving = false);
                   }
                 }
               }
 
-              return AlertDialog(
-                title: Text(
-                  'Process Issue\n'
-                  '${order['order_number'] ?? ''}',
+              return Dialog(
+                backgroundColor: const Color(0xFFF7F7F5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                content: SizedBox(
-                  width: 620,
-                  child: SingleChildScrollView(
+                child: SizedBox(
+                  width: 650,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          _issueReasonLabel(issue['issue_reason']?.toString()),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        if (issue['description'] != null &&
-                            issue['description']
-                                .toString()
-                                .trim()
-                                .isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(issue['description'].toString()),
-                        ],
-                        if (_issueMessages(issue).isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Conversation',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 8),
-                          for (final message in _issueMessages(issue))
+                        Row(
+                          children: [
                             Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
+                              width: 38,
+                              height: 38,
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color:
-                                    message['sender_role']?.toString() ==
-                                        'butcher'
-                                    ? const Color(0xFFF3F3F1)
-                                    : const Color(0xFFEAF1FB),
-                                borderRadius: BorderRadius.circular(10),
+                                color: const Color(0xFFF5EAEA),
+                                borderRadius: BorderRadius.circular(9),
                               ),
-                              child: Text(
-                                '${message['sender_role']?.toString() == 'butcher' ? 'Butcher' : 'You'}: '
-                                '${message['message'] ?? ''}',
+                              child: const Icon(
+                                Icons.rule_folder_outlined,
+                                color: Color(0xFF741C1C),
+                                size: 19,
                               ),
                             ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Process Issue',
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: saving
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE0E0DD)),
+                          ),
+                          child: Text(
+                            _issueReasonLabel(
+                              issue['issue_reason']?.toString(),
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                initialValue: action,
+                                decoration: const InputDecoration(
+                                  labelText: 'Decision',
+                                  isDense: true,
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'approve',
+                                    child: Text('Approve / resolve'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'reject',
+                                    child: Text('Reject issue'),
+                                  ),
+                                ],
+                                onChanged: saving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setDialogState(() => action = value);
+                                        }
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                initialValue: resolutionType,
+                                decoration: const InputDecoration(
+                                  labelText: 'Resolution',
+                                  isDense: true,
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'replacement',
+                                    child: Text('Replacement / exchange'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'credit',
+                                    child: Text('Account credit'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'refund',
+                                    child: Text('Refund'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'collection',
+                                    child: Text('Supplier collection'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'other',
+                                    child: Text('Other'),
+                                  ),
+                                ],
+                                onChanged: saving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setDialogState(
+                                            () => resolutionType = value,
+                                          );
+                                        }
+                                      },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (resolutionType == 'credit' ||
+                            resolutionType == 'refund') ...[
+                          TextField(
+                            controller: creditController,
+                            enabled: !saving,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Credit / refund amount inc GST',
+                              prefixText: r'$ ',
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                         ],
-                        const SizedBox(height: 16),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          initialValue: action,
-                          decoration: const InputDecoration(
-                            labelText: 'Action',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'approve',
-                              child: Text('Approve issue'),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            FilterChip(
+                              selected: pickupRequired,
+                              label: const Text('Supplier pickup required'),
+                              onSelected: saving
+                                  ? null
+                                  : (value) => setDialogState(
+                                      () => pickupRequired = value,
+                                    ),
                             ),
-                            DropdownMenuItem(
-                              value: 'reject',
-                              child: Text('Reject issue'),
-                            ),
-                          ],
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setDialogState(() {
-                                      action = value;
-                                    });
-                                  }
-                                },
-                        ),
-                        const SizedBox(height: 14),
-                        DropdownButtonFormField<String>(
-                          initialValue: resolutionType,
-                          decoration: const InputDecoration(
-                            labelText: 'Resolution',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'replacement',
-                              child: Text('Replacement / exchange'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'credit',
-                              child: Text('Account credit / credit note'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'refund',
-                              child: Text('Refund'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'collection',
-                              child: Text('Supplier collection'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Other'),
+                            FilterChip(
+                              selected: replacementRequired,
+                              label: const Text('Replacement required'),
+                              onSelected: saving
+                                  ? null
+                                  : (value) => setDialogState(
+                                      () => replacementRequired = value,
+                                    ),
                             ),
                           ],
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setDialogState(() {
-                                      resolutionType = value;
-                                    });
-                                  }
-                                },
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: responseController,
                           minLines: 3,
-                          maxLines: 6,
+                          maxLines: 5,
                           enabled: !saving,
                           decoration: const InputDecoration(
-                            labelText: 'Reply / update to butcher',
+                            labelText: 'Message to butcher',
                             hintText:
-                                'Reply to the existing issue. Explain what happens next, including any collection, replacement or credit details.',
+                                'Explain what you are doing and what happens next.',
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: creditController,
-                          enabled: !saving,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Credit amount (optional)',
-                            prefixText: '\$',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: pickupRequired,
-                          title: const Text('Supplier pickup required'),
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  setDialogState(() {
-                                    pickupRequired = value;
-                                  });
-                                },
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: replacementRequired,
-                          title: const Text('Replacement required'),
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  setDialogState(() {
-                                    replacementRequired = value;
-                                  });
-                                },
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: saving
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            const SizedBox(width: 7),
+                            FilledButton.icon(
+                              onPressed: saving ? null : save,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF741C1C),
+                              ),
+                              icon: saving
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_outlined, size: 17),
+                              label: Text(saving ? 'Saving' : 'Save & Send'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: saving ? null : save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF741C1C),
-                    ),
-                    icon: saving
-                        ? const SizedBox(
-                            width: 17,
-                            height: 17,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(saving ? 'Saving...' : 'Save Issue Update'),
-                  ),
-                ],
               );
             },
           );
         },
       );
+
+      if (saved && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        if (!mounted) return;
+        await _loadOrders();
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Issue updated and message sent.')),
+          );
+        });
+      }
     } finally {
       responseController.dispose();
       creditController.dispose();
-
-      if (mounted) {
-        setState(() {
-          _updatingIssueId = null;
-        });
-      }
+      if (mounted) setState(() => _updatingIssueId = null);
     }
   }
 
@@ -1862,69 +2041,450 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   }
 
   Future<void> _openIssuesPanel() async {
+    String? selectedIssueId;
+
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (issuesContext) => Scaffold(
-          backgroundColor: const Color(0xFFF7F7F5),
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            title: const Text(
-              'Marketplace Issues',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-          body: Builder(
-            builder: (_) {
-              final issueOrders = _ordersForTab('issues');
+        builder: (issuesContext) {
+          return StatefulBuilder(
+            builder: (issuesContext, setIssuesState) {
+              final entries = <Map<String, dynamic>>[];
+              for (final order in _ordersForTab('issues')) {
+                for (final issue in _issues(order)) {
+                  if (_isIssueClosed(issue)) continue;
+                  entries.add({'order': order, 'issue': issue});
+                }
+              }
 
-              if (issueOrders.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 64,
-                          color: Color(0xFF2E7D32),
+              if (selectedIssueId == null && entries.isNotEmpty) {
+                selectedIssueId = (entries.first['issue'] as Map)['id']
+                    ?.toString();
+              }
+
+              if (selectedIssueId != null &&
+                  !entries.any(
+                    (entry) =>
+                        (entry['issue'] as Map)['id']?.toString() ==
+                        selectedIssueId,
+                  )) {
+                selectedIssueId = entries.isEmpty
+                    ? null
+                    : (entries.first['issue'] as Map)['id']?.toString();
+              }
+
+              Map<String, dynamic>? selectedEntry;
+              for (final entry in entries) {
+                final issue = Map<String, dynamic>.from(entry['issue'] as Map);
+                if (issue['id']?.toString() == selectedIssueId) {
+                  selectedEntry = entry;
+                  break;
+                }
+              }
+
+              Future<void> runAndRefresh(Future<void> Function() action) async {
+                await action();
+                if (!issuesContext.mounted) return;
+                await Future<void>.delayed(const Duration(milliseconds: 100));
+                setIssuesState(() {});
+              }
+
+              Widget queueRow(Map<String, dynamic> entry) {
+                final order = Map<String, dynamic>.from(entry['order'] as Map);
+                final issue = Map<String, dynamic>.from(entry['issue'] as Map);
+                final issueId = issue['id']?.toString() ?? '';
+                final selected = issueId == selectedIssueId;
+                final status = issue['status']?.toString() ?? 'requested';
+
+                return Material(
+                  color: selected ? const Color(0xFFF5EAEA) : Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                  child: InkWell(
+                    onTap: () =>
+                        setIssuesState(() => selectedIssueId = issueId),
+                    borderRadius: BorderRadius.circular(9),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFFB78585)
+                              : const Color(0xFFE0E0DD),
                         ),
-                        SizedBox(height: 14),
-                        Text(
-                          'No open marketplace issues',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFEEEE),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.report_problem_outlined,
+                              color: Color(0xFF9B3333),
+                              size: 18,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _issueReasonLabel(
+                                    issue['issue_reason']?.toString(),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 9.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            status.replaceAll('_', ' '),
+                            style: const TextStyle(
+                              color: Color(0xFF741C1C),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
               }
 
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: issueOrders.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (_, index) =>
-                        _buildOrderCard(issueOrders[index]),
+              Widget workspace() {
+                if (selectedEntry == null) {
+                  return const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 56,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'No open marketplace issues',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final order = Map<String, dynamic>.from(
+                  selectedEntry['order'] as Map,
+                );
+                final issue = Map<String, dynamic>.from(
+                  selectedEntry['issue'] as Map,
+                );
+                final issueId = issue['id']?.toString() ?? '';
+                final status = issue['status']?.toString() ?? 'requested';
+                final resolutionType = issue['resolution_type']?.toString();
+                final replacementOrderId = issue['replacement_order_id']
+                    ?.toString();
+                final conversation = _issueConversationEntries(issue);
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE0E0DD)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _issueReasonLabel(
+                                      issue['issue_reason']?.toString(),
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF741C1C),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF4E5),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                status.replaceAll('_', ' ').toUpperCase(),
+                                style: const TextStyle(
+                                  color: Color(0xFF9A5B00),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if ((issue['description']?.toString().trim() ?? '')
+                          .isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F8F6),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Text(
+                            issue['description'].toString(),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF555555),
+                              fontSize: 10.5,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: conversation.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No conversation yet.',
+                                  style: TextStyle(color: Color(0xFF777777)),
+                                ),
+                              )
+                            : ListView(
+                                padding: const EdgeInsets.all(14),
+                                children: [
+                                  for (final entry in conversation)
+                                    _supplierIssueConversationEntry(entry),
+                                ],
+                              ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFBFBF9),
+                          border: Border(
+                            top: BorderSide(color: Color(0xFFE0E0DD)),
+                          ),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 7,
+                          runSpacing: 7,
+                          children: [
+                            if (replacementOrderId == null &&
+                                resolutionType == 'replacement' &&
+                                status != 'rejected')
+                              OutlinedButton.icon(
+                                onPressed: _updatingIssueId == issueId
+                                    ? null
+                                    : () => runAndRefresh(
+                                        () => _createReplacementFulfilment(
+                                          order,
+                                          issue,
+                                        ),
+                                      ),
+                                icon: const Icon(Icons.autorenew, size: 17),
+                                label: const Text('Start Replacement'),
+                              ),
+                            if (status == 'approved' &&
+                                resolutionType != 'replacement' &&
+                                replacementOrderId == null)
+                              FilledButton.icon(
+                                onPressed: _updatingIssueId == issueId
+                                    ? null
+                                    : () => runAndRefresh(
+                                        () => _confirmResolutionCompleted(
+                                          order,
+                                          issue,
+                                        ),
+                                      ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2E7D32),
+                                ),
+                                icon: const Icon(Icons.task_alt, size: 17),
+                                label: const Text('Mark Resolved'),
+                              ),
+                            FilledButton.icon(
+                              onPressed: _updatingIssueId == issueId
+                                  ? null
+                                  : () => runAndRefresh(
+                                      () => _respondToIssue(order, issue),
+                                    ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF741C1C),
+                              ),
+                              icon: const Icon(Icons.reply_outlined, size: 17),
+                              label: Text(
+                                status == 'requested'
+                                    ? 'Process & Reply'
+                                    : 'Reply / Update',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Scaffold(
+                backgroundColor: const Color(0xFFF7F7F5),
+                appBar: AppBar(
+                  backgroundColor: Colors.white,
+                  surfaceTintColor: Colors.white,
+                  title: const Text(
+                    'Marketplace Issues',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Center(
+                        child: Text(
+                          '${entries.length} open',
+                          style: const TextStyle(
+                            color: Color(0xFF741C1C),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                body: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1180),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final narrow = constraints.maxWidth < 850;
+
+                          final queue = Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE0E0DD),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.fromLTRB(12, 10, 12, 8),
+                                  child: Text(
+                                    'Open Issues',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: entries.isEmpty
+                                      ? const Center(
+                                          child: Text(
+                                            'No open issues.',
+                                            style: TextStyle(
+                                              color: Color(0xFF777777),
+                                            ),
+                                          ),
+                                        )
+                                      : ListView.separated(
+                                          padding: const EdgeInsets.all(8),
+                                          itemCount: entries.length,
+                                          separatorBuilder: (_, _) =>
+                                              const SizedBox(height: 6),
+                                          itemBuilder: (_, index) =>
+                                              queueRow(entries[index]),
+                                        ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (narrow) {
+                            return ListView(
+                              children: [
+                                SizedBox(height: 300, child: queue),
+                                const SizedBox(height: 10),
+                                SizedBox(height: 650, child: workspace()),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(width: 330, child: queue),
+                              const SizedBox(width: 10),
+                              Expanded(child: workspace()),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               );
             },
-          ),
-        ),
+          );
+        },
       ),
     );
 
-    if (mounted) {
-      await _loadOrders();
-    }
+    if (mounted) await _loadOrders();
   }
 
   Future<void> _openWorkOrder(Map<String, dynamic> order) async {

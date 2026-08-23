@@ -254,80 +254,87 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
   Widget _quoteCard(Map<String, dynamic> quote) {
     final items = _nestedList(quote['order_items']);
     final activity = _activityDate(quote);
+    final pickup = quote['fulfilment_method']?.toString() == 'pickup';
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
         onTap: () => _openQuote(quote),
-        child: Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 10),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0xFFE0E0DD)),
-            borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE0E0DD)),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 700;
-
-                final details = Column(
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5EAEA),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.description_outlined,
+                  color: _darkRed,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _quoteNumber(quote),
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _quoteNumber(quote),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: Color(0xFF777777),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _customerName(quote),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _darkRed,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 5),
                     Text(
                       '${items.length} line${items.length == 1 ? '' : 's'}'
-                      '${activity == null ? '' : ' • ${_displayDate(activity.toIso8601String())}'}'
-                      ' • ${quote['fulfilment_method']?.toString() == 'pickup' ? 'Pickup' : 'Delivery'}',
+                      ' • ${pickup ? 'Pickup' : 'Delivery'}'
+                      '${activity == null ? '' : ' • ${_displayDate(activity.toIso8601String())}'}',
                       style: const TextStyle(
                         color: Color(0xFF666666),
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
-                );
-
-                final actions = FilledButton.icon(
-                  onPressed: () => _openQuote(quote),
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text('Open in Sales'),
-                );
-
-                if (narrow) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [details, const SizedBox(height: 14), actions],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: details),
-                    const SizedBox(width: 18),
-                    actions,
-                  ],
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -363,90 +370,215 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final today = _todaysQuotes;
     final old = _oldQuotes;
 
-    return RefreshIndicator(
-      onRefresh: _loadQuotes,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 60),
-        children: [
-          const Text(
-            'Today’s Quotes',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Quotes created or revised today.',
-            style: TextStyle(color: Color(0xFF666666)),
-          ),
-          const SizedBox(height: 14),
-          if (today.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
-              ),
-              child: const Text(
-                'No quotes created or revised today.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF666666),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            )
-          else
-            ...today.map(_quoteCard),
-          const SizedBox(height: 30),
-          const Divider(),
-          const SizedBox(height: 24),
-          const Text(
-            'Previous Quotes',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Search older quotes by customer, quote number, date, phone or product.',
-            style: TextStyle(color: Color(0xFF666666)),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _historySearchController,
-            decoration: InputDecoration(
-              hintText: 'Search old quotes',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _historySearchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: _historySearchController.clear,
-                      icon: const Icon(Icons.close),
-                    ),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+    Widget emptyState(String message) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 14),
-          if (old.isEmpty)
+        ),
+      );
+    }
+
+    Widget queuePanel({
+      required String title,
+      required String subtitle,
+      required List<Map<String, dynamic>> data,
+      Widget? search,
+      required String emptyMessage,
+    }) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 36),
-              child: Text(
-                _historySearchController.text.trim().isEmpty
-                    ? 'No previous quotes yet.'
-                    : 'No previous quotes match your search.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF666666),
-                  fontWeight: FontWeight.w700,
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF777777),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5EAEA),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${data.length}',
+                      style: const TextStyle(
+                        color: _darkRed,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (search != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: search,
+              ),
+            ],
+            const Divider(height: 1),
+            Expanded(
+              child: data.isEmpty
+                  ? emptyState(emptyMessage)
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(10),
+                      itemCount: data.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 7),
+                      itemBuilder: (_, index) => _quoteCard(data[index]),
+                    ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final searchField = TextField(
+      controller: _historySearchController,
+      decoration: InputDecoration(
+        hintText: 'Search quote, customer, product...',
+        prefixIcon: const Icon(Icons.search, size: 19),
+        suffixIcon: _historySearchController.text.isEmpty
+            ? null
+            : IconButton(
+                onPressed: _historySearchController.clear,
+                icon: const Icon(Icons.close, size: 18),
+              ),
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0xFFF8F8F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(9),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1180),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quotes',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Select any quote to reopen it inside the Sales workspace.',
+                          style: TextStyle(
+                            color: Color(0xFF666666),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _loadQuotes,
+                    tooltip: 'Refresh',
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final narrow = constraints.maxWidth < 850;
+
+                    final todayPanel = queuePanel(
+                      title: 'Today',
+                      subtitle: 'Created or revised today',
+                      data: today,
+                      emptyMessage: 'No quotes created or revised today.',
+                    );
+
+                    final historyPanel = queuePanel(
+                      title: 'Quote History',
+                      subtitle: 'Previous saved quotes',
+                      data: old,
+                      search: searchField,
+                      emptyMessage: _historySearchController.text.trim().isEmpty
+                          ? 'No previous quotes yet.'
+                          : 'No previous quotes match your search.',
+                    );
+
+                    if (narrow) {
+                      return ListView(
+                        children: [
+                          SizedBox(height: 360, child: todayPanel),
+                          const SizedBox(height: 12),
+                          SizedBox(height: 500, child: historyPanel),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 4, child: todayPanel),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 6, child: historyPanel),
+                      ],
+                    );
+                  },
                 ),
               ),
-            )
-          else
-            ...old.map(_quoteCard),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
