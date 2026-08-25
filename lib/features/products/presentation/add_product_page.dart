@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/cutlink_picker.dart';
+
 class AddProductPage extends StatefulWidget {
   const AddProductPage({
     super.key,
@@ -37,6 +39,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _packaging = TextEditingController();
   final _piecesPerCarton = TextEditingController();
   final _supplierNotes = TextEditingController();
+  final _chickenSizeWeight = TextEditingController();
+  final _chickenCartonSize = TextEditingController();
 
   String? _supplierBusinessId;
   String? _animalId;
@@ -47,6 +51,11 @@ class _AddProductPageState extends State<AddProductPage> {
   String _temperature = 'chilled';
   String _availability = 'in_stock';
   String _halal = 'not_specified';
+
+  String _chickenSkin = 'not_applicable';
+  String _chickenBone = 'not_applicable';
+  String _chickenProductionType = 'conventional';
+  String _chickenPreparation = 'not_applicable';
 
   bool _loading = true;
   bool _saving = false;
@@ -84,6 +93,8 @@ class _AddProductPageState extends State<AddProductPage> {
       _packaging,
       _piecesPerCarton,
       _supplierNotes,
+      _chickenSizeWeight,
+      _chickenCartonSize,
     ]) {
       controller.dispose();
     }
@@ -158,6 +169,7 @@ class _AddProductPageState extends State<AddProductPage> {
             if (!mounted) return;
 
             final requestedSpecificationId = widget.initialSpecificationId;
+
             if (requestedSpecificationId != null &&
                 requestedSpecificationId.isNotEmpty &&
                 _specifications.any(
@@ -183,8 +195,23 @@ class _AddProductPageState extends State<AddProductPage> {
     _message(message);
   }
 
+  Map<String, dynamic>? get _selectedAnimal {
+    if (_animalId == null) return null;
+    for (final animal in _animals) {
+      if (animal['id']?.toString() == _animalId) return animal;
+    }
+    return null;
+  }
+
+  bool get _isChicken => _selectedAnimal?['code']?.toString() == 'CHICKEN';
+
   Future<void> _selectAnimal(String? id) async {
     if (id == null) return;
+    final selected = _animals.firstWhere(
+      (animal) => animal['id']?.toString() == id,
+    );
+    final chicken = selected['code']?.toString() == 'CHICKEN';
+
     setState(() {
       _animalId = id;
       _sectionId = null;
@@ -194,6 +221,13 @@ class _AddProductPageState extends State<AddProductPage> {
       _specifications = [];
       _grades = [];
       _loadingSections = true;
+      _temperature = chicken ? 'fresh' : 'chilled';
+      if (chicken) {
+        _chickenSkin = 'not_applicable';
+        _chickenBone = 'not_applicable';
+        _chickenProductionType = 'conventional';
+        _chickenPreparation = 'not_applicable';
+      }
     });
 
     try {
@@ -267,9 +301,13 @@ class _AddProductPageState extends State<AddProductPage> {
       _specificationId = id;
       _gradeId = null;
       _grades = [];
-      _loadingGrades = true;
+      _loadingGrades = !_isChicken;
       _productName.text = selectedSpecification['name']?.toString() ?? '';
     });
+
+    if (_isChicken) {
+      return;
+    }
 
     try {
       final mappings = await Supabase.instance.client
@@ -431,13 +469,16 @@ class _AddProductPageState extends State<AddProductPage> {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
-    if (_animalId == null ||
-        _sectionId == null ||
-        _specificationId == null ||
-        _gradeId == null) {
-      _message('Select animal, section, specification and category.');
+    if (_animalId == null || _sectionId == null || _specificationId == null) {
+      _message('Select animal, main cut and sub-cut.');
       return;
     }
+
+    if (!_isChicken && _gradeId == null) {
+      _message('Select the product category / grade.');
+      return;
+    }
+
     if (_supplierBusinessId == null) return;
 
     final minimum = double.tryParse(_minimumCartons.text.trim());
@@ -446,64 +487,122 @@ class _AddProductPageState extends State<AddProductPage> {
       return;
     }
 
+    final piecesText = _piecesPerCarton.text.trim();
+    final pieces = piecesText.isEmpty ? null : int.tryParse(piecesText);
+    if (piecesText.isNotEmpty && (pieces == null || pieces < 0)) {
+      _message('Enter a valid pieces per carton value.');
+      return;
+    }
+
     setState(() => _saving = true);
 
     try {
-      await Supabase.instance.client.rpc(
-        'create_supplier_spec_grade_product',
-        params: {
-          'p_supplier_business_id': _supplierBusinessId,
-          'p_animal_id': _animalId,
-          'p_section_id': _sectionId,
-          'p_specification_id': _specificationId,
-          'p_grade_id': _gradeId,
-          'p_sku': _sku.text.trim(),
-          'p_product_name': _productName.text.trim(),
-          'p_standard_price_inc_gst': double.parse(_standardPrice.text.trim()),
-          'p_available_cartons': _availableCartons.text.trim().isEmpty
-              ? null
-              : double.parse(_availableCartons.text.trim()),
-          'p_minimum_cartons': minimum,
-          'p_temperature_state': _temperature,
-          'p_availability_status': _availability,
-          'p_description': _description.text.trim().isEmpty
-              ? null
-              : _description.text.trim(),
-          'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
-          'p_origin_country': _originCountry.text.trim().isEmpty
-              ? null
-              : _originCountry.text.trim(),
-          'p_origin_state': _originState.text.trim().isEmpty
-              ? null
-              : _originState.text.trim(),
-          'p_marbling_score': _marbling.text.trim().isEmpty
-              ? null
-              : _marbling.text.trim(),
-          'p_breed_program': _breed.text.trim().isEmpty
-              ? null
-              : _breed.text.trim(),
-          'p_trim_specification': _trim.text.trim().isEmpty
-              ? null
-              : _trim.text.trim(),
-          'p_fat_specification': _fat.text.trim().isEmpty
-              ? null
-              : _fat.text.trim(),
-          'p_halal_status': _halal,
-          'p_packaging_type': _packaging.text.trim().isEmpty
-              ? null
-              : _packaging.text.trim(),
-          'p_pieces_per_carton': _piecesPerCarton.text.trim().isEmpty
-              ? null
-              : int.parse(_piecesPerCarton.text.trim()),
-          'p_supplier_specification': _supplierNotes.text.trim().isEmpty
-              ? null
-              : _supplierNotes.text.trim(),
-        },
-      );
+      if (_isChicken) {
+        await Supabase.instance.client.rpc(
+          'create_supplier_chicken_product',
+          params: {
+            'p_supplier_business_id': _supplierBusinessId,
+            'p_animal_id': _animalId,
+            'p_section_id': _sectionId,
+            'p_specification_id': _specificationId,
+            'p_sku': _sku.text.trim(),
+            'p_product_name': _productName.text.trim(),
+            'p_standard_price_inc_gst': double.parse(
+              _standardPrice.text.trim(),
+            ),
+            'p_available_cartons': _availableCartons.text.trim().isEmpty
+                ? null
+                : double.parse(_availableCartons.text.trim()),
+            'p_minimum_cartons': minimum,
+            'p_temperature_state': _temperature,
+            'p_availability_status': _availability,
+            'p_description': _description.text.trim().isEmpty
+                ? null
+                : _description.text.trim(),
+            'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
+            'p_halal_status': _halal,
+            'p_chicken_skin': _chickenSkin,
+            'p_chicken_bone': _chickenBone,
+            'p_chicken_production_type': _chickenProductionType,
+            'p_chicken_preparation': _chickenPreparation,
+            'p_chicken_size_weight': _chickenSizeWeight.text.trim().isEmpty
+                ? null
+                : _chickenSizeWeight.text.trim(),
+            'p_chicken_carton_size': _chickenCartonSize.text.trim().isEmpty
+                ? null
+                : _chickenCartonSize.text.trim(),
+            'p_packaging_type': _packaging.text.trim().isEmpty
+                ? null
+                : _packaging.text.trim(),
+            'p_pieces_per_carton': pieces,
+            'p_supplier_specification': _supplierNotes.text.trim().isEmpty
+                ? null
+                : _supplierNotes.text.trim(),
+          },
+        );
+      } else {
+        await Supabase.instance.client.rpc(
+          'create_supplier_spec_grade_product',
+          params: {
+            'p_supplier_business_id': _supplierBusinessId,
+            'p_animal_id': _animalId,
+            'p_section_id': _sectionId,
+            'p_specification_id': _specificationId,
+            'p_grade_id': _gradeId,
+            'p_sku': _sku.text.trim(),
+            'p_product_name': _productName.text.trim(),
+            'p_standard_price_inc_gst': double.parse(
+              _standardPrice.text.trim(),
+            ),
+            'p_available_cartons': _availableCartons.text.trim().isEmpty
+                ? null
+                : double.parse(_availableCartons.text.trim()),
+            'p_minimum_cartons': minimum,
+            'p_temperature_state': _temperature,
+            'p_availability_status': _availability,
+            'p_description': _description.text.trim().isEmpty
+                ? null
+                : _description.text.trim(),
+            'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
+            'p_origin_country': _originCountry.text.trim().isEmpty
+                ? null
+                : _originCountry.text.trim(),
+            'p_origin_state': _originState.text.trim().isEmpty
+                ? null
+                : _originState.text.trim(),
+            'p_marbling_score': _marbling.text.trim().isEmpty
+                ? null
+                : _marbling.text.trim(),
+            'p_breed_program': _breed.text.trim().isEmpty
+                ? null
+                : _breed.text.trim(),
+            'p_trim_specification': _trim.text.trim().isEmpty
+                ? null
+                : _trim.text.trim(),
+            'p_fat_specification': _fat.text.trim().isEmpty
+                ? null
+                : _fat.text.trim(),
+            'p_halal_status': _halal,
+            'p_packaging_type': _packaging.text.trim().isEmpty
+                ? null
+                : _packaging.text.trim(),
+            'p_pieces_per_carton': pieces,
+            'p_supplier_specification': _supplierNotes.text.trim().isEmpty
+                ? null
+                : _supplierNotes.text.trim(),
+          },
+        );
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product and category price created.')),
+        SnackBar(
+          content: Text(
+            _isChicken
+                ? 'Chicken product created.'
+                : 'Product and category price created.',
+          ),
+        ),
       );
       Navigator.pop(context, true);
     } on PostgrestException catch (e) {
@@ -524,37 +623,399 @@ class _AddProductPageState extends State<AddProductPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Widget _heading(String title, String subtitle) {
+  Widget _sectionCard({
+    required String title,
+    required String subtitle,
+    required Widget child,
+    IconData icon = Icons.inventory_2_outlined,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E6E2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E3DF)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF2E2E2E),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4EAEA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: _darkRed, size: 21),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF2A2A2A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF6B6B6B),
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 5),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Color(0xFF666666),
-              height: 1.4,
-              fontSize: 13.5,
-            ),
-          ),
+          const SizedBox(height: 20),
+          child,
         ],
       ),
+    );
+  }
+
+  Future<String?> _showCutLinkPicker({
+    required String title,
+    required List<Map<String, String>> options,
+    String? currentValue,
+  }) {
+    return showCutLinkPickerDialog<String>(
+      context: context,
+      title: title,
+      currentValue: currentValue,
+      options: options
+          .map(
+            (option) => CutLinkPickerOption<String>(
+              value: option['value']!,
+              label: option['label'] ?? '',
+              subtitle: option['subtitle'],
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _cutLinkPickerField({
+    required String label,
+    required String? value,
+    required List<Map<String, String>> options,
+    required Future<void> Function(String?) onSelected,
+    String hint = 'Select',
+    bool enabled = true,
+    bool loading = false,
+    String? helperText,
+    String? Function(String?)? validator,
+  }) {
+    final selected = options.cast<Map<String, String>?>().firstWhere(
+      (option) => option?['value'] == value,
+      orElse: () => null,
+    );
+
+    return FormField<String>(
+      key: ValueKey('$label-$value-${options.length}-$loading'),
+      initialValue: value,
+      validator: validator,
+      builder: (field) {
+        final hasValue = selected != null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(13),
+              onTap: !enabled || loading
+                  ? null
+                  : () async {
+                      final picked = await _showCutLinkPicker(
+                        title: label,
+                        options: options,
+                        currentValue: value,
+                      );
+                      if (picked == null) return;
+                      field.didChange(picked);
+                      await onSelected(picked);
+                    },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                constraints: const BoxConstraints(minHeight: 58),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: enabled ? Colors.white : const Color(0xFFF3F3F1),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: field.hasError
+                        ? Colors.red.shade700
+                        : hasValue
+                        ? const Color(0xFFC9B1B1)
+                        : const Color(0xFFD8D8D4),
+                    width: hasValue ? 1.2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: hasValue
+                            ? const Color(0xFFF4E8E8)
+                            : const Color(0xFFF1F1EE),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: loading
+                          ? const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              hasValue
+                                  ? Icons.check_circle_outline
+                                  : Icons.touch_app_outlined,
+                              size: 18,
+                              color: hasValue
+                                  ? _darkRed
+                                  : const Color(0xFF777777),
+                            ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: Color(0xFF777777),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            hasValue
+                                ? selected['label'] ?? hint
+                                : loading
+                                ? 'Loading...'
+                                : hint,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: hasValue
+                                  ? const Color(0xFF262626)
+                                  : const Color(0xFF999999),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF666666),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (helperText != null && helperText.trim().isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  helperText,
+                  style: const TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 11,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+            if (field.hasError) ...[
+              const SizedBox(height: 5),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  field.errorText!,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 11),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _twoFields(Widget left, Widget right) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 620) {
+          return Column(children: [left, const SizedBox(height: 14), right]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 14),
+            Expanded(child: right),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _chickenSpecifications() {
+    CutLinkPickerField<String> picker({
+      required String label,
+      required String value,
+      required List<CutLinkPickerOption<String>> options,
+      required ValueChanged<String> onChanged,
+    }) {
+      return CutLinkPickerField<String>(
+        label: label,
+        value: value,
+        options: options,
+        enabled: !_saving,
+        onChanged: (picked) {
+          if (picked != null) onChanged(picked);
+        },
+      );
+    }
+
+    return Column(
+      children: [
+        _twoFields(
+          picker(
+            label: 'Skin',
+            value: _chickenSkin,
+            options: const [
+              CutLinkPickerOption(value: 'skin_on', label: 'Skin On'),
+              CutLinkPickerOption(value: 'skin_off', label: 'Skin Off'),
+              CutLinkPickerOption(
+                value: 'not_applicable',
+                label: 'Not Applicable',
+              ),
+            ],
+            onChanged: (value) => setState(() => _chickenSkin = value),
+          ),
+          picker(
+            label: 'Bone',
+            value: _chickenBone,
+            options: const [
+              CutLinkPickerOption(value: 'bone_in', label: 'Bone In'),
+              CutLinkPickerOption(value: 'boneless', label: 'Boneless'),
+              CutLinkPickerOption(
+                value: 'not_applicable',
+                label: 'Not Applicable',
+              ),
+            ],
+            onChanged: (value) => setState(() => _chickenBone = value),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          picker(
+            label: 'Product State',
+            value: _temperature,
+            options: const [
+              CutLinkPickerOption(value: 'fresh', label: 'Fresh'),
+              CutLinkPickerOption(value: 'frozen', label: 'Frozen'),
+            ],
+            onChanged: (value) => setState(() => _temperature = value),
+          ),
+          picker(
+            label: 'Production Type',
+            value: _chickenProductionType,
+            options: const [
+              CutLinkPickerOption(value: 'conventional', label: 'Conventional'),
+              CutLinkPickerOption(value: 'free_range', label: 'Free Range'),
+              CutLinkPickerOption(value: 'organic', label: 'Organic'),
+              CutLinkPickerOption(value: 'other', label: 'Other'),
+            ],
+            onChanged: (value) =>
+                setState(() => _chickenProductionType = value),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          picker(
+            label: 'Halal',
+            value: _halal,
+            options: const [
+              CutLinkPickerOption(
+                value: 'not_specified',
+                label: 'Not Specified',
+              ),
+              CutLinkPickerOption(value: 'halal', label: 'Halal'),
+              CutLinkPickerOption(value: 'not_halal', label: 'Not Halal'),
+            ],
+            onChanged: (value) => setState(() => _halal = value),
+          ),
+          picker(
+            label: 'Preparation',
+            value: _chickenPreparation,
+            options: const [
+              CutLinkPickerOption(
+                value: 'not_applicable',
+                label: 'Not Applicable',
+              ),
+              CutLinkPickerOption(value: 'whole', label: 'Whole'),
+              CutLinkPickerOption(value: 'fillet', label: 'Fillet'),
+              CutLinkPickerOption(value: 'diced', label: 'Diced'),
+              CutLinkPickerOption(value: 'strips', label: 'Strips'),
+              CutLinkPickerOption(value: 'sliced', label: 'Sliced'),
+              CutLinkPickerOption(value: 'minced', label: 'Minced'),
+              CutLinkPickerOption(value: 'butterflied', label: 'Butterflied'),
+              CutLinkPickerOption(value: 'schnitzel', label: 'Schnitzel'),
+              CutLinkPickerOption(
+                value: 'portion_controlled',
+                label: 'Portion Controlled',
+              ),
+              CutLinkPickerOption(value: 'other', label: 'Other'),
+            ],
+            onChanged: (value) => setState(() => _chickenPreparation = value),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          TextFormField(
+            controller: _chickenSizeWeight,
+            decoration: const InputDecoration(
+              labelText: 'Size / Weight (optional)',
+              hintText: 'Example: 1.8-2.0 kg or 200 g portions',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          TextFormField(
+            controller: _chickenCartonSize,
+            decoration: const InputDecoration(
+              labelText: 'Pack / Carton Size (optional)',
+              hintText: 'Example: 5 kg, 10 kg, 12 units',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -565,454 +1026,519 @@ class _AddProductPageState extends State<AddProductPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF6F6F3),
       appBar: AppBar(
         title: const Text(
           'Add Product',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFFE4E4E1)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(30),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 34),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1160),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Create Supplier Product',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF262626),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isChicken
+                        ? 'Chicken uses cut, sub-cut and practical product specifications instead of beef-style grades.'
+                        : 'Create an inventory product using the CutLink animal, cut and category structure.',
+                    style: const TextStyle(
+                      color: Color(0xFF6A6A6A),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _sectionCard(
+                    title: 'Product Classification',
+                    subtitle: _isChicken
+                        ? 'Choose Chicken, the main cut and the sub-cut. Grade is not required for Chicken.'
+                        : 'Choose the animal, main cut, specification and category.',
+                    icon: Icons.account_tree_outlined,
+                    child: Column(
+                      children: [
+                        _twoFields(
+                          _cutLinkPickerField(
+                            label: 'Animal',
+                            value: _animalId,
+                            options: _animals
+                                .map(
+                                  (e) => {
+                                    'value': e['id'].toString(),
+                                    'label': e['name'].toString(),
+                                    'subtitle': 'Browse ${e['name']} catalogue',
+                                  },
+                                )
+                                .toList(),
+                            onSelected: _selectAnimal,
+                            enabled: !_saving,
+                            hint: 'Choose animal',
+                            validator: (value) =>
+                                value == null ? 'Animal is required.' : null,
+                          ),
+                          _cutLinkPickerField(
+                            label: _isChicken
+                                ? 'Main Cut'
+                                : 'Section / Main Cut',
+                            value: _sectionId,
+                            options: _sections
+                                .map(
+                                  (e) => {
+                                    'value': e['id'].toString(),
+                                    'label': e['name'].toString(),
+                                    'subtitle': e['is_miscellaneous'] == true
+                                        ? 'Other / miscellaneous'
+                                        : 'Main cut',
+                                  },
+                                )
+                                .toList(),
+                            onSelected: _selectSection,
+                            enabled:
+                                _animalId != null &&
+                                !_loadingSections &&
+                                !_saving,
+                            loading: _loadingSections,
+                            hint: _animalId == null
+                                ? 'Choose animal first'
+                                : 'Choose main cut',
+                            validator: (value) =>
+                                value == null ? 'Main cut is required.' : null,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _cutLinkPickerField(
+                          label: _isChicken ? 'Sub-cut' : 'Cut / Specification',
+                          value: _specificationId,
+                          options: _specifications
+                              .map(
+                                (e) => {
+                                  'value': e['id'].toString(),
+                                  'label': _specLabel(e),
+                                  'subtitle':
+                                      e['specification_type'] ==
+                                          'supplier_custom'
+                                      ? 'Supplier custom specification'
+                                      : _isChicken
+                                      ? 'Chicken sub-cut'
+                                      : 'CutLink specification',
+                                },
+                              )
+                              .toList(),
+                          onSelected: _selectSpecification,
+                          enabled:
+                              _sectionId != null &&
+                              !_loadingSpecifications &&
+                              !_saving,
+                          loading: _loadingSpecifications,
+                          hint: _sectionId == null
+                              ? 'Choose main cut first'
+                              : 'Choose sub-cut',
+                          validator: (value) =>
+                              value == null ? 'Sub-cut is required.' : null,
+                        ),
+                        if (!_isChicken) ...[
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: _sectionId == null || _saving
+                                  ? null
+                                  : _addManualSpecification,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Specification Manually'),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _cutLinkPickerField(
+                            label: 'Grade / AUS-MEAT Category',
+                            value: _gradeId,
+                            options: _grades
+                                .map(
+                                  (e) => {
+                                    'value': e['id'].toString(),
+                                    'label': _gradeLabel(e),
+                                    'subtitle':
+                                        e['description']?.toString() ?? '',
+                                  },
+                                )
+                                .toList(),
+                            onSelected: (value) async {
+                              setState(() => _gradeId = value);
+                            },
+                            enabled:
+                                _grades.isNotEmpty &&
+                                !_loadingGrades &&
+                                !_saving,
+                            loading: _loadingGrades,
+                            hint: _specificationId == null
+                                ? 'Choose specification first'
+                                : _grades.isEmpty && !_loadingGrades
+                                ? 'No mapped categories'
+                                : 'Choose grade / category',
+                            helperText: _specificationId == null
+                                ? 'Choose a specification first.'
+                                : _grades.isEmpty && !_loadingGrades
+                                ? 'No categories are mapped to this specification yet.'
+                                : 'The supplier price below is specific to this category.',
+                            validator: (value) => _isChicken || value != null
+                                ? null
+                                : 'Category is required.',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (_isChicken) ...[
+                    const SizedBox(height: 14),
+                    _sectionCard(
+                      title: 'Chicken Specifications',
+                      subtitle:
+                          'These describe the actual product variation without creating duplicate sub-categories.',
+                      icon: Icons.tune_outlined,
+                      child: _chickenSpecifications(),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  _sectionCard(
+                    title: 'Product Details',
+                    subtitle:
+                        'Supplier SKU, product identity, brand and description.',
+                    icon: Icons.sell_outlined,
+                    child: Column(
+                      children: [
+                        _twoFields(
+                          TextFormField(
+                            controller: _sku,
+                            decoration: const InputDecoration(
+                              labelText: 'Supplier SKU / Product Code',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (v) => _required(v, 'Supplier SKU'),
+                          ),
+                          TextFormField(
+                            controller: _productName,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Product Name',
+                              helperText:
+                                  'Linked to the selected CutLink sub-cut.',
+                              prefixIcon: Icon(Icons.link_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (v) => _required(v, 'Product name'),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _twoFields(
+                          TextFormField(
+                            controller: _brand,
+                            decoration: const InputDecoration(
+                              labelText: 'Brand (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          TextFormField(
+                            controller: _packaging,
+                            decoration: const InputDecoration(
+                              labelText: 'Packaging (optional)',
+                              hintText: 'Example: vacuum packed',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _description,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 820;
+
+                      final pricing = _sectionCard(
+                        title: 'Pricing',
+                        subtitle: _isChicken
+                            ? 'Customer-facing Standard Price. Chicken remains ordered by carton and charged by actual kilograms where catch-weight applies.'
+                            : 'Standard category price, GST inclusive.',
+                        icon: Icons.payments_outlined,
+                        child: TextFormField(
+                          controller: _standardPrice,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Standard Price inc GST',
+                            prefixText: '\$',
+                            suffixText: '/ kg',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: _moneyValidator,
+                        ),
+                      );
+
+                      final inventory = _sectionCard(
+                        title: 'Inventory',
+                        subtitle:
+                            'Stock, minimum order and product availability.',
+                        icon: Icons.warehouse_outlined,
+                        child: Column(
+                          children: [
+                            _twoFields(
+                              TextFormField(
+                                controller: _availableCartons,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Current Stock',
+                                  suffixText: 'cartons',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: _optionalPositive,
+                              ),
+                              TextFormField(
+                                controller: _minimumCartons,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Minimum Order',
+                                  suffixText: 'cartons',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: _optionalPositive,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _twoFields(
+                              TextFormField(
+                                controller: _piecesPerCarton,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Units / Pieces per Carton',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              CutLinkPickerField<String>(
+                                label: 'Availability',
+                                value: _availability,
+                                options: const [
+                                  CutLinkPickerOption(
+                                    value: 'in_stock',
+                                    label: 'In stock',
+                                  ),
+                                  CutLinkPickerOption(
+                                    value: 'limited',
+                                    label: 'Limited stock',
+                                  ),
+                                  CutLinkPickerOption(
+                                    value: 'out_of_stock',
+                                    label: 'Out of stock',
+                                  ),
+                                  CutLinkPickerOption(
+                                    value: 'made_to_order',
+                                    label: 'Made to order',
+                                  ),
+                                ],
+                                enabled: !_saving,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _availability = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (narrow) {
+                        return Column(
+                          children: [
+                            pricing,
+                            const SizedBox(height: 14),
+                            inventory,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 4, child: pricing),
+                          const SizedBox(width: 14),
+                          Expanded(flex: 6, child: inventory),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  if (!_isChicken)
+                    _sectionCard(
+                      title: 'Additional Product Details',
+                      subtitle:
+                          'Secondary red-meat attributes. These do not replace the selected category.',
+                      icon: Icons.fact_check_outlined,
+                      child: Column(
+                        children: [
+                          _twoFields(
+                            CutLinkPickerField<String>(
+                              label: 'Storage Condition',
+                              value: _temperature,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'fresh',
+                                  label: 'Fresh',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'chilled',
+                                  label: 'Chilled',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'frozen',
+                                  label: 'Frozen',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _temperature = value);
+                                }
+                              },
+                            ),
+                            CutLinkPickerField<String>(
+                              label: 'Halal Status',
+                              value: _halal,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'not_specified',
+                                  label: 'Not specified',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'halal',
+                                  label: 'Halal',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'not_halal',
+                                  label: 'Not halal',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _halal = value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _marbling,
+                              decoration: const InputDecoration(
+                                labelText: 'Marbling / MB score (optional)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _breed,
+                              decoration: const InputDecoration(
+                                labelText: 'Breed / Program (optional)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _trim,
+                              decoration: const InputDecoration(
+                                labelText: 'Trim Specification (optional)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _fat,
+                              decoration: const InputDecoration(
+                                labelText: 'Fat Specification (optional)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _originCountry,
+                              decoration: const InputDecoration(
+                                labelText: 'Country of Origin',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _originState,
+                              decoration: const InputDecoration(
+                                labelText: 'State of Origin (optional)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (!_isChicken) const SizedBox(height: 14),
+                  _sectionCard(
+                    title: 'Supplier Notes',
+                    subtitle:
+                        'Optional internal/trade specification information.',
+                    icon: Icons.notes_outlined,
+                    child: TextFormField(
+                      controller: _supplierNotes,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: const InputDecoration(
+                        labelText: 'Supplier Specification / Notes (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _heading(
-                        'Product classification',
-                        'Choose the animal, section, cut specification and AUS-MEAT category.',
-                      ),
-                      const SizedBox(height: 20),
-                      DropdownButtonFormField<String>(
-                        initialValue: _animalId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Animal',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _animals
-                            .map(
-                              (e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text(e['name'].toString()),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _saving ? null : _selectAnimal,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _sectionId,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Section',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: _loadingSections
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        items: _sections
-                            .map(
-                              (e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text(
-                                  e['is_miscellaneous'] == true
-                                      ? '${e['name']} • Other'
-                                      : e['name'].toString(),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _animalId == null || _loadingSections
+                      TextButton(
+                        onPressed: _saving
                             ? null
-                            : _selectSection,
+                            : () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
                       ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _specificationId,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Cut / Specification',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: _loadingSpecifications
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        items: _specifications
-                            .map(
-                              (e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text(
-                                  _specLabel(e),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _sectionId == null || _loadingSpecifications
-                            ? null
-                            : _selectSpecification,
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: _sectionId == null || _saving
-                            ? null
-                            : _addManualSpecification,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Specification Manually'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _gradeId,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Grade / AUS-MEAT Category',
-                          helperText: _specificationId == null
-                              ? 'Choose a specification first.'
-                              : _grades.isEmpty && !_loadingGrades
-                              ? 'No categories are mapped to this specification yet.'
-                              : 'The supplier price below is specific to this category.',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: _loadingGrades
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        items: _grades
-                            .map(
-                              (e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text(_gradeLabel(e)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _grades.isEmpty
-                            ? null
-                            : (value) => setState(() => _gradeId = value),
-                      ),
-                      const SizedBox(height: 30),
-                      const Divider(),
-                      const SizedBox(height: 24),
-                      _heading(
-                        'Supplier listing & category price',
-                        'This listing represents one exact specification + grade combination. Marketplace catch-weight products are ordered by carton and charged by actual kilograms.',
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _sku,
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier SKU',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => _required(v, 'Supplier SKU'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _productName,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier product name',
-                          helperText:
-                              'Automatically linked to the selected cut / specification.',
-                          prefixIcon: Icon(Icons.link_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => _required(v, 'Product name'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _standardPrice,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Standard Price inc GST',
-                          prefixText: '\$',
-                          suffixText: '/ kg',
-                          helperText:
-                              'This price applies to the selected specification + category.',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _moneyValidator,
-                      ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 650;
-                          final available = TextFormField(
-                            controller: _availableCartons,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Available cartons (optional)',
-                              suffixText: 'cartons',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: _optionalPositive,
-                          );
-                          final minimum = TextFormField(
-                            controller: _minimumCartons,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Minimum order',
-                              suffixText: 'cartons',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: _optionalPositive,
-                          );
-                          if (narrow) {
-                            return Column(
-                              children: [
-                                available,
-                                const SizedBox(height: 16),
-                                minimum,
-                              ],
-                            );
-                          }
-                          return Row(
-                            children: [
-                              Expanded(child: available),
-                              const SizedBox(width: 16),
-                              Expanded(child: minimum),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _availability,
-                        decoration: const InputDecoration(
-                          labelText: 'Availability',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'in_stock',
-                            child: Text('In stock'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'limited',
-                            child: Text('Limited stock'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'out_of_stock',
-                            child: Text('Out of stock'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'made_to_order',
-                            child: Text('Made to order'),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => _availability = v!),
-                      ),
-                      const SizedBox(height: 30),
-                      const Divider(),
-                      const SizedBox(height: 24),
-                      _heading(
-                        'Additional product details',
-                        'These details are secondary attributes. They do not replace the selected AUS-MEAT category.',
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _brand,
-                        decoration: const InputDecoration(
-                          labelText: 'Brand (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _description,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Description (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _temperature,
-                        decoration: const InputDecoration(
-                          labelText: 'Storage condition',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'fresh',
-                            child: Text('Fresh'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'chilled',
-                            child: Text('Chilled'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'frozen',
-                            child: Text('Frozen'),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => _temperature = v!),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _marbling,
-                        decoration: const InputDecoration(
-                          labelText: 'Marbling / MB score (optional)',
-                          hintText: 'Example: MB4-5',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _breed,
-                        decoration: const InputDecoration(
-                          labelText: 'Breed / program (optional)',
-                          hintText: 'Example: Angus program',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _halal,
-                        decoration: const InputDecoration(
-                          labelText: 'Halal status',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'not_specified',
-                            child: Text('Not specified'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'halal',
-                            child: Text('Halal'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'not_halal',
-                            child: Text('Not halal'),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => _halal = v!),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _trim,
-                        decoration: const InputDecoration(
-                          labelText: 'Trim specification (optional)',
-                          hintText: 'Example: cap off, chain off',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _fat,
-                        decoration: const InputDecoration(
-                          labelText: 'Fat specification (optional)',
-                          hintText: 'Example: 10 mm fat',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _packaging,
-                        decoration: const InputDecoration(
-                          labelText: 'Packaging (optional)',
-                          hintText: 'Example: vacuum packed',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _piecesPerCarton,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Pieces per carton (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 650;
-                          final country = TextFormField(
-                            controller: _originCountry,
-                            decoration: const InputDecoration(
-                              labelText: 'Country of origin',
-                              border: OutlineInputBorder(),
-                            ),
-                          );
-                          final state = TextFormField(
-                            controller: _originState,
-                            decoration: const InputDecoration(
-                              labelText: 'State of origin (optional)',
-                              border: OutlineInputBorder(),
-                            ),
-                          );
-                          if (narrow) {
-                            return Column(
-                              children: [
-                                country,
-                                const SizedBox(height: 16),
-                                state,
-                              ],
-                            );
-                          }
-                          return Row(
-                            children: [
-                              Expanded(child: country),
-                              const SizedBox(width: 16),
-                              Expanded(child: state),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _supplierNotes,
-                        minLines: 3,
-                        maxLines: 6,
-                        decoration: const InputDecoration(
-                          labelText:
-                              'Supplier specification / notes (optional)',
-                          hintText:
-                              'Any extra trade details that do not fit the structured fields above',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(width: 10),
                       SizedBox(
-                        height: 56,
+                        height: 50,
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
                             backgroundColor: _darkRed,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                           ),
                           onPressed: _saving ? null : _save,
                           icon: _saving
@@ -1027,18 +1553,17 @@ class _AddProductPageState extends State<AddProductPage> {
                               : const Icon(Icons.add_business_outlined),
                           label: Text(
                             _saving
-                                ? 'Creating...'
-                                : 'Create Product & Grade Price',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
+                                ? 'Saving...'
+                                : _isChicken
+                                ? 'Add Chicken Product'
+                                : 'Add Product',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
             ),
           ),

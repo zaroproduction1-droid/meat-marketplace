@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 import 'supplier_create_order_page.dart';
@@ -143,6 +143,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             id,
             sku,
             product_name,
+            brand,
+            temperature_state,
+            halal_status,
+            chicken_skin,
+            chicken_bone,
+            chicken_production_type,
+            chicken_preparation,
+            chicken_size_weight,
+            chicken_carton_size,
             available_quantity,
             quantity_unit,
             availability_status,
@@ -467,6 +476,69 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return name == null || name.isEmpty ? '' : name;
   }
 
+  bool _isChickenProduct(Map<String, dynamic> product) {
+    return _productAnimalCode(product) == CutLinkAnimals.chicken;
+  }
+
+  String _prettyChickenValue(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty || raw == 'not_applicable' || raw == 'not_specified') {
+      return '';
+    }
+
+    return switch (raw) {
+      'skin_on' => 'Skin On',
+      'skin_off' => 'Skin Off',
+      'bone_in' => 'Bone In',
+      'boneless' => 'Boneless',
+      'fresh' => 'Fresh',
+      'frozen' => 'Frozen',
+      'conventional' => 'Conventional',
+      'free_range' => 'Free Range',
+      'organic' => 'Organic',
+      'whole' => 'Whole',
+      'fillet' => 'Fillet',
+      'diced' => 'Diced',
+      'strips' => 'Strips',
+      'sliced' => 'Sliced',
+      'minced' => 'Minced',
+      'butterflied' => 'Butterflied',
+      'schnitzel' => 'Schnitzel',
+      'portion_controlled' => 'Portion Controlled',
+      'halal' => 'Halal',
+      'not_halal' => 'Not Halal',
+      'other' => 'Other',
+      _ =>
+        raw
+            .split('_')
+            .where((part) => part.isNotEmpty)
+            .map(
+              (part) =>
+                  '${part.substring(0, 1).toUpperCase()}${part.substring(1)}',
+            )
+            .join(' '),
+    };
+  }
+
+  String _chickenVariationLabel(Map<String, dynamic> product) {
+    final values = <String>[
+      _prettyChickenValue(product['chicken_skin']),
+      _prettyChickenValue(product['chicken_bone']),
+      _prettyChickenValue(product['temperature_state']),
+      _prettyChickenValue(product['chicken_production_type']),
+      _prettyChickenValue(product['halal_status']),
+      _prettyChickenValue(product['chicken_preparation']),
+    ].where((value) => value.isNotEmpty).toList();
+
+    final size = product['chicken_size_weight']?.toString().trim() ?? '';
+    final carton = product['chicken_carton_size']?.toString().trim() ?? '';
+
+    if (size.isNotEmpty) values.add(size);
+    if (carton.isNotEmpty) values.add(carton);
+
+    return values.isEmpty ? 'Standard Chicken' : values.join(' • ');
+  }
+
   List<Map<String, String>> get _availableSpecifications {
     final byId = <String, String>{};
 
@@ -518,7 +590,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final search = _searchController.text.trim().toLowerCase();
 
     final results = _animalRegionProducts.where((product) {
-      if (_selectedGradeId != null &&
+      if (_selectedAnimalCode != CutLinkAnimals.chicken &&
+          _selectedGradeId != null &&
           product['meat_grade_id']?.toString() != _selectedGradeId) {
         return false;
       }
@@ -537,12 +610,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final specification = _specificationName(product).toLowerCase();
       final gradeCode = _gradeCode(product).toLowerCase();
       final gradeName = _gradeName(product).toLowerCase();
+      final chickenVariation = _isChickenProduct(product)
+          ? _chickenVariationLabel(product).toLowerCase()
+          : '';
+      final brand = product['brand']?.toString().toLowerCase() ?? '';
 
       return name.contains(search) ||
           sku.contains(search) ||
           specification.contains(search) ||
-          gradeCode.contains(search) ||
-          gradeName.contains(search);
+          brand.contains(search) ||
+          chickenVariation.contains(search) ||
+          (_selectedAnimalCode != CutLinkAnimals.chicken &&
+              (gradeCode.contains(search) || gradeName.contains(search)));
     }).toList();
 
     results.sort((a, b) {
@@ -550,6 +629,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         a,
       ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
       if (specificationCompare != 0) return specificationCompare;
+      if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+        return _chickenVariationLabel(
+          a,
+        ).toLowerCase().compareTo(_chickenVariationLabel(b).toLowerCase());
+      }
       return _gradeCode(a).compareTo(_gradeCode(b));
     });
 
@@ -2264,323 +2348,51 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   Future<void> _openGradeDropdown(BuildContext buttonContext) async {
-    final grades = _availableGrades;
-    final renderBox = buttonContext.findRenderObject() as RenderBox?;
-    final overlay =
-        Overlay.of(buttonContext).context.findRenderObject() as RenderBox?;
-
-    if (renderBox == null || overlay == null) return;
-
-    final offset = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
-
-    String typedQuery = '';
-
-    final selected = await showMenu<String>(
+    final selected = await showCutLinkPickerDialog<String>(
       context: buttonContext,
-      position: RelativeRect.fromLTRB(
-        offset.dx,
-        offset.dy + renderBox.size.height + 4,
-        overlay.size.width - offset.dx - renderBox.size.width,
-        overlay.size.height - offset.dy,
-      ),
-      constraints: const BoxConstraints(
-        minWidth: 245,
-        maxWidth: 320,
-        maxHeight: 360,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
-      items: [
-        PopupMenuItem<String>(
-          enabled: false,
-          padding: EdgeInsets.zero,
-          child: StatefulBuilder(
-            builder: (context, setPopupState) {
-              final filtered = grades.where((grade) {
-                if (typedQuery.isEmpty) return true;
-
-                final code = (grade['code'] ?? '').toLowerCase();
-                final name = (grade['name'] ?? '').toLowerCase();
-                final query = typedQuery.toLowerCase();
-
-                return code.contains(query) || name.contains(query);
-              }).toList();
-
-              final focusNode = FocusNode();
-
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (focusNode.canRequestFocus) {
-                  focusNode.requestFocus();
-                }
-              });
-
-              void chooseFirstMatch() {
-                if (filtered.isEmpty) return;
-                Navigator.of(context).pop(filtered.first['id']);
-              }
-
-              KeyEventResult handleKey(FocusNode node, KeyEvent event) {
-                if (event is! KeyDownEvent) {
-                  return KeyEventResult.ignored;
-                }
-
-                if (event.logicalKey == LogicalKeyboardKey.enter) {
-                  chooseFirstMatch();
-                  return KeyEventResult.handled;
-                }
-
-                if (event.logicalKey == LogicalKeyboardKey.backspace) {
-                  if (typedQuery.isNotEmpty) {
-                    setPopupState(() {
-                      typedQuery = typedQuery.substring(
-                        0,
-                        typedQuery.length - 1,
-                      );
-                    });
-                  }
-                  return KeyEventResult.handled;
-                }
-
-                if (event.logicalKey == LogicalKeyboardKey.escape) {
-                  Navigator.of(context).pop();
-                  return KeyEventResult.handled;
-                }
-
-                final character = event.character;
-                if (character != null &&
-                    character.isNotEmpty &&
-                    character.runes.first >= 32) {
-                  setPopupState(() {
-                    typedQuery += character;
-                  });
-                  return KeyEventResult.handled;
-                }
-
-                return KeyEventResult.ignored;
-              }
-
-              return Focus(
-                focusNode: focusNode,
-                onKeyEvent: handleKey,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 245,
-                    maxWidth: 320,
-                    maxHeight: 340,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.keyboard_outlined,
-                              size: 17,
-                              color: Color(0xFF777777),
-                            ),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                typedQuery.isEmpty
-                                    ? 'Type to search grades'
-                                    : 'Searching: $typedQuery',
-                                style: TextStyle(
-                                  color: typedQuery.isEmpty
-                                      ? const Color(0xFF777777)
-                                      : _darkRed,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Column(
-                            children: [
-                              if (typedQuery.isEmpty)
-                                InkWell(
-                                  onTap: () =>
-                                      Navigator.of(context).pop('__all__'),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 11,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 42,
-                                          height: 30,
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            color: _selectedGradeId == null
-                                                ? _darkRed
-                                                : const Color(0xFFF3F3F1),
-                                            borderRadius: BorderRadius.circular(
-                                              7,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'ALL',
-                                            style: TextStyle(
-                                              color: _selectedGradeId == null
-                                                  ? Colors.white
-                                                  : const Color(0xFF444444),
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        const Expanded(
-                                          child: Text(
-                                            'All Grades',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              if (filtered.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.all(18),
-                                  child: Text(
-                                    'No matching grade',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFF777777),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                )
-                              else
-                                for (final grade in filtered)
-                                  InkWell(
-                                    onTap: () =>
-                                        Navigator.of(context).pop(grade['id']),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 9,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 48,
-                                            height: 32,
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  _selectedGradeId ==
-                                                      grade['id']
-                                                  ? _darkRed
-                                                  : const Color(0xFFF4E5E5),
-                                              borderRadius:
-                                                  BorderRadius.circular(7),
-                                              border: Border.all(
-                                                color: const Color(0xFFD7B8B8),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              grade['code'] ?? '—',
-                                              style: TextStyle(
-                                                color:
-                                                    _selectedGradeId ==
-                                                        grade['id']
-                                                    ? Colors.white
-                                                    : _darkRed,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              (grade['name'] ?? '').isEmpty
-                                                  ? grade['code'] ?? 'Grade'
-                                                  : grade['name']!,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                          if (_selectedGradeId == grade['id'])
-                                            const Icon(
-                                              Icons.check,
-                                              size: 18,
-                                              color: _darkRed,
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (typedQuery.isNotEmpty && filtered.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                          child: Text(
-                            'Press Enter for ${filtered.first['code']}',
-                            style: const TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
+      title: 'Grade',
+      currentValue: _selectedGradeId,
+      searchHint: 'Search grade code or name',
+      options: [
+        const CutLinkPickerOption<String>(
+          value: '__all__',
+          label: 'All Grades',
+          subtitle: 'Show every grade',
+          icon: Icons.layers_outlined,
+        ),
+        ..._availableGrades.map(
+          (grade) => CutLinkPickerOption<String>(
+            value: grade['id']?.toString() ?? '',
+            label: grade['code']?.toString() ?? 'N/A',
+            subtitle: grade['name']?.toString(),
+            icon: Icons.workspace_premium_outlined,
           ),
         ),
       ],
     );
 
-    if (!mounted || selected == null) return;
+    if (selected == null || !mounted) return;
 
     setState(() {
-      if (selected == '__all__') {
-        _selectedGradeId = null;
-      } else {
-        _selectedGradeId = selected;
-      }
-
-      _selectedSpecificationId = null;
+      _selectedGradeId = selected == '__all__' ? null : selected;
     });
   }
 
-  String _selectedGradeDropdownLabel() {
-    if (_selectedGradeId == null) return 'All Grades';
+  String get _selectedGradeLabel {
+    final selectedId = _selectedGradeId;
+    if (selectedId == null) return 'All Grades';
 
     for (final grade in _availableGrades) {
-      if (grade['id'] == _selectedGradeId) {
-        final code = grade['code'] ?? '';
-        final name = grade['name'] ?? '';
-
-        if (name.trim().isEmpty) return code;
-        return '$code - $name';
+      if (grade['id']?.toString() == selectedId) {
+        final code = grade['code']?.toString().trim() ?? '';
+        final name = grade['name']?.toString().trim() ?? '';
+        if (code.isNotEmpty && name.isNotEmpty) return '$code • $name';
+        if (code.isNotEmpty) return code;
+        if (name.isNotEmpty) return name;
       }
     }
 
-    return 'All Grades';
+    return 'Selected Grade';
   }
 
   Widget _buildGradeFilterStrip() {
@@ -2618,7 +2430,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   const SizedBox(width: 7),
                   Flexible(
                     child: Text(
-                      _selectedGradeDropdownLabel(),
+                      _selectedGradeId == null
+                          ? 'All Grades'
+                          : _selectedGradeLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2749,9 +2563,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final standardPrice = _standardPrice(product);
     final price = standardPrice?['amount'];
     final catchWeight = _isCatchWeight(product);
+    final chicken = _isChickenProduct(product);
     final gradeCode = _gradeCode(product);
     final gradeName = _gradeName(product);
     final specification = _specificationName(product);
+    final chickenVariation = chicken ? _chickenVariationLabel(product) : '';
     final availability = _availabilityLabel(
       product['availability_status']?.toString(),
     );
@@ -2778,7 +2594,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               final narrow = constraints.maxWidth < 620;
 
               final gradeBadge = Container(
-                width: narrow ? 82 : 92,
+                width: narrow ? (chicken ? 150 : 82) : (chicken ? 190 : 92),
                 constraints: const BoxConstraints(minHeight: 72),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -2795,38 +2611,71 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         : const Color(0xFFD9D9D5),
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      gradeCode,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: available ? _darkRed : const Color(0xFF777777),
-                        fontSize: gradeCode.length > 3 ? 24 : 30,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                child: chicken
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CHICKEN',
+                            style: TextStyle(
+                              color: _darkRed,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            chickenVariation,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: available
+                                  ? _darkRed
+                                  : const Color(0xFF777777),
+                              fontSize: 11.5,
+                              height: 1.25,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            gradeCode,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: available
+                                  ? _darkRed
+                                  : const Color(0xFF777777),
+                              fontSize: gradeCode.length > 3 ? 24 : 30,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          if (gradeName.isNotEmpty &&
+                              gradeName.toLowerCase() !=
+                                  gradeCode.toLowerCase()) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              gradeName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 9.5,
+                                height: 1.05,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    if (gradeName.isNotEmpty &&
-                        gradeName.toLowerCase() != gradeCode.toLowerCase()) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        gradeName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
-                          fontSize: 9.5,
-                          height: 1.05,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
               );
 
               final productDetails = Column(
@@ -3159,14 +3008,20 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              'Find the cut, grade or SKU the customer is asking for.',
+                              _selectedAnimalCode == CutLinkAnimals.chicken
+                                  ? 'Find the Chicken cut, variation or SKU the customer is asking for.'
+                                  : 'Find the cut, grade or SKU the customer is asking for.',
                               style: TextStyle(color: Color(0xFF666666)),
                             ),
                             const SizedBox(height: 14),
                             TextField(
                               controller: _searchController,
                               decoration: InputDecoration(
-                                hintText: 'Search cut, grade or SKU',
+                                hintText:
+                                    _selectedAnimalCode ==
+                                        CutLinkAnimals.chicken
+                                    ? 'Search cut, skin, bone, state, brand or SKU'
+                                    : 'Search cut, grade or SKU',
                                 prefixIcon: const Icon(Icons.search),
                                 suffixIcon: _searchController.text.isEmpty
                                     ? null
@@ -3182,8 +3037,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            _buildGradeFilterStrip(),
-                            const SizedBox(height: 10),
+                            if (_selectedAnimalCode !=
+                                CutLinkAnimals.chicken) ...[
+                              _buildGradeFilterStrip(),
+                              const SizedBox(height: 10),
+                            ],
                             _buildSpecificationStrip(),
                             const SizedBox(height: 12),
                             if (_selectedAnimalRegionKey != null)

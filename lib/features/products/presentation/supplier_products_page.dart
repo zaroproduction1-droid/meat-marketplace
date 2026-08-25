@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'add_product_page.dart';
 import 'edit_product_page.dart';
+import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -175,6 +176,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             description,
             brand,
             temperature_state,
+            halal_status,
+            chicken_skin,
+            chicken_bone,
+            chicken_production_type,
+            chicken_preparation,
+            chicken_size_weight,
+            chicken_carton_size,
             available_quantity,
             quantity_unit,
             availability_status,
@@ -394,6 +402,69 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return _map(product['meat_grades'])?['code']?.toString().trim() ?? 'N/A';
   }
 
+  bool _isChickenProduct(Map<String, dynamic> product) {
+    return _productAnimalCode(product) == CutLinkAnimals.chicken;
+  }
+
+  String _prettyChickenValue(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty || raw == 'not_applicable' || raw == 'not_specified') {
+      return '';
+    }
+
+    return switch (raw) {
+      'skin_on' => 'Skin On',
+      'skin_off' => 'Skin Off',
+      'bone_in' => 'Bone In',
+      'boneless' => 'Boneless',
+      'fresh' => 'Fresh',
+      'frozen' => 'Frozen',
+      'conventional' => 'Conventional',
+      'free_range' => 'Free Range',
+      'organic' => 'Organic',
+      'whole' => 'Whole',
+      'fillet' => 'Fillet',
+      'diced' => 'Diced',
+      'strips' => 'Strips',
+      'sliced' => 'Sliced',
+      'minced' => 'Minced',
+      'butterflied' => 'Butterflied',
+      'schnitzel' => 'Schnitzel',
+      'portion_controlled' => 'Portion Controlled',
+      'halal' => 'Halal',
+      'not_halal' => 'Not Halal',
+      'other' => 'Other',
+      _ =>
+        raw
+            .split('_')
+            .where((part) => part.isNotEmpty)
+            .map(
+              (part) =>
+                  '${part.substring(0, 1).toUpperCase()}${part.substring(1)}',
+            )
+            .join(' '),
+    };
+  }
+
+  String _chickenVariationLabel(Map<String, dynamic> product) {
+    final values = <String>[
+      _prettyChickenValue(product['chicken_skin']),
+      _prettyChickenValue(product['chicken_bone']),
+      _prettyChickenValue(product['temperature_state']),
+      _prettyChickenValue(product['chicken_production_type']),
+      _prettyChickenValue(product['halal_status']),
+      _prettyChickenValue(product['chicken_preparation']),
+    ].where((value) => value.isNotEmpty).toList();
+
+    final size = product['chicken_size_weight']?.toString().trim() ?? '';
+    final carton = product['chicken_carton_size']?.toString().trim() ?? '';
+
+    if (size.isNotEmpty) values.add(size);
+    if (carton.isNotEmpty) values.add(carton);
+
+    return values.isEmpty ? 'Standard' : values.join(' • ');
+  }
+
   Map<String, List<Map<String, dynamic>>> get _groupedFilteredProducts {
     final grouped = <String, List<Map<String, dynamic>>>{};
 
@@ -501,15 +572,25 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     final client = Supabase.instance.client;
 
-    await client
-        .from('products')
-        .update({
-          'available_quantity': stock,
-          'quantity_unit': 'carton',
-          'availability_status': availability,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', productId);
+    final currentStockRaw = product['available_quantity'];
+    final currentStock = currentStockRaw is num
+        ? currentStockRaw.toDouble()
+        : double.tryParse(currentStockRaw?.toString() ?? '') ?? 0;
+
+    if (stock != currentStock ||
+        availability != product['availability_status']?.toString()) {
+      await client.rpc(
+        'update_supplier_product_stock',
+        params: {
+          'p_product_id': productId,
+          'p_quantity': stock,
+          'p_availability_status': availability,
+          'p_reason': 'manual_adjustment',
+          'p_notes':
+              '${_specificationName(product)} • ${_gradeCode(product)} inventory matrix update',
+        },
+      );
+    }
 
     final standardList = await _ensurePriceList(
       visibility: 'public',
@@ -684,6 +765,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         _specificationName(product),
         _gradeName(product),
         product['brand'],
+        product['temperature_state'],
+        product['halal_status'],
+        product['chicken_skin'],
+        product['chicken_bone'],
+        product['chicken_production_type'],
+        product['chicken_preparation'],
+        product['chicken_size_weight'],
+        product['chicken_carton_size'],
+        if (_isChickenProduct(product)) _chickenVariationLabel(product),
       ];
 
       return values.any(
@@ -916,8 +1006,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                 autofocus: false,
                 onChanged: (_) => _refresh(),
                 decoration: InputDecoration(
-                  hintText:
-                      'Search cut, specification, category, product name or SKU',
+                  hintText: _selectedAnimalCode == CutLinkAnimals.chicken
+                      ? 'Search cut, sub-cut, skin, bone, state, brand or SKU'
+                      : 'Search cut, specification, category, product name or SKU',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
@@ -1296,6 +1387,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final specification = _specificationName(first);
     final section = _sectionName(first);
     final saving = _savingSpecificationIds.contains(specificationId);
+    final chicken = _isChickenProduct(first);
+    final itemWord = chicken ? 'variation' : 'grade';
+    final itemWordPlural = chicken ? 'variations' : 'grades';
 
     return Card(
       elevation: 0,
@@ -1327,7 +1421,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '$section • ${products.length} grade${products.length == 1 ? '' : 's'}',
+                      '$section • ${products.length} '
+                      '${products.length == 1 ? itemWord : itemWordPlural}',
                       style: const TextStyle(
                         color: Color(0xFF666666),
                         fontSize: 12.5,
@@ -1349,7 +1444,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                                   ?.toString(),
                             ),
                       icon: const Icon(Icons.add, size: 17),
-                      label: const Text('Add Grade'),
+                      label: Text(chicken ? 'Add Variation' : 'Add Grade'),
                       style: OutlinedButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                       ),
@@ -1376,82 +1471,99 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                               ),
                             )
                           : const Icon(Icons.save_outlined, size: 17),
-                      label: Text(saving ? 'Saving' : 'Save Grades'),
+                      label: Text(
+                        saving
+                            ? 'Saving'
+                            : chicken
+                            ? 'Save Products'
+                            : 'Save Grades',
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: const Row(
-                children: [
-                  SizedBox(
-                    width: 78,
-                    child: Text(
-                      'GRADE',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 800) {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F6),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'STOCK',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
                   ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      r'STANDARD $/KG',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w900,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: chicken ? 245 : 78,
+                        child: Text(
+                          chicken ? 'VARIATION' : 'GRADE',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      r'TRADE $/KG',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w900,
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          'STOCK',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'STATUS',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w900,
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          r'STANDARD $/KG',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          r'TRADE $/KG',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          'STATUS',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 38),
+                    ],
                   ),
-                  SizedBox(width: 38),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 6),
             for (var index = 0; index < products.length; index++) ...[
@@ -1491,8 +1603,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 800;
 
+        final chicken = _isChickenProduct(product);
         final gradeBadge = Container(
-          width: narrow ? null : 68,
+          width: narrow
+              ? null
+              : chicken
+              ? 235
+              : 68,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           decoration: BoxDecoration(
             color: const Color(0xFFF3E8E8),
@@ -1500,11 +1617,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             border: Border.all(color: const Color(0xFFD8BEBE)),
           ),
           child: Text(
-            _gradeCode(product),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
+            chicken ? _chickenVariationLabel(product) : _gradeCode(product),
+            textAlign: chicken ? TextAlign.left : TextAlign.center,
+            maxLines: chicken ? 3 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
               color: _darkRed,
-              fontSize: 17,
+              fontSize: chicken ? 12.5 : 17,
+              height: 1.25,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1541,24 +1661,16 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           ),
         );
 
-        final statusField = DropdownButtonFormField<String>(
-          initialValue: availability,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            isDense: true,
-            border: OutlineInputBorder(),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'in_stock', child: Text('In stock')),
-            DropdownMenuItem(value: 'low_stock', child: Text('Low stock')),
-            DropdownMenuItem(
-              value: 'out_of_stock',
-              child: Text('Out of stock'),
-            ),
-            DropdownMenuItem(
-              value: 'made_to_order',
-              child: Text('Made to order'),
-            ),
+        final statusField = CutLinkPickerField<String>(
+          label: 'Status',
+          value: availability,
+          dense: true,
+          enableSearch: false,
+          options: const [
+            CutLinkPickerOption(value: 'in_stock', label: 'In stock'),
+            CutLinkPickerOption(value: 'low_stock', label: 'Low stock'),
+            CutLinkPickerOption(value: 'out_of_stock', label: 'Out of stock'),
+            CutLinkPickerOption(value: 'made_to_order', label: 'Made to order'),
           ],
           onChanged: (value) {
             if (value == null) return;
@@ -1605,7 +1717,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
-              SizedBox(width: 78, child: Align(child: gradeBadge)),
+              SizedBox(
+                width: chicken ? 245 : 78,
+                child: Align(child: gradeBadge),
+              ),
               Expanded(flex: 2, child: stockField),
               const SizedBox(width: 10),
               Expanded(flex: 2, child: standardField),
