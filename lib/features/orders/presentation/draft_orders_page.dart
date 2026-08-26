@@ -53,6 +53,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             butcher_business_id,
             supplier_business_id,
             status,
+            fulfilment_method,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
             customer_reference,
             delivery_notes,
             subtotal,
@@ -100,8 +103,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         _selectedOrderId = currentStillExists
             ? _selectedOrderId
             : (loadedOrders.isEmpty
-                  ? null
-                  : loadedOrders.first['id']?.toString());
+                ? null
+                : loadedOrders.first['id']?.toString());
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -234,7 +237,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
             decoration: InputDecoration(
               labelText: 'Quantity',
               suffixText: _unitLabel(item['quantity_unit']?.toString()),
@@ -272,7 +277,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     try {
       await Supabase.instance.client
           .from('order_items')
-          .update({'quantity': newQuantity})
+          .update({
+            'quantity': newQuantity,
+          })
           .eq('id', item['id']);
 
       await _loadDraftOrders();
@@ -281,9 +288,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     }
   }
 
@@ -332,10 +339,40 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     }
+  }
+
+  String _dateDbValue(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _timeDbValue(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}:00';
+  }
+
+  String _dateDisplay(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Future<void> _submitOrder(Map<String, dynamic> order) async {
@@ -344,30 +381,260 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Add at least one product before submitting the order.',
-          ),
+          content: Text('Add at least one product before submitting the order.'),
         ),
       );
       return;
     }
 
+    String fulfilmentMethod =
+        order['fulfilment_method']?.toString() == 'delivery'
+            ? 'delivery'
+            : 'pickup';
+
+    DateTime? requestedDate;
+    final existingDate = order['requested_fulfilment_date']?.toString();
+    if (existingDate != null && existingDate.isNotEmpty) {
+      requestedDate = DateTime.tryParse(existingDate);
+    }
+
+    TimeOfDay? requestedTime;
+    final existingTime = order['requested_fulfilment_time']?.toString();
+    if (existingTime != null && existingTime.isNotEmpty) {
+      final parts = existingTime.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+        if (hour != null && minute != null) {
+          requestedTime = TimeOfDay(hour: hour, minute: minute);
+        }
+      }
+    }
+
+    final schedule = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickDate() async {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final initial = requestedDate == null ||
+                      requestedDate!.isBefore(today)
+                  ? today
+                  : requestedDate!;
+
+              final picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: initial,
+                firstDate: today,
+                lastDate: DateTime(now.year + 2),
+              );
+
+              if (picked != null) {
+                setDialogState(() => requestedDate = picked);
+              }
+            }
+
+            Future<void> pickTime() async {
+              final picked = await showTimePicker(
+                context: dialogContext,
+                initialTime: requestedTime ?? TimeOfDay.now(),
+              );
+
+              if (picked != null) {
+                setDialogState(() => requestedTime = picked);
+              }
+            }
+
+            final methodLabel =
+                fulfilmentMethod == 'delivery' ? 'Delivery' : 'Pickup';
+
+            return AlertDialog(
+              title: Text(
+                'Request $methodLabel',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Tell ${_supplierName(order)} when you would like this order. '
+                      'The supplier can confirm this time or propose a different time when accepting the order.',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'FULFILMENT',
+                      style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment<String>(
+                          value: 'pickup',
+                          icon: Icon(Icons.storefront_outlined),
+                          label: Text('Pickup'),
+                        ),
+                        ButtonSegment<String>(
+                          value: 'delivery',
+                          icon: Icon(Icons.local_shipping_outlined),
+                          label: Text('Delivery'),
+                        ),
+                      ],
+                      selected: {fulfilmentMethod},
+                      onSelectionChanged: (selection) {
+                        if (selection.isEmpty) return;
+                        setDialogState(
+                          () => fulfilmentMethod = selection.first,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: pickDate,
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            label: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                requestedDate == null
+                                    ? 'Choose requested date'
+                                    : _dateDisplay(requestedDate!),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: pickTime,
+                            icon: const Icon(Icons.schedule_outlined),
+                            label: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                requestedTime == null
+                                    ? 'Choose requested time'
+                                    : requestedTime!.format(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7F7F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFE0E0DC),
+                        ),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Color(0xFF666666),
+                          ),
+                          SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              'This is your requested time. The supplier must confirm the final fulfilment schedule before the order enters the work-order queue.',
+                              style: TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 11.5,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Not Yet'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF741C1C),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: requestedDate == null || requestedTime == null
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop({
+                            'fulfilment_method': fulfilmentMethod,
+                            'requested_fulfilment_date':
+                                _dateDbValue(requestedDate!),
+                            'requested_fulfilment_time':
+                                _timeDbValue(requestedTime!),
+                          });
+                        },
+                  child: const Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (schedule == null || !mounted) {
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
+        final method = schedule['fulfilment_method'] == 'delivery'
+            ? 'Delivery'
+            : 'Pickup';
+
+        final date =
+            DateTime.parse(schedule['requested_fulfilment_date'].toString());
+        final rawTime = schedule['requested_fulfilment_time'].toString();
+        final timeParts = rawTime.split(':');
+        final time = TimeOfDay(
+          hour: int.parse(timeParts[0]),
+          minute: int.parse(timeParts[1]),
+        );
+
         return AlertDialog(
           title: const Text('Submit order?'),
           content: Text(
-            'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
+            'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}?\n\n'
+            '$method requested for ${_dateDisplay(date)} at ${time.format(dialogContext)}.\n\n'
             'Once submitted, the order items can no longer be changed.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Not Yet'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Back'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF741C1C),
               ),
@@ -385,7 +652,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     try {
       await Supabase.instance.client
           .from('orders')
-          .update({'status': 'submitted'})
+          .update({
+            'status': 'submitted',
+            'fulfilment_method': schedule['fulfilment_method'],
+            'requested_fulfilment_date':
+                schedule['requested_fulfilment_date'],
+            'requested_fulfilment_time':
+                schedule['requested_fulfilment_time'],
+          })
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
@@ -408,9 +682,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     }
   }
 
@@ -458,7 +732,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               const SizedBox(height: 14),
               const Text(
                 'Cart could not be loaded',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(_errorMessage!, textAlign: TextAlign.center),
@@ -488,13 +765,19 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               SizedBox(height: 16),
               Text(
                 'Your cart is empty',
-                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               SizedBox(height: 7),
               Text(
                 'Products added from Browse Products will appear here, grouped by supplier.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -525,7 +808,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               padding: EdgeInsets.fromLTRB(13, 12, 13, 9),
               child: Text(
                 'Supplier Orders',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -618,7 +904,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       );
     }
 
-    Widget itemRow(Map<String, dynamic> order, Map<String, dynamic> item) {
+    Widget itemRow(
+      Map<String, dynamic> order,
+      Map<String, dynamic> item,
+    ) {
       final quantity = _formatNumber(item['quantity']);
       final unit = _unitLabel(item['quantity_unit']?.toString());
       final rate = _money(item['unit_price']);
@@ -760,15 +1049,19 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(10),
                       itemCount: items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 7),
-                      itemBuilder: (_, index) => itemRow(order, items[index]),
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: 7),
+                      itemBuilder: (_, index) =>
+                          itemRow(order, items[index]),
                     ),
             ),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
                 color: Color(0xFFFBFBF9),
-                border: Border(top: BorderSide(color: Color(0xFFE0E0DD))),
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE0E0DD)),
+                ),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -805,7 +1098,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   );
 
                   final submit = FilledButton.icon(
-                    onPressed: items.isEmpty ? null : () => _submitOrder(order),
+                    onPressed:
+                        items.isEmpty ? null : () => _submitOrder(order),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF741C1C),
                       padding: const EdgeInsets.symmetric(
@@ -820,7 +1114,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   if (narrow) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [totals, const SizedBox(height: 10), submit],
+                      children: [
+                        totals,
+                        const SizedBox(height: 10),
+                        submit,
+                      ],
                     );
                   }
 
@@ -912,7 +1210,9 @@ class _OrderItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E4E1)),
+        border: Border.all(
+          color: const Color(0xFFE4E4E1),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -922,7 +1222,8 @@ class _OrderItemCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item['product_name_snapshot']?.toString() ?? 'Unnamed product',
+                item['product_name_snapshot']?.toString() ??
+                    'Unnamed product',
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -933,12 +1234,16 @@ class _OrderItemCard extends StatelessWidget {
                   item['sku_snapshot'].toString().trim().isNotEmpty)
                 Text(
                   'SKU: ${item['sku_snapshot']}',
-                  style: const TextStyle(color: Color(0xFF666666)),
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                  ),
                 ),
               const SizedBox(height: 8),
               Text(
                 '$quantity $quantityUnit × $price${priceBasis.isEmpty ? '' : ' / $priceBasis'}',
-                style: const TextStyle(color: Color(0xFF555555)),
+                style: const TextStyle(
+                  color: Color(0xFF555555),
+                ),
               ),
             ],
           );
@@ -961,12 +1266,18 @@ class _OrderItemCard extends StatelessWidget {
                 children: [
                   TextButton.icon(
                     onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                    ),
                     label: const Text('Quantity'),
                   ),
                   TextButton.icon(
                     onPressed: onRemove,
-                    icon: const Icon(Icons.delete_outline, size: 18),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                    ),
                     label: const Text('Remove'),
                   ),
                 ],
@@ -977,7 +1288,11 @@ class _OrderItemCard extends StatelessWidget {
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [details, const SizedBox(height: 12), actions],
+              children: [
+                details,
+                const SizedBox(height: 12),
+                actions,
+              ],
             );
           }
 
@@ -1019,8 +1334,16 @@ class _TotalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: style)),
-          Text(value, style: style),
+          Expanded(
+            child: Text(
+              label,
+              style: style,
+            ),
+          ),
+          Text(
+            value,
+            style: style,
+          ),
         ],
       ),
     );
