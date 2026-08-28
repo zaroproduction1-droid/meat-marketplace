@@ -43,12 +43,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       key: 'invoices',
     ),
     _OrderTabDefinition(
-      label: 'Dispatched',
+      label: 'Dispatched / Ready',
       icon: Icons.local_shipping_outlined,
-      key: 'dispatched',
+      key: 'dispatched_ready',
     ),
     _OrderTabDefinition(
-      label: 'Delivered / Complete',
+      label: 'Complete',
       icon: Icons.task_alt,
       key: 'completed',
     ),
@@ -159,11 +159,17 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             payment_method_snapshot,
             payment_terms_days_snapshot,
             issue_reporting_window_hours_snapshot,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
+            confirmed_fulfilment_date,
+            confirmed_fulfilment_time,
             submitted_at,
             accepted_at,
             declined_at,
             supplier_rejection_reason,
             butcher_rejection_acknowledged_at,
+            ready_for_pickup_at,
+            picked_up_at,
             dispatched_at,
             delivered_at,
             completed_at,
@@ -323,42 +329,64 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   }
 
   List<Map<String, dynamic>> _ordersForTab(String key) {
-    final marketplace = _orders.where(
-      (order) => order['order_source']?.toString() == 'marketplace',
-    );
-
     switch (key) {
       case 'new':
-        return marketplace
-            .where((order) => order['status']?.toString() == 'submitted')
-            .toList();
+        return _orders.where((order) {
+          return order['order_source']?.toString() == 'marketplace' &&
+              order['status']?.toString() == 'submitted';
+        }).toList();
 
       case 'work_orders':
-        return marketplace.where((order) {
+        return _orders.where((order) {
           final status = order['status']?.toString();
-          final hasInvoice = _invoiceForOrder(order) != null;
+          final workOrder = _workOrderForOrder(order);
+          final invoice = _invoiceForOrder(order);
 
-          return (status == 'accepted' || status == 'processing') &&
-              !hasInvoice;
+          return workOrder != null &&
+              workOrder['status']?.toString() != 'completed' &&
+              invoice == null &&
+              (status == 'accepted' || status == 'processing');
         }).toList();
 
       case 'invoices':
-        return marketplace
-            .where((order) => _invoiceForOrder(order) != null)
-            .toList();
+        return _orders.where((order) {
+          final invoice = _invoiceForOrder(order);
+          final status = order['status']?.toString();
+          final readyForPickup = order['ready_for_pickup_at'] != null;
 
-      case 'dispatched':
-        return marketplace
-            .where((order) => order['status']?.toString() == 'dispatched')
-            .toList();
+          return invoice != null &&
+              status != 'completed' &&
+              status != 'dispatched' &&
+              !readyForPickup;
+        }).toList();
+
+      case 'dispatched_ready':
+        return _orders.where((order) {
+          final invoice = _invoiceForOrder(order);
+          final pickup = order['fulfilment_method']?.toString() == 'pickup';
+          final status = order['status']?.toString();
+
+          if (invoice == null || status == 'completed') {
+            return false;
+          }
+
+          if (pickup) {
+            return order['ready_for_pickup_at'] != null;
+          }
+
+          return status == 'dispatched';
+        }).toList();
 
       case 'completed':
-        return marketplace
+        return _orders
             .where((order) => order['status']?.toString() == 'completed')
             .toList();
 
       case 'issues':
-        return marketplace.where(_hasOpenIssues).toList();
+        return _orders.where((order) {
+          return order['order_source']?.toString() == 'marketplace' &&
+              _hasOpenIssues(order);
+        }).toList();
 
       default:
         return const <Map<String, dynamic>>[];
@@ -427,12 +455,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       if (tradingName != null && tradingName.isNotEmpty) {
         return tradingName;
       }
-
-      final legalName = butcher['legal_name']?.toString().trim();
-
-      if (legalName != null && legalName.isNotEmpty) {
-        return legalName;
-      }
     }
 
     final account = _supplierCustomerAccount(order);
@@ -443,17 +465,67 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       if (customerName != null && customerName.isNotEmpty) {
         return customerName;
       }
-
-      final legalName = account['legal_name']?.toString().trim();
-
-      if (legalName != null && legalName.isNotEmpty) {
-        return legalName;
-      }
     }
 
     return order['butcher_business_id'] != null
         ? 'Registered CutLink butcher'
         : 'External customer';
+  }
+
+  String _fulfilmentLabel(Map<String, dynamic> order) {
+    final value = order['fulfilment_method']?.toString().trim().toLowerCase();
+
+    if (value == 'delivery') return 'Delivery';
+    if (value == 'pickup') return 'Pickup';
+    return 'Not Set';
+  }
+
+  bool _isMarketplaceOrder(Map<String, dynamic> order) {
+    return order['order_source']?.toString() == 'marketplace';
+  }
+
+  String _sourceLabel(Map<String, dynamic> order) {
+    switch (order['order_source']?.toString()) {
+      case 'marketplace':
+        return 'MARKETPLACE';
+      case 'phone':
+        return 'PHONE';
+      case 'email':
+        return 'EMAIL';
+      case 'sales_rep':
+        return 'SALES REP';
+      case 'manual':
+        return 'DIRECT';
+      default:
+        return 'DIRECT';
+    }
+  }
+
+  Widget _sourceBadge(Map<String, dynamic> order) {
+    final marketplace = _isMarketplaceOrder(order);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: marketplace ? const Color(0xFFEAF1FB) : const Color(0xFFF3EEE7),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: marketplace
+              ? const Color(0xFFBFD0E5)
+              : const Color(0xFFD8C9B6),
+        ),
+      ),
+      child: Text(
+        _sourceLabel(order),
+        style: TextStyle(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w900,
+          color: marketplace
+              ? const Color(0xFF315A8C)
+              : const Color(0xFF6B5132),
+        ),
+      ),
+    );
   }
 
   String _businessAddress(Map<String, dynamic> business) {
@@ -772,12 +844,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       case 'submitted':
         return 'New';
       case 'accepted':
-      case 'processing':
         return 'Work Order';
+      case 'processing':
+        return 'Invoice / Fulfilment';
       case 'dispatched':
-        return 'Dispatched';
+        return 'Out for Delivery';
       case 'completed':
-        return 'Delivered / Complete';
+        return 'Complete';
       case 'declined':
         return 'Declined';
       case 'cancelled':
@@ -1979,21 +2052,118 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
   }
 
-  Future<void> _completeMarketplaceOrder(Map<String, dynamic> order) async {
+  Future<void> _markReadyForPickup(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+    if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
+      return;
+    }
+
+    setState(() => _updatingOrderId = orderId);
+
+    try {
+      if (_isMarketplaceOrder(order)) {
+        await Supabase.instance.client.rpc(
+          'mark_marketplace_order_ready_for_pickup',
+          params: {'target_order_id': orderId},
+        );
+      } else {
+        await Supabase.instance.client
+            .from('orders')
+            .update({
+              'status': 'processing',
+              'ready_for_pickup_at': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', orderId)
+            .eq('supplier_business_id', _supplierBusinessId!);
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order marked Ready for Pickup.')),
+      );
+      await _loadOrders();
+      if (mounted) {
+        _tabController.animateTo(
+          _tabs.indexWhere((tab) => tab.key == 'dispatched_ready'),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingOrderId = null);
+    }
+  }
+
+  Future<void> _markOutForDelivery(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+    if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
+      return;
+    }
+
+    setState(() => _updatingOrderId = orderId);
+
+    try {
+      if (_isMarketplaceOrder(order)) {
+        await Supabase.instance.client.rpc(
+          'mark_marketplace_order_dispatched',
+          params: {'target_order_id': orderId},
+        );
+      } else {
+        await Supabase.instance.client
+            .from('orders')
+            .update({
+              'status': 'dispatched',
+              'dispatched_at': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', orderId)
+            .eq('supplier_business_id', _supplierBusinessId!);
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order marked Out for Delivery.')),
+      );
+      await _loadOrders();
+      if (mounted) {
+        _tabController.animateTo(
+          _tabs.indexWhere((tab) => tab.key == 'dispatched_ready'),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingOrderId = null);
+    }
+  }
+
+  Future<void> _completeOrder(Map<String, dynamic> order) async {
     final orderId = order['id']?.toString();
     if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
       return;
     }
 
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(pickup ? 'Confirm Collection' : 'Confirm Delivery'),
+        title: Text(
+          pickup ? 'Mark Picked Up / Complete?' : 'Mark Delivered / Complete?',
+        ),
         content: Text(
           pickup
-              ? 'Confirm the butcher has collected this order? This will mark it Picked Up / Complete.'
-              : 'Confirm this order has been delivered? This will mark it Delivered / Complete.',
+              ? 'Confirm the customer has collected this order.'
+              : 'Confirm this order has been delivered.',
         ),
         actions: [
           TextButton(
@@ -2019,14 +2189,52 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     setState(() => _updatingOrderId = orderId);
 
     try {
-      await Supabase.instance.client.rpc(
-        'complete_marketplace_order_delivery',
-        params: {'target_order_id': orderId},
-      );
+      if (_isMarketplaceOrder(order)) {
+        await Supabase.instance.client.rpc(
+          'complete_marketplace_order_delivery',
+          params: {'target_order_id': orderId},
+        );
+      } else {
+        final now = DateTime.now().toUtc().toIso8601String();
+
+        if (pickup) {
+          await Supabase.instance.client
+              .from('orders')
+              .update({
+                'status': 'completed',
+                'picked_up_at': now,
+                'completed_at': now,
+              })
+              .eq('id', orderId)
+              .eq('supplier_business_id', _supplierBusinessId!);
+        } else {
+          // Keep the salesperson UX as one action, but honour the database
+          // lifecycle internally: dispatched -> delivered -> completed.
+          await Supabase.instance.client
+              .from('orders')
+              .update({'status': 'delivered', 'delivered_at': now})
+              .eq('id', orderId)
+              .eq('supplier_business_id', _supplierBusinessId!)
+              .eq('status', 'dispatched');
+
+          await Supabase.instance.client
+              .from('orders')
+              .update({'status': 'completed', 'completed_at': now})
+              .eq('id', orderId)
+              .eq('supplier_business_id', _supplierBusinessId!)
+              .eq('status', 'delivered');
+        }
+      }
 
       if (!mounted) return;
 
       await _loadOrders();
+
+      if (mounted) {
+        _tabController.animateTo(
+          _tabs.indexWhere((tab) => tab.key == 'completed'),
+        );
+      }
     } on PostgrestException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -2034,9 +2242,54 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) {
-        setState(() => _updatingOrderId = null);
+      if (mounted) setState(() => _updatingOrderId = null);
+    }
+  }
+
+  Future<void> _openWorkOrder(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+
+    if (orderId == null || orderId.isEmpty) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SupplierWorkOrderPage(orderId: orderId),
+      ),
+    );
+
+    if (mounted) {
+      await _loadOrders();
+    }
+  }
+
+  Future<void> _openInvoice(Map<String, dynamic> order) async {
+    final invoice = _invoiceForOrder(order);
+    final invoiceId = invoice?['id']?.toString();
+
+    if (invoiceId == null || invoiceId.isEmpty) {
+      if (!mounted) {
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No invoice is linked to this order yet.'),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            SupplierInvoicePage(invoiceId: invoiceId, openPdfOnLoad: true),
+      ),
+    );
+
+    if (mounted) {
+      await _loadOrders();
     }
   }
 
@@ -2487,54 +2740,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     if (mounted) await _loadOrders();
   }
 
-  Future<void> _openWorkOrder(Map<String, dynamic> order) async {
-    final orderId = order['id']?.toString();
-
-    if (orderId == null || orderId.isEmpty) {
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SupplierWorkOrderPage(orderId: orderId),
-      ),
-    );
-
-    if (mounted) {
-      await _loadOrders();
-    }
-  }
-
-  Future<void> _openInvoice(Map<String, dynamic> order) async {
-    final invoice = _invoiceForOrder(order);
-    final invoiceId = invoice?['id']?.toString();
-
-    if (invoiceId == null || invoiceId.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No invoice is linked to this marketplace order yet.'),
-        ),
-      );
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SupplierInvoicePage(invoiceId: invoiceId),
-      ),
-    );
-
-    if (mounted) {
-      await _loadOrders();
-    }
-  }
-
-  Widget _actionButtons(Map<String, dynamic> order) {
-    final status = order['status']?.toString();
+  Widget _actionButtons(Map<String, dynamic> order, {required String tabKey}) {
     final orderId = order['id']?.toString();
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
     final invoice = _invoiceForOrder(order);
@@ -2547,88 +2753,101 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       );
     }
 
-    switch (status) {
-      case 'submitted':
-        return FilledButton.icon(
-          onPressed: () => _openNewMarketplaceOrder(order),
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF741C1C),
-          ),
-          icon: const Icon(Icons.visibility_outlined),
-          label: const Text('Review New Order'),
-        );
-
-      case 'accepted':
-      case 'processing':
-        if (invoice != null && pickup) {
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _openInvoice(order),
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: Text(
-                  'Invoice ${invoice['invoice_number'] ?? ''}'.trim(),
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: () => _completeMarketplaceOrder(order),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF741C1C),
-                ),
-                icon: const Icon(Icons.shopping_bag_outlined),
-                label: const Text('Picked Up / Complete'),
-              ),
-            ],
-          );
-        }
-
-        return FilledButton.icon(
-          onPressed: () => _openWorkOrder(order),
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF741C1C),
-          ),
-          icon: const Icon(Icons.assignment_outlined),
-          label: const Text('Open Work Order'),
-        );
-
-      case 'dispatched':
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            if (invoice != null)
-              OutlinedButton.icon(
-                onPressed: () => _openInvoice(order),
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: Text(
-                  'Invoice ${invoice['invoice_number'] ?? ''}'.trim(),
-                ),
-              ),
-            FilledButton.icon(
-              onPressed: () => _completeMarketplaceOrder(order),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-              ),
-              icon: const Icon(Icons.task_alt),
-              label: const Text('Delivered / Complete'),
-            ),
-          ],
-        );
-
-      case 'completed':
-        if (invoice == null) return const SizedBox.shrink();
-
-        return OutlinedButton.icon(
-          onPressed: () => _openInvoice(order),
-          icon: const Icon(Icons.receipt_long_outlined),
-          label: Text('Invoice ${invoice['invoice_number'] ?? ''}'.trim()),
-        );
-
-      default:
-        return const SizedBox.shrink();
+    if (tabKey == 'new') {
+      return FilledButton.icon(
+        onPressed: () => _openNewMarketplaceOrder(order),
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF741C1C)),
+        icon: const Icon(Icons.visibility_outlined),
+        label: const Text('Review New Order'),
+      );
     }
+
+    if (tabKey == 'invoices' && invoice != null) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.end,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => _openInvoice(order),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('View PDF Invoice'),
+          ),
+          FilledButton.icon(
+            onPressed: pickup
+                ? () => _markReadyForPickup(order)
+                : () => _markOutForDelivery(order),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+            ),
+            icon: Icon(
+              pickup
+                  ? Icons.inventory_2_outlined
+                  : Icons.local_shipping_outlined,
+            ),
+            label: Text(pickup ? 'Ready for Pickup' : 'Out for Delivery'),
+          ),
+        ],
+      );
+    }
+
+    if (tabKey == 'dispatched_ready' && invoice != null) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.end,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => _openInvoice(order),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('View PDF Invoice'),
+          ),
+          Material(
+            color: const Color(0xFFF3F8F3),
+            borderRadius: BorderRadius.circular(9),
+            child: InkWell(
+              onTap: () => _completeOrder(order),
+              borderRadius: BorderRadius.circular(9),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 5,
+                  right: 12,
+                  top: 3,
+                  bottom: 3,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: false,
+                      onChanged: (_) => _completeOrder(order),
+                      activeColor: const Color(0xFF2E7D32),
+                    ),
+                    Text(
+                      pickup ? 'Picked Up / Complete' : 'Delivered / Complete',
+                      style: const TextStyle(
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (tabKey == 'completed' && invoice != null) {
+      return OutlinedButton.icon(
+        onPressed: () => _openInvoice(order),
+        icon: const Icon(Icons.picture_as_pdf_outlined),
+        label: const Text('View PDF Invoice'),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   @override
@@ -2639,7 +2858,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text(
-          'Marketplace Orders',
+          'Orders',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -2852,12 +3071,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               final order = orders[index];
 
               if (tab.key == 'work_orders') {
-                return _buildMarketplaceWorkOrderRow(order);
+                return _buildWorkOrderRow(order);
               }
 
               if (tab.key == 'new' ||
                   tab.key == 'invoices' ||
-                  tab.key == 'dispatched' ||
+                  tab.key == 'dispatched_ready' ||
                   tab.key == 'completed') {
                 return _buildMarketplaceLifecycleRow(order, tab.key);
               }
@@ -2875,13 +3094,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       case 'new':
         return 'No new marketplace orders';
       case 'work_orders':
-        return 'No marketplace work orders';
+        return 'No active work orders';
       case 'invoices':
-        return 'No marketplace invoices';
-      case 'dispatched':
-        return 'Nothing dispatched';
+        return 'No invoices awaiting fulfilment';
+      case 'dispatched_ready':
+        return 'Nothing dispatched or ready';
       case 'completed':
-        return 'No completed marketplace orders';
+        return 'No completed orders';
       case 'issues':
         return 'No marketplace issues';
       default:
@@ -2892,17 +3111,17 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   String _emptyDescription(String key) {
     switch (key) {
       case 'new':
-        return 'New butcher marketplace orders will appear here for review.';
+        return 'New CutLink Marketplace order requests appear here for review.';
       case 'work_orders':
-        return 'Accepted marketplace orders stay here while the warehouse picks, weighs and invoices them.';
+        return 'All active warehouse work orders appear here, whether they came from Marketplace, phone, email, a sales rep or a direct sale.';
       case 'invoices':
-        return 'Invoices created from marketplace orders appear here. External and manual invoices stay in the Dashboard Invoices ledger only.';
-      case 'dispatched':
-        return 'Delivery orders move here automatically when the final invoice is created.';
+        return 'Finalised invoices wait here until you mark the order Ready for Pickup or Out for Delivery.';
+      case 'dispatched_ready':
+        return 'Orders stay here until the salesperson confirms Delivered or Picked Up.';
       case 'completed':
-        return 'Delivered orders and collected pickup orders appear here as complete.';
+        return 'Delivered and collected orders appear here as complete.';
       case 'issues':
-        return 'Open marketplace issues will appear here.';
+        return 'Open CutLink Marketplace issues appear here.';
       default:
         return '';
     }
@@ -2943,22 +3162,26 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             invoice?['invoice_number']?.toString() ??
             order['order_number']?.toString() ??
             'Invoice';
-        dateLabel = 'Invoice';
+        dateLabel = 'Invoiced';
         dateValue = _formatDate(invoice?['invoice_date']);
-        onTap = () => _openInvoice(order);
+        onTap = null;
         break;
 
-      case 'dispatched':
-        icon = Icons.local_shipping_outlined;
+      case 'dispatched_ready':
+        icon = pickup
+            ? Icons.inventory_2_outlined
+            : Icons.local_shipping_outlined;
         iconBackground = const Color(0xFFEAF6F8);
         iconForeground = const Color(0xFF27666F);
         leadingLabel =
-            invoice?['invoice_number']?.toString() ??
             order['order_number']?.toString() ??
-            'Dispatched';
-        dateLabel = 'Dispatched';
-        dateValue = _formatDate(order['dispatched_at']);
-        onTap = () => _openInvoice(order);
+            invoice?['invoice_number']?.toString() ??
+            'Order';
+        dateLabel = pickup ? 'Ready Since' : 'Dispatched';
+        dateValue = _formatDate(
+          pickup ? order['ready_for_pickup_at'] : order['dispatched_at'],
+        );
+        onTap = null;
         break;
 
       case 'completed':
@@ -2966,12 +3189,16 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         iconBackground = const Color(0xFFE8F5E9);
         iconForeground = const Color(0xFF2E7D32);
         leadingLabel =
-            invoice?['invoice_number']?.toString() ??
             order['order_number']?.toString() ??
+            invoice?['invoice_number']?.toString() ??
             'Complete';
-        dateLabel = pickup ? 'Collected' : 'Delivered';
-        dateValue = _formatDate(order['completed_at'] ?? order['delivered_at']);
-        onTap = () => _openInvoice(order);
+        dateLabel = pickup ? 'Picked Up' : 'Delivered';
+        dateValue = _formatDate(
+          pickup
+              ? (order['picked_up_at'] ?? order['completed_at'])
+              : (order['delivered_at'] ?? order['completed_at']),
+        );
+        onTap = null;
         break;
 
       default:
@@ -2987,7 +3214,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ? 'No lines'
         : '${items.length} line${items.length == 1 ? '' : 's'}';
 
-    final fulfilment = pickup ? 'Pickup' : 'Delivery';
+    final fulfilment = _fulfilmentLabel(order);
     final requested = _formatDate(order['requested_fulfilment_date']);
     final invoiceTotal = invoice?['total_amount'];
     final totalText = invoiceTotal == null
@@ -3042,15 +3269,23 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _customerName(order),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF741C1C),
-                            fontWeight: FontWeight.w800,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            _sourceBadge(order),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                _customerName(order),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF741C1C),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -3118,17 +3353,44 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     facts,
                     const SizedBox(height: 9),
                     Align(alignment: Alignment.centerRight, child: trailing),
+                    if (tabKey == 'invoices' ||
+                        tabKey == 'dispatched_ready' ||
+                        tabKey == 'completed') ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _actionButtons(order, tabKey: tabKey),
+                      ),
+                    ],
                   ],
                 );
               }
 
-              return Row(
+              final row = Row(
                 children: [
                   SizedBox(width: 270, child: identity),
                   const SizedBox(width: 18),
                   Expanded(child: facts),
                   const SizedBox(width: 16),
                   trailing,
+                ],
+              );
+
+              if (tabKey != 'invoices' &&
+                  tabKey != 'dispatched_ready' &&
+                  tabKey != 'completed') {
+                return row;
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  row,
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _actionButtons(order, tabKey: tabKey),
+                  ),
                 ],
               );
             },
@@ -3138,7 +3400,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     );
   }
 
-  Widget _buildMarketplaceWorkOrderRow(Map<String, dynamic> order) {
+  Widget _buildWorkOrderRow(Map<String, dynamic> order) {
     final items = _items(order);
     final workOrder = _workOrderForOrder(order);
     final workOrderNumber =
@@ -3185,14 +3447,23 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      workOrderNumber,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            workOrderNumber,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _sourceBadge(order),
+                      ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       _customerName(order),
                       maxLines: 1,
@@ -3714,18 +3985,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     ),
             ),
           ),
-
-          if (status == 'submitted' ||
-              status == 'accepted' ||
-              status == 'processing' ||
-              status == 'dispatched' ||
-              status == 'delivered') ...[
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _actionButtons(order),
-            ),
-          ],
         ],
       ),
     );

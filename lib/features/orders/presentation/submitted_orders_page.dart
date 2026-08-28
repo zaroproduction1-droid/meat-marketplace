@@ -34,15 +34,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       icon: Icons.inventory_2_outlined,
     ),
     _ButcherOrderTab(
-      label: 'Dispatched',
-      key: 'dispatched',
+      label: 'Fulfilment',
+      key: 'fulfilment',
       icon: Icons.local_shipping_outlined,
     ),
-    _ButcherOrderTab(
-      label: 'Delivered / Complete',
-      key: 'completed',
-      icon: Icons.task_alt,
-    ),
+    _ButcherOrderTab(label: 'Complete', key: 'completed', icon: Icons.task_alt),
   ];
 
   @override
@@ -120,6 +116,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             payment_method_snapshot,
             payment_terms_days_snapshot,
             issue_reporting_window_hours_snapshot,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
+            confirmed_fulfilment_date,
+            confirmed_fulfilment_time,
+            fulfilment_schedule_confirmed_at,
+            ready_for_pickup_at,
+            picked_up_at,
             submitted_at,
             accepted_at,
             declined_at,
@@ -141,6 +144,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               id,
               invoice_number,
               status,
+              total_amount,
+              invoice_date,
+              due_date,
               sent_to_butcher_at
             ),
             order_items(
@@ -485,13 +491,20 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'preparing':
         return _orders.where((order) {
           final status = order['status']?.toString();
-          return status == 'accepted' || status == 'processing';
+          final hasInvoice = _invoiceForOrder(order) != null;
+
+          return status == 'accepted' ||
+              (status == 'processing' && !hasInvoice);
         }).toList();
 
-      case 'dispatched':
-        return _orders
-            .where((order) => order['status']?.toString() == 'dispatched')
-            .toList();
+      case 'fulfilment':
+        return _orders.where((order) {
+          final status = order['status']?.toString();
+          final hasInvoice = _invoiceForOrder(order) != null;
+
+          return status == 'dispatched' ||
+              (status == 'processing' && hasInvoice);
+        }).toList();
 
       case 'completed':
         return _orders
@@ -1718,6 +1731,18 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         spacing: 24,
         runSpacing: 12,
         children: [
+          _InfoBlock(
+            label: 'Fulfilment',
+            value: order['fulfilment_method']?.toString() == 'delivery'
+                ? 'Delivery'
+                : 'Pickup',
+          ),
+          _InfoBlock(label: 'Requested', value: _requestedSchedule(order)),
+          _InfoBlock(label: 'Confirmed', value: _confirmedSchedule(order)),
+          _InfoBlock(
+            label: 'Current status',
+            value: _buyerLifecycleLabel(order),
+          ),
           _InfoBlock(label: 'Payment terms', value: _paymentTermsText(order)),
           _InfoBlock(
             label: 'Delivery zone',
@@ -2205,9 +2230,31 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   String _buyerLifecycleLabel(Map<String, dynamic> order) {
     final status = order['status']?.toString();
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
+    final hasInvoice = _invoiceForOrder(order) != null;
+    final readyForPickup = order['ready_for_pickup_at'] != null;
 
-    if (pickup && status == 'processing' && _invoiceForOrder(order) != null) {
-      return 'Ready for Pickup';
+    if (status == 'submitted') {
+      return 'Awaiting Supplier';
+    }
+
+    if (status == 'accepted') {
+      return 'Preparing';
+    }
+
+    if (status == 'processing') {
+      if (pickup && readyForPickup) {
+        return 'Ready for Pickup';
+      }
+
+      if (hasInvoice) {
+        return pickup ? 'Invoice Ready' : 'Preparing for Delivery';
+      }
+
+      return 'Preparing';
+    }
+
+    if (status == 'dispatched') {
+      return 'Out for Delivery';
     }
 
     if (status == 'completed') {
@@ -2226,13 +2273,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'declined':
         return 'Declined';
       case 'processing':
-        return 'Processing';
+        return 'Preparing';
       case 'dispatched':
-        return 'Dispatched';
+        return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
       case 'completed':
-        return 'Delivered / Complete';
+        return 'Complete';
       case 'cancelled':
         return 'Cancelled';
       default:
@@ -2278,6 +2325,55 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
   }
 
+  String _formatFulfilmentSchedule(dynamic dateValue, dynamic timeValue) {
+    final rawDate = dateValue?.toString().trim() ?? '';
+    final rawTime = timeValue?.toString().trim() ?? '';
+
+    if (rawDate.isEmpty && rawTime.isEmpty) {
+      return 'Not specified';
+    }
+
+    String dateText = rawDate;
+    final parsedDate = DateTime.tryParse(rawDate);
+    if (parsedDate != null) {
+      final day = parsedDate.day.toString().padLeft(2, '0');
+      final month = parsedDate.month.toString().padLeft(2, '0');
+      dateText = '$day/$month/${parsedDate.year}';
+    }
+
+    String timeText = rawTime;
+    if (rawTime.isNotEmpty) {
+      final parts = rawTime.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+        if (hour != null && minute != null) {
+          final hour12 = hour % 12 == 0 ? 12 : hour % 12;
+          final period = hour >= 12 ? 'PM' : 'AM';
+          timeText = '$hour12:${minute.toString().padLeft(2, '0')} $period';
+        }
+      }
+    }
+
+    if (dateText.isEmpty) return timeText;
+    if (timeText.isEmpty) return dateText;
+    return '$dateText • $timeText';
+  }
+
+  String _requestedSchedule(Map<String, dynamic> order) {
+    return _formatFulfilmentSchedule(
+      order['requested_fulfilment_date'],
+      order['requested_fulfilment_time'],
+    );
+  }
+
+  String _confirmedSchedule(Map<String, dynamic> order) {
+    return _formatFulfilmentSchedule(
+      order['confirmed_fulfilment_date'],
+      order['confirmed_fulfilment_time'],
+    );
+  }
+
   String _formatDate(dynamic value) {
     if (value == null) {
       return '';
@@ -2297,6 +2393,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   String _bestDate(Map<String, dynamic> order) {
     final status = order['status']?.toString();
+
+    if (order['ready_for_pickup_at'] != null && status == 'processing') {
+      return _formatDate(order['ready_for_pickup_at']);
+    }
 
     switch (status) {
       case 'completed':
@@ -3000,6 +3100,16 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     label: 'FULFILMENT',
                     value: pickup ? 'Pickup' : 'Delivery',
                   ),
+                  _CompactBuyerOrderFact(
+                    label: 'REQUESTED',
+                    value: _requestedSchedule(order),
+                  ),
+                  if (order['confirmed_fulfilment_date'] != null ||
+                      order['confirmed_fulfilment_time'] != null)
+                    _CompactBuyerOrderFact(
+                      label: 'CONFIRMED',
+                      value: _confirmedSchedule(order),
+                    ),
                   if (statusDate.isNotEmpty)
                     _CompactBuyerOrderFact(label: 'UPDATED', value: statusDate),
                 ],

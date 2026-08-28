@@ -53,12 +53,50 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     try {
       final client = Supabase.instance.client;
 
-      final workOrderResponse = await client.rpc(
-        'create_or_get_warehouse_work_order',
-        params: {'target_order_id': widget.orderId},
-      );
+      final existingInvoices = await client
+          .from('invoices')
+          .select('id')
+          .eq('order_id', widget.orderId)
+          .limit(1);
 
-      final workOrder = Map<String, dynamic>.from(workOrderResponse as Map);
+      if (existingInvoices.isNotEmpty) {
+        final invoiceId = existingInvoices.first['id']?.toString();
+
+        if (!mounted || invoiceId == null || invoiceId.isEmpty) {
+          return;
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => SupplierInvoicePage(invoiceId: invoiceId),
+            ),
+          );
+        });
+
+        return;
+      }
+
+      final existingWorkOrders = await client
+          .from('warehouse_work_orders')
+          .select()
+          .eq('order_id', widget.orderId)
+          .limit(1);
+
+      Map<String, dynamic> workOrder;
+
+      if (existingWorkOrders.isNotEmpty) {
+        workOrder = Map<String, dynamic>.from(existingWorkOrders.first);
+      } else {
+        final workOrderResponse = await client.rpc(
+          'create_or_get_warehouse_work_order',
+          params: {'target_order_id': widget.orderId},
+        );
+
+        workOrder = Map<String, dynamic>.from(workOrderResponse as Map);
+      }
 
       final orderResponse = await client
           .from('orders')
@@ -73,6 +111,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             pricing_status,
             fulfilment_method,
             requested_fulfilment_date,
+            requested_fulfilment_time,
+            confirmed_fulfilment_date,
+            confirmed_fulfilment_time,
             payment_method_snapshot,
             payment_terms_days_snapshot,
             delivery_fee,
@@ -175,12 +216,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       if (customerName != null && customerName.isNotEmpty) {
         return customerName;
       }
-
-      final legalName = account['legal_name']?.toString().trim();
-
-      if (legalName != null && legalName.isNotEmpty) {
-        return legalName;
-      }
     }
 
     final businessRaw = _order?['businesses'];
@@ -191,12 +226,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
       if (tradingName != null && tradingName.isNotEmpty) {
         return tradingName;
-      }
-
-      final legalName = business['legal_name']?.toString().trim();
-
-      if (legalName != null && legalName.isNotEmpty) {
-        return legalName;
       }
     }
 
@@ -307,6 +336,36 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return '$day/$month/${date.year}';
   }
 
+  String _confirmedFulfilmentLabel() {
+    final dateRaw = _order?['confirmed_fulfilment_date']?.toString();
+    final timeRaw = _order?['confirmed_fulfilment_time']?.toString();
+
+    final date = dateRaw == null ? null : DateTime.tryParse(dateRaw);
+
+    if (date == null) {
+      return _requestedFulfilmentDateLabel();
+    }
+
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+
+    String timeLabel = '';
+    if (timeRaw != null && timeRaw.isNotEmpty) {
+      final parts = timeRaw.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+        if (hour != null && minute != null) {
+          final hour12 = hour % 12 == 0 ? 12 : hour % 12;
+          final period = hour >= 12 ? 'PM' : 'AM';
+          timeLabel = ' $hour12:${minute.toString().padLeft(2, '0')} $period';
+        }
+      }
+    }
+
+    return '$day/$month/${date.year}$timeLabel';
+  }
+
   String _orderCreatedDateTimeLabel() {
     final raw = _order?['created_at']?.toString();
     final date = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
@@ -340,7 +399,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
 
-      final updated = await Supabase.instance.client
+      await Supabase.instance.client
           .from('warehouse_work_orders')
           .update({
             'status': 'picked',
@@ -351,9 +410,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             'picked_by': _nullIfEmpty(_pickedByController.text),
             'checked_by': _nullIfEmpty(_checkedByController.text),
           })
-          .eq('id', workOrderId)
-          .select()
-          .single();
+          .eq('id', workOrderId);
 
       final createdInvoice = await Supabase.instance.client.rpc(
         'create_or_get_invoice_from_order',
@@ -367,13 +424,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         throw Exception('Invoice was created but no invoice ID was returned.');
       }
 
+      await Supabase.instance.client
+          .from('warehouse_work_orders')
+          .update({'status': 'completed', 'completed_at': now})
+          .eq('id', workOrderId);
+
       if (!mounted) {
         return;
       }
-
-      setState(() {
-        _workOrder = Map<String, dynamic>.from(updated);
-      });
 
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -483,13 +541,28 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Future<void> _editLineFulfilment(Map<String, dynamic> item) async {
     final itemId = item['id']?.toString();
+    final workOrderStatus = _workOrder?['status']?.toString();
 
-    if (itemId == null) {
+    if (itemId == null || itemId.isEmpty) {
+      return;
+    }
+
+    if (workOrderStatus != 'picking' &&
+        workOrderStatus != 'picked' &&
+        workOrderStatus != 'completed') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Start Picking first, then enter the supplied quantity and actual kilograms.',
+          ),
+        ),
+      );
       return;
     }
 
     final catchWeight = _isCatchWeight(item);
     final orderedQuantity = item['quantity'];
+    final quantityUnit = item['quantity_unit']?.toString() ?? 'unit';
 
     final suppliedController = TextEditingController(
       text:
@@ -510,55 +583,29 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (context, setDialogState) {
+              final supplied = double.tryParse(suppliedController.text.trim());
+              final actualWeight = double.tryParse(
+                weightController.text.trim(),
+              );
+
+              final wholeQuantityRequired =
+                  quantityUnit == 'carton' || quantityUnit == 'unit';
+
+              final suppliedValid =
+                  supplied != null &&
+                  supplied >= 0 &&
+                  (!wholeQuantityRequired ||
+                      supplied == supplied.roundToDouble());
+
+              final weightValid =
+                  !catchWeight || (actualWeight != null && actualWeight > 0);
+
               Future<void> save() async {
-                if (saving) {
+                if (saving || !suppliedValid || !weightValid) {
                   return;
                 }
 
-                final supplied = double.tryParse(
-                  suppliedController.text.trim(),
-                );
-                final actualWeight = double.tryParse(
-                  weightController.text.trim(),
-                );
-
-                if (supplied == null || supplied < 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a valid supplied quantity.'),
-                    ),
-                  );
-                  return;
-                }
-
-                final quantityUnit =
-                    item['quantity_unit']?.toString() ?? 'unit';
-
-                if ((quantityUnit == 'carton' || quantityUnit == 'unit') &&
-                    supplied != supplied.roundToDouble()) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Supplied cartons and units must be whole numbers.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                if (catchWeight &&
-                    (actualWeight == null || actualWeight <= 0)) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter the actual supplied kilograms.'),
-                    ),
-                  );
-                  return;
-                }
-
-                setDialogState(() {
-                  saving = true;
-                });
+                setDialogState(() => saving = true);
 
                 try {
                   final updates = <String, dynamic>{
@@ -591,8 +638,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   Navigator.of(dialogContext).pop();
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Warehouse fulfilment saved.'),
+                    SnackBar(
+                      content: Text(
+                        catchWeight
+                            ? 'Actual weight saved and line finalised.'
+                            : 'Supplied quantity saved and line finalised.',
+                      ),
                     ),
                   );
 
@@ -602,98 +653,243 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     ScaffoldMessenger.of(
                       dialogContext,
                     ).showSnackBar(SnackBar(content: Text(error.message)));
-
-                    setDialogState(() {
-                      saving = false;
-                    });
+                    setDialogState(() => saving = false);
                   }
                 }
               }
 
-              return AlertDialog(
-                title: Text(
-                  item['product_name_snapshot']?.toString() ?? 'Product',
-                ),
-                content: SizedBox(
-                  width: 520,
-                  child: SingleChildScrollView(
+              final productName =
+                  item['product_name_snapshot']?.toString() ?? 'Product';
+
+              return Dialog(
+                insetPadding: const EdgeInsets.all(20),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'Ordered: ${_formatNumber(item['quantity'])} '
-                          '${_unitLabel(item['quantity_unit']?.toString())}',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5EAEA),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                catchWeight
+                                    ? Icons.scale_outlined
+                                    : Icons.inventory_2_outlined,
+                                color: _darkRed,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    catchWeight
+                                        ? 'Enter Actual Weight'
+                                        : 'Confirm Supplied Quantity',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    productName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: saving
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 11,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F8F6),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE4E4E0)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Ordered',
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_formatNumber(item['quantity'])} '
+                                '${_unitLabel(quantityUnit)}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
                         TextField(
                           controller: suppliedController,
                           enabled: !saving,
-                          keyboardType: TextInputType.number,
-                          inputFormatters:
-                              item['quantity_unit']?.toString() == 'carton' ||
-                                  item['quantity_unit']?.toString() == 'unit'
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: wholeQuantityRequired
                               ? [FilteringTextInputFormatter.digitsOnly]
                               : null,
+                          onChanged: (_) => setDialogState(() {}),
                           decoration: InputDecoration(
                             labelText: 'Quantity supplied',
-                            suffixText: _unitLabel(
-                              item['quantity_unit']?.toString(),
-                            ),
+                            suffixText: _unitLabel(quantityUnit),
+                            helperText: wholeQuantityRequired
+                                ? 'Enter whole ${_unitLabel(quantityUnit).toLowerCase()} only.'
+                                : null,
+                            errorText:
+                                suppliedController.text.trim().isEmpty ||
+                                    suppliedValid
+                                ? null
+                                : 'Enter a valid supplied quantity.',
                             border: const OutlineInputBorder(),
                           ),
                         ),
                         if (catchWeight) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           TextField(
                             controller: weightController,
                             enabled: !saving,
+                            autofocus: true,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
-                              labelText: 'Actual total weight',
+                            onChanged: (_) => setDialogState(() {}),
+                            decoration: InputDecoration(
+                              labelText: 'Actual total kilograms',
+                              hintText: 'e.g. 24.65',
                               suffixText: 'kg',
-                              border: OutlineInputBorder(),
+                              errorText:
+                                  weightController.text.trim().isEmpty ||
+                                      weightValid
+                                  ? null
+                                  : 'Enter a weight greater than 0 kg.',
+                              border: const OutlineInputBorder(),
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Final line amount is calculated from actual kg × the locked order-time \$/kg rate.',
-                            style: TextStyle(
-                              color: Color(0xFF666666),
-                              height: 1.4,
+                          Container(
+                            padding: const EdgeInsets.all(11),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F7F5),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 17,
+                                  color: Color(0xFF666666),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Enter the total scale weight for the supplied cartons. '
+                                    'The invoice amount is calculated from actual kg × the locked \$/kg rate.',
+                                    style: TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 11.5,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: saving
+                                    ? null
+                                    : () => Navigator.of(dialogContext).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                ),
+                                child: const Text('Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed:
+                                    saving || !suppliedValid || !weightValid
+                                    ? null
+                                    : save,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _darkRed,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                ),
+                                icon: saving
+                                    ? const SizedBox(
+                                        width: 17,
+                                        height: 17,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.check),
+                                label: Text(
+                                  saving
+                                      ? 'Saving...'
+                                      : catchWeight
+                                      ? 'Save Weight'
+                                      : 'Finalise Line',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: saving ? null : save,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    icon: saving
-                        ? const SizedBox(
-                            width: 17,
-                            height: 17,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(saving ? 'Saving...' : 'Save'),
-                  ),
-                ],
               );
             },
           );
@@ -1136,46 +1332,127 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
 
     final status = _workOrder?['status']?.toString();
+    final pickup = _order?['fulfilment_method']?.toString() == 'pickup';
+
+    Widget customerPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.business_outlined, color: _darkRed, size: 19),
+                SizedBox(width: 8),
+                Text(
+                  'Customer',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 11),
+            _compactInfoLine('Business', _customerName()),
+            _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
+            if (!pickup) _compactInfoLine('Address', _deliveryAddress()),
+            if ((_order?['customer_reference']?.toString().trim() ?? '')
+                .isNotEmpty)
+              _compactInfoLine(
+                'Reference',
+                _order!['customer_reference'].toString(),
+              ),
+          ],
+        ),
+      );
+    }
+
+    Widget workOrderSummaryPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.assignment_outlined, color: _darkRed, size: 19),
+                SizedBox(width: 8),
+                Text(
+                  'Work Order Summary',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 11),
+            _compactInfoLine(
+              'Work Order',
+              _workOrder?['work_order_number']?.toString() ?? 'Work Order',
+            ),
+            _compactInfoLine('Status', _workOrderStatusLabel(status)),
+            _compactInfoLine('Requested', _requestedFulfilmentDateLabel()),
+            _compactInfoLine('Confirmed', _confirmedFulfilmentLabel()),
+            _compactInfoLine('Placed', _orderCreatedDateTimeLabel()),
+          ],
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 900;
-
-        final header = _buildCompactWorkOrderHeader(status);
-        final controlPanel = _buildWarehouseControlPanel(status);
+        final pickPanel = _buildPickWorkspace(boundedHeight: desktop);
+        final warehousePanel = _buildWarehouseControlPanel(status);
 
         if (!desktop) {
-          final pickPanel = _buildPickWorkspace(boundedHeight: false);
           return ListView(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
             children: [
-              header,
-              const SizedBox(height: 12),
+              _buildCompactWorkOrderHeader(status),
+              const SizedBox(height: 10),
+              customerPanel(),
+              const SizedBox(height: 10),
+              workOrderSummaryPanel(),
+              const SizedBox(height: 10),
               pickPanel,
-              const SizedBox(height: 12),
-              controlPanel,
+              const SizedBox(height: 10),
+              warehousePanel,
             ],
           );
         }
 
-        final pickPanel = _buildPickWorkspace(boundedHeight: true);
-
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280),
+            constraints: const BoxConstraints(maxWidth: 1240),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 children: [
-                  header,
-                  const SizedBox(height: 12),
+                  _buildCompactWorkOrderHeader(status),
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: customerPanel()),
+                      const SizedBox(width: 12),
+                      Expanded(child: workOrderSummaryPanel()),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(flex: 7, child: pickPanel),
+                        Expanded(child: pickPanel),
                         const SizedBox(width: 12),
-                        SizedBox(width: 350, child: controlPanel),
+                        SizedBox(width: 350, child: warehousePanel),
                       ],
                     ),
                   ),
@@ -1373,6 +1650,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Widget _buildWarehouseControlPanel(String? status) {
     final pickup = _order?['fulfilment_method']?.toString() == 'pickup';
+    final canEnterWeights =
+        status == 'picking' || status == 'picked' || status == 'completed';
 
     return Container(
       decoration: BoxDecoration(
@@ -1385,63 +1664,74 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Order Summary',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            const Row(
+              children: [
+                Icon(Icons.warehouse_outlined, size: 19, color: _darkRed),
+                SizedBox(width: 8),
+                Text(
+                  'Warehouse',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            _compactInfoLine('Customer', _customerName()),
-            _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
-            _compactInfoLine('Requested', _requestedFulfilmentDateLabel()),
-            _compactInfoLine('Placed', _orderCreatedDateTimeLabel()),
-            if (!pickup) _compactInfoLine('Address', _deliveryAddress()),
-            if ((_order?['customer_reference']?.toString().trim() ?? '')
-                .isNotEmpty)
-              _compactInfoLine(
-                'Reference',
-                _order!['customer_reference'].toString(),
+            const SizedBox(height: 11),
+            if (!canEnterWeights)
+              Container(
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E8),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: const Color(0xFFE5C37A)),
+                ),
+                child: const Text(
+                  'Start Picking to unlock supplied quantities and actual kilogram entry.',
+                  style: TextStyle(
+                    color: Color(0xFF75551A),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
               ),
-            if ((_order?['delivery_notes']?.toString().trim() ?? '').isNotEmpty)
-              _compactInfoLine(
-                'Delivery notes',
-                _order!['delivery_notes'].toString(),
-              ),
-            const Divider(height: 22),
-            const Text(
-              'Warehouse',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 10),
+            if (!canEnterWeights) const SizedBox(height: 10),
             TextField(
               controller: _instructionsController,
               minLines: 2,
               maxLines: 3,
               enabled: !_isSaving,
               decoration: const InputDecoration(
-                labelText: 'Instructions',
+                labelText: 'Warehouse instructions',
                 isDense: true,
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 9),
-            TextField(
-              controller: _pickedByController,
-              enabled: !_isSaving,
-              decoration: const InputDecoration(
-                labelText: 'Picked by',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 9),
-            TextField(
-              controller: _checkedByController,
-              enabled: !_isSaving,
-              decoration: const InputDecoration(
-                labelText: 'Checked by',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _pickedByController,
+                    enabled: !_isSaving,
+                    decoration: const InputDecoration(
+                      labelText: 'Picked by',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: TextField(
+                    controller: _checkedByController,
+                    enabled: !_isSaving,
+                    decoration: const InputDecoration(
+                      labelText: 'Checked by',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
@@ -1449,7 +1739,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               icon: const Icon(Icons.save_outlined, size: 18),
               label: const Text('Save Details'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 9),
             if (status == 'created' || status == 'printed')
               FilledButton.icon(
                 onPressed: _isSaving
@@ -1462,7 +1752,32 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Start Picking'),
               ),
-            if (status == 'picking')
+            if (status == 'picking') ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 9),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F7F5),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.scale_outlined, size: 18, color: _darkRed),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Click a line in Pick & Weigh to enter the total actual kilograms from the scale.',
+                        style: TextStyle(
+                          color: Color(0xFF555555),
+                          fontSize: 11.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               FilledButton.icon(
                 onPressed: !_allLinesFinalised || _isSaving
                     ? null
@@ -1475,11 +1790,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 label: Text(
                   !_allLinesFinalised
                       ? 'Finalise All Lines First'
-                      : pickup
-                      ? 'Create Invoice • Ready for Pickup'
-                      : 'Create Invoice & Dispatch',
+                      : 'Create Invoice',
                 ),
               ),
+            ],
             if (status == 'picked')
               FilledButton.icon(
                 onPressed: _isSaving
@@ -1496,9 +1810,36 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   backgroundColor: _darkRed,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-                icon: const Icon(Icons.request_quote_outlined),
+                icon: const Icon(Icons.receipt_long_outlined),
                 label: const Text('Open Invoice'),
               ),
+            if ((_order?['delivery_notes']?.toString().trim() ?? '')
+                .isNotEmpty) ...[
+              const Divider(height: 22),
+              const Text(
+                'Delivery Notes',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _order!['delivery_notes'].toString(),
+                style: const TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 11.5,
+                  height: 1.35,
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              pickup ? 'Pickup order' : 'Delivery order',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF888888),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -1548,7 +1889,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       color: finalised ? const Color(0xFFF7FBF7) : Colors.white,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: _isSaving ? null : () => _editLineFulfilment(item),
+        onTap:
+            _isSaving ||
+                (_workOrder?['status']?.toString() != 'picking' &&
+                    _workOrder?['status']?.toString() != 'picked' &&
+                    _workOrder?['status']?.toString() != 'completed')
+            ? null
+            : () => _editLineFulfilment(item),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1636,7 +1983,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               ),
               const SizedBox(width: 8),
               Icon(
-                finalised ? Icons.edit_outlined : Icons.scale_outlined,
+                finalised
+                    ? Icons.edit_outlined
+                    : (_workOrder?['status']?.toString() == 'picking'
+                          ? Icons.scale_outlined
+                          : Icons.lock_outline),
                 size: 19,
                 color: _darkRed,
               ),

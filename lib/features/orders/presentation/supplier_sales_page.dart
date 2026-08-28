@@ -342,7 +342,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           'customer_name':
               account['customer_name']?.toString().trim().isNotEmpty == true
               ? account['customer_name'].toString().trim()
-              : account['legal_name']?.toString().trim() ?? 'Customer',
+              : 'Customer',
           'payment_method':
               quote['payment_method_snapshot']?.toString() ?? 'cod',
           'payment_terms_days':
@@ -1965,6 +1965,253 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         final date = sale['requested_fulfilment_date']?.toString() ?? 'Not set';
         final time = sale['requested_fulfilment_time']?.toString() ?? 'Not set';
 
+        final isQuote = sale['quote_order_id'] != null;
+        final quoteNumber = sale['quote_number']?.toString();
+        final revision = (sale['quote_revision'] as num?)?.toInt() ?? 0;
+        final documentLabel = isQuote
+            ? [
+                if (quoteNumber != null && quoteNumber.isNotEmpty) quoteNumber,
+                if (revision > 0) 'R$revision',
+              ].join(' ')
+            : 'New Sale';
+
+        final customer = sale['customer'];
+        final customerMap = customer is Map
+            ? Map<String, dynamic>.from(customer)
+            : <String, dynamic>{};
+
+        final customerPhone = customerMap['phone']?.toString().trim() ?? '';
+        final customerEmail = customerMap['email']?.toString().trim() ?? '';
+        final deliveryAddress =
+            sale['delivery_address']?.toString().trim() ?? '';
+
+        Widget panel({
+          required String title,
+          required IconData icon,
+          required List<Widget> children,
+        }) {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 18, color: _darkRed),
+                    const SizedBox(width: 7),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...children,
+              ],
+            ),
+          );
+        }
+
+        Widget customerPanel() {
+          return panel(
+            title: 'Customer',
+            icon: Icons.business_outlined,
+            children: [
+              _reviewInfo('Business', _activeSaleCustomerName),
+              if (customerPhone.isNotEmpty) _reviewInfo('Phone', customerPhone),
+              if (customerEmail.isNotEmpty) _reviewInfo('Email', customerEmail),
+              if (deliveryAddress.isNotEmpty)
+                _reviewInfo('Delivery address', deliveryAddress),
+            ],
+          );
+        }
+
+        Widget summaryPanel() {
+          return panel(
+            title: isQuote ? 'Quote Summary' : 'Sale Summary',
+            icon: isQuote
+                ? Icons.description_outlined
+                : Icons.point_of_sale_outlined,
+            children: [
+              _reviewInfo(isQuote ? 'Quote' : 'Document', documentLabel),
+              _reviewInfo('Payment', payment),
+              _reviewInfo('Fulfilment', fulfilment),
+              _reviewInfo('Requested date', date),
+              _reviewInfo('Requested time', time),
+            ],
+          );
+        }
+
+        Widget itemsPanel() {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Items',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _activeSaleLines.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 7),
+                    itemBuilder: (context, index) {
+                      final line = _activeSaleLines[index];
+                      final catchWeight = line['catch_weight_snapshot'] == true;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAFAF8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE6E6E2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Text(
+                                line['product_name']?.toString() ?? 'Product',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                '${line['quantity']} '
+                                '${_saleUnitLabel(line['quantity_unit']?.toString() ?? 'unit')}',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                '${_money(line['unit_price'])}'
+                                ' / ${_saleBasisLabel(line['price_basis']?.toString() ?? 'unit')}',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            if (catchWeight) ...[
+                              const SizedBox(width: 10),
+                              const Tooltip(
+                                message: 'Final total pending warehouse weight',
+                                child: Icon(
+                                  Icons.scale_outlined,
+                                  size: 17,
+                                  color: _darkRed,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        Widget totalsActionsPanel() {
+          final hasCatchWeight = _activeSaleLines.any(
+            (line) => line['catch_weight_snapshot'] == true,
+          );
+
+          final quoteButton = OutlinedButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop('quote'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            icon: const Icon(Icons.description_outlined),
+            label: Text(isQuote ? 'Save Quote Revision' : 'Save as Quote'),
+          );
+
+          final workOrderButton = FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop('work_order'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            icon: const Icon(Icons.assignment_outlined),
+            label: const Text('Create Work Order'),
+          );
+
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0E0DD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Totals',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  hasCatchWeight
+                      ? _money(_saleEstimatedTotal())
+                      : _money(_saleEstimatedTotal()),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: _darkRed,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  hasCatchWeight
+                      ? 'Fixed-price items only. Catch-weight totals are finalised after weighing.'
+                      : 'Estimated total',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+                const Spacer(),
+                quoteButton,
+                const SizedBox(height: 9),
+                workOrderButton,
+              ],
+            ),
+          );
+        }
+
         return Dialog.fullscreen(
           child: Scaffold(
             backgroundColor: const Color(0xFFF7F7F5),
@@ -1976,162 +2223,66 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 icon: const Icon(Icons.close),
               ),
               title: Text(
-                'Review Sale • $_activeSaleCustomerName',
+                isQuote
+                    ? 'Quote • $documentLabel'
+                    : 'Review Sale • $_activeSaleCustomerName',
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
-            body: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                Center(
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                final desktop = constraints.maxWidth >= 900;
+
+                if (!desktop) {
+                  return ListView(
+                    padding: const EdgeInsets.all(14),
+                    children: [
+                      customerPanel(),
+                      const SizedBox(height: 10),
+                      summaryPanel(),
+                      const SizedBox(height: 10),
+                      SizedBox(height: 420, child: itemsPanel()),
+                      const SizedBox(height: 10),
+                      SizedBox(height: 270, child: totalsActionsPanel()),
+                    ],
+                  );
+                }
+
+                return Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 980),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE0E0DD)),
-                          ),
-                          child: Wrap(
-                            spacing: 24,
-                            runSpacing: 14,
+                    constraints: const BoxConstraints(maxWidth: 1240),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _reviewInfo('Customer', _activeSaleCustomerName),
-                              _reviewInfo('Payment', payment),
-                              _reviewInfo('Fulfilment', fulfilment),
-                              _reviewInfo('Date', date),
-                              _reviewInfo('Time', time),
-                              if (sale['delivery_address'] != null)
-                                _reviewInfo(
-                                  'Delivery address',
-                                  sale['delivery_address'].toString(),
-                                ),
+                              Expanded(child: customerPanel()),
+                              const SizedBox(width: 12),
+                              Expanded(child: summaryPanel()),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Order Lines',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        for (final line in _activeSaleLines)
-                          Card(
-                            elevation: 0,
-                            margin: const EdgeInsets.only(bottom: 10),
-                            shape: RoundedRectangleBorder(
-                              side: const BorderSide(color: Color(0xFFE0E0DD)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                line['product_name']?.toString() ?? 'Product',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${line['quantity']} '
-                                '${_saleUnitLabel(line['quantity_unit']?.toString() ?? 'unit')}'
-                                ' • ${_money(line['unit_price'])}'
-                                ' / ${_saleBasisLabel(line['price_basis']?.toString() ?? 'unit')}'
-                                '${line['catch_weight_snapshot'] == true ? ' • Final total pending weight' : ''}',
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE0E0DD)),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _activeSaleLines.any(
-                                        (line) =>
-                                            line['catch_weight_snapshot'] ==
-                                            true,
-                                      )
-                                      ? 'Fixed-price estimate: '
-                                            '${_money(_saleEstimatedTotal())} • '
-                                            'Catch-weight totals pending warehouse weighing'
-                                      : 'Estimated total: '
-                                            '${_money(_saleEstimatedTotal())}',
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final narrow = constraints.maxWidth < 650;
-
-                            final quoteButton = OutlinedButton.icon(
-                              onPressed: () =>
-                                  Navigator.of(dialogContext).pop('quote'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                ),
-                              ),
-                              icon: const Icon(Icons.description_outlined),
-                              label: const Text('Save as Quote'),
-                            );
-
-                            final workOrderButton = FilledButton.icon(
-                              onPressed: () =>
-                                  Navigator.of(dialogContext).pop('work_order'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                ),
-                              ),
-                              icon: const Icon(Icons.assignment_outlined),
-                              label: const Text('Create Work Order'),
-                            );
-
-                            if (narrow) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  quoteButton,
-                                  const SizedBox(height: 10),
-                                  workOrderButton,
-                                ],
-                              );
-                            }
-
-                            return Row(
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Expanded(child: quoteButton),
+                                Expanded(child: itemsPanel()),
                                 const SizedBox(width: 12),
-                                Expanded(child: workOrderButton),
+                                SizedBox(
+                                  width: 350,
+                                  child: totalsActionsPanel(),
+                                ),
                               ],
-                            );
-                          },
-                        ),
-                      ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         );
@@ -2253,7 +2404,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
   }
 
-  Widget _marketplaceOrdersButton() {
+  Widget _ordersButton() {
     return OutlinedButton(
       onPressed: () => _openOrders(initialTabKey: 'new'),
       style: OutlinedButton.styleFrom(
@@ -2265,12 +2416,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.storefront_outlined, size: 18),
+          const Icon(Icons.receipt_long_outlined, size: 18),
           const SizedBox(width: 8),
-          const Text(
-            'Marketplace Orders',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
+          const Text('Orders', style: TextStyle(fontWeight: FontWeight.w800)),
           if (_newMarketplaceItemCount > 0) ...[
             const SizedBox(width: 8),
             TweenAnimationBuilder<double>(
@@ -2894,7 +3042,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Build supplier sales from your own stock, manage open sales and quotes, and receive marketplace orders.',
+                    'Create direct supplier sales, manage open sales and quotes, then move live orders through the Orders workflow.',
                     style: TextStyle(color: Color(0xFF666666), height: 1.4),
                   ),
                   const SizedBox(height: 22),
@@ -2920,7 +3068,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             label: 'Quotes',
                             onTap: _openQuotes,
                           ),
-                          _marketplaceOrdersButton(),
+                          _ordersButton(),
                         ],
                       ),
                     ],

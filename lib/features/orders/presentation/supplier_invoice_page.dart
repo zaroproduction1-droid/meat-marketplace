@@ -7,15 +7,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/invoice_pdf_service.dart';
 
 class SupplierInvoicePage extends StatefulWidget {
-  const SupplierInvoicePage({super.key, this.orderId, this.invoiceId})
-    : assert(
-        (orderId != null && orderId != '') ||
-            (invoiceId != null && invoiceId != ''),
-        'Either orderId or invoiceId is required.',
-      );
+  const SupplierInvoicePage({
+    super.key,
+    this.orderId,
+    this.invoiceId,
+    this.openPdfOnLoad = false,
+  }) : assert(
+         (orderId != null && orderId != '') ||
+             (invoiceId != null && invoiceId != ''),
+         'Either orderId or invoiceId is required.',
+       );
 
   final String? orderId;
   final String? invoiceId;
+  final bool openPdfOnLoad;
 
   @override
   State<SupplierInvoicePage> createState() => _SupplierInvoicePageState();
@@ -30,6 +35,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   Map<String, dynamic>? _invoice;
   List<Map<String, dynamic>> _items = [];
+  bool _didAutoOpenPdf = false;
 
   final _notesController = TextEditingController();
 
@@ -195,6 +201,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         _items = enrichedItems;
         _isLoading = false;
       });
+
+      if (widget.openPdfOnLoad && !_didAutoOpenPdf) {
+        _didAutoOpenPdf = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _printInvoice();
+          }
+        });
+      }
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -993,14 +1008,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       );
     }
 
-    final supplierAddress = address(
-      line1: _invoice?['supplier_address_line_1_snapshot'],
-      line2: _invoice?['supplier_address_line_2_snapshot'],
-      suburb: _invoice?['supplier_suburb_snapshot'],
-      state: _invoice?['supplier_state_snapshot'],
-      postcode: _invoice?['supplier_postcode_snapshot'],
-    );
-
     final customerAddress = address(
       line1: _invoice?['customer_billing_address_line_1_snapshot'],
       line2: _invoice?['customer_billing_address_line_2_snapshot'],
@@ -1008,6 +1015,69 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       state: _invoice?['customer_billing_state_snapshot'],
       postcode: _invoice?['customer_billing_postcode_snapshot'],
     );
+
+    Widget customerSummaryPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            sectionTitle('Customer', icon: Icons.business_outlined),
+            fact('Business', clean(_invoice?['customer_name_snapshot'])),
+            if (clean(
+              _invoice?['customer_abn_snapshot'],
+              fallback: '',
+            ).isNotEmpty)
+              fact('ABN', clean(_invoice?['customer_abn_snapshot'])),
+            if (clean(
+              _invoice?['customer_email_snapshot'],
+              fallback: '',
+            ).isNotEmpty)
+              fact('Email', clean(_invoice?['customer_email_snapshot'])),
+            if (clean(
+              _invoice?['customer_phone_snapshot'],
+              fallback: '',
+            ).isNotEmpty)
+              fact('Phone', clean(_invoice?['customer_phone_snapshot'])),
+            if (customerAddress.isNotEmpty) fact('Billing', customerAddress),
+          ],
+        ),
+      );
+    }
+
+    Widget invoiceSummaryPanel() {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            sectionTitle('Invoice Summary', icon: Icons.receipt_long_outlined),
+            fact('Invoice', clean(_invoice?['invoice_number'])),
+            fact('Invoice date', clean(_invoice?['invoice_date'])),
+            fact('Due date', clean(_invoice?['due_date'])),
+            fact('Payment', _paymentText()),
+            if (clean(
+              _invoice?['customer_reference_snapshot'],
+              fallback: '',
+            ).isNotEmpty)
+              fact(
+                'Customer ref',
+                clean(_invoice?['customer_reference_snapshot']),
+              ),
+          ],
+        ),
+      );
+    }
 
     Widget itemsPanel() {
       return Container(
@@ -1066,329 +1136,240 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       );
     }
 
-    Widget controlPanel() {
+    Widget totalsActionsPanel() {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE0E0DD)),
         ),
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(14),
-          children: [
-            sectionTitle('Invoice Summary', icon: Icons.receipt_long_outlined),
-            fact('Invoice date', clean(_invoice?['invoice_date'])),
-            fact('Due date', clean(_invoice?['due_date'])),
-            fact('Payment', _paymentText()),
-            if (clean(
-              _invoice?['customer_reference_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact(
-                'Customer ref',
-                clean(_invoice?['customer_reference_snapshot']),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              sectionTitle('Totals', icon: Icons.calculate_outlined),
+              _TotalRow(
+                label: 'Products inc GST',
+                value: _money(_invoice?['products_subtotal']),
               ),
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-
-            sectionTitle('Supplier', icon: Icons.storefront_outlined),
-            fact(
-              'Business',
-              clean(
-                _invoice?['supplier_trading_name_snapshot'],
-                fallback: clean(_invoice?['supplier_legal_name_snapshot']),
+              _TotalRow(
+                label: 'Delivery inc GST',
+                value: _asDouble(_invoice?['delivery_fee']) == 0
+                    ? 'Free'
+                    : _money(_invoice?['delivery_fee']),
               ),
-            ),
-            if (clean(
-              _invoice?['supplier_legal_name_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact(
-                'Legal name',
-                clean(_invoice?['supplier_legal_name_snapshot']),
+              _TotalRow(label: 'GST included', value: _money(_gstIncluded)),
+              _TotalRow(label: 'Total ex GST', value: _money(_exGstTotal)),
+              const Divider(height: 16),
+              _TotalRow(
+                label: 'Total inc GST',
+                value: _money(_incGstTotal),
+                bold: true,
               ),
-            if (clean(
-              _invoice?['supplier_abn_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('ABN', clean(_invoice?['supplier_abn_snapshot'])),
-            if (clean(
-              _invoice?['supplier_licence_number_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact(
-                'Licence',
-                clean(_invoice?['supplier_licence_number_snapshot']),
+              _TotalRow(label: 'Amount paid', value: _money(_amountPaid)),
+              _TotalRow(
+                label: 'Outstanding',
+                value: _money(_amountOutstanding),
+                bold: true,
               ),
-            if (clean(
-              _invoice?['supplier_email_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('Email', clean(_invoice?['supplier_email_snapshot'])),
-            if (clean(
-              _invoice?['supplier_phone_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('Phone', clean(_invoice?['supplier_phone_snapshot'])),
-            if (supplierAddress.isNotEmpty) fact('Address', supplierAddress),
 
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-
-            sectionTitle('Customer', icon: Icons.business_outlined),
-            fact('Business', clean(_invoice?['customer_name_snapshot'])),
-            if (clean(
-              _invoice?['customer_legal_name_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact(
-                'Legal name',
-                clean(_invoice?['customer_legal_name_snapshot']),
-              ),
-            if (clean(
-              _invoice?['customer_abn_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('ABN', clean(_invoice?['customer_abn_snapshot'])),
-            if (clean(
-              _invoice?['customer_email_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('Email', clean(_invoice?['customer_email_snapshot'])),
-            if (clean(
-              _invoice?['customer_phone_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact('Phone', clean(_invoice?['customer_phone_snapshot'])),
-            if (customerAddress.isNotEmpty) fact('Billing', customerAddress),
-
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-
-            sectionTitle('Totals', icon: Icons.calculate_outlined),
-            _TotalRow(
-              label: 'Products inc GST',
-              value: _money(_invoice?['products_subtotal']),
-            ),
-            _TotalRow(
-              label: 'Delivery inc GST',
-              value: _asDouble(_invoice?['delivery_fee']) == 0
-                  ? 'Free'
-                  : _money(_invoice?['delivery_fee']),
-            ),
-            _TotalRow(label: 'GST included', value: _money(_gstIncluded)),
-            _TotalRow(label: 'Total ex GST', value: _money(_exGstTotal)),
-            const Divider(height: 16),
-            _TotalRow(
-              label: 'Total inc GST',
-              value: _money(_incGstTotal),
-              bold: true,
-            ),
-            _TotalRow(label: 'Amount paid', value: _money(_amountPaid)),
-            _TotalRow(
-              label: 'Outstanding',
-              value: _money(_amountOutstanding),
-              bold: true,
-            ),
-
-            if (_hasPendingCustomerPaymentClaim) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E6),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE0C26C)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Customer marked this invoice as paid',
-                      style: TextStyle(
-                        color: Color(0xFF9A6700),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Claimed ${_money(_asDouble(_invoice?['customer_payment_claimed_amount']))}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    if (clean(
-                      _invoice?['customer_payment_claimed_note'],
-                      fallback: '',
-                    ).isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        clean(_invoice?['customer_payment_claimed_note']),
-                        style: const TextStyle(fontSize: 11.5),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _isSaving
-                                ? null
-                                : () => _reviewCustomerPaymentClaim(true),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E7D32),
-                            ),
-                            child: const Text('Confirm'),
-                          ),
+              if (_hasPendingCustomerPaymentClaim) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE0C26C)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Customer marked this invoice as paid',
+                        style: TextStyle(
+                          color: Color(0xFF9A6700),
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _isSaving
-                                ? null
-                                : () => _reviewCustomerPaymentClaim(false),
-                            child: const Text('Reject'),
-                          ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Claimed ${_money(_asDouble(_invoice?['customer_payment_claimed_amount']))}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      if (clean(
+                        _invoice?['customer_payment_claimed_note'],
+                        fallback: '',
+                      ).isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          clean(_invoice?['customer_payment_claimed_note']),
+                          style: const TextStyle(fontSize: 11.5),
                         ),
                       ],
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => _reviewCustomerPaymentClaim(true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                              ),
+                              child: const Text('Confirm'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => _reviewCustomerPaymentClaim(false),
+                              child: const Text('Reject'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: _canSendToButcher && !_isSaving
+                    ? _sendInvoiceToButcher
+                    : null,
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                icon: Icon(
+                  _sentToButcher
+                      ? Icons.mark_email_read_outlined
+                      : Icons.send_outlined,
+                ),
+                label: Text(
+                  !_hasButcherAccount
+                      ? 'External Customer'
+                      : _sentToButcher
+                      ? 'Sent to Customer'
+                      : 'Send Invoice to Customer',
                 ),
               ),
-            ],
+              const SizedBox(height: 7),
+              OutlinedButton.icon(
+                onPressed: _canRecordPayment && !_isSaving
+                    ? _recordPayment
+                    : null,
+                icon: const Icon(Icons.payments_outlined),
+                label: Text(
+                  _amountOutstanding <= 0 ? 'Paid in Full' : 'Record Payment',
+                ),
+              ),
 
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: _canSendToButcher && !_isSaving
-                  ? _sendInvoiceToButcher
-                  : null,
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              icon: Icon(
-                _sentToButcher
-                    ? Icons.mark_email_read_outlined
-                    : Icons.send_outlined,
-              ),
-              label: Text(
-                !_hasButcherAccount
-                    ? 'External Customer'
-                    : _sentToButcher
-                    ? 'Sent to Customer'
-                    : 'Send Invoice to Customer',
-              ),
-            ),
-            const SizedBox(height: 7),
-            OutlinedButton.icon(
-              onPressed: _canRecordPayment && !_isSaving
-                  ? _recordPayment
-                  : null,
-              icon: const Icon(Icons.payments_outlined),
-              label: Text(
-                _amountOutstanding <= 0 ? 'Paid in Full' : 'Record Payment',
-              ),
-            ),
-
-            if (clean(
+              if (clean(
+                    _invoice?['bank_name_snapshot'],
+                    fallback: '',
+                  ).isNotEmpty ||
+                  clean(
+                    _invoice?['bank_account_name_snapshot'],
+                    fallback: '',
+                  ).isNotEmpty ||
+                  clean(
+                    _invoice?['bank_bsb_snapshot'],
+                    fallback: '',
+                  ).isNotEmpty ||
+                  clean(
+                    _invoice?['bank_account_number_snapshot'],
+                    fallback: '',
+                  ).isNotEmpty ||
+                  clean(
+                    _invoice?['payment_instructions_snapshot'],
+                    fallback: '',
+                  ).isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                sectionTitle(
+                  'Payment Details',
+                  icon: Icons.account_balance_outlined,
+                ),
+                if (clean(
                   _invoice?['bank_name_snapshot'],
                   fallback: '',
-                ).isNotEmpty ||
-                clean(
+                ).isNotEmpty)
+                  fact('Bank', clean(_invoice?['bank_name_snapshot'])),
+                if (clean(
                   _invoice?['bank_account_name_snapshot'],
                   fallback: '',
-                ).isNotEmpty ||
-                clean(
+                ).isNotEmpty)
+                  fact(
+                    'Account name',
+                    clean(_invoice?['bank_account_name_snapshot']),
+                  ),
+                if (clean(
                   _invoice?['bank_bsb_snapshot'],
                   fallback: '',
-                ).isNotEmpty ||
-                clean(
+                ).isNotEmpty)
+                  fact('BSB', clean(_invoice?['bank_bsb_snapshot'])),
+                if (clean(
                   _invoice?['bank_account_number_snapshot'],
                   fallback: '',
-                ).isNotEmpty ||
-                clean(
+                ).isNotEmpty)
+                  fact(
+                    'Account no.',
+                    clean(_invoice?['bank_account_number_snapshot']),
+                  ),
+                if (clean(
                   _invoice?['payment_instructions_snapshot'],
                   fallback: '',
-                ).isNotEmpty) ...[
+                ).isNotEmpty)
+                  fact(
+                    'Instructions',
+                    clean(_invoice?['payment_instructions_snapshot']),
+                  ),
+              ],
+
               const SizedBox(height: 10),
               const Divider(height: 1),
               const SizedBox(height: 10),
-              sectionTitle(
-                'Payment Details',
-                icon: Icons.account_balance_outlined,
+              sectionTitle('Invoice Notes', icon: Icons.notes_outlined),
+              TextField(
+                controller: _notesController,
+                minLines: 2,
+                maxLines: 4,
+                enabled: status != 'void' && !_isSaving,
+                decoration: const InputDecoration(
+                  hintText: 'Invoice notes',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
-              if (clean(
-                _invoice?['bank_name_snapshot'],
-                fallback: '',
-              ).isNotEmpty)
-                fact('Bank', clean(_invoice?['bank_name_snapshot'])),
-              if (clean(
-                _invoice?['bank_account_name_snapshot'],
-                fallback: '',
-              ).isNotEmpty)
-                fact(
-                  'Account name',
-                  clean(_invoice?['bank_account_name_snapshot']),
+              const SizedBox(height: 7),
+              OutlinedButton.icon(
+                onPressed: status != 'void' && !_isSaving ? _saveNotes : null,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save Notes'),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _canIssue && !_isSaving ? _issueInvoice : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-              if (clean(
-                _invoice?['bank_bsb_snapshot'],
-                fallback: '',
-              ).isNotEmpty)
-                fact('BSB', clean(_invoice?['bank_bsb_snapshot'])),
-              if (clean(
-                _invoice?['bank_account_number_snapshot'],
-                fallback: '',
-              ).isNotEmpty)
-                fact(
-                  'Account no.',
-                  clean(_invoice?['bank_account_number_snapshot']),
+                icon: const Icon(Icons.task_alt),
+                label: Text(
+                  status == 'issued'
+                      ? 'Invoice Issued'
+                      : _canIssue
+                      ? 'Issue Invoice'
+                      : 'Invoice Not Ready',
                 ),
-              if (clean(
-                _invoice?['payment_instructions_snapshot'],
-                fallback: '',
-              ).isNotEmpty)
-                fact(
-                  'Instructions',
-                  clean(_invoice?['payment_instructions_snapshot']),
-                ),
+              ),
             ],
-
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-            sectionTitle('Invoice Notes', icon: Icons.notes_outlined),
-            TextField(
-              controller: _notesController,
-              minLines: 2,
-              maxLines: 4,
-              enabled: status != 'void' && !_isSaving,
-              decoration: const InputDecoration(
-                hintText: 'Invoice notes',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 7),
-            OutlinedButton.icon(
-              onPressed: status != 'void' && !_isSaving ? _saveNotes : null,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Save Notes'),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: _canIssue && !_isSaving ? _issueInvoice : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: _darkRed,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-              ),
-              icon: const Icon(Icons.task_alt),
-              label: Text(
-                status == 'issued'
-                    ? 'Invoice Issued'
-                    : _canIssue
-                    ? 'Issue Invoice'
-                    : 'Invoice Not Ready',
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -1471,21 +1452,34 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             children: [
               header,
               const SizedBox(height: 10),
-              SizedBox(height: 450, child: itemsPanel()),
+              customerSummaryPanel(),
               const SizedBox(height: 10),
-              SizedBox(height: 820, child: controlPanel()),
+              invoiceSummaryPanel(),
+              const SizedBox(height: 10),
+              SizedBox(height: 460, child: itemsPanel()),
+              const SizedBox(height: 10),
+              totalsActionsPanel(),
             ],
           );
         }
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: const BoxConstraints(maxWidth: 1240),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 children: [
                   header,
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: customerSummaryPanel()),
+                      const SizedBox(width: 12),
+                      Expanded(child: invoiceSummaryPanel()),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: Row(
@@ -1493,7 +1487,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                       children: [
                         Expanded(child: itemsPanel()),
                         const SizedBox(width: 12),
-                        SizedBox(width: 390, child: controlPanel()),
+                        SizedBox(width: 350, child: totalsActionsPanel()),
                       ],
                     ),
                   ),
