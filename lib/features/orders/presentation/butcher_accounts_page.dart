@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
+
 import '../services/invoice_pdf_service.dart';
+import 'account_statement_page.dart';
 
 class ButcherAccountsPage extends StatefulWidget {
   const ButcherAccountsPage({super.key});
@@ -10,23 +12,18 @@ class ButcherAccountsPage extends StatefulWidget {
   State<ButcherAccountsPage> createState() => _ButcherAccountsPageState();
 }
 
-class _ButcherAccountsPageState extends State<ButcherAccountsPage>
-    with SingleTickerProviderStateMixin {
+class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
   static const Color _darkRed = Color(0xFF8B1E1E);
 
-  late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
 
   bool _loading = true;
   String? _error;
-
-  List<Map<String, dynamic>> _invoices = [];
-  Map<String, String> _supplierNames = {};
+  List<Map<String, dynamic>> _supplierAccounts = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(_refresh);
     _loadAccounts();
   }
@@ -35,66 +32,60 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
   void _refresh() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  List<Map<String, dynamic>> _maps(dynamic value) {
-    if (value is! List) {
-      return [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
+    if (mounted) setState(() {});
   }
 
   double _asDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-
+    if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(double value) {
-    final fixed = value.toStringAsFixed(2);
-    final parts = fixed.split('.');
-    final chars = parts[0].split('').reversed.toList();
-    final grouped = <String>[];
+  String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
-    for (var i = 0; i < chars.length; i++) {
-      if (i > 0 && i % 3 == 0) {
-        grouped.add(',');
-      }
-      grouped.add(chars[i]);
-    }
+  String _terms(Map<String, dynamic> account) {
+    final method = account['payment_method']?.toString();
+    final days = (account['payment_terms_days'] as num?)?.toInt() ?? 0;
 
-    return '\$${grouped.reversed.join()}.${parts[1]}';
+    if (method == 'prepaid') return 'Prepaid';
+    if (method == 'cod') return 'COD';
+    if (days > 0) return '$days days';
+    return 'Not set';
   }
 
-  String _date(dynamic value) {
-    if (value == null) {
-      return '—';
+  String _statusLabel(String? status) {
+    switch (status) {
+      case 'overdue':
+        return 'Overdue';
+      case 'due_soon':
+        return 'Due Soon';
+      case 'open':
+        return 'Open';
+      case 'credit_available':
+        return 'Credit Available';
+      case 'clear':
+        return 'Clear';
+      default:
+        return 'Open';
     }
+  }
 
-    final parsed = DateTime.tryParse(value.toString())?.toLocal();
-
-    if (parsed == null) {
-      return value.toString();
+  Color _statusColor(String? status) {
+    switch (status) {
+      case 'overdue':
+        return const Color(0xFFB3261E);
+      case 'due_soon':
+        return const Color(0xFF9A5B00);
+      case 'credit_available':
+        return const Color(0xFF315A8C);
+      case 'clear':
+        return const Color(0xFF2E7D32);
+      default:
+        return const Color(0xFF666666);
     }
-
-    final day = parsed.day.toString().padLeft(2, '0');
-    final month = parsed.month.toString().padLeft(2, '0');
-
-    return '$day/$month/${parsed.year}';
   }
 
   Future<void> _loadAccounts() async {
@@ -104,579 +95,247 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
     });
 
     try {
-      final client = Supabase.instance.client;
-      final userId = client.auth.currentUser?.id;
+      final response = await Supabase.instance.client.rpc(
+        'list_butcher_supplier_account_summaries',
+        params: {'due_soon_days': 7},
+      );
 
-      if (userId == null) {
-        throw Exception('You are not signed in.');
-      }
-
-      final memberships = await client
-          .from('business_memberships')
-          .select('business_id')
-          .eq('user_id', userId)
-          .eq('status', 'active');
-
-      final businessIds = <String>[
-        for (final raw in _maps(memberships))
-          if (raw['business_id'] != null) raw['business_id'].toString(),
-      ];
-
-      if (businessIds.isEmpty) {
-        throw Exception('No active business membership was found.');
-      }
-
-      final businesses = await client
-          .from('businesses')
-          .select('id, business_type, active')
-          .inFilter('id', businessIds);
-
-      String? butcherBusinessId;
-
-      for (final business in _maps(businesses)) {
-        if (business['business_type']?.toString() == 'butcher' &&
-            business['active'] != false) {
-          butcherBusinessId = business['id']?.toString();
-          break;
-        }
-      }
-
-      if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
-        throw Exception(
-          'No active butcher business was found for this account.',
-        );
-      }
-
-      final response = await client
-          .from('invoices')
-          .select('''
-            id,
-            invoice_number,
-            order_id,
-            supplier_business_id,
-            butcher_business_id,
-            status,
-            customer_name_snapshot,
-            customer_reference_snapshot,
-            payment_method_snapshot,
-            payment_terms_days_snapshot,
-            products_subtotal,
-            delivery_fee,
-            tax_amount,
-            total_amount,
-            invoice_date,
-            due_date,
-            notes,
-            issued_at,
-            paid_at,
-            sent_to_butcher_at,
-            amount_paid,
-            last_payment_at,
-            customer_payment_claim_status,
-            customer_payment_claimed_at,
-            customer_payment_claimed_amount,
-            customer_payment_claimed_note,
-            payment_claim_reviewed_at,
-            payment_claim_review_note,
-            supplier_trading_name_snapshot,
-            supplier_legal_name_snapshot,
-            supplier_abn_snapshot,
-            supplier_licence_number_snapshot,
-            supplier_email_snapshot,
-            supplier_phone_snapshot,
-            supplier_address_line_1_snapshot,
-            supplier_address_line_2_snapshot,
-            supplier_suburb_snapshot,
-            supplier_state_snapshot,
-            supplier_postcode_snapshot,
-            bank_name_snapshot,
-            bank_account_name_snapshot,
-            bank_bsb_snapshot,
-            bank_account_number_snapshot,
-            payment_instructions_snapshot,
-            customer_legal_name_snapshot,
-            customer_abn_snapshot,
-            customer_email_snapshot,
-            customer_phone_snapshot,
-            customer_billing_address_line_1_snapshot,
-            customer_billing_address_line_2_snapshot,
-            customer_billing_suburb_snapshot,
-            customer_billing_state_snapshot,
-            customer_billing_postcode_snapshot,
-            created_at,
-            invoice_items(
-              id,
-              product_name_snapshot,
-              sku_snapshot,
-              ordered_quantity,
-              ordered_quantity_unit,
-              supplied_quantity,
-              supplied_quantity_unit,
-              actual_weight,
-              actual_weight_unit,
-              locked_unit_price,
-              price_basis,
-              line_amount
-            )
-          ''')
-          .eq('butcher_business_id', butcherBusinessId)
-          .not('sent_to_butcher_at', 'is', null)
-          .order('invoice_date', ascending: false)
-          .order('created_at', ascending: false);
-
-      final invoices = _maps(response);
-      final supplierIds = invoices
-          .map((invoice) => invoice['supplier_business_id']?.toString())
-          .whereType<String>()
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      final supplierNames = <String, String>{};
-
-      if (supplierIds.isNotEmpty) {
-        final businesses = await client
-            .from('businesses')
-            .select('id, trading_name, legal_name')
-            .inFilter('id', supplierIds);
-
-        for (final business in _maps(businesses)) {
-          final id = business['id']?.toString();
-
-          if (id == null || id.isEmpty) {
-            continue;
-          }
-
-          final tradingName = business['trading_name']?.toString().trim();
-          final legalName = business['legal_name']?.toString().trim();
-
-          supplierNames[id] = tradingName != null && tradingName.isNotEmpty
-              ? tradingName
-              : legalName != null && legalName.isNotEmpty
-              ? legalName
-              : 'Supplier';
-        }
-      }
-
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
-        _invoices = invoices;
-        _supplierNames = supplierNames;
+        _supplierAccounts = List<Map<String, dynamic>>.from(response as List);
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
-        _loading = false;
         _error = error.message;
+        _loading = false;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
-        _loading = false;
         _error = error.toString();
+        _loading = false;
       });
     }
   }
 
-  double _total(Map<String, dynamic> invoice) =>
-      _asDouble(invoice['total_amount']);
+  List<Map<String, dynamic>> get _filteredAccounts {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return _supplierAccounts;
 
-  double _paid(Map<String, dynamic> invoice) =>
-      _asDouble(invoice['amount_paid']);
-
-  double _outstanding(Map<String, dynamic> invoice) {
-    final value = _total(invoice) - _paid(invoice);
-    return value < 0 ? 0 : value;
-  }
-
-  String _paymentMethod(Map<String, dynamic> invoice) =>
-      invoice['payment_method_snapshot']?.toString().trim().toLowerCase() ?? '';
-
-  bool _isPaid(Map<String, dynamic> invoice) =>
-      invoice['status']?.toString() == 'paid' || _outstanding(invoice) <= 0;
-
-  bool _isCod(Map<String, dynamic> invoice) {
-    final method = _paymentMethod(invoice);
-    return !_isPaid(invoice) &&
-        (method == 'cod' ||
-            method == 'cash on delivery' ||
-            method == 'cash_on_delivery');
-  }
-
-  bool _isOutstanding(Map<String, dynamic> invoice) =>
-      !_isPaid(invoice) && !_isCod(invoice);
-
-  bool _isOverdue(Map<String, dynamic> invoice) {
-    if (_isPaid(invoice) || _isCod(invoice)) {
-      return false;
-    }
-
-    final due = invoice['due_date'] == null
-        ? null
-        : DateTime.tryParse(invoice['due_date'].toString())?.toLocal();
-
-    if (due == null) {
-      return false;
-    }
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dueDay = DateTime(due.year, due.month, due.day);
-
-    return dueDay.isBefore(today);
-  }
-
-  String _supplierName(Map<String, dynamic> invoice) {
-    final supplierId = invoice['supplier_business_id']?.toString();
-    return _supplierNames[supplierId] ?? 'Supplier';
-  }
-
-  List<Map<String, dynamic>> _filter(
-    bool Function(Map<String, dynamic>) predicate,
-  ) {
-    final search = _searchController.text.trim().toLowerCase();
-
-    return _invoices.where((invoice) {
-      if (!predicate(invoice)) {
-        return false;
-      }
-
-      if (search.isEmpty) {
-        return true;
-      }
-
-      final items = invoice['invoice_items'] is List
-          ? List<dynamic>.from(invoice['invoice_items'] as List)
-          : <dynamic>[];
-
-      final text = <String>[
-        invoice['invoice_number']?.toString() ?? '',
-        invoice['customer_reference_snapshot']?.toString() ?? '',
-        _supplierName(invoice),
-        invoice['invoice_date']?.toString() ?? '',
-        invoice['due_date']?.toString() ?? '',
-        invoice['payment_method_snapshot']?.toString() ?? '',
-        for (final item in items)
-          if (item is Map) item['product_name_snapshot']?.toString() ?? '',
-      ].join(' ').toLowerCase();
-
-      return text.contains(search);
+    return _supplierAccounts.where((account) {
+      return (account['supplier_name']?.toString() ?? '')
+          .toLowerCase()
+          .contains(query);
     }).toList();
   }
 
-  double get _totalOutstanding => _invoices
-      .where((invoice) => !_isPaid(invoice))
-      .fold(0, (sum, invoice) => sum + _outstanding(invoice));
+  double get _totalOutstanding => _supplierAccounts.fold(
+    0,
+    (sum, a) => sum + _asDouble(a['outstanding_balance']),
+  );
 
-  double get _totalOverdue => _invoices
-      .where(_isOverdue)
-      .fold(0, (sum, invoice) => sum + _outstanding(invoice));
+  double get _totalOverdue => _supplierAccounts.fold(
+    0,
+    (sum, a) => sum + _asDouble(a['overdue_amount']),
+  );
 
-  double get _totalCod => _invoices
-      .where(_isCod)
-      .fold(0, (sum, invoice) => sum + _outstanding(invoice));
+  double get _totalDueSoon => _supplierAccounts.fold(
+    0,
+    (sum, a) => sum + _asDouble(a['due_soon_amount']),
+  );
 
-  String _statusLabel(Map<String, dynamic> invoice) {
-    if (_isPaid(invoice)) {
-      return 'Paid';
-    }
+  Future<void> _openSupplierAccount(Map<String, dynamic> account) async {
+    final supplierId = account['supplier_business_id']?.toString();
+    if (supplierId == null || supplierId.isEmpty) return;
 
-    if (_isCod(invoice)) {
-      return 'Payment Required';
-    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ButcherSupplierAccountPage(
+          supplierBusinessId: supplierId,
+          supplierName: account['supplier_name']?.toString() ?? 'Supplier',
+        ),
+      ),
+    );
 
-    if (_isOverdue(invoice)) {
-      return 'Overdue';
-    }
-
-    if (_paid(invoice) > 0) {
-      return 'Partially Paid';
-    }
-
-    return 'Outstanding';
-  }
-
-  Color _statusColor(Map<String, dynamic> invoice) {
-    if (_isPaid(invoice)) {
-      return const Color(0xFF2E7D32);
-    }
-
-    if (_isOverdue(invoice) || _isCod(invoice)) {
-      return _darkRed;
-    }
-
-    return const Color(0xFF9A6700);
+    if (mounted) await _loadAccounts();
   }
 
   Widget _summaryCard({
     required String label,
-    required double amount,
-    required IconData icon,
+    required String value,
+    IconData? icon,
+    Color? valueColor,
+    String? subtitle,
   }) {
     return Container(
-      width: 230,
-      padding: const EdgeInsets.all(18),
+      width: 220,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _darkRed),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _money(amount),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: valueColor ?? _darkRed),
+            const SizedBox(height: 8),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? const Color(0xFF222222),
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Color(0xFF777777), fontSize: 10.5),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _invoiceList(List<Map<String, dynamic>> invoices) {
-    if (invoices.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: const [
-          SizedBox(height: 55),
-          Icon(Icons.receipt_long_outlined, size: 46, color: Color(0xFFAAAAAA)),
-          SizedBox(height: 12),
-          Center(
-            child: Text(
-              'No invoices in this section.',
-              style: TextStyle(
-                color: Color(0xFF666666),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+  Widget _supplierAccountRow(Map<String, dynamic> account) {
+    final status = account['account_status']?.toString();
 
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-      itemCount: invoices.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final invoice = invoices[index];
-        final statusColor = _statusColor(invoice);
-        final outstanding = _outstanding(invoice);
-
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => ButcherInvoiceDetailPage(
-                    invoiceId: invoice['id'].toString(),
-                    initialInvoice: invoice,
-                    supplierName: _supplierName(invoice),
-                    onChanged: _loadAccounts,
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openSupplierAccount(account),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFE0E0DD)),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFF4E5E5),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final narrow = constraints.maxWidth < 780;
-
-                  final identity = Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5EAEA),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(
-                          Icons.receipt_long_outlined,
-                          color: _darkRed,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    invoice['invoice_number']?.toString() ??
-                                        'Invoice',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 7),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.10),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    _statusLabel(invoice),
-                                    style: TextStyle(
-                                      color: statusColor,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _supplierName(invoice),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: _darkRed,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-
-                  final facts = Wrap(
-                    spacing: 20,
-                    runSpacing: 6,
-                    children: [
-                      _CompactButcherFact(
-                        label: 'DATE',
-                        value: _date(invoice['invoice_date']),
-                      ),
-                      _CompactButcherFact(
-                        label: 'DUE',
-                        value: _date(invoice['due_date']),
-                      ),
-                      _CompactButcherFact(
-                        label: 'PAYMENT',
-                        value:
-                            invoice['payment_method_snapshot']?.toString() ??
-                            '—',
-                      ),
-                    ],
-                  );
-
-                  final trailing = Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'OUTSTANDING',
-                            style: TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          Text(
-                            _money(outstanding),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: outstanding > 0
-                                  ? _darkRed
-                                  : const Color(0xFF2E7D32),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.chevron_right, color: _darkRed),
-                    ],
-                  );
-
-                  if (narrow) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        identity,
-                        const SizedBox(height: 9),
-                        facts,
-                        const SizedBox(height: 7),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: trailing,
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    children: [
-                      SizedBox(width: 300, child: identity),
-                      const SizedBox(width: 18),
-                      Expanded(child: facts),
-                      const SizedBox(width: 12),
-                      trailing,
-                    ],
-                  );
-                },
+              child: const Icon(
+                Icons.storefront_outlined,
+                color: _darkRed,
+                size: 20,
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 3,
+              child: Text(
+                account['supplier_name']?.toString() ?? 'Supplier',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            _fact(
+              'OUTSTANDING',
+              _money(account['outstanding_balance']),
+              valueColor: _asDouble(account['outstanding_balance']) > 0
+                  ? _darkRed
+                  : null,
+            ),
+            const SizedBox(width: 20),
+            _fact(
+              'OVERDUE',
+              _money(account['overdue_amount']),
+              valueColor: _asDouble(account['overdue_amount']) > 0
+                  ? const Color(0xFFB3261E)
+                  : null,
+            ),
+            const SizedBox(width: 20),
+            _fact('TERMS', _terms(account)),
+            const SizedBox(width: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: _statusColor(status).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _statusLabel(status),
+                style: TextStyle(
+                  color: _statusColor(status),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: _darkRed),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fact(
+    String label,
+    String value, {
+    String? subtitle,
+    Color? valueColor,
+  }) {
+    return SizedBox(
+      width: 118,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF888888),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: valueColor ?? const Color(0xFF222222),
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 1),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Color(0xFF777777), fontSize: 9.5),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -688,7 +347,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Accounts')),
+        appBar: AppBar(title: const Text('Accounts & Invoices')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -712,97 +371,1152 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
       );
     }
 
-    final cod = _filter(_isCod);
-    final outstanding = _filter(_isOutstanding);
-    final paid = _filter(_isPaid);
-    final all = _filter((_) => true);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color(0xFFF7F7F5),
       appBar: AppBar(
-        title: const Text('Accounts'),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: const Text(
+          'Accounts & Invoices',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _loadAccounts,
             icon: const Icon(Icons.refresh),
           ),
+          const SizedBox(width: 8),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: [
-            Tab(text: 'COD / Payment Required (${cod.length})'),
-            Tab(text: 'Outstanding (${outstanding.length})'),
-            Tab(text: 'Paid (${paid.length})'),
-            Tab(text: 'All Invoices (${all.length})'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadAccounts,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1240),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _summaryCard(
+                          label: 'Total Outstanding',
+                          value: _money(_totalOutstanding),
+                          icon: Icons.account_balance_wallet_outlined,
+                          valueColor: _totalOutstanding > 0 ? _darkRed : null,
+                        ),
+                        _summaryCard(
+                          label: 'Due Soon',
+                          value: _money(_totalDueSoon),
+                          icon: Icons.schedule_outlined,
+                          valueColor: _totalDueSoon > 0
+                              ? const Color(0xFF9A5B00)
+                              : null,
+                        ),
+                        _summaryCard(
+                          label: 'Overdue',
+                          value: _money(_totalOverdue),
+                          icon: Icons.warning_amber_rounded,
+                          valueColor: _totalOverdue > 0
+                              ? const Color(0xFFB3261E)
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search supplier accounts',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: _searchController.clear,
+                                icon: const Icon(Icons.close),
+                              ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Supplier Accounts',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    if (_filteredAccounts.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0E0DD)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'No supplier accounts found.',
+                            style: TextStyle(color: Color(0xFF777777)),
+                          ),
+                        ),
+                      )
+                    else
+                      for (var i = 0; i < _filteredAccounts.length; i++) ...[
+                        _supplierAccountRow(_filteredAccounts[i]),
+                        if (i != _filteredAccounts.length - 1)
+                          const SizedBox(height: 8),
+                      ],
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            child: Column(
-              children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _summaryCard(
-                      label: 'Outstanding',
-                      amount: _totalOutstanding,
-                      icon: Icons.account_balance_wallet_outlined,
-                    ),
-                    _summaryCard(
-                      label: 'Overdue',
-                      amount: _totalOverdue,
-                      icon: Icons.warning_amber_outlined,
-                    ),
-                    _summaryCard(
-                      label: 'COD to Pay',
-                      amount: _totalCod,
-                      icon: Icons.payments_outlined,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Search supplier, invoice number, date or product',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: _searchController.clear,
-                            icon: const Icon(Icons.close),
+    );
+  }
+}
+
+class ButcherSupplierAccountPage extends StatefulWidget {
+  const ButcherSupplierAccountPage({
+    super.key,
+    required this.supplierBusinessId,
+    required this.supplierName,
+  });
+
+  final String supplierBusinessId;
+  final String supplierName;
+
+  @override
+  State<ButcherSupplierAccountPage> createState() =>
+      _ButcherSupplierAccountPageState();
+}
+
+class _ButcherSupplierAccountPageState
+    extends State<ButcherSupplierAccountPage> {
+  static const Color _darkRed = Color(0xFF8B1E1E);
+
+  bool _loading = true;
+  String? _error;
+  String? _butcherBusinessId;
+  String _butcherName = 'Your Business';
+  Map<String, dynamic>? _summary;
+  List<Map<String, dynamic>> _invoices = [];
+  List<Map<String, dynamic>> _payments = [];
+  List<Map<String, dynamic>> _allocations = [];
+  List<Map<String, dynamic>> _credits = [];
+  List<Map<String, dynamic>> _creditAllocations = [];
+  List<Map<String, dynamic>> _paymentSubmissions = [];
+
+  final Set<String> _selectedInvoiceIds = <String>{};
+
+  String _invoiceFilter = 'open';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPage();
+  }
+
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
+
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  String _date(dynamic value) {
+    final d = _parseDate(value);
+    if (d == null) return '—';
+
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year}';
+  }
+
+  Future<String> _resolveButcherBusinessId() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+
+    if (userId == null) {
+      throw Exception('You are not signed in.');
+    }
+
+    final memberships = await client
+        .from('business_memberships')
+        .select('business_id')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+    final ids = (memberships as List)
+        .whereType<Map>()
+        .map((m) => m['business_id']?.toString())
+        .whereType<String>()
+        .toList();
+
+    if (ids.isEmpty) {
+      throw Exception('No active business membership was found.');
+    }
+
+    final businesses = await client
+        .from('businesses')
+        .select('id, business_type, active')
+        .inFilter('id', ids);
+
+    for (final raw in (businesses as List).whereType<Map>()) {
+      if (raw['business_type']?.toString() == 'butcher' &&
+          raw['active'] != false) {
+        return raw['id'].toString();
+      }
+    }
+
+    throw Exception('No active butcher business was found.');
+  }
+
+  Future<void> _loadPage() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final client = Supabase.instance.client;
+      final butcherId = await _resolveButcherBusinessId();
+
+      final butcherBusiness = await client
+          .from('businesses')
+          .select('trading_name, legal_name')
+          .eq('id', butcherId)
+          .maybeSingle();
+
+      final butcherTradingName =
+          butcherBusiness?['trading_name']?.toString().trim() ?? '';
+      final butcherLegalName =
+          butcherBusiness?['legal_name']?.toString().trim() ?? '';
+      final butcherName = butcherTradingName.isNotEmpty
+          ? butcherTradingName
+          : (butcherLegalName.isNotEmpty ? butcherLegalName : 'Your Business');
+
+      final summaryResponse = await client.rpc(
+        'list_butcher_supplier_account_summaries',
+        params: {'due_soon_days': 7},
+      );
+
+      Map<String, dynamic>? summary;
+      for (final raw in (summaryResponse as List).whereType<Map>()) {
+        if (raw['supplier_business_id']?.toString() ==
+            widget.supplierBusinessId) {
+          summary = Map<String, dynamic>.from(raw);
+          break;
+        }
+      }
+
+      final invoicesResponse = await client
+          .from('invoices')
+          .select('''
+            *,
+            orders(order_number),
+            payment_allocations(
+              id,
+              payment_id,
+              invoice_id,
+              amount,
+              status,
+              allocated_at,
+              account_payments(
+                id,
+                payment_date,
+                reference,
+                payment_method,
+                amount,
+                status
+              )
+            ),
+            credit_allocations(
+              id,
+              credit_id,
+              invoice_id,
+              amount,
+              status,
+              allocated_at,
+              account_credits(
+                id,
+                credit_date,
+                reference,
+                credit_type,
+                amount,
+                status
+              )
+            ),
+            invoice_items(
+              id,
+              product_name_snapshot,
+              sku_snapshot,
+              ordered_quantity,
+              ordered_quantity_unit,
+              supplied_quantity,
+              supplied_quantity_unit,
+              actual_weight,
+              actual_weight_unit,
+              locked_unit_price,
+              price_basis,
+              line_amount
+            )
+          ''')
+          .eq('supplier_business_id', widget.supplierBusinessId)
+          .eq('butcher_business_id', butcherId)
+          .not('sent_to_butcher_at', 'is', null)
+          .order('invoice_date', ascending: false)
+          .order('created_at', ascending: false);
+
+      final paymentSubmissionsResponse = await client
+          .from('customer_payment_submissions')
+          .select('''
+            id,
+            supplier_business_id,
+            butcher_business_id,
+            amount,
+            payment_date,
+            payment_method,
+            reference,
+            notes,
+            status,
+            submitted_at,
+            reviewed_at,
+            review_note,
+            customer_payment_submission_allocations(
+              id,
+              invoice_id,
+              amount,
+              invoices(invoice_number)
+            )
+          ''')
+          .eq('supplier_business_id', widget.supplierBusinessId)
+          .eq('butcher_business_id', butcherId)
+          .eq('status', 'pending')
+          .order('submitted_at', ascending: false);
+
+      final paymentsResponse = await client
+          .from('account_payments')
+          .select('''
+            id,
+            payment_date,
+            amount,
+            payment_method,
+            reference,
+            notes,
+            status,
+            source_type,
+            created_at
+          ''')
+          .eq('supplier_business_id', widget.supplierBusinessId)
+          .eq('butcher_business_id', butcherId)
+          .order('payment_date', ascending: false)
+          .order('created_at', ascending: false);
+
+      final paymentIds = (paymentsResponse as List)
+          .whereType<Map>()
+          .map((p) => p['id']?.toString())
+          .whereType<String>()
+          .toList();
+
+      List<Map<String, dynamic>> allocations = [];
+      if (paymentIds.isNotEmpty) {
+        allocations = List<Map<String, dynamic>>.from(
+          await client
+              .from('payment_allocations')
+              .select('''
+                id,
+                payment_id,
+                invoice_id,
+                amount,
+                status,
+                allocated_at,
+                invoices(invoice_number)
+              ''')
+              .inFilter('payment_id', paymentIds)
+              .order('allocated_at', ascending: false),
+        );
+      }
+
+      final creditsResponse = await client
+          .from('account_credits')
+          .select('''
+            id,
+            credit_date,
+            amount,
+            credit_type,
+            reference,
+            reason,
+            status,
+            created_at
+          ''')
+          .eq('supplier_business_id', widget.supplierBusinessId)
+          .eq('butcher_business_id', butcherId)
+          .order('credit_date', ascending: false)
+          .order('created_at', ascending: false);
+
+      final creditIds = (creditsResponse as List)
+          .whereType<Map>()
+          .map((c) => c['id']?.toString())
+          .whereType<String>()
+          .toList();
+
+      List<Map<String, dynamic>> creditAllocations = [];
+      if (creditIds.isNotEmpty) {
+        creditAllocations = List<Map<String, dynamic>>.from(
+          await client
+              .from('credit_allocations')
+              .select('''
+                id,
+                credit_id,
+                invoice_id,
+                amount,
+                status,
+                allocated_at,
+                invoices(invoice_number)
+              ''')
+              .inFilter('credit_id', creditIds)
+              .order('allocated_at', ascending: false),
+        );
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _butcherBusinessId = butcherId;
+        _butcherName = butcherName;
+        _summary = summary;
+        _invoices = List<Map<String, dynamic>>.from(invoicesResponse);
+        _payments = List<Map<String, dynamic>>.from(paymentsResponse);
+        _allocations = allocations;
+        _credits = List<Map<String, dynamic>>.from(creditsResponse);
+        _creditAllocations = creditAllocations;
+        _paymentSubmissions = List<Map<String, dynamic>>.from(
+          paymentSubmissionsResponse,
+        );
+
+        _selectedInvoiceIds.removeWhere(
+          (id) => !_invoices.any((invoice) => invoice['id']?.toString() == id),
+        );
+
+        _loading = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.message;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  String _terms() {
+    final method = _summary?['payment_method']?.toString();
+    final days = (_summary?['payment_terms_days'] as num?)?.toInt() ?? 0;
+
+    if (method == 'prepaid') return 'Prepaid';
+    if (method == 'cod') return 'COD';
+    if (days > 0) return '$days days';
+    return 'Not set';
+  }
+
+  String _termsExplanation() {
+    final method = _summary?['payment_method']?.toString();
+    final days = (_summary?['payment_terms_days'] as num?)?.toInt() ?? 0;
+
+    if (method == 'prepaid') {
+      return 'Payment is required before fulfilment.';
+    }
+    if (method == 'cod') {
+      return 'Payment is due on delivery or collection.';
+    }
+    if (days > 0) {
+      return 'Invoices are due $days days after the invoice date.';
+    }
+    return 'No account payment terms have been set.';
+  }
+
+  double _allocatedForPayment(String paymentId) {
+    return _allocations
+        .where(
+          (a) =>
+              a['payment_id']?.toString() == paymentId &&
+              a['status']?.toString() == 'active',
+        )
+        .fold(0.0, (sum, a) => sum + _asDouble(a['amount']));
+  }
+
+  double _allocatedForCredit(String creditId) {
+    return _creditAllocations
+        .where(
+          (a) =>
+              a['credit_id']?.toString() == creditId &&
+              a['status']?.toString() == 'active',
+        )
+        .fold(0.0, (sum, a) => sum + _asDouble(a['amount']));
+  }
+
+  String _invoiceStatus(Map<String, dynamic> invoice) {
+    if (invoice['status']?.toString() == 'void') {
+      return 'Cancelled / Reversed';
+    }
+
+    final outstanding = _asDouble(invoice['outstanding_amount']);
+    final paid = _asDouble(invoice['amount_paid']);
+    final credit = _asDouble(invoice['credit_applied']);
+
+    if (outstanding <= 0) return 'Paid';
+
+    final due = _parseDate(invoice['due_date']);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (due != null) {
+      final dueOnly = DateTime(due.year, due.month, due.day);
+
+      if (dueOnly.isBefore(today)) return 'Overdue';
+
+      if (!dueOnly.isAfter(today.add(const Duration(days: 7)))) {
+        return 'Due Soon';
+      }
+    }
+
+    if (paid > 0 || credit > 0) return 'Partially Paid';
+
+    return 'Open';
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Paid':
+        return const Color(0xFF2E7D32);
+      case 'Overdue':
+        return const Color(0xFFB3261E);
+      case 'Due Soon':
+        return const Color(0xFF9A5B00);
+      case 'Partially Paid':
+        return const Color(0xFF315A8C);
+      default:
+        return const Color(0xFF555555);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredInvoices {
+    return _invoices.where((invoice) {
+      final status = _invoiceStatus(invoice);
+
+      switch (_invoiceFilter) {
+        case 'due_soon':
+          return status == 'Due Soon';
+        case 'overdue':
+          return status == 'Overdue';
+        case 'part_paid':
+          return status == 'Partially Paid';
+        case 'open':
+        default:
+          return status != 'Paid' && status != 'Cancelled / Reversed';
+      }
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _selectedInvoices {
+    return _invoices
+        .where(
+          (invoice) =>
+              _selectedInvoiceIds.contains(invoice['id']?.toString()) &&
+              _asDouble(invoice['outstanding_amount']) > 0 &&
+              invoice['status']?.toString() != 'void',
+        )
+        .toList();
+  }
+
+  Future<void> _submitAccountPayment() async {
+    if (_loading) return;
+
+    final selected = _selectedInvoices;
+
+    final amountController = TextEditingController(
+      text: selected.isEmpty
+          ? ''
+          : selected
+                .fold<double>(
+                  0,
+                  (sum, invoice) =>
+                      sum + _asDouble(invoice['outstanding_amount']),
+                )
+                .toStringAsFixed(2),
+    );
+    final referenceController = TextEditingController();
+    final notesController = TextEditingController();
+
+    final allocationControllers = <String, TextEditingController>{
+      for (final invoice in selected)
+        invoice['id'].toString(): TextEditingController(
+          text: _asDouble(invoice['outstanding_amount']).toStringAsFixed(2),
+        ),
+    };
+
+    var method = 'bank_transfer';
+    var paymentDate = DateTime.now();
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            double proposedTotal() {
+              return allocationControllers.values.fold(
+                0,
+                (sum, controller) =>
+                    sum + (double.tryParse(controller.text.trim()) ?? 0),
+              );
+            }
+
+            return Dialog(
+              insetPadding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4E5E5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.payments_outlined,
+                                color: _darkRed,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Submit Payment',
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    selected.isEmpty
+                                        ? 'Submit a general account / statement payment. '
+                                              'The supplier must confirm receipt before it '
+                                              'appears in the ledger.'
+                                        : 'Submit the payment and proposed invoice '
+                                              'allocations. Nothing clears until the supplier '
+                                              'confirms the funds were received.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 12,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: amountController,
+                          autofocus: true,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                    filled: true,
-                    fillColor: const Color(0xFFF7F7F7),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                          decoration: InputDecoration(
+                            labelText: 'Payment amount',
+                            prefixText: '\$',
+                            filled: true,
+                            fillColor: const Color(0xFFF8F8F6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                initialValue: method,
+                                decoration: InputDecoration(
+                                  labelText: 'Payment method',
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8F8F6),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(11),
+                                  ),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'bank_transfer',
+                                    child: Text('Bank Transfer'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'cash',
+                                    child: Text('Cash'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'card',
+                                    child: Text('Card'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'cheque',
+                                    child: Text('Cheque'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'other',
+                                    child: Text('Other'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setDialogState(() => method = value);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(11),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: dialogContext,
+                                    initialDate: paymentDate,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime.now().add(
+                                      const Duration(days: 365),
+                                    ),
+                                  );
+
+                                  if (picked != null) {
+                                    setDialogState(() => paymentDate = picked);
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: InputDecoration(
+                                    labelText: 'Payment date',
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8F8F6),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                  ),
+                                  child: Text(_date(paymentDate)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: referenceController,
+                          decoration: InputDecoration(
+                            labelText: 'Reference',
+                            hintText: 'Bank transfer reference, receipt, etc.',
+                            filled: true,
+                            fillColor: const Color(0xFFF8F8F6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: notesController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            labelText: 'Notes',
+                            filled: true,
+                            fillColor: const Color(0xFFF8F8F6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                        if (selected.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F8F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Proposed Invoice Allocations',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'You can change how much of the payment you '
+                                  'want applied to each selected invoice.',
+                                  style: TextStyle(
+                                    color: Color(0xFF777777),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                for (final invoice in selected) ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              invoice['invoice_number']
+                                                      ?.toString() ??
+                                                  'Invoice',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Outstanding '
+                                              '${_money(invoice['outstanding_amount'])}',
+                                              style: const TextStyle(
+                                                color: Color(0xFF777777),
+                                                fontSize: 10.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: TextField(
+                                          controller:
+                                              allocationControllers[invoice['id']
+                                                  .toString()],
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          onChanged: (_) =>
+                                              setDialogState(() {}),
+                                          decoration: const InputDecoration(
+                                            labelText: 'Apply',
+                                            prefixText: '\$',
+                                            isDense: true,
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (invoice != selected.last)
+                                    const Divider(height: 18),
+                                ],
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Proposed: '
+                                      '${_money(proposedTotal())}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
+                              ),
+                              onPressed: () {
+                                final paymentAmount = double.tryParse(
+                                  amountController.text.trim(),
+                                );
+
+                                if (paymentAmount == null ||
+                                    paymentAmount <= 0) {
+                                  return;
+                                }
+
+                                final allocations = <Map<String, dynamic>>[];
+
+                                for (final invoice in selected) {
+                                  final invoiceId = invoice['id'].toString();
+                                  final amount =
+                                      double.tryParse(
+                                        allocationControllers[invoiceId]?.text
+                                                .trim() ??
+                                            '',
+                                      ) ??
+                                      0;
+
+                                  if (amount < 0 ||
+                                      amount >
+                                          _asDouble(
+                                            invoice['outstanding_amount'],
+                                          )) {
+                                    return;
+                                  }
+
+                                  if (amount > 0) {
+                                    allocations.add({
+                                      'invoice_id': invoiceId,
+                                      'amount': amount,
+                                    });
+                                  }
+                                }
+
+                                final allocatedTotal = allocations.fold<double>(
+                                  0,
+                                  (sum, item) =>
+                                      sum + _asDouble(item['amount']),
+                                );
+
+                                if (allocatedTotal > paymentAmount) {
+                                  return;
+                                }
+
+                                Navigator.of(dialogContext).pop({
+                                  'amount': paymentAmount,
+                                  'method': method,
+                                  'date':
+                                      '${paymentDate.year.toString().padLeft(4, '0')}-'
+                                      '${paymentDate.month.toString().padLeft(2, '0')}-'
+                                      '${paymentDate.day.toString().padLeft(2, '0')}',
+                                  'reference': referenceController.text.trim(),
+                                  'notes': notesController.text.trim(),
+                                  'allocations': allocations,
+                                });
+                              },
+                              icon: const Icon(Icons.send_outlined, size: 18),
+                              label: const Text('Submit for Confirmation'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    amountController.dispose();
+    referenceController.dispose();
+    notesController.dispose();
+    for (final controller in allocationControllers.values) {
+      controller.dispose();
+    }
+
+    if (result == null || !mounted) return;
+
+    setState(() => _loading = true);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'submit_butcher_account_payment',
+        params: {
+          'target_supplier_business_id': widget.supplierBusinessId,
+          'payment_amount': result['amount'],
+          'payment_date_value': result['date'],
+          'payment_method_value': result['method'],
+          'payment_reference': result['reference'],
+          'payment_notes': result['notes'],
+          'allocations_json': result['allocations'],
+        },
+      );
+
+      _selectedInvoiceIds.clear();
+
+      await _loadPage();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Payment submitted. It will not clear until the supplier '
+              'confirms the funds were received.',
+            ),
+          ),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Widget _pendingPaymentSubmissions() {
+    if (_paymentSubmissions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.hourglass_top_rounded,
+                  color: Color(0xFF9A5B00),
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Awaiting Supplier Confirmation',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          for (final submission in _paymentSubmissions)
+            _pendingSubmissionRow(submission),
+        ],
+      ),
+    );
+  }
+
+  Widget _pendingSubmissionRow(Map<String, dynamic> submission) {
+    final raw = submission['customer_payment_submission_allocations'];
+    final allocations = raw is List
+        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        : <Map<String, dynamic>>[];
+
+    final allocationText = allocations.isEmpty
+        ? 'General account / statement payment'
+        : allocations
+              .map((row) {
+                final invoice = row['invoices'];
+                final invoiceNo = invoice is Map
+                    ? invoice['invoice_number']?.toString() ?? 'Invoice'
+                    : 'Invoice';
+
+                return '$invoiceNo ${_money(row['amount'])}';
+              })
+              .join(' • ');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.payments_outlined, color: Color(0xFF9A5B00)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  submission['reference']?.toString().trim().isNotEmpty == true
+                      ? submission['reference'].toString()
+                      : 'Payment Submitted',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_date(submission['payment_date'])} • $allocationText',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 10.5,
                   ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadAccounts,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _invoiceList(cod),
-                  _invoiceList(outstanding),
-                  _invoiceList(paid),
-                  _invoiceList(all),
-                ],
+          Text(
+            _money(submission['amount']),
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3DF),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'Pending',
+              style: TextStyle(
+                color: Color(0xFF9A5B00),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
@@ -810,37 +1524,710 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage>
       ),
     );
   }
-}
 
-class _CompactButcherFact extends StatelessWidget {
-  const _CompactButcherFact({required this.label, required this.value});
+  Future<void> _openInvoice(Map<String, dynamic> invoice) async {
+    final id = invoice['id']?.toString();
+    if (id == null || id.isEmpty) return;
 
-  final String label;
-  final String value;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ButcherInvoiceDetailPage(
+          invoiceId: id,
+          initialInvoice: invoice,
+          supplierName: widget.supplierName,
+          onChanged: _loadPage,
+        ),
+      ),
+    );
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 120,
+    if (mounted) await _loadPage();
+  }
+
+  Widget _metric(String label, dynamic value, {Color? color}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF777777),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _money(value),
+              style: TextStyle(
+                color: color ?? const Color(0xFF222222),
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentSelectionBanner() {
+    final selected = _selectedInvoices;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F6),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: const Color(0xFFE1E1DD)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.checklist_rounded, color: _darkRed, size: 18),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              selected.isEmpty
+                  ? 'Submit a payment with no invoice selected for a general '
+                        'account / statement payment, or tick invoices to propose '
+                        'where the payment should be applied.'
+                  : '${selected.length} invoice'
+                        '${selected.length == 1 ? '' : 's'} selected for proposed allocation.',
+              style: const TextStyle(
+                color: Color(0xFF555555),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (selected.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                setState(() => _selectedInvoiceIds.clear());
+              },
+              child: const Text('Clear'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _invoiceTable() {
+    final rows = _filteredInvoices;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Invoices Requiring Payment',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                _invoiceFilterMenu(),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          if (rows.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(28),
+              child: Center(
+                child: Text(
+                  'No invoices in this view.',
+                  style: TextStyle(color: Color(0xFF777777)),
+                ),
+              ),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowHeight: 42,
+                dataRowMinHeight: 46,
+                dataRowMaxHeight: 54,
+                columns: const [
+                  DataColumn(label: SizedBox(width: 34)),
+                  DataColumn(label: Text('Invoice')),
+                  DataColumn(label: Text('Order')),
+                  DataColumn(label: Text('Invoice Date')),
+                  DataColumn(label: Text('Due Date')),
+                  DataColumn(label: Text('Total'), numeric: true),
+                  DataColumn(label: Text('Paid'), numeric: true),
+                  DataColumn(label: Text('Outstanding'), numeric: true),
+                  DataColumn(label: Text('Status')),
+                ],
+                rows: rows.map((invoice) {
+                  final order = invoice['orders'];
+                  final orderNo = order is Map
+                      ? order['order_number']?.toString() ?? '—'
+                      : '—';
+                  final status = _invoiceStatus(invoice);
+
+                  final invoiceId = invoice['id']?.toString();
+                  final selectable =
+                      _asDouble(invoice['outstanding_amount']) > 0 &&
+                      invoice['status']?.toString() != 'void';
+                  final selected =
+                      invoiceId != null &&
+                      _selectedInvoiceIds.contains(invoiceId);
+
+                  return DataRow(
+                    selected: selected,
+                    cells: [
+                      DataCell(
+                        Checkbox(
+                          value: selected,
+                          onChanged: !selectable || invoiceId == null
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      _selectedInvoiceIds.add(invoiceId);
+                                    } else {
+                                      _selectedInvoiceIds.remove(invoiceId);
+                                    }
+                                  });
+                                },
+                        ),
+                      ),
+                      DataCell(
+                        InkWell(
+                          onTap: () => _openInvoice(invoice),
+                          child: Text(
+                            invoice['invoice_number']?.toString() ?? 'Invoice',
+                            style: const TextStyle(
+                              color: _darkRed,
+                              fontWeight: FontWeight.w900,
+                              decoration: TextDecoration.underline,
+                              decorationColor: _darkRed,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataCell(Text(orderNo)),
+                      DataCell(Text(_date(invoice['invoice_date']))),
+                      DataCell(Text(_date(invoice['due_date']))),
+                      DataCell(Text(_money(invoice['total_amount']))),
+                      DataCell(Text(_money(invoice['amount_paid']))),
+                      DataCell(
+                        Text(
+                          _money(invoice['outstanding_amount']),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _statusColor(status).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(
+                              color: _statusColor(status),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _invoiceFilterMenu() {
+    final labels = <String, String>{
+      'open': 'Open',
+      'due_soon': 'Due Soon',
+      'overdue': 'Overdue',
+      'part_paid': 'Partially Paid',
+    };
+
+    return PopupMenuButton<String>(
+      initialValue: _invoiceFilter,
+      tooltip: 'Filter invoices',
+      onSelected: (value) => setState(() => _invoiceFilter = value),
+      itemBuilder: (_) => labels.entries
+          .map(
+            (entry) =>
+                PopupMenuItem(value: entry.key, child: Text(entry.value)),
+          )
+          .toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD9D9D5)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.filter_list, size: 17),
+            const SizedBox(width: 6),
+            Text(
+              labels[_invoiceFilter] ?? 'Open',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentsAndCredits() {
+    final entries = <Map<String, dynamic>>[
+      for (final payment in _payments)
+        if (payment['status']?.toString() == 'active' &&
+            ((_asDouble(payment['amount']) -
+                        _allocatedForPayment(payment['id']?.toString() ?? ''))
+                    .clamp(0, double.infinity) >
+                0))
+          {'type': 'payment', 'date': payment['payment_date'], 'data': payment},
+      for (final credit in _credits)
+        if (credit['status']?.toString() == 'active' &&
+            ((_asDouble(credit['amount']) -
+                        _allocatedForCredit(credit['id']?.toString() ?? ''))
+                    .clamp(0, double.infinity) >
+                0))
+          {'type': 'credit', 'date': credit['credit_date'], 'data': credit},
+    ];
+
+    entries.sort((a, b) {
+      final ad = _parseDate(a['date']) ?? DateTime(1900);
+      final bd = _parseDate(b['date']) ?? DateTime(1900);
+      return bd.compareTo(ad);
+    });
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Text(
+              'Unallocated Payments & Credits',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+          ),
+          const Divider(height: 1),
+          if (entries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(28),
+              child: Center(
+                child: Text(
+                  'No unallocated payments or credits requiring action.',
+                  style: TextStyle(color: Color(0xFF777777)),
+                ),
+              ),
+            )
+          else
+            for (final entry in entries) _ledgerRow(entry),
+        ],
+      ),
+    );
+  }
+
+  Widget _ledgerRow(Map<String, dynamic> entry) {
+    final type = entry['type']?.toString();
+    final data = Map<String, dynamic>.from(entry['data'] as Map);
+
+    if (type == 'credit') {
+      final id = data['id']?.toString() ?? '';
+      final allocated = _allocatedForCredit(id);
+      final amount = _asDouble(data['amount']);
+      final available = (amount - allocated)
+          .clamp(0, double.infinity)
+          .toDouble();
+
+      return _ledgerBaseRow(
+        icon: Icons.add_card_outlined,
+        iconColor: const Color(0xFF315A8C),
+        title: data['reference']?.toString().trim().isNotEmpty == true
+            ? data['reference'].toString()
+            : 'Account Credit',
+        subtitle: '${_date(data['credit_date'])} • Credit',
+        amount: amount,
+        allocated: allocated,
+        remainingLabel: 'AVAILABLE',
+        remaining: available,
+        status: data['status']?.toString() == 'reversed'
+            ? 'Reversed'
+            : 'Credit',
+      );
+    }
+
+    final id = data['id']?.toString() ?? '';
+    final allocated = _allocatedForPayment(id);
+    final amount = _asDouble(data['amount']);
+    final unallocated = (amount - allocated)
+        .clamp(0, double.infinity)
+        .toDouble();
+
+    String status;
+    if (data['status']?.toString() == 'reversed') {
+      status = 'Reversed';
+    } else if (allocated <= 0) {
+      status = 'Unallocated';
+    } else if (allocated + 0.005 < amount) {
+      status = 'Partially Allocated';
+    } else {
+      status = 'Fully Allocated';
+    }
+
+    return _ledgerBaseRow(
+      icon: Icons.payments_outlined,
+      iconColor: _darkRed,
+      title: data['reference']?.toString().trim().isNotEmpty == true
+          ? data['reference'].toString()
+          : 'Payment',
+      subtitle:
+          '${_date(data['payment_date'])} • '
+          '${_paymentMethodLabel(data['payment_method']?.toString())}',
+      amount: amount,
+      allocated: allocated,
+      remainingLabel: 'UNALLOCATED',
+      remaining: unallocated,
+      status: status,
+    );
+  }
+
+  Widget _ledgerBaseRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required double amount,
+    required double allocated,
+    required String remainingLabel,
+    required double remaining,
+    required String status,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _ledgerAmount('AMOUNT', amount),
+          const SizedBox(width: 18),
+          _ledgerAmount('ALLOCATED', allocated),
+          const SizedBox(width: 18),
+          _ledgerAmount(remainingLabel, remaining),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF315A8C).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              status,
+              style: const TextStyle(
+                color: Color(0xFF315A8C),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ledgerAmount(String label, double amount) {
+    return SizedBox(
+      width: 105,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF777777),
+              color: Color(0xFF888888),
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 2),
           Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+            _money(amount),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
           ),
         ],
+      ),
+    );
+  }
+
+  String _paymentMethodLabel(String? value) {
+    switch (value) {
+      case 'bank_transfer':
+        return 'Bank Transfer';
+      case 'cash':
+        return 'Cash';
+      case 'card':
+        return 'Card';
+      case 'cheque':
+        return 'Cheque';
+      default:
+        return 'Other';
+    }
+  }
+
+  Future<void> _openStatement() async {
+    if (_butcherBusinessId == null || _butcherBusinessId!.isEmpty) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AccountStatementPage(
+          supplierBusinessId: widget.supplierBusinessId,
+          supplierName: widget.supplierName,
+          customerName: _butcherName,
+          butcherBusinessId: _butcherBusinessId,
+          supplierView: false,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.supplierName)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.supplierName)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_error!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _loadPage,
+                  child: const Text('Try Again'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.supplierName,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const Text(
+              'Supplier Account',
+              style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton.icon(
+            onPressed: _loading ? null : _submitAccountPayment,
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            icon: const Icon(Icons.payments_outlined),
+            label: const Text('Submit Payment'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: _openStatement,
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('View Statement'),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _loadPage,
+            icon: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadPage,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1240),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        _metric(
+                          'Outstanding',
+                          _summary?['outstanding_balance'],
+                          color: _asDouble(_summary?['outstanding_balance']) > 0
+                              ? _darkRed
+                              : null,
+                        ),
+                        const SizedBox(width: 10),
+                        _metric(
+                          'Overdue',
+                          _summary?['overdue_amount'],
+                          color: _asDouble(_summary?['overdue_amount']) > 0
+                              ? const Color(0xFFB3261E)
+                              : null,
+                        ),
+                        const SizedBox(width: 10),
+                        _metric(
+                          'Due Soon',
+                          _summary?['due_soon_amount'],
+                          color: _asDouble(_summary?['due_soon_amount']) > 0
+                              ? const Color(0xFF9A5B00)
+                              : null,
+                        ),
+                        const SizedBox(width: 10),
+                        _metric(
+                          'Credit Available',
+                          _summary?['credit_available'],
+                          color: _asDouble(_summary?['credit_available']) > 0
+                              ? const Color(0xFF315A8C)
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0DD)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_outlined,
+                            color: _darkRed,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Payment Terms',
+                                  style: TextStyle(
+                                    color: Color(0xFF777777),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _terms(),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _termsExplanation(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_paymentSubmissions.isNotEmpty) ...[
+                      _pendingPaymentSubmissions(),
+                      const SizedBox(height: 12),
+                    ],
+                    _paymentSelectionBanner(),
+                    const SizedBox(height: 12),
+                    _invoiceTable(),
+                    const SizedBox(height: 12),
+                    _paymentsAndCredits(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -870,6 +2257,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
   late Map<String, dynamic> _invoice;
   bool _busy = false;
+  Map<String, dynamic>? _pendingPaymentSubmission;
 
   @override
   void initState() {
@@ -908,25 +2296,56 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
   double get _paid => _asDouble(_invoice['amount_paid']);
 
   double get _outstanding {
+    if (_invoice['outstanding_amount'] != null) {
+      return _asDouble(_invoice['outstanding_amount']);
+    }
+
     final value = _total - _paid;
     return value < 0 ? 0 : value;
   }
 
-  String? get _claimStatus =>
-      _invoice['customer_payment_claim_status']?.toString();
+  bool get _paymentSubmissionPending => _pendingPaymentSubmission != null;
 
   bool get _canClaimPaid =>
       !_busy &&
       _outstanding > 0 &&
       (_invoice['status']?.toString() == 'issued' ||
           _invoice['status']?.toString() == 'part_paid') &&
-      _claimStatus != 'pending';
+      !_paymentSubmissionPending;
 
   Future<void> _reloadInvoice() async {
     final data = await Supabase.instance.client
         .from('invoices')
         .select('''
           *,
+          payment_allocations(
+            id,
+            amount,
+            status,
+            allocated_at,
+            account_payments(
+              id,
+              payment_date,
+              reference,
+              payment_method,
+              amount,
+              status
+            )
+          ),
+          credit_allocations(
+            id,
+            amount,
+            status,
+            allocated_at,
+            account_credits(
+              id,
+              credit_date,
+              reference,
+              credit_type,
+              amount,
+              status
+            )
+          ),
           invoice_items(
             id,
             product_name_snapshot,
@@ -945,12 +2364,47 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         .eq('id', widget.invoiceId)
         .single();
 
+    Map<String, dynamic>? pendingSubmission;
+
+    final pendingRows = await Supabase.instance.client
+        .from('customer_payment_submission_allocations')
+        .select('''
+          id,
+          amount,
+          created_at,
+          customer_payment_submissions!inner(
+            id,
+            amount,
+            payment_date,
+            payment_method,
+            reference,
+            notes,
+            status,
+            submitted_at
+          )
+        ''')
+        .eq('invoice_id', widget.invoiceId)
+        .eq('customer_payment_submissions.status', 'pending')
+        .order('created_at', ascending: false)
+        .limit(1);
+
+    if ((pendingRows as List).isNotEmpty) {
+      final row = Map<String, dynamic>.from((pendingRows as List).first as Map);
+      final rawSubmission = row['customer_payment_submissions'];
+
+      if (rawSubmission is Map) {
+        pendingSubmission = Map<String, dynamic>.from(rawSubmission);
+        pendingSubmission['proposed_invoice_amount'] = row['amount'];
+      }
+    }
+
     if (!mounted) {
       return;
     }
 
     setState(() {
       _invoice = Map<String, dynamic>.from(data);
+      _pendingPaymentSubmission = pendingSubmission;
     });
 
     await widget.onChanged();
@@ -1020,7 +2474,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                 dialogContext,
               ).pop({'amount': amount, 'note': noteController.text.trim()});
             },
-            child: const Text('Submit Payment Claim'),
+            child: const Text('Submit Payment'),
           ),
         ],
       ),
@@ -1036,12 +2490,29 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     setState(() => _busy = true);
 
     try {
+      final supplierBusinessId = _invoice['supplier_business_id']?.toString();
+
+      if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
+        throw Exception('Supplier account could not be resolved.');
+      }
+
+      final invoiceNumber = _invoice['invoice_number']?.toString() ?? 'Invoice';
+
       await Supabase.instance.client.rpc(
-        'claim_invoice_paid',
+        'submit_butcher_account_payment',
         params: {
-          'target_invoice_id': widget.invoiceId,
-          'claimed_amount': result['amount'],
-          'claim_note': result['note'],
+          'target_supplier_business_id': supplierBusinessId,
+          'payment_amount': result['amount'],
+          'payment_date_value': DateTime.now()
+              .toIso8601String()
+              .split('T')
+              .first,
+          'payment_method_value': 'other',
+          'payment_reference': 'Invoice payment • $invoiceNumber',
+          'payment_notes': result['note'],
+          'allocations_json': [
+            {'invoice_id': widget.invoiceId, 'amount': result['amount']},
+          ],
         },
       );
 
@@ -1051,7 +2522,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Payment claim sent to the supplier for confirmation.'),
+          content: Text(
+            'Payment submitted and linked to this invoice. It will clear only after the supplier confirms receipt.',
+          ),
         ),
       );
 
@@ -1219,15 +2692,28 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             _amountRow('GST included', gst),
             const Divider(height: 18),
             _amountRow('Total inc GST', _total, strong: true),
-            _amountRow('Paid', _paid),
+            _amountRow('Paid / Allocated', _paid),
+            _amountRow(
+              'Credits Applied',
+              _asDouble(_invoice['credit_applied']),
+            ),
             _amountRow('Outstanding', _outstanding, strong: true),
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            const Text(
+              'Payment Allocations',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            ..._buildAllocationRows(),
             const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: _canClaimPaid ? _markAsPaid : null,
               style: FilledButton.styleFrom(backgroundColor: _darkRed),
               icon: const Icon(Icons.check_circle_outline),
               label: Text(
-                _claimStatus == 'pending'
+                _paymentSubmissionPending
                     ? 'Awaiting Confirmation'
                     : _outstanding <= 0
                     ? 'Paid'
@@ -1240,22 +2726,14 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('Invoice PDF'),
             ),
-            if (_claimStatus == 'pending') ...[
+            if (_paymentSubmissionPending) ...[
               const SizedBox(height: 10),
               Text(
-                'Payment claim sent to the supplier for confirmation.',
+                'Payment submitted for '
+                '${_money(_asDouble(_pendingPaymentSubmission?['proposed_invoice_amount']))} '
+                'against this invoice. Awaiting supplier confirmation.',
                 style: const TextStyle(
                   color: Color(0xFF9A6700),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ] else if (_claimStatus == 'rejected') ...[
-              const SizedBox(height: 10),
-              Text(
-                'The supplier did not confirm the previous payment claim.${(_invoice['payment_claim_review_note']?.toString().trim() ?? '').isEmpty ? '' : ' ${_invoice['payment_claim_review_note']}'}',
-                style: const TextStyle(
-                  color: _darkRed,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1316,6 +2794,105 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         },
       ),
     );
+  }
+
+  List<Widget> _buildAllocationRows() {
+    final rows = <Widget>[];
+
+    final paymentAllocations = _invoice['payment_allocations'];
+    if (paymentAllocations is List) {
+      for (final raw in paymentAllocations.whereType<Map>()) {
+        final allocation = Map<String, dynamic>.from(raw);
+        if (allocation['status']?.toString() != 'active') continue;
+
+        final paymentRaw = allocation['account_payments'];
+        final payment = paymentRaw is Map
+            ? Map<String, dynamic>.from(paymentRaw)
+            : <String, dynamic>{};
+
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    payment['reference']?.toString().trim().isNotEmpty == true
+                        ? payment['reference'].toString()
+                        : 'Payment ${_date(payment['payment_date'])}',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  _money(_asDouble(allocation['amount'])),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    final creditAllocations = _invoice['credit_allocations'];
+    if (creditAllocations is List) {
+      for (final raw in creditAllocations.whereType<Map>()) {
+        final allocation = Map<String, dynamic>.from(raw);
+        if (allocation['status']?.toString() != 'active') continue;
+
+        final creditRaw = allocation['account_credits'];
+        final credit = creditRaw is Map
+            ? Map<String, dynamic>.from(creditRaw)
+            : <String, dynamic>{};
+
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    credit['reference']?.toString().trim().isNotEmpty == true
+                        ? credit['reference'].toString()
+                        : 'Credit ${_date(credit['credit_date'])}',
+                    style: const TextStyle(
+                      color: Color(0xFF315A8C),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  _money(_asDouble(allocation['amount'])),
+                  style: const TextStyle(
+                    color: Color(0xFF315A8C),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    if (rows.isEmpty) {
+      rows.add(
+        const Text(
+          'No payment allocations recorded yet.',
+          style: TextStyle(color: Color(0xFF777777), fontSize: 11.5),
+        ),
+      );
+    }
+
+    return rows;
   }
 
   Widget _amountRow(String label, double value, {bool strong = false}) {

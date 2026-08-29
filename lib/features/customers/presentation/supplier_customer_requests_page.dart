@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supplier_customer_account_page.dart';
 import 'supplier_vip_applications_page.dart';
 
 class SupplierCustomerRequestsPage extends StatefulWidget {
@@ -21,12 +22,23 @@ class _SupplierCustomerRequestsPageState
 
   List<Map<String, dynamic>> _relationships = [];
   List<Map<String, dynamic>> _customerAccounts = [];
+  List<Map<String, dynamic>> _accountSummaries = [];
   int _pendingVipApplicationCount = 0;
+
+  final TextEditingController _customerSearchController =
+      TextEditingController();
+  String _appliedCustomerSearch = '';
 
   @override
   void initState() {
     super.initState();
     _loadPage();
+  }
+
+  @override
+  void dispose() {
+    _customerSearchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPage() async {
@@ -66,8 +78,29 @@ class _SupplierCustomerRequestsPageState
             credit_limit,
             issue_reporting_window_hours,
             created_at,
-            approved_at,
-            businesses!supplier_customer_relationships_butcher_business_id_fkey(
+            approved_at
+          ''')
+          .eq('supplier_business_id', supplierBusinessId)
+          .order('created_at', ascending: false);
+
+      final relationshipRows = List<Map<String, dynamic>>.from(
+        relationshipResponse,
+      );
+
+      final butcherIds = relationshipRows
+          .map((row) => row['butcher_business_id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final businessById = <String, Map<String, dynamic>>{};
+
+      if (butcherIds.isNotEmpty) {
+        final businessResponse = await client
+            .from('businesses')
+            .select('''
+              id,
               legal_name,
               trading_name,
               abn,
@@ -78,10 +111,23 @@ class _SupplierCustomerRequestsPageState
               suburb,
               state,
               postcode
-            )
-          ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .order('created_at', ascending: false);
+            ''')
+            .inFilter('id', butcherIds);
+
+        for (final raw in List<Map<String, dynamic>>.from(businessResponse)) {
+          final id = raw['id']?.toString();
+          if (id != null) {
+            businessById[id] = raw;
+          }
+        }
+      }
+
+      for (final relationship in relationshipRows) {
+        final butcherId = relationship['butcher_business_id']?.toString();
+        if (butcherId != null) {
+          relationship['businesses'] = businessById[butcherId];
+        }
+      }
 
       final accountResponse = await client
           .from('supplier_customer_accounts')
@@ -125,6 +171,11 @@ class _SupplierCustomerRequestsPageState
           .eq('supplier_business_id', supplierBusinessId)
           .eq('status', 'pending');
 
+      final accountSummaryResponse = await client.rpc(
+        'list_supplier_account_summaries',
+        params: {'due_soon_days': 7},
+      );
+
       final pendingVipCount = pendingVipApplications.length;
 
       if (!mounted) {
@@ -133,8 +184,11 @@ class _SupplierCustomerRequestsPageState
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
-        _relationships = List<Map<String, dynamic>>.from(relationshipResponse);
+        _relationships = relationshipRows;
         _customerAccounts = List<Map<String, dynamic>>.from(accountResponse);
+        _accountSummaries = List<Map<String, dynamic>>.from(
+          accountSummaryResponse as List,
+        );
         _pendingVipApplicationCount = pendingVipCount;
         _isLoading = false;
       });
@@ -209,6 +263,86 @@ class _SupplierCustomerRequestsPageState
     }
 
     return 'Customer';
+  }
+
+  Map<String, dynamic>? _summaryForAccount(Map<String, dynamic> account) {
+    final accountId = account['id']?.toString();
+    if (accountId == null) return null;
+
+    for (final summary in _accountSummaries) {
+      if (summary['supplier_customer_account_id']?.toString() == accountId) {
+        return summary;
+      }
+    }
+
+    return null;
+  }
+
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _money(dynamic value) {
+    final amount = _asDouble(value);
+    return '\$${amount.toStringAsFixed(2)}';
+  }
+
+  String _shortDate(dynamic value) {
+    if (value == null) return '—';
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return '—';
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
+
+  String _accountStatusLabel(String? status) {
+    switch (status) {
+      case 'overdue':
+        return 'Overdue';
+      case 'due_soon':
+        return 'Due Soon';
+      case 'open':
+        return 'Open';
+      case 'credit_available':
+        return 'Credit Available';
+      case 'clear':
+        return 'Clear';
+      default:
+        return 'Open';
+    }
+  }
+
+  Color _accountStatusColor(String? status) {
+    switch (status) {
+      case 'overdue':
+        return const Color(0xFFB3261E);
+      case 'due_soon':
+        return const Color(0xFF9A5B00);
+      case 'credit_available':
+        return const Color(0xFF315A8C);
+      case 'clear':
+        return const Color(0xFF2E7D32);
+      default:
+        return const Color(0xFF666666);
+    }
+  }
+
+  Future<void> _openCustomerAccount(Map<String, dynamic> account) async {
+    final id = account['id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            SupplierCustomerAccountPage(supplierCustomerAccountId: id),
+      ),
+    );
+
+    if (mounted) {
+      await _loadPage();
+    }
   }
 
   Future<void> _updateStatus({
@@ -883,6 +1017,44 @@ class _SupplierCustomerRequestsPageState
     };
   }
 
+  void _applyCustomerSearch(String value) {
+    final query = value.trim();
+
+    setState(() {
+      _appliedCustomerSearch = query;
+    });
+  }
+
+  void _clearCustomerSearch() {
+    _customerSearchController.clear();
+
+    setState(() {
+      _appliedCustomerSearch = '';
+    });
+  }
+
+  bool _matchesCustomerSearch(String value) {
+    final query = _appliedCustomerSearch.trim().toLowerCase();
+
+    if (query.isEmpty) return true;
+
+    return value.toLowerCase().contains(query);
+  }
+
+  List<Map<String, dynamic>> get _filteredRelationships {
+    return _relationships
+        .where(
+          (relationship) => _matchesCustomerSearch(_businessName(relationship)),
+        )
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredManualAccounts {
+    return _manualAccounts
+        .where((account) => _matchesCustomerSearch(_accountName(account)))
+        .toList();
+  }
+
   List<Map<String, dynamic>> get _manualAccounts {
     return _customerAccounts
         .where((account) => account['account_source']?.toString() == 'manual')
@@ -991,6 +1163,75 @@ class _SupplierCustomerRequestsPageState
     );
   }
 
+  Widget _buildCustomerSearchBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0DD)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4E5E5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.search, color: _darkRed, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _customerSearchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: _applyCustomerSearch,
+              decoration: InputDecoration(
+                hintText:
+                    'Search CutLink members or external customers, then press Enter',
+                filled: true,
+                fillColor: const Color(0xFFF8F8F6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(color: _darkRed, width: 1.2),
+                ),
+                suffixIcon: _appliedCustomerSearch.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: _clearCustomerSearch,
+                        icon: const Icon(Icons.close),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: () =>
+                _applyCustomerSearch(_customerSearchController.text),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            ),
+            icon: const Icon(Icons.search, size: 18),
+            label: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1053,39 +1294,48 @@ class _SupplierCustomerRequestsPageState
         final desktop = constraints.maxWidth >= 920;
 
         Widget cutLinkList() {
-          if (_relationships.isEmpty) {
+          final rows = _filteredRelationships;
+
+          if (rows.isEmpty) {
             return _emptyCard(
               icon: Icons.people_outline,
-              title: 'No CutLink customer requests',
-              description: 'Butcher access requests will appear here.',
+              title: _appliedCustomerSearch.isEmpty
+                  ? 'No CutLink members'
+                  : 'No matching CutLink members',
+              description: _appliedCustomerSearch.isEmpty
+                  ? 'Registered CutLink butcher members will appear here.'
+                  : 'Try another member name.',
             );
           }
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            itemCount: _relationships.length,
+            itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (_, index) =>
-                _buildRelationshipCard(_relationships[index]),
+            itemBuilder: (_, index) => _buildRelationshipCard(rows[index]),
           );
         }
 
         Widget externalList() {
-          if (_manualAccounts.isEmpty) {
+          final rows = _filteredManualAccounts;
+
+          if (rows.isEmpty) {
             return _emptyCard(
               icon: Icons.person_add_alt_1_outlined,
-              title: 'No external customers',
-              description:
-                  'Add customers here for phone, email or sales-rep orders.',
+              title: _appliedCustomerSearch.isEmpty
+                  ? 'No external customers'
+                  : 'No matching external customers',
+              description: _appliedCustomerSearch.isEmpty
+                  ? 'Add customers here for phone, email or sales-rep orders.'
+                  : 'Try another customer name.',
             );
           }
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            itemCount: _manualAccounts.length,
+            itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (_, index) =>
-                _buildAccountCard(_manualAccounts[index]),
+            itemBuilder: (_, index) => _buildAccountCard(rows[index]),
           );
         }
 
@@ -1148,11 +1398,14 @@ class _SupplierCustomerRequestsPageState
             children: [
               vip,
               const SizedBox(height: 12),
+              _buildCustomerSearchBar(),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 420,
                 child: panel(
-                  title: 'CutLink Customers',
-                  subtitle: 'Registered butcher relationships and terms.',
+                  title: 'CutLink Members',
+                  subtitle:
+                      'Registered CutLink butcher members and account terms.',
                   child: cutLinkList(),
                 ),
               ),
@@ -1188,14 +1441,16 @@ class _SupplierCustomerRequestsPageState
                 children: [
                   vip,
                   const SizedBox(height: 12),
+                  _buildCustomerSearchBar(),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: Row(
                       children: [
                         Expanded(
                           child: panel(
-                            title: 'CutLink Customers',
+                            title: 'CutLink Members',
                             subtitle:
-                                'Registered butcher relationships and commercial account settings.',
+                                'Registered CutLink butcher members and commercial account settings.',
                             child: cutLinkList(),
                           ),
                         ),
@@ -1265,203 +1520,407 @@ class _SupplierCustomerRequestsPageState
   Widget _buildRelationshipCard(Map<String, dynamic> relationship) {
     final status = relationship['status']?.toString();
     final account = _accountForRelationship(relationship);
-    final accountText = account == null
-        ? 'No account'
-        : '${_paymentText(account)}'
-              '${account['credit_limit'] == null ? '' : ' • Limit \$${account['credit_limit']}'}';
+    final summary = account == null ? null : _summaryForAccount(account);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFDFDFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E5E1)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4E5E5),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(
-              Icons.storefront_outlined,
-              color: _darkRed,
-              size: 19,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final outstanding = _asDouble(summary?['outstanding_balance']);
+    final overdue = _asDouble(summary?['overdue_amount']);
+    final nextDue = _asDouble(summary?['next_amount_due']);
+    final nextDate = summary?['next_due_date'];
+    final accountStatus = summary?['account_status']?.toString();
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: account == null ? null : () => _openCustomerAccount(account),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDFDFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E5E1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                Text(
-                  _businessName(relationship),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4E5E5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.storefront_outlined,
+                    color: _darkRed,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(
-                      _statusIcon(status),
-                      size: 14,
-                      color: _statusColor(status),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatStatus(status),
-                      style: TextStyle(
-                        color: _statusColor(status),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (status == 'approved') ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          accountText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 11.5,
-                          ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _businessName(relationship),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(
+                            _statusIcon(status),
+                            size: 13,
+                            color: _statusColor(status),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatStatus(status),
+                            style: TextStyle(
+                              color: _statusColor(status),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (account != null) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _paymentText(account),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
+                  ),
+                ),
+                if (account != null)
+                  const Icon(Icons.chevron_right, color: _darkRed),
+                PopupMenuButton<String>(
+                  tooltip: 'Member actions',
+                  onSelected: (value) {
+                    if (value == 'edit' && account != null) {
+                      _editCustomerAccount(account);
+                    } else if (value == 'suspend') {
+                      _updateStatus(
+                        relationship: relationship,
+                        status: 'suspended',
+                      );
+                    } else if (value == 'approve') {
+                      _updateStatus(
+                        relationship: relationship,
+                        status: 'approved',
+                      );
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (account != null)
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit Account Settings'),
+                      ),
+                    if (status == 'approved')
+                      const PopupMenuItem(
+                        value: 'suspend',
+                        child: Text('Suspend Access'),
+                      ),
+                    if (status == 'suspended' || status == 'declined')
+                      const PopupMenuItem(
+                        value: 'approve',
+                        child: Text('Approve Access'),
+                      ),
                   ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          if (status == 'requested') ...[
-            IconButton(
-              tooltip: 'Approve',
-              onPressed: () =>
-                  _updateStatus(relationship: relationship, status: 'approved'),
-              icon: const Icon(Icons.check_circle_outline),
-              color: const Color(0xFF2E7D32),
-            ),
-            IconButton(
-              tooltip: 'Decline',
-              onPressed: () =>
-                  _updateStatus(relationship: relationship, status: 'declined'),
-              icon: const Icon(Icons.cancel_outlined),
-              color: _darkRed,
-            ),
-          ] else
-            PopupMenuButton<String>(
-              tooltip: 'Customer actions',
-              onSelected: (value) {
-                if (value == 'edit' && account != null) {
-                  _editCustomerAccount(account);
-                } else if (value == 'suspend') {
-                  _updateStatus(
-                    relationship: relationship,
-                    status: 'suspended',
-                  );
-                } else if (value == 'approve') {
-                  _updateStatus(relationship: relationship, status: 'approved');
-                }
-              },
-              itemBuilder: (_) => [
-                if (account != null)
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Edit Account'),
+            if (summary != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F8F6),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _financialCompact(
+                        'Outstanding',
+                        _money(outstanding),
+                        outstanding > 0 ? _darkRed : null,
+                      ),
+                    ),
+                    Expanded(
+                      child: _financialCompact(
+                        'Overdue',
+                        _money(overdue),
+                        overdue > 0 ? const Color(0xFFB3261E) : null,
+                      ),
+                    ),
+                    Expanded(
+                      child: _financialCompact(
+                        'Next Due',
+                        nextDue > 0
+                            ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
+                            : '—',
+                        null,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _accountStatusColor(
+                            accountStatus,
+                          ).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _accountStatusLabel(accountStatus),
+                          style: TextStyle(
+                            color: _accountStatusColor(accountStatus),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (status == 'requested') ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _updateStatus(
+                      relationship: relationship,
+                      status: 'declined',
+                    ),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Decline'),
                   ),
-                if (status == 'approved')
-                  const PopupMenuItem(
-                    value: 'suspend',
-                    child: Text('Suspend Access'),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: () => _updateStatus(
+                      relationship: relationship,
+                      status: 'approved',
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                    ),
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Approve'),
                   ),
-                if (status == 'suspended' || status == 'declined')
-                  const PopupMenuItem(
-                    value: 'approve',
-                    child: Text('Approve Access'),
-                  ),
-              ],
-            ),
-        ],
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _financialCompact(String label, String value, Color? valueColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFF888888),
+            fontSize: 8.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: valueColor ?? const Color(0xFF222222),
+            fontSize: 11,
+            height: 1.15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildAccountCard(Map<String, dynamic> account) {
     final active = account['active'] == true;
+    final summary = _summaryForAccount(account);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _editCustomerAccount(account),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFDFDFC),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE5E5E1)),
-          ),
-          child: Row(
-            children: [
+    final outstanding = _asDouble(summary?['outstanding_balance']);
+    final overdue = _asDouble(summary?['overdue_amount']);
+    final nextDue = _asDouble(summary?['next_amount_due']);
+    final nextDate = summary?['next_due_date'];
+    final accountStatus = summary?['account_status']?.toString();
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openCustomerAccount(account),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDFDFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E5E1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4E5E5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.person_outline,
+                    color: _darkRed,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _accountName(account),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${active ? 'Active' : 'Inactive'} • ${_paymentText(account)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: active
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFF777777),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: _darkRed),
+                PopupMenuButton<String>(
+                  tooltip: 'Customer actions',
+                  onSelected: (value) {
+                    if (value == 'open') {
+                      _openCustomerAccount(account);
+                    } else if (value == 'edit') {
+                      _editCustomerAccount(account);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'open', child: Text('Open Account')),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit Account Settings'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (summary != null) ...[
+              const SizedBox(height: 10),
               Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4E5E5),
+                  color: const Color(0xFFF8F8F6),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(
-                  Icons.person_outline,
-                  color: _darkRed,
-                  size: 19,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      _accountName(account),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: _financialCompact(
+                        'Outstanding',
+                        _money(outstanding),
+                        outstanding > 0 ? _darkRed : null,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${active ? 'Active' : 'Inactive'} • ${_paymentText(account)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: active
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFF777777),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: _financialCompact(
+                        'Overdue',
+                        _money(overdue),
+                        overdue > 0 ? const Color(0xFFB3261E) : null,
+                      ),
+                    ),
+                    Expanded(
+                      child: _financialCompact(
+                        'Next Due',
+                        nextDue > 0
+                            ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
+                            : '—',
+                        null,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _accountStatusColor(
+                          accountStatus,
+                        ).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _accountStatusLabel(accountStatus),
+                        style: TextStyle(
+                          color: _accountStatusColor(accountStatus),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: _darkRed),
             ],
-          ),
+          ],
         ),
       ),
     );

@@ -781,10 +781,226 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
   }
 
+  Future<bool> _confirmInvoiceCreditLimit() async {
+    final accountId = _invoice?['supplier_customer_account_id']?.toString();
+
+    if (accountId == null || accountId.isEmpty) {
+      return true;
+    }
+
+    if (_invoice?['payment_method_snapshot']?.toString() != 'account') {
+      return true;
+    }
+
+    try {
+      final raw = await Supabase.instance.client.rpc(
+        'check_supplier_customer_credit_limit',
+        params: {
+          'target_supplier_customer_account_id': accountId,
+          'proposed_amount': _incGstTotal,
+        },
+      );
+
+      final rows = raw is List ? raw : const [];
+      if (rows.isEmpty || rows.first is! Map) {
+        return true;
+      }
+
+      final check = Map<String, dynamic>.from(rows.first as Map);
+
+      if (check['over_limit'] != true) {
+        return true;
+      }
+
+      if (!mounted) return false;
+
+      final creditLimit = _asDouble(check['credit_limit']);
+      final currentExposure = _asDouble(check['current_credit_exposure']);
+      final projected = _asDouble(check['projected_credit_exposure']);
+      final overBy = _asDouble(check['over_limit_by']);
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1E3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Color(0xFFB85C00),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Credit Limit Warning',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Issuing this invoice will take the '
+                                'customer over their approved limit.',
+                                style: TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F8F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _invoiceCreditRow(
+                            'Credit limit',
+                            _money(creditLimit),
+                          ),
+                          const SizedBox(height: 8),
+                          _invoiceCreditRow(
+                            'Current exposure',
+                            _money(currentExposure),
+                          ),
+                          const SizedBox(height: 8),
+                          _invoiceCreditRow(
+                            'This invoice',
+                            _money(_incGstTotal),
+                          ),
+                          const Divider(height: 20),
+                          _invoiceCreditRow(
+                            'Projected exposure',
+                            _money(projected),
+                            strong: true,
+                          ),
+                          const SizedBox(height: 8),
+                          _invoiceCreditRow(
+                            'Over limit by',
+                            _money(overBy),
+                            strong: true,
+                            warning: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'You can continue, but this should be an '
+                      'intentional supplier decision.',
+                      style: TextStyle(
+                        color: Color(0xFF8A5600),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          child: const Text('Go Back'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _darkRed,
+                          ),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          child: const Text('Issue Anyway'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      return proceed == true;
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return false;
+    }
+  }
+
+  Widget _invoiceCreditRow(
+    String label,
+    String value, {
+    bool strong = false,
+    bool warning = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF666666),
+              fontSize: 11.5,
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: warning ? const Color(0xFFB3261E) : const Color(0xFF222222),
+            fontSize: strong ? 13 : 12,
+            fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _issueInvoice() async {
     final invoiceId = _invoice?['id']?.toString();
 
     if (invoiceId == null || !_canIssue || _isSaving) {
+      return;
+    }
+
+    final creditApproved = await _confirmInvoiceCreditLimit();
+
+    if (!creditApproved || !mounted) {
       return;
     }
 
@@ -795,7 +1011,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         content: Text(
           'Issue ${_invoice?['invoice_number'] ?? 'this invoice'} to '
           '${_invoice?['customer_name_snapshot'] ?? 'the customer'}?\n\n'
-          'After issuing, the tax and final invoice total are locked.',
+          'After issuing, the tax and final invoice total are locked. '
+          'If this is a CutLink member, the invoice will automatically '
+          'appear in their Accounts as outstanding.',
         ),
         actions: [
           TextButton(

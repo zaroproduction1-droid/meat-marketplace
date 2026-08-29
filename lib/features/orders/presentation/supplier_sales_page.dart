@@ -1045,6 +1045,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return 'unit';
   }
 
+  double _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
   double _saleEstimatedTotal() {
     var total = 0.0;
 
@@ -1728,6 +1736,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return;
     }
 
+    final creditApproved = await _confirmCreditLimitForActiveSale();
+
+    if (!creditApproved || !mounted) {
+      return;
+    }
+
     try {
       final existingQuoteId = sale['quote_order_id']?.toString();
 
@@ -1815,6 +1829,241 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  Future<bool> _confirmCreditLimitForActiveSale() async {
+    final sale = _activeSale;
+    if (sale == null) return true;
+
+    final accountId = sale['supplier_customer_account_id']?.toString();
+
+    if (accountId == null || accountId.isEmpty) {
+      return true;
+    }
+
+    final paymentMethod = sale['payment_method']?.toString();
+
+    // Credit-limit warnings apply to account sales.
+    if (paymentMethod != 'account') {
+      return true;
+    }
+
+    final deliveryFee = sale['delivery_fee'] is num
+        ? (sale['delivery_fee'] as num).toDouble()
+        : double.tryParse('${sale['delivery_fee']}') ?? 0;
+
+    final proposedKnownAmount = _saleEstimatedTotal() + deliveryFee;
+
+    try {
+      final raw = await Supabase.instance.client.rpc(
+        'check_supplier_customer_credit_limit',
+        params: {
+          'target_supplier_customer_account_id': accountId,
+          'proposed_amount': proposedKnownAmount,
+        },
+      );
+
+      final rows = raw is List ? raw : const [];
+      if (rows.isEmpty || rows.first is! Map) {
+        return true;
+      }
+
+      final check = Map<String, dynamic>.from(rows.first as Map);
+
+      if (check['over_limit'] != true) {
+        return true;
+      }
+
+      final creditLimit = _asDouble(check['credit_limit']);
+      final currentExposure = _asDouble(check['current_credit_exposure']);
+      final projected = _asDouble(check['projected_credit_exposure']);
+      final overBy = _asDouble(check['over_limit_by']);
+
+      if (!mounted) return false;
+
+      final hasCatchWeight = _activeSaleLines.any(
+        (line) => line['catch_weight_snapshot'] == true,
+      );
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1E3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Color(0xFFB85C00),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Credit Limit Warning',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'This sale would take the customer '
+                                'over their approved account limit.',
+                                style: TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F8F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _creditLimitRow('Customer', _activeSaleCustomerName),
+                          const SizedBox(height: 8),
+                          _creditLimitRow('Credit limit', _money(creditLimit)),
+                          const SizedBox(height: 8),
+                          _creditLimitRow(
+                            'Current exposure',
+                            _money(currentExposure),
+                          ),
+                          const SizedBox(height: 8),
+                          _creditLimitRow(
+                            'This sale',
+                            _money(proposedKnownAmount),
+                          ),
+                          const Divider(height: 20),
+                          _creditLimitRow(
+                            'Projected exposure',
+                            _money(projected),
+                            strong: true,
+                          ),
+                          const SizedBox(height: 8),
+                          _creditLimitRow(
+                            'Over limit by',
+                            _money(overBy),
+                            strong: true,
+                            warning: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (hasCatchWeight) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'This order contains catch-weight items. '
+                        'The final invoice value may be higher after '
+                        'actual weights are entered, so the credit '
+                        'limit will be checked again when the invoice '
+                        'is issued.',
+                        style: TextStyle(
+                          color: Color(0xFF8A5600),
+                          fontSize: 11.5,
+                          height: 1.4,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          child: const Text('Go Back'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _darkRed,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                          ),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          child: const Text('Continue Anyway'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      return proceed == true;
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return false;
+    }
+  }
+
+  Widget _creditLimitRow(
+    String label,
+    String value, {
+    bool strong = false,
+    bool warning = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF666666),
+              fontSize: 11.5,
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: warning ? const Color(0xFFB3261E) : const Color(0xFF222222),
+            fontSize: strong ? 13 : 12,
+            fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _createWorkOrderFromActiveSale() async {
