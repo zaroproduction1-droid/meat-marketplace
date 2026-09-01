@@ -2,15 +2,233 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupplierSettingsPage extends StatelessWidget {
-  const SupplierSettingsPage({super.key});
+  const SupplierSettingsPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   static const _darkRed = Color(0xFF741C1C);
   static const _canvas = Color(0xFFF7F8FA);
   static const _border = Color(0xFFE3E5E8);
   static const _muted = Color(0xFF666A70);
 
+  Widget _body(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1180),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          children: [
+            if (!embedded) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.tune_outlined, color: _darkRed, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Supplier Settings',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Manage your business profile, invoice configuration, privacy and notification preferences.',
+                            style: TextStyle(color: _muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final twoColumns = constraints.maxWidth >= 760;
+
+                final cards = [
+                  _SettingsTile(
+                    icon: Icons.business_outlined,
+                    title: 'Business Profile',
+                    subtitle:
+                        'Trading name, legal name, contact details and business address.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SupplierProfileSettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _SettingsTile(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Invoice Configuration',
+                    subtitle:
+                        'ABN, licence number, invoice contact details, invoice address and banking details.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const SupplierInvoiceConfigurationPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _SettingsTile(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy',
+                    subtitle:
+                        'Control marketplace profile visibility and customer access to contact details.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SupplierPrivacySettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _SettingsTile(
+                    icon: Icons.notifications_outlined,
+                    title: 'Notifications',
+                    subtitle:
+                        'Choose which order, quote, payment and invoice activity should notify you.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const SupplierNotificationSettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ];
+
+                if (!twoColumns) {
+                  return Column(
+                    children: [
+                      for (var i = 0; i < cards.length; i++) ...[
+                        cards[i],
+                        if (i != cards.length - 1) const SizedBox(height: 10),
+                      ],
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: cards[0]),
+                        const SizedBox(width: 10),
+                        Expanded(child: cards[1]),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: cards[2]),
+                        const SizedBox(width: 10),
+                        Expanded(child: cards[3]),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _workspaceHeader() {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: _border)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.settings_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Settings',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Manage your business profile, account preferences and platform settings',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (embedded) {
+      return ColoredBox(
+        color: _canvas,
+        child: Column(
+          children: [
+            _workspaceHeader(),
+            Expanded(child: _body(context)),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: _canvas,
       appBar: AppBar(
@@ -34,169 +252,7 @@ class SupplierSettingsPage extends StatelessWidget {
           child: Divider(height: 1, thickness: 1, color: _border),
         ),
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _border),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF8EEEE),
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                      child: Icon(
-                        Icons.tune_outlined,
-                        color: _darkRed,
-                        size: 24,
-                      ),
-                    ),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Supplier Settings',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Manage your business profile, invoice configuration, privacy and notification preferences.',
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: 12.5,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final twoColumns = constraints.maxWidth >= 760;
-
-                  final cards = [
-                    _SettingsTile(
-                      icon: Icons.business_outlined,
-                      title: 'Business Profile',
-                      subtitle:
-                          'Trading name, legal name, contact details and business address.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SupplierProfileSettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _SettingsTile(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'Invoice Configuration',
-                      subtitle:
-                          'ABN, licence number, invoice contact details, invoice address and banking details.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const SupplierInvoiceConfigurationPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _SettingsTile(
-                      icon: Icons.privacy_tip_outlined,
-                      title: 'Privacy',
-                      subtitle:
-                          'Control marketplace profile visibility and customer access to contact details.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SupplierPrivacySettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _SettingsTile(
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      subtitle:
-                          'Choose which order, quote, payment and invoice activity should notify you.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const SupplierNotificationSettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                  ];
-
-                  if (!twoColumns) {
-                    return Column(
-                      children: [
-                        for (var i = 0; i < cards.length; i++) ...[
-                          cards[i],
-                          if (i != cards.length - 1) const SizedBox(height: 12),
-                        ],
-                      ],
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: cards[0]),
-                          const SizedBox(width: 14),
-                          Expanded(child: cards[1]),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: cards[2]),
-                          const SizedBox(width: 14),
-                          Expanded(child: cards[3]),
-                        ],
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: _body(context),
     );
   }
 }
@@ -227,8 +283,8 @@ class _SettingsTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 142),
-          padding: const EdgeInsets.all(18),
+          constraints: const BoxConstraints(minHeight: 116),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: _border),
@@ -244,15 +300,15 @@ class _SettingsTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8EEEE),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: _darkRed, size: 22),
+                child: Icon(icon, color: _darkRed, size: 20),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,26 +316,26 @@ class _SettingsTile extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF1E2329),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
                         color: _muted,
-                        fontSize: 12.5,
-                        height: 1.45,
+                        fontSize: 11.5,
+                        height: 1.35,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               const Padding(
-                padding: EdgeInsets.only(top: 9),
+                padding: EdgeInsets.only(top: 7),
                 child: Icon(
                   Icons.chevron_right,
                   color: Color(0xFF8A8F96),

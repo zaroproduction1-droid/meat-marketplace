@@ -26,6 +26,9 @@ class BusinessDashboardPage extends StatefulWidget {
 }
 
 class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
+  static const double _collapsedSidebarWidth = 76;
+  static const double _expandedSidebarWidth = 228;
+  static const Duration _sidebarAnimationDuration = Duration(milliseconds: 170);
   static const Color _darkRed = Color(0xFF8B1E2D);
   static const Color _deepNavy = Color(0xFF081625);
   static const Color _canvas = Color(0xFFF7F8FA);
@@ -33,6 +36,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   bool _isLoading = true;
   bool _isAdmin = false;
   bool _sidebarCollapsed = false;
+  double _sidebarLayoutWidth = _expandedSidebarWidth;
+  bool _sidebarTransitioning = false;
+
+  Widget? _workspacePage;
+  String _workspaceKey = 'dashboard';
 
   int _newSupplierOrderCount = 0;
 
@@ -49,8 +57,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   List<Map<String, dynamic>> _supplierProducts = [];
   int _pendingVipApplications = 0;
 
-  final TextEditingController _searchController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
@@ -59,7 +65,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -356,18 +361,106 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature will be added in a later phase.')),
+  void _openDashboard({String workspaceKey = 'dashboard'}) {
+    if (_workspacePage == null && _workspaceKey == workspaceKey) return;
+
+    setState(() {
+      _workspaceKey = workspaceKey;
+      _workspacePage = null;
+    });
+  }
+
+  String _workspaceKeyForPage(Widget page) {
+    if (page is MarketplaceProductsPage) return 'browse';
+    if (page is ButcherVipSuppliersPage) return 'suppliers';
+    if (page is SubmittedOrdersPage) return 'orders';
+    if (page is ButcherAccountsPage) return 'accounts';
+    if (page is ButcherSettingsPage) return 'settings';
+
+    if (page is SupplierSalesPage) return 'sales';
+    if (page is SupplierOrdersPage) return 'orders';
+    if (page is SupplierInventoryPage) return 'inventory';
+    if (page is SupplierCustomerRequestsPage) return 'customers';
+    if (page is SupplierWorkOrdersPage) return 'work_orders';
+    if (page is SupplierDeliverySettingsPage) return 'delivery';
+    if (page is SupplierInvoicesPage) return 'invoices';
+    if (page is SupplierSettingsPage) return 'settings';
+
+    if (page is PendingBusinessesPage) return 'admin';
+
+    return page.runtimeType.toString();
+  }
+
+  void _openPage(Widget page, {String? workspaceKey}) {
+    final nextKey = workspaceKey ?? _workspaceKeyForPage(page);
+    if (_workspacePage != null && _workspaceKey == nextKey) return;
+
+    setState(() {
+      _workspaceKey = nextKey;
+      _workspacePage = page;
+    });
+  }
+
+  void _toggleSidebar() {
+    if (_sidebarTransitioning) return;
+
+    final collapsing = !_sidebarCollapsed;
+    setState(() {
+      _sidebarTransitioning = true;
+      _sidebarCollapsed = collapsing;
+
+      // Expansion reserves the final side-by-side space before its visual
+      // animation. Collapse keeps the expanded reservation until animation
+      // completion, so the workspace is never resized on animation frames.
+      if (!collapsing) {
+        _sidebarLayoutWidth = _expandedSidebarWidth;
+      }
+    });
+  }
+
+  void _onSidebarVisualAnimationEnd() {
+    if (!_sidebarTransitioning) return;
+
+    if (_sidebarCollapsed) {
+      setState(() {
+        _sidebarLayoutWidth = _collapsedSidebarWidth;
+        _sidebarTransitioning = false;
+      });
+      return;
+    }
+
+    _sidebarTransitioning = false;
+  }
+
+  Widget _sidebarTransitionFrame({required Widget child}) {
+    final visualWidth = _sidebarCollapsed
+        ? _collapsedSidebarWidth
+        : _expandedSidebarWidth;
+
+    return SizedBox(
+      width: _sidebarLayoutWidth,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: AnimatedContainer(
+          duration: _sidebarAnimationDuration,
+          curve: Curves.easeOutCubic,
+          width: visualWidth,
+          color: _deepNavy,
+          clipBehavior: Clip.hardEdge,
+          onEnd: _onSidebarVisualAnimationEnd,
+          child: child,
+        ),
+      ),
     );
   }
 
-  Future<void> _openPage(Widget page) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-
-    if (mounted) {
-      await _loadDashboard();
+  void _openSettings() {
+    if (_businessType == 'butcher') {
+      _openPage(const ButcherSettingsPage());
+      return;
     }
+
+    _openPage(const SupplierSettingsPage(embedded: true));
   }
 
   double _asDouble(dynamic value) {
@@ -741,116 +834,133 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         children: [
           _butcherSidebar(),
           Expanded(
-            child: Column(
-              children: [
-                _topBar(
-                  searchHint: 'Search products, suppliers, orders...',
-                  cartVisible: true,
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _loadDashboard,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            child: RepaintBoundary(
+              child: _workspacePage != null
+                  ? KeyedSubtree(
+                      key: ValueKey(_workspaceKey),
+                      child: _workspacePage!,
+                    )
+                  : Column(
                       children: [
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1500),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                        _topBar(cartVisible: true),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _loadDashboard,
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                28,
+                              ),
                               children: [
-                                Text(
-                                  '${_greeting()}, ${_businessName ?? 'Butcher'}',
-                                  style: const TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Here’s what’s happening with your purchasing today.',
-                                  style: TextStyle(
-                                    color: Color(0xFF6A6E75),
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                _summaryGrid(),
-                                const SizedBox(height: 16),
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    if (constraints.maxWidth < 1050) {
-                                      return Column(
-                                        children: [
-                                          _attentionCard(),
-                                          const SizedBox(height: 14),
-                                          _recentOrdersCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierAccountsCard(),
-                                        ],
-                                      );
-                                    }
-
-                                    return Row(
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1500,
+                                    ),
+                                    child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                          CrossAxisAlignment.stretch,
                                       children: [
-                                        Expanded(
-                                          flex: 9,
-                                          child: _attentionCard(),
+                                        Text(
+                                          '${_greeting()}, ${_businessName ?? 'Butcher'}',
+                                          style: const TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.4,
+                                          ),
                                         ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 13,
-                                          child: _recentOrdersCard(),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Here’s what’s happening with your purchasing today.',
+                                          style: TextStyle(
+                                            color: Color(0xFF6A6E75),
+                                            fontSize: 13.5,
+                                          ),
                                         ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 11,
-                                          child: _supplierAccountsCard(),
+                                        const SizedBox(height: 18),
+                                        _summaryGrid(),
+                                        const SizedBox(height: 16),
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            if (constraints.maxWidth < 1050) {
+                                              return Column(
+                                                children: [
+                                                  _attentionCard(),
+                                                  const SizedBox(height: 14),
+                                                  _recentOrdersCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierAccountsCard(),
+                                                ],
+                                              );
+                                            }
+
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  flex: 9,
+                                                  child: _attentionCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 13,
+                                                  child: _recentOrdersCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 11,
+                                                  child:
+                                                      _supplierAccountsCard(),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            if (constraints.maxWidth < 1100) {
+                                              return Column(
+                                                children: [
+                                                  _quickReorderCard(),
+                                                  const SizedBox(height: 14),
+                                                  _purchasingOverviewCard(),
+                                                  const SizedBox(height: 14),
+                                                  _quickActionsCard(),
+                                                ],
+                                              );
+                                            }
+
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  flex: 12,
+                                                  child: _quickReorderCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 11,
+                                                  child:
+                                                      _purchasingOverviewCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 7,
+                                                  child: _quickActionsCard(),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ],
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    if (constraints.maxWidth < 1100) {
-                                      return Column(
-                                        children: [
-                                          _quickReorderCard(),
-                                          const SizedBox(height: 14),
-                                          _purchasingOverviewCard(),
-                                          const SizedBox(height: 14),
-                                          _quickActionsCard(),
-                                        ],
-                                      );
-                                    }
-
-                                    return Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 12,
-                                          child: _quickReorderCard(),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 11,
-                                          child: _purchasingOverviewCard(),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 7,
-                                          child: _quickActionsCard(),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -858,9 +968,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -1529,7 +1636,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.scale_outlined,
             'Compare Suppliers',
-            () => _showComingSoon('Compare Suppliers'),
+            () => _openPage(
+              const MarketplaceProductsPage(),
+              workspaceKey: 'compare',
+            ),
           ),
           const SizedBox(height: 9),
           _quickAction(
@@ -1719,42 +1829,59 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
-  Widget _butcherSidebar() {
-    final width = _sidebarCollapsed ? 76.0 : 228.0;
+  Widget _sidebarHeader() {
+    return SizedBox(
+      height: 64,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = _sidebarCollapsed || constraints.maxWidth < 150;
+          final logoSize = compact ? 28.0 : 34.0;
+          final toggleSize = compact ? 28.0 : 34.0;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      width: width,
-      color: _deepNavy,
-      child: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(
-              height: 72,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: _sidebarCollapsed ? 14 : 18,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _darkRed,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.link_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    if (!_sidebarCollapsed) ...[
+          final logo = Container(
+            width: logoSize,
+            height: logoSize,
+            decoration: BoxDecoration(
+              color: _darkRed,
+              borderRadius: BorderRadius.circular(compact ? 8 : 9),
+            ),
+            child: Icon(
+              Icons.link_rounded,
+              color: Colors.white,
+              size: compact ? 18 : 21,
+            ),
+          );
+
+          final toggle = IconButton(
+            onPressed: _toggleSidebar,
+            tooltip: _sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints.tightFor(width: toggleSize, height: 34),
+            icon: Icon(
+              _sidebarCollapsed
+                  ? Icons.chevron_right_rounded
+                  : Icons.chevron_left_rounded,
+              color: Colors.white,
+              size: 21,
+            ),
+          );
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+            child: compact
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [logo, toggle],
+                  )
+                : Row(
+                    children: [
+                      logo,
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           'CutLink',
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -1763,11 +1890,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           ),
                         ),
                       ),
+                      toggle,
                     ],
-                  ],
-                ),
-              ),
-            ),
+                  ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _butcherSidebar() {
+    return _sidebarTransitionFrame(
+      child: SafeArea(
+        child: Column(
+          children: [
+            _sidebarHeader(),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1775,120 +1912,151 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   _sideItem(
                     Icons.grid_view_rounded,
                     'Dashboard',
-                    selected: true,
-                    onTap: () {},
+                    selected: _workspaceKey == 'dashboard',
+                    onTap: _openDashboard,
                   ),
                   _sideItem(
                     Icons.shopping_bag_outlined,
                     'Browse Products',
+                    selected: _workspaceKey == 'browse',
                     onTap: () => _openPage(const MarketplaceProductsPage()),
                   ),
                   _sideItem(
                     Icons.scale_outlined,
                     'Compare',
-                    onTap: () => _showComingSoon('Compare'),
+                    selected: _workspaceKey == 'compare',
+                    onTap: () => _openPage(
+                      const MarketplaceProductsPage(),
+                      workspaceKey: 'compare',
+                    ),
                   ),
                   _sideItem(
                     Icons.people_outline,
                     'Suppliers',
+                    selected: _workspaceKey == 'suppliers',
                     onTap: () => _openPage(const ButcherVipSuppliersPage()),
                   ),
                   _sideItem(
                     Icons.receipt_long_outlined,
                     'Orders',
+                    selected: _workspaceKey == 'orders',
                     onTap: () => _openPage(const SubmittedOrdersPage()),
                   ),
                   _sideItem(
                     Icons.favorite_border,
                     'Favourites',
-                    onTap: () => _showComingSoon('Favourites'),
+                    selected: _workspaceKey == 'favourites',
+                    onTap: () => _openPage(
+                      const MarketplaceProductsPage(),
+                      workspaceKey: 'favourites',
+                    ),
                   ),
                   _sideItem(
                     Icons.account_balance_wallet_outlined,
                     'Accounts & Invoices',
+                    selected: _workspaceKey == 'accounts',
                     onTap: () => _openPage(const ButcherAccountsPage()),
                   ),
                   _sideItem(
                     Icons.bar_chart_outlined,
                     'Analytics',
-                    onTap: () => _showComingSoon('Analytics'),
+                    selected: _workspaceKey == 'analytics',
+                    onTap: () => _openDashboard(workspaceKey: 'analytics'),
                   ),
                   _sideItem(
                     Icons.notifications_none_rounded,
                     'Notifications',
-                    onTap: () => _showComingSoon('Notifications'),
+                    selected: _workspaceKey == 'notifications',
+                    onTap: () => _openPage(
+                      const ButcherNotificationSettingsPage(),
+                      workspaceKey: 'notifications',
+                    ),
                   ),
                   _sideItem(
                     Icons.settings_outlined,
                     'Settings',
+                    selected: _workspaceKey == 'settings',
                     onTap: () => _openPage(const ButcherSettingsPage()),
                   ),
                   if (_isAdmin)
                     _sideItem(
                       Icons.admin_panel_settings_outlined,
                       'Admin',
+                      selected: _workspaceKey == 'admin',
                       onTap: () => _openPage(const PendingBusinessesPage()),
                     ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: Color(0xFF263544))),
               ),
               child: Column(
                 children: [
                   if (!_sidebarCollapsed)
-                    Container(
-                      padding: const EdgeInsets.all(9),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF102335),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: _darkRed,
-                            child: Text(
-                              (_businessName?.isNotEmpty ?? false)
-                                  ? _businessName![0].toUpperCase()
-                                  : 'B',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 160) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Material(
+                          color: const Color(0xFF102335),
+                          borderRadius: BorderRadius.circular(11),
+                          child: InkWell(
+                            onTap: _openSettings,
+                            borderRadius: BorderRadius.circular(11),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: _darkRed,
+                                    child: Text(
+                                      (_businessName?.isNotEmpty ?? false)
+                                          ? _businessName![0].toUpperCase()
+                                          : 'B',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _businessName ?? 'Butcher',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Butcher Account',
+                                          style: TextStyle(
+                                            color: Color(0xFFAAB4BE),
+                                            fontSize: 9.8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _businessName ?? 'Butcher',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const Text(
-                                  'Butcher Account',
-                                  style: TextStyle(
-                                    color: Color(0xFFAAB4BE),
-                                    fontSize: 9.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   _sideItem(Icons.logout_rounded, 'Logout', onTap: _signOut),
                 ],
@@ -1906,99 +2074,67 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     required VoidCallback onTap,
     bool selected = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: selected ? _darkRed : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: _sidebarCollapsed ? 58 : 45,
-                  child: Icon(icon, color: Colors.white, size: 20),
-                ),
-                if (!_sidebarCollapsed)
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.8,
-                        fontWeight: selected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showLabel = !_sidebarCollapsed && constraints.maxWidth >= 120;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Material(
+            color: selected ? _darkRed : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                height: 42,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: showLabel ? 45 : constraints.maxWidth,
+                      child: Icon(icon, color: Colors.white, size: 20),
                     ),
-                  ),
-              ],
+                    if (showLabel)
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.8,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _topBar({required String searchHint, bool cartVisible = false}) {
+  Widget _topBar({bool cartVisible = false}) {
     return Container(
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE4E6E8))),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _sidebarCollapsed = !_sidebarCollapsed;
-              });
-            },
-            tooltip: _sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
-            icon: Icon(
-              _sidebarCollapsed
-                  ? Icons.chevron_right_rounded
-                  : Icons.chevron_left_rounded,
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 480,
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  _openPage(const MarketplaceProductsPage());
-                }
-              },
-              decoration: InputDecoration(
-                hintText: searchHint,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: const Color(0xFFFAFAFB),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E2E5)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E2E5)),
-                ),
-              ),
-            ),
-          ),
           const Spacer(),
           IconButton(
-            onPressed: () => _showComingSoon('Notifications'),
+            onPressed: () => _openPage(
+              const ButcherNotificationSettingsPage(),
+              workspaceKey: 'notifications',
+            ),
             tooltip: 'Notifications',
             icon: const Icon(Icons.notifications_none_rounded),
           ),
@@ -2018,52 +2154,62 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
           ],
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE0E2E5)),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openSettings,
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: _darkRed,
-                  child: Text(
-                    (_businessName?.isNotEmpty ?? false)
-                        ? _businessName![0].toUpperCase()
-                        : 'B',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE0E2E5)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      _businessName ?? 'Business',
-                      style: const TextStyle(
-                        fontSize: 10.8,
-                        fontWeight: FontWeight.w800,
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: _darkRed,
+                      child: Text(
+                        (_businessName?.isNotEmpty ?? false)
+                            ? _businessName![0].toUpperCase()
+                            : 'B',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    Text(
-                      _businessType == 'supplier'
-                          ? 'Supplier'
-                          : 'Butcher Account',
-                      style: const TextStyle(
-                        color: Color(0xFF777B82),
-                        fontSize: 9.2,
-                      ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _businessName ?? 'Business',
+                          style: const TextStyle(
+                            fontSize: 10.8,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          _businessType == 'supplier'
+                              ? 'Supplier'
+                              : 'Butcher Account',
+                          style: const TextStyle(
+                            color: Color(0xFF777B82),
+                            fontSize: 9.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -2356,122 +2502,144 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         children: [
           _supplierSidebar(),
           Expanded(
-            child: Column(
-              children: [
-                _supplierTopBar(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _loadDashboard,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            child: RepaintBoundary(
+              child: _workspacePage != null
+                  ? KeyedSubtree(
+                      key: ValueKey(_workspaceKey),
+                      child: _workspacePage!,
+                    )
+                  : Column(
                       children: [
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1500),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                        _supplierTopBar(),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _loadDashboard,
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                28,
+                              ),
                               children: [
-                                Text(
-                                  '${_greeting()}, ${_businessName ?? 'Supplier'}',
-                                  style: const TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Here’s what’s happening across your sales and fulfilment today.',
-                                  style: TextStyle(
-                                    color: Color(0xFF6A6E75),
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                _supplierSummaryGrid(),
-                                const SizedBox(height: 16),
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    if (constraints.maxWidth < 1050) {
-                                      return Column(
-                                        children: [
-                                          _supplierAttentionCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierOrdersCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierWorkOrdersCard(),
-                                        ],
-                                      );
-                                    }
-
-                                    return Row(
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1500,
+                                    ),
+                                    child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                          CrossAxisAlignment.stretch,
                                       children: [
-                                        Expanded(
-                                          flex: 9,
-                                          child: _supplierAttentionCard(),
+                                        Text(
+                                          '${_greeting()}, ${_businessName ?? 'Supplier'}',
+                                          style: const TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.4,
+                                          ),
                                         ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 13,
-                                          child: _supplierOrdersCard(),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Here’s what’s happening across your sales and fulfilment today.',
+                                          style: TextStyle(
+                                            color: Color(0xFF6A6E75),
+                                            fontSize: 13.5,
+                                          ),
                                         ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 11,
-                                          child: _supplierWorkOrdersCard(),
+                                        const SizedBox(height: 18),
+                                        _supplierSummaryGrid(),
+                                        const SizedBox(height: 16),
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            if (constraints.maxWidth < 1050) {
+                                              return Column(
+                                                children: [
+                                                  _supplierAttentionCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierOrdersCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierWorkOrdersCard(),
+                                                ],
+                                              );
+                                            }
+
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  flex: 9,
+                                                  child:
+                                                      _supplierAttentionCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 13,
+                                                  child: _supplierOrdersCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 11,
+                                                  child:
+                                                      _supplierWorkOrdersCard(),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            if (constraints.maxWidth < 1100) {
+                                              return Column(
+                                                children: [
+                                                  _supplierAccountsOverviewCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierInventorySnapshotCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierSalesOverviewCard(),
+                                                  const SizedBox(height: 14),
+                                                  _supplierQuickActionsCard(),
+                                                ],
+                                              );
+                                            }
+
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  flex: 10,
+                                                  child:
+                                                      _supplierAccountsOverviewCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 8,
+                                                  child:
+                                                      _supplierInventorySnapshotCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 10,
+                                                  child:
+                                                      _supplierSalesOverviewCard(),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  flex: 7,
+                                                  child:
+                                                      _supplierQuickActionsCard(),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ],
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    if (constraints.maxWidth < 1100) {
-                                      return Column(
-                                        children: [
-                                          _supplierAccountsOverviewCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierInventorySnapshotCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierSalesOverviewCard(),
-                                          const SizedBox(height: 14),
-                                          _supplierQuickActionsCard(),
-                                        ],
-                                      );
-                                    }
-
-                                    return Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 10,
-                                          child:
-                                              _supplierAccountsOverviewCard(),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 8,
-                                          child:
-                                              _supplierInventorySnapshotCard(),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 10,
-                                          child: _supplierSalesOverviewCard(),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          flex: 7,
-                                          child: _supplierQuickActionsCard(),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -2479,9 +2647,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -2568,7 +2733,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$marketplacePending marketplace order${marketplacePending == 1 ? '' : 's'} await review',
           action: 'Review Orders',
-          onTap: () => _openPage(const SupplierOrdersPage()),
+          onTap: () => _openPage(const SupplierOrdersPage(embedded: true)),
         ),
       );
     }
@@ -2582,7 +2747,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierInvoicesToIssue invoice${_supplierInvoicesToIssue == 1 ? '' : 's'} ready to issue',
           action: 'View Invoices',
-          onTap: () => _openPage(const SupplierInvoicesPage()),
+          onTap: () => _openPage(const SupplierInvoicesPage(embedded: true)),
         ),
       );
     }
@@ -2596,7 +2761,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierOverdueAccountCount account${_supplierOverdueAccountCount == 1 ? '' : 's'} have overdue balances',
           action: 'View Accounts',
-          onTap: () => _openPage(const SupplierCustomerRequestsPage()),
+          onTap: () =>
+              _openPage(const SupplierCustomerRequestsPage(embedded: true)),
         ),
       );
     }
@@ -2610,7 +2776,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierLowStockCount product${_supplierLowStockCount == 1 ? '' : 's'} need stock attention',
           action: 'View Inventory',
-          onTap: () => _openPage(const SupplierInventoryPage()),
+          onTap: () => _openPage(const SupplierInventoryPage(embedded: true)),
         ),
       );
     }
@@ -2624,7 +2790,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_pendingVipApplications VIP or credit application${_pendingVipApplications == 1 ? '' : 's'} waiting for review',
           action: 'Review',
-          onTap: () => _openPage(const SupplierCustomerRequestsPage()),
+          onTap: () =>
+              _openPage(const SupplierCustomerRequestsPage(embedded: true)),
         ),
       );
     }
@@ -2637,7 +2804,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           iconColor: const Color(0xFF2E7D32),
           message: 'Nothing urgent needs your attention right now',
           action: 'View Orders',
-          onTap: () => _openPage(const SupplierOrdersPage()),
+          onTap: () => _openPage(const SupplierOrdersPage(embedded: true)),
         ),
       );
     }
@@ -2661,7 +2828,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Today’s Orders',
       actionText: 'View All Orders',
-      onAction: () => _openPage(const SupplierOrdersPage()),
+      onAction: () => _openPage(const SupplierOrdersPage(embedded: true)),
       child: _supplierRecentOrders.isEmpty
           ? _emptyState(
               Icons.receipt_long_outlined,
@@ -2681,7 +2848,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final order in _supplierRecentOrders)
                   InkWell(
-                    onTap: () => _openPage(const SupplierOrdersPage()),
+                    onTap: () =>
+                        _openPage(const SupplierOrdersPage(embedded: true)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -2738,7 +2906,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Work Orders',
       actionText: 'View All',
-      onAction: () => _openPage(const SupplierWorkOrdersPage()),
+      onAction: () => _openPage(const SupplierWorkOrdersPage(embedded: true)),
       child: rows.isEmpty
           ? _emptyState(
               Icons.build_outlined,
@@ -2757,7 +2925,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final row in rows)
                   InkWell(
-                    onTap: () => _openPage(const SupplierWorkOrdersPage()),
+                    onTap: () =>
+                        _openPage(const SupplierWorkOrdersPage(embedded: true)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -2805,7 +2974,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Accounts Overview',
       actionText: 'View All Accounts',
-      onAction: () => _openPage(const SupplierCustomerRequestsPage()),
+      onAction: () =>
+          _openPage(const SupplierCustomerRequestsPage(embedded: true)),
       child: _supplierTopAccounts.isEmpty
           ? _emptyState(
               Icons.account_balance_wallet_outlined,
@@ -2824,8 +2994,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final account in _supplierTopAccounts)
                   InkWell(
-                    onTap: () =>
-                        _openPage(const SupplierCustomerRequestsPage()),
+                    onTap: () => _openPage(
+                      const SupplierCustomerRequestsPage(embedded: true),
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -2900,7 +3071,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Inventory Snapshot',
       actionText: 'View Inventory',
-      onAction: () => _openPage(const SupplierInventoryPage()),
+      onAction: () => _openPage(const SupplierInventoryPage(embedded: true)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2924,7 +3095,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () => _openPage(const SupplierInventoryPage()),
+            onPressed: () =>
+                _openPage(const SupplierInventoryPage(embedded: true)),
             style: OutlinedButton.styleFrom(
               foregroundColor: _darkRed,
               side: const BorderSide(color: Color(0xFFDDB7BC)),
@@ -3109,37 +3281,37 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.add_shopping_cart_outlined,
             'New Sale',
-            () => _openPage(const SupplierSalesPage()),
+            () => _openPage(const SupplierSalesPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.shopping_cart_checkout_outlined,
             'Review Orders',
-            () => _openPage(const SupplierOrdersPage()),
+            () => _openPage(const SupplierOrdersPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.build_outlined,
             'Open Work Orders',
-            () => _openPage(const SupplierWorkOrdersPage()),
+            () => _openPage(const SupplierWorkOrdersPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.request_quote_outlined,
             'Issue Invoices',
-            () => _openPage(const SupplierInvoicesPage()),
+            () => _openPage(const SupplierInvoicesPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.people_alt_outlined,
             'Customers & Accounts',
-            () => _openPage(const SupplierCustomerRequestsPage()),
+            () => _openPage(const SupplierCustomerRequestsPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.inventory_2_outlined,
             'Manage Inventory',
-            () => _openPage(const SupplierInventoryPage()),
+            () => _openPage(const SupplierInventoryPage(embedded: true)),
           ),
         ],
       ),
@@ -3147,54 +3319,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _supplierSidebar() {
-    final width = _sidebarCollapsed ? 76.0 : 228.0;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      width: width,
-      color: _deepNavy,
+    return _sidebarTransitionFrame(
       child: SafeArea(
         child: Column(
           children: [
-            SizedBox(
-              height: 72,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: _sidebarCollapsed ? 14 : 18,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _darkRed,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.link_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    if (!_sidebarCollapsed) ...[
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'CutLink',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            _sidebarHeader(),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -3202,132 +3331,172 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   _sideItem(
                     Icons.grid_view_rounded,
                     'Dashboard',
-                    selected: true,
-                    onTap: () {},
+                    selected: _workspaceKey == 'dashboard',
+                    onTap: _openDashboard,
                   ),
                   _sideItem(
                     Icons.point_of_sale_outlined,
                     'Sales',
-                    onTap: () => _openPage(const SupplierSalesPage()),
+                    selected: _workspaceKey == 'sales',
+                    onTap: () =>
+                        _openPage(const SupplierSalesPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.receipt_long_outlined,
                     'Orders',
-                    onTap: () => _openPage(const SupplierOrdersPage()),
+                    selected: _workspaceKey == 'orders',
+                    onTap: () =>
+                        _openPage(const SupplierOrdersPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.inventory_2_outlined,
                     'Inventory',
-                    onTap: () => _openPage(const SupplierInventoryPage()),
+                    selected: _workspaceKey == 'inventory',
+                    onTap: () =>
+                        _openPage(const SupplierInventoryPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.price_change_outlined,
                     'Pricing',
-                    onTap: () => _openPage(const SupplierInventoryPage()),
+                    selected: _workspaceKey == 'pricing',
+                    onTap: () => _openPage(
+                      const SupplierInventoryPage(
+                        embedded: true,
+                        initialTabIndex: 1,
+                      ),
+                      workspaceKey: 'pricing',
+                    ),
                   ),
                   _sideItem(
                     Icons.people_alt_outlined,
                     'Customers & Accounts',
-                    onTap: () =>
-                        _openPage(const SupplierCustomerRequestsPage()),
+                    selected: _workspaceKey == 'customers',
+                    onTap: () => _openPage(
+                      const SupplierCustomerRequestsPage(embedded: true),
+                    ),
                   ),
                   _sideItem(
                     Icons.assignment_outlined,
                     'Work Orders',
-                    onTap: () => _openPage(const SupplierWorkOrdersPage()),
+                    selected: _workspaceKey == 'work_orders',
+                    onTap: () =>
+                        _openPage(const SupplierWorkOrdersPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.local_shipping_outlined,
                     'Delivery',
+                    selected: _workspaceKey == 'delivery',
                     onTap: () =>
                         _openPage(const SupplierDeliverySettingsPage()),
                   ),
                   _sideItem(
                     Icons.request_quote_outlined,
                     'Invoices',
-                    onTap: () => _openPage(const SupplierInvoicesPage()),
+                    selected: _workspaceKey == 'invoices',
+                    onTap: () =>
+                        _openPage(const SupplierInvoicesPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.bar_chart_outlined,
                     'Analytics',
-                    onTap: () => _showComingSoon('Analytics'),
+                    selected: _workspaceKey == 'analytics',
+                    onTap: () => _openDashboard(workspaceKey: 'analytics'),
                   ),
                   _sideItem(
                     Icons.notifications_none_rounded,
                     'Notifications',
-                    onTap: () => _showComingSoon('Notifications'),
+                    selected: _workspaceKey == 'notifications',
+                    onTap: () => _openPage(
+                      const SupplierNotificationSettingsPage(),
+                      workspaceKey: 'notifications',
+                    ),
                   ),
                   _sideItem(
                     Icons.settings_outlined,
                     'Settings',
-                    onTap: () => _openPage(const SupplierSettingsPage()),
+                    selected: _workspaceKey == 'settings',
+                    onTap: () =>
+                        _openPage(const SupplierSettingsPage(embedded: true)),
                   ),
                   if (_isAdmin)
                     _sideItem(
                       Icons.admin_panel_settings_outlined,
                       'Admin',
+                      selected: _workspaceKey == 'admin',
                       onTap: () => _openPage(const PendingBusinessesPage()),
                     ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: Color(0xFF263544))),
               ),
               child: Column(
                 children: [
                   if (!_sidebarCollapsed)
-                    Container(
-                      padding: const EdgeInsets.all(9),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF102335),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: _darkRed,
-                            child: Text(
-                              (_businessName?.isNotEmpty ?? false)
-                                  ? _businessName![0].toUpperCase()
-                                  : 'S',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 160) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Material(
+                          color: const Color(0xFF102335),
+                          borderRadius: BorderRadius.circular(11),
+                          child: InkWell(
+                            onTap: _openSettings,
+                            borderRadius: BorderRadius.circular(11),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: _darkRed,
+                                    child: Text(
+                                      (_businessName?.isNotEmpty ?? false)
+                                          ? _businessName![0].toUpperCase()
+                                          : 'S',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _businessName ?? 'Supplier',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Supplier Account',
+                                          style: TextStyle(
+                                            color: Color(0xFFAAB4BE),
+                                            fontSize: 9.8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _businessName ?? 'Supplier',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const Text(
-                                  'Supplier Account',
-                                  style: TextStyle(
-                                    color: Color(0xFFAAB4BE),
-                                    fontSize: 9.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   _sideItem(Icons.logout_rounded, 'Logout', onTap: _signOut),
                 ],
@@ -3341,64 +3510,26 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Widget _supplierTopBar() {
     return Container(
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE4E6E8))),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _sidebarCollapsed = !_sidebarCollapsed;
-              });
-            },
-            tooltip: _sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
-            icon: Icon(
-              _sidebarCollapsed
-                  ? Icons.chevron_right_rounded
-                  : Icons.chevron_left_rounded,
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 480,
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  _openPage(const SupplierSalesPage());
-                }
-              },
-              decoration: InputDecoration(
-                hintText: 'Search orders, customers, products...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: const Color(0xFFFAFAFB),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E2E5)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E2E5)),
-                ),
-              ),
-            ),
-          ),
           const Spacer(),
           IconButton(
-            onPressed: () => _showComingSoon('Notifications'),
+            onPressed: () => _openPage(
+              const SupplierNotificationSettingsPage(),
+              workspaceKey: 'notifications',
+            ),
             tooltip: 'Notifications',
             icon: const Icon(Icons.notifications_none_rounded),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
-            onPressed: () => _openPage(const SupplierSalesPage()),
+            onPressed: () => _openPage(const SupplierSalesPage(embedded: true)),
             style: FilledButton.styleFrom(
               backgroundColor: _darkRed,
               shape: RoundedRectangleBorder(
@@ -3409,47 +3540,60 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             label: const Text('New Sale'),
           ),
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE0E2E5)),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openSettings,
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: _darkRed,
-                  child: Text(
-                    (_businessName?.isNotEmpty ?? false)
-                        ? _businessName![0].toUpperCase()
-                        : 'S',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE0E2E5)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      _businessName ?? 'Supplier',
-                      style: const TextStyle(
-                        fontSize: 10.8,
-                        fontWeight: FontWeight.w800,
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: _darkRed,
+                      child: Text(
+                        (_businessName?.isNotEmpty ?? false)
+                            ? _businessName![0].toUpperCase()
+                            : 'S',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    const Text(
-                      'Supplier Account',
-                      style: TextStyle(color: Color(0xFF777B82), fontSize: 9.2),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _businessName ?? 'Supplier',
+                          style: const TextStyle(
+                            fontSize: 10.8,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Text(
+                          'Supplier Account',
+                          style: TextStyle(
+                            color: Color(0xFF777B82),
+                            fontSize: 9.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -3527,14 +3671,17 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         description:
                             'Search stock, create sales orders and manage the sales workflow.',
                         badgeCount: _newSupplierOrderCount,
-                        onTap: () => _openPage(const SupplierSalesPage()),
+                        onTap: () =>
+                            _openPage(const SupplierSalesPage(embedded: true)),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
                         icon: Icons.inventory_2_outlined,
                         title: 'Inventory',
                         description: 'Manage stock, products and pricing.',
-                        onTap: () => _openPage(const SupplierInventoryPage()),
+                        onTap: () => _openPage(
+                          const SupplierInventoryPage(embedded: true),
+                        ),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3542,8 +3689,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Customers & Accounts',
                         description:
                             'Manage members, external customers and account terms.',
-                        onTap: () =>
-                            _openPage(const SupplierCustomerRequestsPage()),
+                        onTap: () => _openPage(
+                          const SupplierCustomerRequestsPage(embedded: true),
+                        ),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3551,7 +3699,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Work Orders',
                         description:
                             'Manage warehouse picking, weighing and fulfilment.',
-                        onTap: () => _openPage(const SupplierWorkOrdersPage()),
+                        onTap: () => _openPage(
+                          const SupplierWorkOrdersPage(embedded: true),
+                        ),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3559,7 +3709,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Invoices',
                         description:
                             'View draft, issued, paid and outstanding invoices.',
-                        onTap: () => _openPage(const SupplierInvoicesPage()),
+                        onTap: () => _openPage(
+                          const SupplierInvoicesPage(embedded: true),
+                        ),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3576,7 +3728,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Settings',
                         description:
                             'Configure business, invoicing and banking settings.',
-                        onTap: () => _openPage(const SupplierSettingsPage()),
+                        onTap: () => _openPage(
+                          const SupplierSettingsPage(embedded: true),
+                        ),
                       ),
                       if (_isAdmin)
                         _LegacyDashboardCard(

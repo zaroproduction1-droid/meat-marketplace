@@ -6,9 +6,14 @@ import 'supplier_marketplace_order_detail_page.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierOrdersPage extends StatefulWidget {
-  const SupplierOrdersPage({super.key, this.initialTabKey});
+  const SupplierOrdersPage({
+    super.key,
+    this.initialTabKey,
+    this.embedded = false,
+  });
 
   final String? initialTabKey;
+  final bool embedded;
 
   @override
   State<SupplierOrdersPage> createState() => _SupplierOrdersPageState();
@@ -2850,124 +2855,162 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     return const SizedBox.shrink();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(
+  Widget _ordersHeader({required bool embedded}) {
+    final tabs = _isLoading || _errorMessage != null
+        ? const SizedBox.shrink()
+        : Container(
+            height: 58,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: Color(0xFFF0F1F2)),
+                bottom: BorderSide(color: Color(0xFFE3E5E8)),
+              ),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                labelColor: const Color(0xFF741C1C),
+                unselectedLabelColor: const Color(0xFF666A70),
+                indicatorColor: const Color(0xFF741C1C),
+                indicatorWeight: 3,
+                tabs: [for (final tab in _tabs) _buildTab(tab)],
+              ),
+            ),
+          );
+
+    final top = Container(
+      height: embedded ? 62 : 64,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
               Icons.receipt_long_outlined,
               color: Color(0xFF741C1C),
-              size: 22,
+              size: 19,
             ),
-            SizedBox(width: 10),
-            Text(
-              'Orders',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: OutlinedButton.icon(
-              onPressed: _openIssuesPanel,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF741C1C),
-                side: const BorderSide(color: Color(0xFFDDB7BC)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Orders',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
                 ),
+                SizedBox(height: 1),
+                Text(
+                  'Marketplace orders, work orders, invoices and fulfilment',
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: _openIssuesPanel,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF741C1C),
+              side: const BorderSide(color: Color(0xFFDDB7BC)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.report_problem_outlined, size: 18),
-                  if (_countForTab('issues') > 0)
-                    Positioned(
-                      right: -8,
-                      top: -8,
-                      child: Container(
-                        constraints: const BoxConstraints(
-                          minWidth: 17,
-                          minHeight: 17,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB3261E),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          _countForTab('issues') > 99
-                              ? '99+'
-                              : _countForTab('issues').toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w900,
-                          ),
+            ),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.report_problem_outlined, size: 18),
+                if (_countForTab('issues') > 0)
+                  Positioned(
+                    right: -8,
+                    top: -8,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 17,
+                        minHeight: 17,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB3261E),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        _countForTab('issues') > 99
+                            ? '99+'
+                            : _countForTab('issues').toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
-                ],
-              ),
-              label: const Text(
-                'Issues',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
+                  ),
+              ],
+            ),
+            label: const Text(
+              'Issues',
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 6),
           IconButton(
             onPressed: _loadOrders,
             tooltip: 'Refresh orders',
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
           ),
-          const SizedBox(width: 10),
         ],
-        bottom: _isLoading || _errorMessage != null
-            ? const PreferredSize(
-                preferredSize: Size.fromHeight(1),
-                child: Divider(height: 1, color: Color(0xFFE4E6E8)),
-              )
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(62),
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      top: BorderSide(color: Color(0xFFF0F1F2)),
-                      bottom: BorderSide(color: Color(0xFFE4E6E8)),
-                    ),
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: TabBar(
-                      controller: _tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      labelColor: const Color(0xFF741C1C),
-                      unselectedLabelColor: const Color(0xFF666A70),
-                      indicatorColor: const Color(0xFF741C1C),
-                      indicatorWeight: 3,
-                      tabs: [for (final tab in _tabs) _buildTab(tab)],
-                    ),
-                  ),
-                ),
-              ),
       ),
-      body: _buildBody(),
+    );
+
+    return Column(mainAxisSize: MainAxisSize.min, children: [top, tabs]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          children: [
+            _ordersHeader(embedded: true),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FA),
+      body: Column(
+        children: [
+          SafeArea(bottom: false, child: _ordersHeader(embedded: false)),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 

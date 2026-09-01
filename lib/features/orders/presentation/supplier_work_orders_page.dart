@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierWorkOrdersPage extends StatefulWidget {
-  const SupplierWorkOrdersPage({super.key});
+  const SupplierWorkOrdersPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SupplierWorkOrdersPage> createState() => _SupplierWorkOrdersPageState();
@@ -398,12 +400,19 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
         foreground = const Color(0xFF555555);
     }
 
-    return Chip(
-      side: BorderSide.none,
-      backgroundColor: background,
-      label: Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
         _statusLabel(status),
-        style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: foreground,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -416,7 +425,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 7),
       shadowColor: const Color(0x12000000),
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: Color(0xFFE3E5E8)),
@@ -426,7 +435,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
         borderRadius: BorderRadius.circular(14),
         onTap: () => _openWorkOrder(workOrder),
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 760;
@@ -435,34 +444,34 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
+                    spacing: 8,
+                    runSpacing: 6,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         workOrder['work_order_number']?.toString() ??
                             'Work Order',
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                       _statusChip(status),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   Text(
                     _customerName(workOrder),
                     style: const TextStyle(
                       color: _darkRed,
-                      fontSize: 16,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Wrap(
-                    spacing: 24,
-                    runSpacing: 8,
+                    spacing: 14,
+                    runSpacing: 6,
                     children: [
                       _MiniInfo(
                         label: 'Sales order',
@@ -484,7 +493,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   if ((workOrder['warehouse_instructions']?.toString().trim() ??
                           '')
                       .isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       workOrder['warehouse_instructions'].toString(),
                       maxLines: 2,
@@ -500,14 +509,22 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
               final action = OutlinedButton.icon(
                 onPressed: () => _openWorkOrder(workOrder),
-                icon: const Icon(Icons.assignment_outlined),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _darkRed,
+                  side: const BorderSide(color: Color(0xFFDDB7BC)),
+                  visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.assignment_outlined, size: 17),
                 label: const Text('Open Work Order'),
               );
 
               if (narrow) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [details, const SizedBox(height: 16), action],
+                  children: [details, const SizedBox(height: 10), action],
                 );
               }
 
@@ -515,7 +532,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: details),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 14),
                   action,
                 ],
               );
@@ -559,60 +576,61 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
         constraints: const BoxConstraints(maxWidth: 1320),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warehouse_outlined, color: _darkRed, size: 24),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Warehouse Work Queue',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Pick, weigh, check and finalise active supplier orders.',
-                            style: TextStyle(
-                              color: Color(0xFF666A70),
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
+            if (!widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x07000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warehouse_outlined, color: _darkRed, size: 22),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Warehouse Work Queue',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Pick, weigh, check and finalise active supplier orders.',
+                              style: TextStyle(
+                                color: Color(0xFF666A70),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.fromLTRB(18, widget.embedded ? 14 : 0, 18, 0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText:
                       'Search work order, sales order, customer or reference',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
@@ -621,32 +639,27 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                         ),
                   filled: true,
                   fillColor: const Color(0xFFFAFAFB),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFE3E5E8)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -656,7 +669,11 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   unselectedLabelColor: const Color(0xFF666A70),
                   indicatorColor: _darkRed,
                   indicatorWeight: 3,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  labelStyle: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                   tabs: [
                     Tab(text: 'All (${_countForStatus('all')})'),
                     Tab(text: 'Created (${_countForStatus('created')})'),
@@ -668,6 +685,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 ),
               ),
             ),
+            const SizedBox(height: 6),
             Expanded(
               child: filtered.isEmpty
                   ? Center(
@@ -678,17 +696,17 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                           children: [
                             const Icon(
                               Icons.assignment_outlined,
-                              size: 64,
+                              size: 42,
                               color: Color(0xFFAAAAAA),
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 10),
                             Text(
                               _searchController.text.trim().isEmpty
                                   ? 'No work orders in this section.'
                                   : 'No work orders match your search.',
                               style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -699,7 +717,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                       onRefresh: _loadWorkOrders,
                       child: ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           return _buildWorkOrderCard(filtered[index]);
@@ -713,8 +731,77 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
     );
   }
 
+  Widget _workspaceHeader() {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.assignment_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Work Orders',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Manage fulfilment, weighing and order preparation',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _isLoading ? null : _loadWorkOrders,
+            tooltip: 'Refresh work orders',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          children: [
+            _workspaceHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(

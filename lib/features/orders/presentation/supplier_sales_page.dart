@@ -10,7 +10,9 @@ import 'supplier_quotes_page.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierSalesPage extends StatefulWidget {
-  const SupplierSalesPage({super.key});
+  const SupplierSalesPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SupplierSalesPage> createState() => _SupplierSalesPageState();
@@ -3642,8 +3644,75 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
+  Widget _workspaceHeader() {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.point_of_sale_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sales',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Direct sales, quotes and active sales workspace',
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _loadStock,
+            tooltip: 'Refresh sales workspace',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          children: [
+            _workspaceHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(

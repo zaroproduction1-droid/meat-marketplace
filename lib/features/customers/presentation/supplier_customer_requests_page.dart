@@ -5,7 +5,9 @@ import 'supplier_customer_account_page.dart';
 import 'supplier_vip_applications_page.dart';
 
 class SupplierCustomerRequestsPage extends StatefulWidget {
-  const SupplierCustomerRequestsPage({super.key});
+  const SupplierCustomerRequestsPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SupplierCustomerRequestsPage> createState() =>
@@ -1077,7 +1079,7 @@ class _SupplierCustomerRequestsPageState
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: hasPending ? const Color(0xFFFFF8EB) : const Color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(14),
@@ -1088,18 +1090,18 @@ class _SupplierCustomerRequestsPageState
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: _darkRed.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.workspace_premium_outlined,
               color: _darkRed,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1110,7 +1112,7 @@ class _SupplierCustomerRequestsPageState
                       child: Text(
                         'VIP Applications',
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 15,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -1138,24 +1140,25 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 Text(
                   hasPending
                       ? 'You have VIP or credit applications waiting for review.'
                       : 'Review VIP pricing and credit applications from CutLink butchers.',
                   style: const TextStyle(
                     color: Color(0xFF666666),
-                    height: 1.35,
+                    fontSize: 11.5,
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           FilledButton.icon(
             onPressed: _openVipApplications,
             style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.open_in_new),
+            icon: const Icon(Icons.open_in_new, size: 17),
             label: Text(hasPending ? 'Review Now' : 'Open'),
           ),
         ],
@@ -1165,7 +1168,7 @@ class _SupplierCustomerRequestsPageState
 
   Widget _buildCustomerSearchBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -1181,8 +1184,8 @@ class _SupplierCustomerRequestsPageState
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: const Color(0xFFF4E5E5),
@@ -1190,7 +1193,7 @@ class _SupplierCustomerRequestsPageState
             ),
             child: const Icon(Icons.search, color: _darkRed, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _customerSearchController,
@@ -1201,16 +1204,18 @@ class _SupplierCustomerRequestsPageState
                     'Search CutLink members or external customers, then press Enter',
                 filled: true,
                 fillColor: const Color(0xFFFAFAFB),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: _darkRed, width: 1.2),
                 ),
                 suffixIcon: _appliedCustomerSearch.isEmpty
@@ -1229,7 +1234,7 @@ class _SupplierCustomerRequestsPageState
                 _applyCustomerSearch(_customerSearchController.text),
             style: FilledButton.styleFrom(
               backgroundColor: _darkRed,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             ),
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Search'),
@@ -1239,8 +1244,90 @@ class _SupplierCustomerRequestsPageState
     );
   }
 
+  Widget _workspaceHeader() {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.people_alt_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Customers & Accounts',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Manage customer relationships, pricing tiers, account terms and balances',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              visualDensity: VisualDensity.compact,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.person_add_alt_1, size: 17),
+            label: const Text('Add External Customer'),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: _isLoading ? null : _loadPage,
+            tooltip: 'Refresh customers and accounts',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          children: [
+            _workspaceHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -1344,7 +1431,7 @@ class _SupplierCustomerRequestsPageState
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, index) => _buildRelationshipCard(rows[index]),
@@ -1367,7 +1454,7 @@ class _SupplierCustomerRequestsPageState
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, index) => _buildAccountCard(rows[index]),
@@ -1396,7 +1483,7 @@ class _SupplierCustomerRequestsPageState
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
                   child: Row(
                     children: [
                       Expanded(
@@ -1406,7 +1493,7 @@ class _SupplierCustomerRequestsPageState
                             Text(
                               title,
                               style: const TextStyle(
-                                fontSize: 17,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -1436,12 +1523,12 @@ class _SupplierCustomerRequestsPageState
 
         if (!desktop) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             children: [
               vip,
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _buildCustomerSearchBar(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               SizedBox(
                 height: 420,
                 child: panel(
@@ -1478,13 +1565,13 @@ class _SupplierCustomerRequestsPageState
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 children: [
                   vip,
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildCustomerSearchBar(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Row(
                       children: [
@@ -1538,16 +1625,16 @@ class _SupplierCustomerRequestsPageState
         borderRadius: BorderRadius.circular(14),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            Icon(icon, size: 54, color: _darkRed),
-            const SizedBox(height: 14),
+            Icon(icon, size: 36, color: _darkRed),
+            const SizedBox(height: 9),
             Text(
               title,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 4),
             Text(
               description,
               textAlign: TextAlign.center,
@@ -1571,14 +1658,14 @@ class _SupplierCustomerRequestsPageState
     final accountStatus = summary?['account_status']?.toString();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: account == null ? null : () => _openCustomerAccount(account),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDFDFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E5E1)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1616,18 +1703,35 @@ class _SupplierCustomerRequestsPageState
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Icon(
-                            _statusIcon(status),
-                            size: 13,
-                            color: _statusColor(status),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatStatus(status),
-                            style: TextStyle(
-                              color: _statusColor(status),
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _statusColor(
+                                status,
+                              ).withValues(alpha: 0.09),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _statusIcon(status),
+                                  size: 12,
+                                  color: _statusColor(status),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatStatus(status),
+                                  style: TextStyle(
+                                    color: _statusColor(status),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           if (account != null) ...[
@@ -1824,14 +1928,14 @@ class _SupplierCustomerRequestsPageState
     final accountStatus = summary?['account_status']?.toString();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: () => _openCustomerAccount(account),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDFDFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E5E1)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

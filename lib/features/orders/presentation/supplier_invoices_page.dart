@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supplier_invoice_page.dart';
 
 class SupplierInvoicesPage extends StatefulWidget {
-  const SupplierInvoicesPage({super.key});
+  const SupplierInvoicesPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SupplierInvoicesPage> createState() => _SupplierInvoicesPageState();
@@ -646,12 +648,19 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         foreground = const Color(0xFF555555);
     }
 
-    return Chip(
-      backgroundColor: background,
-      side: BorderSide.none,
-      label: Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
         _statusLabel(status),
-        style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: foreground,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -671,11 +680,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
           await _openInvoice(invoice);
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: const Color(0xFFE3E5E8)),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x07000000),
@@ -691,12 +700,12 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               final identity = Row(
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 38,
+                    height: 38,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF5EAEA),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(
                       Icons.receipt_long_outlined,
@@ -704,7 +713,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                       size: 21,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,7 +727,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -761,8 +770,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               );
 
               final facts = Wrap(
-                spacing: 18,
-                runSpacing: 7,
+                spacing: 14,
+                runSpacing: 6,
                 children: [
                   if (orderNumber.isNotEmpty)
                     _MiniInfo(label: 'Order', value: orderNumber),
@@ -782,7 +791,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _invoiceLifecycleAction(invoice),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -798,13 +807,13 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                       Text(
                         total == null ? 'Pending' : _money(total),
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   const Icon(Icons.chevron_right, color: _darkRed),
                 ],
               );
@@ -814,7 +823,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     identity,
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     facts,
                     const SizedBox(height: 8),
                     Align(alignment: Alignment.centerRight, child: trailing),
@@ -824,10 +833,10 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
               return Row(
                 children: [
-                  SizedBox(width: 330, child: identity),
-                  const SizedBox(width: 18),
-                  Expanded(child: facts),
+                  SizedBox(width: 310, child: identity),
                   const SizedBox(width: 14),
+                  Expanded(child: facts),
+                  const SizedBox(width: 12),
                   trailing,
                 ],
               );
@@ -871,64 +880,65 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         constraints: const BoxConstraints(maxWidth: 1320),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      color: _darkRed,
-                      size: 24,
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Invoice Management',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Prepare, issue, send and track customer invoices and receivables.',
-                            style: TextStyle(
-                              color: Color(0xFF666A70),
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
+            if (!widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x07000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        color: _darkRed,
+                        size: 22,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Invoice Management',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Prepare, issue, send and track customer invoices and receivables.',
+                              style: TextStyle(
+                                color: Color(0xFF666A70),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.fromLTRB(18, widget.embedded ? 14 : 0, 18, 0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText:
                       'Search invoice number, customer, reference or sales order',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
@@ -937,32 +947,27 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                         ),
                   filled: true,
                   fillColor: const Color(0xFFFAFAFB),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFE3E5E8)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -972,7 +977,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   unselectedLabelColor: const Color(0xFF666A70),
                   indicatorColor: _darkRed,
                   indicatorWeight: 3,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  labelStyle: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                   tabs: [
                     Tab(text: 'All (${_countForStatus('all')})'),
                     Tab(text: 'Draft (${_countForStatus('draft')})'),
@@ -985,7 +994,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Expanded(
               child: filtered.isEmpty
                   ? Center(
@@ -996,17 +1005,17 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                           children: [
                             const Icon(
                               Icons.receipt_long_outlined,
-                              size: 64,
+                              size: 42,
                               color: Color(0xFFAAAAAA),
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 10),
                             Text(
                               _searchController.text.trim().isEmpty
                                   ? 'No invoices in this section.'
                                   : 'No invoices match your search.',
                               style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -1017,9 +1026,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                       onRefresh: _loadInvoices,
                       child: ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                        padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 7),
                         itemBuilder: (context, index) {
                           return _buildInvoiceCard(filtered[index]);
                         },
@@ -1032,8 +1041,77 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     );
   }
 
+  Widget _workspaceHeader() {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5EAEA),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.request_quote_outlined,
+              color: _darkRed,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Invoices',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 1),
+                Text(
+                  'Prepare, issue, send and track customer invoices and receivables',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFF74787E),
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _isLoading ? null : _loadInvoices,
+            tooltip: 'Refresh invoices',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          children: [
+            _workspaceHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
