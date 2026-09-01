@@ -84,7 +84,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       case 'clear':
         return const Color(0xFF2E7D32);
       default:
-        return const Color(0xFF666666);
+        return const Color(0xFF666A70);
     }
   }
 
@@ -176,7 +176,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +225,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
         child: Row(
           children: [
@@ -372,13 +372,26 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Accounts & Invoices',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              color: _darkRed,
+              size: 22,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Accounts & Invoices',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -386,13 +399,17 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             onPressed: _loadAccounts,
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _loadAccounts,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 38),
           children: [
             Center(
               child: ConstrainedBox(
@@ -461,8 +478,15 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE0E0DD)),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x06000000),
+                              blurRadius: 9,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: const Center(
                           child: Text(
@@ -1419,7 +1443,7 @@ class _ButcherSupplierAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1550,7 +1574,7 @@ class _ButcherSupplierAccountPageState
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1626,7 +1650,7 @@ class _ButcherSupplierAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1830,7 +1854,7 @@ class _ButcherSupplierAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2078,49 +2102,97 @@ class _ButcherSupplierAccountPageState
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
           children: [
-            Text(
-              widget.supplierName,
-              style: const TextStyle(fontWeight: FontWeight.w900),
+            const Icon(
+              Icons.account_balance_outlined,
+              color: _darkRed,
+              size: 22,
             ),
-            const Text(
-              'Supplier Account',
-              style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.supplierName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const Text(
+                    'Supplier Account',
+                    style: TextStyle(
+                      color: Color(0xFF666A70),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           FilledButton.icon(
             onPressed: _loading ? null : _submitAccountPayment,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.payments_outlined),
-            label: const Text('Submit Payment'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.payments_outlined, size: 18),
+            label: const Text(
+              'Submit Payment',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
             onPressed: _openStatement,
-            icon: const Icon(Icons.description_outlined),
-            label: const Text('View Statement'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF34383D),
+              side: const BorderSide(color: Color(0xFFD9DDE1)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.description_outlined, size: 18),
+            label: const Text(
+              'Statement',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _loadPage,
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _loadPage,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 38),
           children: [
             Center(
               child: ConstrainedBox(
@@ -2169,7 +2241,7 @@ class _ButcherSupplierAccountPageState
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE0E0DD)),
+                        border: Border.all(color: const Color(0xFFE3E5E8)),
                       ),
                       child: Row(
                         children: [
@@ -2571,7 +2643,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -2656,7 +2728,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: ListView(
@@ -2745,7 +2817,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,

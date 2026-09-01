@@ -590,7 +590,7 @@ class _MarketplaceProductDetailsPageState
           style: TextStyle(
             fontSize: priceFontSize,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF741C1C),
+            color: Color(0xFF741C1C),
           ),
         ),
         const SizedBox(height: 4),
@@ -598,7 +598,7 @@ class _MarketplaceProductDetailsPageState
           priceLabel,
           style: TextStyle(
             color: priceLabel == 'Standard Price'
-                ? const Color(0xFF666666)
+                ? const Color(0xFF666A70)
                 : const Color(0xFF741C1C),
             fontWeight: FontWeight.w700,
             fontSize: 12,
@@ -1289,11 +1289,18 @@ class _MarketplaceProductDetailsPageState
       IconData? icon,
     }) {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x05000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1471,7 +1478,7 @@ class _MarketplaceProductDetailsPageState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F5),
+                  color: const Color(0xFFF7F8FA),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
@@ -1523,7 +1530,7 @@ class _MarketplaceProductDetailsPageState
           children: [
             Text(
               _supplierName(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFF741C1C),
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
@@ -1537,26 +1544,54 @@ class _MarketplaceProductDetailsPageState
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Product Information',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 8,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              color: Color(0xFF741C1C),
+              size: 21,
+            ),
+            SizedBox(width: 9),
+            Text(
+              'Product Information',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
+          FilledButton.icon(
             onPressed: _openDraftOrdersPage,
-            tooltip: 'Cart',
-            icon: const Icon(Icons.shopping_cart_outlined),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+            label: const Text(
+              'Cart',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
+          constraints: const BoxConstraints(maxWidth: 1220),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -1566,8 +1601,15 @@ class _MarketplaceProductDetailsPageState
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0DD)),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x06000000),
+                        blurRadius: 9,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [

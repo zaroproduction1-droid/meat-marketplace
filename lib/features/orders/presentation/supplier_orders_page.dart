@@ -2655,7 +2655,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
                 body: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
+                    constraints: const BoxConstraints(maxWidth: 1320),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: LayoutBuilder(
@@ -2853,73 +2853,116 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Orders',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              color: Color(0xFF741C1C),
+              size: 22,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Orders',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: _openIssuesPanel,
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.report_problem_outlined),
-                if (_countForTab('issues') > 0)
-                  Positioned(
-                    right: -9,
-                    top: -8,
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFB3261E),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        _countForTab('issues') > 99
-                            ? '99+'
-                            : _countForTab('issues').toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: OutlinedButton.icon(
+              onPressed: _openIssuesPanel,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF741C1C),
+                side: const BorderSide(color: Color(0xFFDDB7BC)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.report_problem_outlined, size: 18),
+                  if (_countForTab('issues') > 0)
+                    Positioned(
+                      right: -8,
+                      top: -8,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 17,
+                          minHeight: 17,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB3261E),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          _countForTab('issues') > 99
+                              ? '99+'
+                              : _countForTab('issues').toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+              label: const Text(
+                'Issues',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
-            label: const Text('Issues'),
           ),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: _loadOrders,
             tooltip: 'Refresh orders',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
         bottom: _isLoading || _errorMessage != null
-            ? null
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(1),
+                child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+              )
             : PreferredSize(
-                preferredSize: const Size.fromHeight(58),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    labelColor: const Color(0xFF741C1C),
-                    unselectedLabelColor: const Color(0xFF666666),
-                    indicatorColor: const Color(0xFF741C1C),
-                    tabs: [for (final tab in _tabs) _buildTab(tab)],
+                preferredSize: const Size.fromHeight(62),
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFF0F1F2)),
+                      bottom: BorderSide(color: Color(0xFFE4E6E8)),
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      labelColor: const Color(0xFF741C1C),
+                      unselectedLabelColor: const Color(0xFF666A70),
+                      indicatorColor: const Color(0xFF741C1C),
+                      indicatorWeight: 3,
+                      tabs: [for (final tab in _tabs) _buildTab(tab)],
+                    ),
                   ),
                 ),
               ),
@@ -3060,7 +3103,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       onRefresh: _loadOrders,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
+          constraints: const BoxConstraints(maxWidth: 1320),
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             itemCount: orders.length,
@@ -3232,12 +3275,20 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
+            color: Colors.white,
             border: Border.all(
               color: _hasOpenIssues(order)
                   ? const Color(0xFFD8A0A0)
-                  : const Color(0xFFE0E0DD),
+                  : const Color(0xFFE3E5E8),
             ),
             borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x07000000),
+                blurRadius: 10,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {

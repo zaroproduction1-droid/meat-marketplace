@@ -809,7 +809,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           Container(
                             padding: const EdgeInsets.all(11),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF7F7F5),
+                              color: const Color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(9),
                             ),
                             child: const Row(
@@ -1276,30 +1276,59 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Text(
-          _workOrder?['work_order_number']?.toString() ??
-              'Warehouse Work Order',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            const Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _workOrder?['work_order_number']?.toString() ??
+                    'Warehouse Work Order',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           FilledButton.icon(
             onPressed: _isLoading || _isSaving ? null : _printPickSlip,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.print_outlined),
-            label: const Text('Print Pick Slip'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.print_outlined, size: 18),
+            label: const Text(
+              'Print Pick Slip',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: _buildBody(),
     );
@@ -1339,8 +1368,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1375,8 +1411,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1413,14 +1456,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         if (!desktop) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 34),
             children: [
               _buildCompactWorkOrderHeader(status),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               customerPanel(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               workOrderSummaryPanel(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               pickPanel,
               const SizedBox(height: 10),
               warehousePanel,
@@ -1430,13 +1473,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1240),
+            constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
               child: Column(
                 children: [
                   _buildCompactWorkOrderHeader(status),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1445,7 +1488,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       Expanded(child: workOrderSummaryPanel()),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1470,11 +1513,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -1560,7 +1603,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF777777)),
+            Icon(icon, size: 18, color: const Color(0xFF666A70)),
             const SizedBox(width: 8),
             Flexible(
               child: Column(
@@ -1609,7 +1652,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1656,7 +1699,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: SingleChildScrollView(
@@ -1757,7 +1800,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 margin: const EdgeInsets.only(bottom: 9),
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F5),
+                  color: const Color(0xFFF7F8FA),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Row(

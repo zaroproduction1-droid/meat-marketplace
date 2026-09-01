@@ -102,8 +102,7 @@ class _SupplierCustomerAccountPageState
             .maybeSingle();
 
         if (businessResponse != null) {
-          account['businesses'] =
-              Map<String, dynamic>.from(businessResponse);
+          account['businesses'] = Map<String, dynamic>.from(businessResponse);
         }
       }
 
@@ -145,8 +144,10 @@ class _SupplierCustomerAccountPageState
         );
       }
 
-      final invoicesResponse = await invoiceQuery
-          .order('invoice_date', ascending: false);
+      final invoicesResponse = await invoiceQuery.order(
+        'invoice_date',
+        ascending: false,
+      );
 
       var paymentQuery = client
           .from('account_payments')
@@ -185,10 +186,9 @@ class _SupplierCustomerAccountPageState
           .order('payment_date', ascending: false)
           .order('created_at', ascending: false);
 
-      final paymentIds = List<Map<String, dynamic>>.from(paymentsResponse)
-          .map((e) => e['id']?.toString())
-          .whereType<String>()
-          .toList();
+      final paymentIds = List<Map<String, dynamic>>.from(
+        paymentsResponse,
+      ).map((e) => e['id']?.toString()).whereType<String>().toList();
 
       List<Map<String, dynamic>> allocations = [];
       if (paymentIds.isNotEmpty) {
@@ -245,10 +245,9 @@ class _SupplierCustomerAccountPageState
           .order('credit_date', ascending: false)
           .order('created_at', ascending: false);
 
-      final creditIds = List<Map<String, dynamic>>.from(creditsResponse)
-          .map((e) => e['id']?.toString())
-          .whereType<String>()
-          .toList();
+      final creditIds = List<Map<String, dynamic>>.from(
+        creditsResponse,
+      ).map((e) => e['id']?.toString()).whereType<String>().toList();
 
       List<Map<String, dynamic>> creditAllocations = [];
       if (creditIds.isNotEmpty) {
@@ -315,16 +314,14 @@ class _SupplierCustomerAccountPageState
 
         if (_selectedInvoiceId != null &&
             !_invoices.any(
-              (invoice) =>
-                  invoice['id']?.toString() == _selectedInvoiceId,
+              (invoice) => invoice['id']?.toString() == _selectedInvoiceId,
             )) {
           _selectedInvoiceId = null;
         }
 
         if (_selectedPaymentId != null &&
             !_payments.any(
-              (payment) =>
-                  payment['id']?.toString() == _selectedPaymentId,
+              (payment) => payment['id']?.toString() == _selectedPaymentId,
             )) {
           _selectedPaymentId = null;
         }
@@ -351,8 +348,7 @@ class _SupplierCustomerAccountPageState
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) =>
-      '\$${_asDouble(value).toStringAsFixed(2)}';
+  String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
   DateTime? _date(dynamic value) {
     if (value == null) return null;
@@ -370,10 +366,9 @@ class _SupplierCustomerAccountPageState
   String _supplierName() {
     final invoices = _invoices;
     if (invoices.isNotEmpty) {
-      final snapshot =
-          invoices.first['supplier_trading_name_snapshot']
-              ?.toString()
-              .trim();
+      final snapshot = invoices.first['supplier_trading_name_snapshot']
+          ?.toString()
+          .trim();
       if (snapshot != null && snapshot.isNotEmpty) {
         return snapshot;
       }
@@ -395,10 +390,8 @@ class _SupplierCustomerAccountPageState
           supplierBusinessId: supplierId,
           supplierName: _supplierName(),
           customerName: _customerName(),
-          supplierCustomerAccountId:
-              widget.supplierCustomerAccountId,
-          butcherBusinessId:
-              account['linked_butcher_business_id']?.toString(),
+          supplierCustomerAccountId: widget.supplierCustomerAccountId,
+          butcherBusinessId: account['linked_butcher_business_id']?.toString(),
           supplierView: true,
         ),
       ),
@@ -647,9 +640,7 @@ class _SupplierCustomerAccountPageState
 
     if (payment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select an unallocated payment first.'),
-        ),
+        const SnackBar(content: Text('Select an unallocated payment first.')),
       );
       return;
     }
@@ -739,10 +730,7 @@ class _SupplierCustomerAccountPageState
                               : 'Payment ${_formatDate(payment['payment_date'])}',
                         ),
                         const SizedBox(height: 8),
-                        _allocationSummaryRow(
-                          'Available',
-                          _money(available),
-                        ),
+                        _allocationSummaryRow('Available', _money(available)),
                         const Divider(height: 20),
                         _allocationSummaryRow(
                           'Invoice',
@@ -760,8 +748,9 @@ class _SupplierCustomerAccountPageState
                   TextField(
                     controller: amountController,
                     autofocus: true,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
                         RegExp(r'^\d*\.?\d{0,2}'),
@@ -782,8 +771,7 @@ class _SupplierCustomerAccountPageState
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(),
+                        onPressed: () => Navigator.of(dialogContext).pop(),
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 8),
@@ -833,10 +821,7 @@ class _SupplierCustomerAccountPageState
         params: {
           'target_payment_id': payment['id'].toString(),
           'allocations_json': [
-            {
-              'invoice_id': invoice['id'].toString(),
-              'amount': confirmedAmount,
-            },
+            {'invoice_id': invoice['id'].toString(), 'amount': confirmedAmount},
           ],
         },
       );
@@ -847,15 +832,15 @@ class _SupplierCustomerAccountPageState
       await _loadPage();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment allocated.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment allocated.')));
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -880,10 +865,7 @@ class _SupplierCustomerAccountPageState
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w900,
-            ),
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
           ),
         ),
       ],
@@ -974,8 +956,9 @@ class _SupplierCustomerAccountPageState
                       TextField(
                         controller: amountController,
                         autofocus: true,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
                             RegExp(r'^\d*\.?\d{0,2}'),
@@ -1043,8 +1026,9 @@ class _SupplierCustomerAccountPageState
                                   context: dialogContext,
                                   initialDate: date,
                                   firstDate: DateTime(2020),
-                                  lastDate: DateTime.now()
-                                      .add(const Duration(days: 365)),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
                                 );
 
                                 if (picked != null) {
@@ -1097,8 +1081,7 @@ class _SupplierCustomerAccountPageState
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
                             child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 8),
@@ -1124,8 +1107,7 @@ class _SupplierCustomerAccountPageState
                                     '${date.year.toString().padLeft(4, '0')}-'
                                     '${date.month.toString().padLeft(2, '0')}-'
                                     '${date.day.toString().padLeft(2, '0')}',
-                                'reference':
-                                    referenceController.text.trim(),
+                                'reference': referenceController.text.trim(),
                                 'notes': notesController.text.trim(),
                               });
                             },
@@ -1189,18 +1171,16 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  Future<void> _openAllocationDialog(
-    Map<String, dynamic> payment,
-  ) async {
+  Future<void> _openAllocationDialog(Map<String, dynamic> payment) async {
     final paymentId = payment['id']?.toString();
     if (paymentId == null) return;
 
@@ -1208,15 +1188,16 @@ class _SupplierCustomerAccountPageState
     final paymentAmount = _asDouble(payment['amount']);
     final available = paymentAmount - alreadyAllocated;
 
-    final candidates = _invoices
-        .where((i) => _asDouble(i['outstanding_amount']) > 0)
-        .where((i) => i['status']?.toString() != 'void')
-        .toList()
-      ..sort((a, b) {
-        final ad = _date(a['due_date']) ?? DateTime(9999);
-        final bd = _date(b['due_date']) ?? DateTime(9999);
-        return ad.compareTo(bd);
-      });
+    final candidates =
+        _invoices
+            .where((i) => _asDouble(i['outstanding_amount']) > 0)
+            .where((i) => i['status']?.toString() != 'void')
+            .toList()
+          ..sort((a, b) {
+            final ad = _date(a['due_date']) ?? DateTime(9999);
+            final bd = _date(b['due_date']) ?? DateTime(9999);
+            return ad.compareTo(bd);
+          });
 
     final controllers = <String, TextEditingController>{
       for (final invoice in candidates)
@@ -1230,10 +1211,9 @@ class _SupplierCustomerAccountPageState
           return StatefulBuilder(
             builder: (context, setDialogState) {
               double enteredTotal() => controllers.values.fold(
-                    0.0,
-                    (sum, c) =>
-                        sum + (double.tryParse(c.text.trim()) ?? 0),
-                  );
+                0.0,
+                (sum, c) => sum + (double.tryParse(c.text.trim()) ?? 0),
+              );
 
               return AlertDialog(
                 title: const Text('Allocate Payment'),
@@ -1338,13 +1318,11 @@ class _SupplierCustomerAccountPageState
                                           child: TextField(
                                             controller: controllers[id],
                                             keyboardType:
-                                                const TextInputType
-                                                    .numberWithOptions(
-                                              decimal: true,
-                                            ),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                             inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .allow(
+                                              FilteringTextInputFormatter.allow(
                                                 RegExp(r'^\d*\.?\d{0,2}'),
                                               ),
                                             ],
@@ -1369,9 +1347,11 @@ class _SupplierCustomerAccountPageState
                         builder: (_) {
                           final entered = enteredTotal();
                           final remaining = available - entered;
-                          final invalid = entered > available ||
+                          final invalid =
+                              entered > available ||
                               candidates.any((invoice) {
-                                final enteredForInvoice = double.tryParse(
+                                final enteredForInvoice =
+                                    double.tryParse(
                                       controllers[invoice['id'].toString()]
                                               ?.text
                                               .trim() ??
@@ -1379,9 +1359,7 @@ class _SupplierCustomerAccountPageState
                                     ) ??
                                     0;
                                 return enteredForInvoice >
-                                    _asDouble(
-                                      invoice['outstanding_amount'],
-                                    );
+                                    _asDouble(invoice['outstanding_amount']);
                               });
 
                           return Row(
@@ -1416,38 +1394,31 @@ class _SupplierCustomerAccountPageState
                     child: const Text('Cancel'),
                   ),
                   FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                    ),
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
                     onPressed: () {
                       final result = <Map<String, dynamic>>[];
 
                       for (final invoice in candidates) {
                         final id = invoice['id'].toString();
-                        final amount = double.tryParse(
+                        final amount =
+                            double.tryParse(
                               controllers[id]?.text.trim() ?? '',
                             ) ??
                             0;
 
                         if (amount > 0) {
                           if (amount >
-                              _asDouble(
-                                invoice['outstanding_amount'],
-                              )) {
+                              _asDouble(invoice['outstanding_amount'])) {
                             return;
                           }
 
-                          result.add({
-                            'invoice_id': id,
-                            'amount': amount,
-                          });
+                          result.add({'invoice_id': id, 'amount': amount});
                         }
                       }
 
                       final total = result.fold<double>(
                         0,
-                        (sum, item) =>
-                            sum + _asDouble(item['amount']),
+                        (sum, item) => sum + _asDouble(item['amount']),
                       );
 
                       if (total <= 0 || total > available) return;
@@ -1484,9 +1455,9 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       for (final controller in controllers.values) {
@@ -1508,9 +1479,7 @@ class _SupplierCustomerAccountPageState
         params: {'target_payment_id': paymentId},
       );
 
-      final preview = List<Map<String, dynamic>>.from(
-        previewResponse as List,
-      );
+      final preview = List<Map<String, dynamic>>.from(previewResponse as List);
 
       if (!mounted) return;
 
@@ -1550,9 +1519,7 @@ class _SupplierCustomerAccountPageState
                         Expanded(
                           child: Text(
                             row['invoice_number']?.toString() ?? 'Invoice',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                         Text(
@@ -1565,9 +1532,7 @@ class _SupplierCustomerAccountPageState
                         const SizedBox(width: 18),
                         Text(
                           _money(row['proposed_allocation']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ],
                     ),
@@ -1614,9 +1579,9 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -1647,8 +1612,9 @@ class _SupplierCustomerAccountPageState
                       TextField(
                         controller: amountController,
                         autofocus: true,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
                             RegExp(r'^\d*\.?\d{0,2}'),
@@ -1702,8 +1668,9 @@ class _SupplierCustomerAccountPageState
                             context: dialogContext,
                             initialDate: date,
                             firstDate: DateTime(2020),
-                            lastDate:
-                                DateTime.now().add(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
                           if (picked != null) {
                             setDialogState(() => date = picked);
@@ -1746,8 +1713,9 @@ class _SupplierCustomerAccountPageState
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
                   onPressed: () {
-                    final amount =
-                        double.tryParse(amountController.text.trim());
+                    final amount = double.tryParse(
+                      amountController.text.trim(),
+                    );
                     if (amount == null || amount <= 0) return;
 
                     Navigator.of(dialogContext).pop({
@@ -1796,25 +1764,21 @@ class _SupplierCustomerAccountPageState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Credit / adjustment recorded.'),
-          ),
+          const SnackBar(content: Text('Credit / adjustment recorded.')),
         );
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  Future<void> _openCreditAllocationDialog(
-    Map<String, dynamic> credit,
-  ) async {
+  Future<void> _openCreditAllocationDialog(Map<String, dynamic> credit) async {
     final creditId = credit['id']?.toString();
     if (creditId == null) return;
 
@@ -1822,15 +1786,16 @@ class _SupplierCustomerAccountPageState
     final creditAmount = _asDouble(credit['amount']);
     final available = creditAmount - alreadyAllocated;
 
-    final candidates = _invoices
-        .where((i) => _asDouble(i['outstanding_amount']) > 0)
-        .where((i) => i['status']?.toString() != 'void')
-        .toList()
-      ..sort((a, b) {
-        final ad = _date(a['due_date']) ?? DateTime(9999);
-        final bd = _date(b['due_date']) ?? DateTime(9999);
-        return ad.compareTo(bd);
-      });
+    final candidates =
+        _invoices
+            .where((i) => _asDouble(i['outstanding_amount']) > 0)
+            .where((i) => i['status']?.toString() != 'void')
+            .toList()
+          ..sort((a, b) {
+            final ad = _date(a['due_date']) ?? DateTime(9999);
+            final bd = _date(b['due_date']) ?? DateTime(9999);
+            return ad.compareTo(bd);
+          });
 
     final controllers = <String, TextEditingController>{
       for (final invoice in candidates)
@@ -1844,10 +1809,9 @@ class _SupplierCustomerAccountPageState
           return StatefulBuilder(
             builder: (context, setDialogState) {
               double enteredTotal() => controllers.values.fold(
-                    0.0,
-                    (sum, c) =>
-                        sum + (double.tryParse(c.text.trim()) ?? 0),
-                  );
+                0.0,
+                (sum, c) => sum + (double.tryParse(c.text.trim()) ?? 0),
+              );
 
               return AlertDialog(
                 title: const Text('Allocate Credit'),
@@ -1951,10 +1915,9 @@ class _SupplierCustomerAccountPageState
                                           child: TextField(
                                             controller: controllers[id],
                                             keyboardType:
-                                                const TextInputType
-                                                    .numberWithOptions(
-                                              decimal: true,
-                                            ),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                             inputFormatters: [
                                               FilteringTextInputFormatter.allow(
                                                 RegExp(r'^\d*\.?\d{0,2}'),
@@ -1981,9 +1944,11 @@ class _SupplierCustomerAccountPageState
                         builder: (_) {
                           final entered = enteredTotal();
                           final remaining = available - entered;
-                          final invalid = entered > available ||
+                          final invalid =
+                              entered > available ||
                               candidates.any((invoice) {
-                                final enteredForInvoice = double.tryParse(
+                                final enteredForInvoice =
+                                    double.tryParse(
                                       controllers[invoice['id'].toString()]
                                               ?.text
                                               .trim() ??
@@ -1991,9 +1956,7 @@ class _SupplierCustomerAccountPageState
                                     ) ??
                                     0;
                                 return enteredForInvoice >
-                                    _asDouble(
-                                      invoice['outstanding_amount'],
-                                    );
+                                    _asDouble(invoice['outstanding_amount']);
                               });
 
                           return Row(
@@ -2036,7 +1999,8 @@ class _SupplierCustomerAccountPageState
 
                       for (final invoice in candidates) {
                         final id = invoice['id'].toString();
-                        final amount = double.tryParse(
+                        final amount =
+                            double.tryParse(
                               controllers[id]?.text.trim() ?? '',
                             ) ??
                             0;
@@ -2047,17 +2011,13 @@ class _SupplierCustomerAccountPageState
                             return;
                           }
 
-                          result.add({
-                            'invoice_id': id,
-                            'amount': amount,
-                          });
+                          result.add({'invoice_id': id, 'amount': amount});
                         }
                       }
 
                       final total = result.fold<double>(
                         0,
-                        (sum, item) =>
-                            sum + _asDouble(item['amount']),
+                        (sum, item) => sum + _asDouble(item['amount']),
                       );
 
                       if (total <= 0 || total > available) return;
@@ -2079,10 +2039,7 @@ class _SupplierCustomerAccountPageState
 
       await Supabase.instance.client.rpc(
         'allocate_account_credit',
-        params: {
-          'target_credit_id': creditId,
-          'allocations_json': allocations,
-        },
+        params: {'target_credit_id': creditId, 'allocations_json': allocations},
       );
 
       await _loadPage();
@@ -2094,9 +2051,9 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       for (final controller in controllers.values) {
@@ -2162,24 +2119,21 @@ class _SupplierCustomerAccountPageState
     try {
       await Supabase.instance.client.rpc(
         'reverse_account_payment',
-        params: {
-          'target_payment_id': paymentId,
-          'reversal_reason': reason,
-        },
+        params: {'target_payment_id': paymentId, 'reversal_reason': reason},
       );
 
       await _loadPage();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment reversed.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment reversed.')));
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -2242,10 +2196,7 @@ class _SupplierCustomerAccountPageState
     try {
       await Supabase.instance.client.rpc(
         'reverse_account_credit',
-        params: {
-          'target_credit_id': creditId,
-          'reversal_reason': reason,
-        },
+        params: {'target_credit_id': creditId, 'reversal_reason': reason},
       );
 
       await _loadPage();
@@ -2257,9 +2208,9 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -2327,10 +2278,10 @@ class _SupplierCustomerAccountPageState
                   Text(
                     confirm
                         ? 'Confirm only after the funds have arrived. '
-                            'CutLink will then create the real payment and apply '
-                            'the proposed invoice allocations.'
+                              'CutLink will then create the real payment and apply '
+                              'the proposed invoice allocations.'
                         : 'Reject this submission if the funds have not arrived '
-                            'or the details are incorrect.',
+                              'or the details are incorrect.',
                     style: const TextStyle(
                       color: Color(0xFF666666),
                       height: 1.4,
@@ -2388,8 +2339,7 @@ class _SupplierCustomerAccountPageState
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(false),
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 8),
@@ -2399,8 +2349,7 @@ class _SupplierCustomerAccountPageState
                               ? const Color(0xFF2E7D32)
                               : const Color(0xFFB3261E),
                         ),
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(true),
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
                         child: Text(confirm ? 'Confirm Payment' : 'Reject'),
                       ),
                     ],
@@ -2425,10 +2374,7 @@ class _SupplierCustomerAccountPageState
         confirm
             ? 'confirm_butcher_account_payment'
             : 'reject_butcher_account_payment',
-        params: {
-          'target_submission_id': id,
-          'review_note_value': note,
-        },
+        params: {'target_submission_id': id, 'review_note_value': note},
       );
 
       await _loadPage();
@@ -2446,9 +2392,9 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -2464,7 +2410,7 @@ class _SupplierCustomerAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2528,9 +2474,9 @@ class _SupplierCustomerAccountPageState
 
     final allocations = allocationsRaw is List
         ? allocationsRaw
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList()
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
         : <Map<String, dynamic>>[];
 
     final allocated = allocations.fold<double>(
@@ -2539,32 +2485,30 @@ class _SupplierCustomerAccountPageState
     );
 
     final amount = _asDouble(submission['amount']);
-    final unallocated =
-        (amount - allocated).clamp(0, double.infinity).toDouble();
+    final unallocated = (amount - allocated)
+        .clamp(0, double.infinity)
+        .toDouble();
 
     final allocationText = allocations.isEmpty
         ? 'General account / statement payment'
-        : allocations.map((row) {
-            final invoice = row['invoices'];
-            final invoiceNumber = invoice is Map
-                ? invoice['invoice_number']?.toString() ?? 'Invoice'
-                : 'Invoice';
-            return '$invoiceNumber ${_money(row['amount'])}';
-          }).join(' • ');
+        : allocations
+              .map((row) {
+                final invoice = row['invoices'];
+                final invoiceNumber = invoice is Map
+                    ? invoice['invoice_number']?.toString() ?? 'Invoice'
+                    : 'Invoice';
+                return '$invoiceNumber ${_money(row['amount'])}';
+              })
+              .join(' • ');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEA)),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.payments_outlined,
-            color: Color(0xFF9A5B00),
-          ),
+          const Icon(Icons.payments_outlined, color: Color(0xFF9A5B00)),
           const SizedBox(width: 10),
           Expanded(
             flex: 4,
@@ -2572,13 +2516,10 @@ class _SupplierCustomerAccountPageState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  submission['reference']?.toString().trim().isNotEmpty ==
-                          true
+                  submission['reference']?.toString().trim().isNotEmpty == true
                       ? submission['reference'].toString()
                       : 'Customer Payment Submission',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -2613,20 +2554,14 @@ class _SupplierCustomerAccountPageState
           OutlinedButton(
             onPressed: _isSaving
                 ? null
-                : () => _reviewPendingPaymentSubmission(
-                      submission,
-                      false,
-                    ),
+                : () => _reviewPendingPaymentSubmission(submission, false),
             child: const Text('Reject'),
           ),
           const SizedBox(width: 8),
           FilledButton(
             onPressed: _isSaving
                 ? null
-                : () => _reviewPendingPaymentSubmission(
-                      submission,
-                      true,
-                    ),
+                : () => _reviewPendingPaymentSubmission(submission, true),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
             ),
@@ -2702,7 +2637,7 @@ class _SupplierCustomerAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2765,25 +2700,21 @@ class _SupplierCustomerAccountPageState
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.touch_app_outlined,
-            size: 18,
-            color: _darkRed,
-          ),
+          const Icon(Icons.touch_app_outlined, size: 18, color: _darkRed),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
               invoice == null && payment == null
                   ? 'Select a payment to allocate it across open invoices. '
-                      'Optionally select one invoice for a direct allocation.'
+                        'Optionally select one invoice for a direct allocation.'
                   : payment == null
-                      ? 'Invoice selected: '
-                          '${invoice?['invoice_number']?.toString() ?? 'None'}'
-                          '    •    Select a payment before allocating.'
-                      : 'Selected invoice: '
-                          '${invoice?['invoice_number']?.toString() ?? 'Any open invoice'}'
-                          '    •    Selected payment: '
-                          '${payment['reference']?.toString().trim().isNotEmpty == true ? payment['reference'].toString() : _money(payment['amount'])}',
+                  ? 'Invoice selected: '
+                        '${invoice?['invoice_number']?.toString() ?? 'None'}'
+                        '    •    Select a payment before allocating.'
+                  : 'Selected invoice: '
+                        '${invoice?['invoice_number']?.toString() ?? 'Any open invoice'}'
+                        '    •    Selected payment: '
+                        '${payment['reference']?.toString().trim().isNotEmpty == true ? payment['reference'].toString() : _money(payment['amount'])}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -2815,7 +2746,7 @@ class _SupplierCustomerAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2827,10 +2758,7 @@ class _SupplierCustomerAccountPageState
                 const Expanded(
                   child: Text(
                     'Invoices Requiring Payment',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ),
                 _invoiceFilterMenu(),
@@ -2890,8 +2818,9 @@ class _SupplierCustomerAccountPageState
                               ? null
                               : (value) {
                                   setState(() {
-                                    _selectedInvoiceId =
-                                        value == true ? invoiceId : null;
+                                    _selectedInvoiceId = value == true
+                                        ? invoiceId
+                                        : null;
                                   });
                                 },
                         ),
@@ -2900,8 +2829,7 @@ class _SupplierCustomerAccountPageState
                         InkWell(
                           onTap: () => _openInvoice(invoice),
                           child: Text(
-                            invoice['invoice_number']?.toString() ??
-                                'Invoice',
+                            invoice['invoice_number']?.toString() ?? 'Invoice',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               color: _darkRed,
@@ -2919,9 +2847,7 @@ class _SupplierCustomerAccountPageState
                       DataCell(
                         Text(
                           _money(invoice['outstanding_amount']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
                       DataCell(_statusChip(status)),
@@ -2949,10 +2875,8 @@ class _SupplierCustomerAccountPageState
       onSelected: (value) => setState(() => _invoiceFilter = value),
       itemBuilder: (_) => labels.entries
           .map(
-            (entry) => PopupMenuItem(
-              value: entry.key,
-              child: Text(entry.value),
-            ),
+            (entry) =>
+                PopupMenuItem(value: entry.key, child: Text(entry.value)),
           )
           .toList(),
       child: Container(
@@ -2981,22 +2905,14 @@ class _SupplierCustomerAccountPageState
       for (final payment in _payments)
         if (payment['status']?.toString() == 'active' &&
             _paymentAvailable(payment) > 0)
-          {
-            'type': 'payment',
-            'date': payment['payment_date'],
-            'data': payment,
-          },
+          {'type': 'payment', 'date': payment['payment_date'], 'data': payment},
       for (final credit in _credits)
         if (credit['status']?.toString() == 'active' &&
             ((_asDouble(credit['amount']) -
                         _allocatedForCredit(credit['id']?.toString() ?? ''))
                     .clamp(0, double.infinity) >
                 0))
-          {
-            'type': 'credit',
-            'date': credit['credit_date'],
-            'data': credit,
-          },
+          {'type': 'credit', 'date': credit['credit_date'], 'data': credit},
     ];
 
     entries.sort((a, b) {
@@ -3009,7 +2925,7 @@ class _SupplierCustomerAccountPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3018,10 +2934,7 @@ class _SupplierCustomerAccountPageState
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Text(
               'Unallocated Payments & Credits',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
           const Divider(height: 1),
@@ -3036,8 +2949,7 @@ class _SupplierCustomerAccountPageState
               ),
             )
           else
-            for (final entry in entries)
-              _ledgerRow(entry),
+            for (final entry in entries) _ledgerRow(entry),
         ],
       ),
     );
@@ -3051,14 +2963,14 @@ class _SupplierCustomerAccountPageState
       final id = data['id']?.toString() ?? '';
       final allocated = _allocatedForCredit(id);
       final amount = _asDouble(data['amount']);
-      final available = (amount - allocated).clamp(0, double.infinity).toDouble();
+      final available = (amount - allocated)
+          .clamp(0, double.infinity)
+          .toDouble();
 
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0xFFEEEEEA)),
-          ),
+          border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
         ),
         child: Row(
           children: [
@@ -3094,10 +3006,11 @@ class _SupplierCustomerAccountPageState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: (data['status']?.toString() == 'reversed'
-                        ? const Color(0xFF777777)
-                        : const Color(0xFF315A8C))
-                    .withValues(alpha: 0.08),
+                color:
+                    (data['status']?.toString() == 'reversed'
+                            ? const Color(0xFF777777)
+                            : const Color(0xFF315A8C))
+                        .withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -3144,13 +3057,14 @@ class _SupplierCustomerAccountPageState
     final id = data['id']?.toString() ?? '';
     final allocated = _allocatedForPayment(id);
     final amount = _asDouble(data['amount']);
-    final unallocated = (amount - allocated).clamp(0, double.infinity).toDouble();
+    final unallocated = (amount - allocated)
+        .clamp(0, double.infinity)
+        .toDouble();
     final status = _paymentAllocationStatus(data);
 
     final selectablePayment =
         data['status']?.toString() == 'active' && unallocated > 0;
-    final selectedPayment =
-        id.isNotEmpty && _selectedPaymentId == id;
+    final selectedPayment = id.isNotEmpty && _selectedPaymentId == id;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -3158,9 +3072,7 @@ class _SupplierCustomerAccountPageState
         color: selectedPayment
             ? const Color(0xFFF4E5E5).withValues(alpha: 0.45)
             : Colors.transparent,
-        border: const Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEA)),
-        ),
+        border: const Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
       ),
       child: Row(
         children: [
@@ -3170,8 +3082,7 @@ class _SupplierCustomerAccountPageState
                 ? null
                 : (value) {
                     setState(() {
-                      _selectedPaymentId =
-                          value == true ? id : null;
+                      _selectedPaymentId = value == true ? id : null;
                     });
                   },
           ),
@@ -3244,8 +3155,7 @@ class _SupplierCustomerAccountPageState
                     value: 'auto',
                     child: Text('Auto Allocate'),
                   ),
-                if (unallocated > 0)
-                  const PopupMenuDivider(),
+                if (unallocated > 0) const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'reverse',
                   child: Text('Reverse Payment'),
@@ -3275,10 +3185,7 @@ class _SupplierCustomerAccountPageState
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -3333,8 +3240,7 @@ class _SupplierCustomerAccountPageState
               child: _summaryCard(
                 'Overdue',
                 _money(_overdue),
-                valueColor:
-                    _overdue > 0 ? const Color(0xFFB3261E) : null,
+                valueColor: _overdue > 0 ? const Color(0xFFB3261E) : null,
                 icon: Icons.warning_amber_rounded,
               ),
             ),
@@ -3343,8 +3249,7 @@ class _SupplierCustomerAccountPageState
               child: _summaryCard(
                 'Due Soon',
                 _money(_dueSoon),
-                valueColor:
-                    _dueSoon > 0 ? const Color(0xFF9A5B00) : null,
+                valueColor: _dueSoon > 0 ? const Color(0xFF9A5B00) : null,
                 icon: Icons.schedule_outlined,
               ),
             ),
@@ -3364,8 +3269,9 @@ class _SupplierCustomerAccountPageState
               child: _summaryCard(
                 'Credit Available',
                 _money(_creditAvailable),
-                valueColor:
-                    _creditAvailable > 0 ? const Color(0xFF315A8C) : null,
+                valueColor: _creditAvailable > 0
+                    ? const Color(0xFF315A8C)
+                    : null,
                 icon: Icons.add_card_outlined,
               ),
             ),
@@ -3377,7 +3283,7 @@ class _SupplierCustomerAccountPageState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE0E0DD)),
+            border: Border.all(color: const Color(0xFFE3E5E8)),
           ),
           child: Row(
             children: [
@@ -3421,7 +3327,7 @@ class _SupplierCustomerAccountPageState
         return RefreshIndicator(
           onRefresh: _loadPage,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 40),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -3429,8 +3335,65 @@ class _SupplierCustomerAccountPageState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x07000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8EEEE),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_outlined,
+                                color: _darkRed,
+                                size: 23,
+                              ),
+                            ),
+                            const SizedBox(width: 13),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Account Receivables',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Manage open invoices, payments, credits, adjustments and account allocations for ${_customerName()}.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF666A70),
+                                      fontSize: 12.5,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
                       summary,
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       termsPanel,
                       const SizedBox(height: 12),
                       if (_pendingPaymentSubmissions.isNotEmpty) ...[
@@ -3457,69 +3420,131 @@ class _SupplierCustomerAccountPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
           children: [
-            Text(
-              _customerName(),
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
+            const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: _darkRed,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _customerName(),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                  if (!_isLoading)
+                    const Text(
+                      'Customer Account',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF666A70),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (!_isLoading)
-              const Text(
-                'Customer Account',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF777777),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
           ],
         ),
         actions: [
           OutlinedButton.icon(
             onPressed: _isLoading ? null : _openStatement,
-            icon: const Icon(Icons.description_outlined),
-            label: const Text('View Statement'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF34383D),
+              side: const BorderSide(color: Color(0xFFD9DDE1)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.description_outlined, size: 18),
+            label: const Text(
+              'Statement',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
             onPressed: _isLoading || _isSaving
                 ? null
                 : _recordCreditOrAdjustment,
-            icon: const Icon(Icons.add_card_outlined),
-            label: const Text('Credit / Adjustment'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF34383D),
+              side: const BorderSide(color: Color(0xFFD9DDE1)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.add_card_outlined, size: 18),
+            label: const Text(
+              'Credit / Adjustment',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
-            onPressed: _isLoading || _isSaving
-                ? null
-                : () => _recordPayment(),
-            icon: const Icon(Icons.payments_outlined),
-            label: const Text('Record Payment'),
+            onPressed: _isLoading || _isSaving ? null : () => _recordPayment(),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF34383D),
+              side: const BorderSide(color: Color(0xFFD9DDE1)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.payments_outlined, size: 18),
+            label: const Text(
+              'Record Payment',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
             onPressed: _canAllocateSelectedPayment
                 ? _allocateSelectedPayment
                 : null,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.link_outlined),
-            label: const Text('Allocate Payment'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.link_outlined, size: 18),
+            label: const Text(
+              'Allocate Payment',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _isLoading ? null : _loadPage,
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: _buildBody(),
     );

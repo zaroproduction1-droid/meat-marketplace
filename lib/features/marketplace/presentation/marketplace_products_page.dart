@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'marketplace_product_details_page.dart';
 import '../../orders/presentation/draft_orders_page.dart';
-import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -354,12 +353,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             origin_country,
             origin_state,
             temperature_state,
-            chicken_skin,
-            chicken_bone,
-            chicken_production_type,
-            chicken_preparation,
-            chicken_size_weight,
-            chicken_carton_size,
             available_quantity,
             quantity_unit,
             availability_status,
@@ -694,69 +687,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
   String _gradeName(Map<String, dynamic> product) {
     return _nestedMap(product['meat_grades'])?['name']?.toString().trim() ?? '';
-  }
-
-  bool _isChickenProduct(Map<String, dynamic> product) {
-    return _animalCode(product) == CutLinkAnimals.chicken;
-  }
-
-  String _prettyChickenValue(dynamic value) {
-    final raw = value?.toString().trim() ?? '';
-    if (raw.isEmpty || raw == 'not_applicable' || raw == 'not_specified') {
-      return '';
-    }
-
-    return switch (raw) {
-      'skin_on' => 'Skin On',
-      'skin_off' => 'Skin Off',
-      'bone_in' => 'Bone In',
-      'boneless' => 'Boneless',
-      'fresh' => 'Fresh',
-      'frozen' => 'Frozen',
-      'conventional' => 'Conventional',
-      'free_range' => 'Free Range',
-      'organic' => 'Organic',
-      'whole' => 'Whole',
-      'fillet' => 'Fillet',
-      'diced' => 'Diced',
-      'strips' => 'Strips',
-      'sliced' => 'Sliced',
-      'minced' => 'Minced',
-      'butterflied' => 'Butterflied',
-      'schnitzel' => 'Schnitzel',
-      'portion_controlled' => 'Portion Controlled',
-      'halal' => 'Halal',
-      'not_halal' => 'Not Halal',
-      'other' => 'Other',
-      _ =>
-        raw
-            .split('_')
-            .where((part) => part.isNotEmpty)
-            .map(
-              (part) =>
-                  '${part.substring(0, 1).toUpperCase()}${part.substring(1)}',
-            )
-            .join(' '),
-    };
-  }
-
-  String _chickenVariationLabel(Map<String, dynamic> product) {
-    final values = <String>[
-      _prettyChickenValue(product['chicken_skin']),
-      _prettyChickenValue(product['chicken_bone']),
-      _prettyChickenValue(product['temperature_state']),
-      _prettyChickenValue(product['chicken_production_type']),
-      _prettyChickenValue(product['halal_status']),
-      _prettyChickenValue(product['chicken_preparation']),
-    ].where((value) => value.isNotEmpty).toList();
-
-    final size = product['chicken_size_weight']?.toString().trim() ?? '';
-    final carton = product['chicken_carton_size']?.toString().trim() ?? '';
-
-    if (size.isNotEmpty) values.add(size);
-    if (carton.isNotEmpty) values.add(carton);
-
-    return values.isEmpty ? 'Standard Chicken' : values.join(' • ');
   }
 
   List<Map<String, dynamic>> _activeSpecGradeOffers(
@@ -1134,17 +1064,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             product['supplier_specification']?.toString().toLowerCase() ?? '';
 
         if (cutScopedSearch) {
-          final chickenVariation = _isChickenProduct(product)
-              ? _chickenVariationLabel(product).toLowerCase()
-              : '';
-
           return specification.contains(search) ||
               productName.contains(search) ||
               supplierSpecification.contains(search) ||
-              chickenVariation.contains(search) ||
-              (_selectedAnimalCode != CutLinkAnimals.chicken &&
-                  (_gradeCode(product).toLowerCase().contains(search) ||
-                      _gradeName(product).toLowerCase().contains(search)));
+              _gradeCode(product).toLowerCase().contains(search) ||
+              _gradeName(product).toLowerCase().contains(search);
         }
 
         final catalogueNames = _canonicalCatalogueNames(product);
@@ -1163,13 +1087,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           product['trim_specification'],
           product['fat_specification'],
           product['halal_status'],
-          product['chicken_skin'],
-          product['chicken_bone'],
-          product['chicken_production_type'],
-          product['chicken_preparation'],
-          product['chicken_size_weight'],
-          product['chicken_carton_size'],
-          if (_isChickenProduct(product)) _chickenVariationLabel(product),
           product['supplier_specification'],
           _cataloguePath(product),
           _sectionName(product),
@@ -1230,15 +1147,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
             if (specCompare != 0) return specCompare;
 
-            if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-              final variationCompare = _chickenVariationLabel(a)
-                  .toLowerCase()
-                  .compareTo(_chickenVariationLabel(b).toLowerCase());
-              if (variationCompare != 0) return variationCompare;
-            } else {
-              final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
-              if (gradeCompare != 0) return gradeCompare;
-            }
+            final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
+            if (gradeCompare != 0) return gradeCompare;
 
             final aPrice = visibleAmount(a);
             final bPrice = visibleAmount(b);
@@ -1713,7 +1623,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xFFF7F7F5),
+        color: const Color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -1724,7 +1634,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
             ),
             child: Icon(icon, size: 19, color: const Color(0xFF741C1C)),
           ),
@@ -1853,46 +1763,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   Widget _gradeBadge(Map<String, dynamic> product) {
-    if (_isChickenProduct(product)) {
-      return Container(
-        width: 172,
-        constraints: const BoxConstraints(minHeight: 70),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF4E5E5),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD7B8B8)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'CHICKEN',
-              style: TextStyle(
-                color: Color(0xFF741C1C),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.7,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              _chickenVariationLabel(product),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF741C1C),
-                fontSize: 10.5,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     final code = _gradeCode(product);
     final name = _gradeName(product);
 
@@ -1941,31 +1811,52 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Browse Products',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.storefront_outlined, color: Color(0xFF741C1C), size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Browse Products',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
-          TextButton.icon(
+          FilledButton.icon(
             onPressed: _openCart,
-            icon: const Icon(Icons.shopping_cart_outlined),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
             label: const Text(
               'Cart',
-              style: TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: _loadProducts,
             tooltip: 'Refresh products',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: Column(children: [Expanded(child: _buildBody())]),
     );
@@ -1983,8 +1874,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x05000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -2021,17 +1919,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _isChickenProduct(product)
-                          ? '${_sectionName(product)} • ${_chickenVariationLabel(product)}'
-                                '${_availableText(product).isEmpty ? '' : ' • ${_availableText(product)}'}'
-                          : '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}'
-                                '${_availableText(product).isEmpty ? '' : ' • ${_availableText(product)}'}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}'
+                      '${_availableText(product).isEmpty ? '' : ' • ${_availableText(product)}'}',
                       style: const TextStyle(
                         color: Color(0xFF666666),
                         fontSize: 10.5,
-                        height: 1.25,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2091,9 +1983,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                   Container(
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F7F5),
+                      color: const Color(0xFFF7F8FA),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE0E0DD)),
+                      border: Border.all(color: const Color(0xFFE3E5E8)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -2212,9 +2104,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final cutSelected = _selectedSectionId != null;
     final subcategorySelected = _selectedSpecificationId != null;
     final gradeSelected = _selectedGradeId != null;
-    final chickenSelected = _selectedAnimalCode == CutLinkAnimals.chicken;
-    final exactSelection =
-        subcategorySelected && (chickenSelected || gradeSelected);
+    final exactSelection = subcategorySelected && gradeSelected;
 
     // ignore: unused_element
     Widget filterLabel(String label) {
@@ -2235,8 +2125,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2245,19 +2142,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               padding: EdgeInsets.fromLTRB(14, 11, 14, 0),
               child: Text(
                 'Browse by Animal',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 14, 7),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 2, 14, 7),
               child: Text(
-                chickenSelected
-                    ? 'Choose Chicken, the main cut and sub-cut, then compare supplier variations.'
-                    : 'Choose the animal, cut, subcategory and grade.',
-                style: const TextStyle(
-                  color: Color(0xFF666666),
-                  fontSize: 10.5,
-                ),
+                'Choose the animal, cut, subcategory and grade.',
+                style: TextStyle(color: Color(0xFF666666), fontSize: 10.5),
               ),
             ),
             Expanded(
@@ -2297,7 +2189,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                       const SizedBox(height: 4),
                       _buildSpecificationStrip(),
                     ],
-                    if (subcategorySelected && !chickenSelected) ...[
+                    if (subcategorySelected) ...[
                       const SizedBox(height: 8),
                       const Text(
                         'GRADE',
@@ -2346,7 +2238,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 size: 16,
                 color: _availableOnly
                     ? const Color(0xFF741C1C)
-                    : const Color(0xFF666666),
+                    : const Color(0xFF666A70),
               ),
               const SizedBox(width: 6),
               Text(
@@ -2435,43 +2327,100 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                   ),
                 );
 
-                final sortField = CutLinkPickerField<String>(
-                  label: 'Sort',
-                  value: _sortMode,
-                  dense: true,
-                  enableSearch: false,
-                  options: const [
-                    CutLinkPickerOption(
-                      value: 'recommended',
-                      label: 'Recommended',
-                      icon: Icons.auto_awesome_outlined,
-                    ),
-                    CutLinkPickerOption(
-                      value: 'price_low',
-                      label: 'Cheapest price',
-                      icon: Icons.south_east,
-                    ),
-                    CutLinkPickerOption(
-                      value: 'price_high',
-                      label: 'Highest price',
-                      icon: Icons.north_east,
-                    ),
-                    CutLinkPickerOption(
-                      value: 'grade',
-                      label: 'Grade',
-                      icon: Icons.workspace_premium_outlined,
-                    ),
-                    CutLinkPickerOption(
-                      value: 'supplier',
-                      label: 'Supplier A–Z',
-                      icon: Icons.storefront_outlined,
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
+                String sortLabel(String value) => switch (value) {
+                  'price_low' => 'Cheapest',
+                  'price_high' => 'Highest',
+                  'grade' => 'Grade',
+                  'supplier' => 'Supplier A–Z',
+                  _ => 'Recommended',
+                };
+
+                IconData sortIcon(String value) => switch (value) {
+                  'price_low' => Icons.south_east,
+                  'price_high' => Icons.north_east,
+                  'grade' => Icons.workspace_premium_outlined,
+                  'supplier' => Icons.storefront_outlined,
+                  _ => Icons.auto_awesome_outlined,
+                };
+
+                final sortField = PopupMenuButton<String>(
+                  initialValue: _sortMode,
+                  onSelected: (value) {
                     setState(() => _sortMode = value);
                     _applySearch();
                   },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'recommended',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.auto_awesome_outlined),
+                        title: Text('Recommended'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'price_low',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.south_east),
+                        title: Text('Cheapest price'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'price_high',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.north_east),
+                        title: Text('Highest price'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'grade',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.workspace_premium_outlined),
+                        title: Text('Grade'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'supplier',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.storefront_outlined),
+                        title: Text('Supplier A–Z'),
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    height: 47,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFDADAD6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          sortIcon(_sortMode),
+                          size: 17,
+                          color: const Color(0xFF741C1C),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            sortLabel(_sortMode),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 18),
+                      ],
+                    ),
+                  ),
                 );
 
                 if (narrow) {
@@ -2533,7 +2482,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
             ),
             child: Row(
               children: [
@@ -2620,9 +2569,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           return rightChoiceCard(
             icon: Icons.category_outlined,
             title: name,
-            subtitle: chickenSelected
-                ? 'Choose this sub-cut to compare supplier variations.'
-                : 'Choose this subcategory to view its grades.',
+            subtitle: 'Choose this subcategory to view its grades.',
             onTap: () {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
@@ -2680,32 +2627,27 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     Widget supplierStockStage() {
       if (_filteredProducts.isEmpty) {
-        return Center(
+        return const Center(
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.search_off_outlined,
                   size: 46,
                   color: Color(0xFFAAAAAA),
                 ),
-                const SizedBox(height: 10),
-                const Text(
+                SizedBox(height: 10),
+                Text(
                   'No supplier offers match this selection',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
-                  chickenSelected
-                      ? 'No active supplier product is linked to this Chicken sub-cut yet.'
-                      : 'No active supplier product is linked to this exact subcategory and grade.',
+                  'No active supplier product is linked to this exact subcategory and grade.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
-                    height: 1.35,
-                  ),
+                  style: TextStyle(color: Color(0xFF777777), height: 1.35),
                 ),
               ],
             ),
@@ -2731,8 +2673,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Choose a Cut'
           : !subcategorySelected
           ? 'Subcategories'
-          : chickenSelected
-          ? 'Supplier Stock'
           : !gradeSelected
           ? 'Choose Grade'
           : 'Supplier Stock';
@@ -2743,8 +2683,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Select a cut from the animal diagram or cut row.'
           : !subcategorySelected
           ? 'Choose the exact subcategory for this cut.'
-          : chickenSelected
-          ? 'Compare Chicken variations, suppliers and pricing.'
           : !gradeSelected
           ? 'Choose the commercial grade/category.'
           : 'Compare matching supplier offers and pricing.';
@@ -2754,8 +2692,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2839,8 +2784,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                     )
                   : !subcategorySelected
                   ? subcategoryStage()
-                  : chickenSelected
-                  ? supplierStockStage()
                   : !gradeSelected
                   ? gradeStage()
                   : supplierStockStage(),
@@ -2852,9 +2795,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1240),
+        constraints: const BoxConstraints(maxWidth: 1320),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 930;
@@ -2863,7 +2806,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 return ListView(
                   children: [
                     SizedBox(height: 640, child: animalPanel()),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
                     SizedBox(height: 720, child: resultsPanel()),
                   ],
                 );
@@ -2873,7 +2816,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(flex: 5, child: animalPanel()),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 14),
                   Expanded(flex: 5, child: resultsPanel()),
                 ],
               );

@@ -7,77 +7,166 @@ class ButcherSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'Butcher Settings',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Manage your business profile, billing, delivery addresses, privacy and notifications.',
-            style: TextStyle(color: Color(0xFF666666), height: 1.4),
-          ),
-          const SizedBox(height: 20),
-          _SettingsTile(
-            icon: Icons.business_outlined,
-            title: 'Business Profile',
-            subtitle:
-                'Trading name, legal name, business contact details and main address.',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ButcherProfileSettingsPage(),
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.settings_outlined,
+              color: Color(0xFF741C1C),
+              size: 22,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Settings',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 19,
               ),
             ),
+          ],
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: Color(0xFFE3E5E8),
           ),
-          _SettingsTile(
-            icon: Icons.receipt_long_outlined,
-            title: 'Billing & Accounts',
-            subtitle:
-                'ABN, billing address and the accounts contact suppliers should use.',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ButcherBillingSettingsPage(),
+        ),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFFE3E5E8),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF8EEEE),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(12),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.tune_outlined,
+                          color: Color(0xFF741C1C),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Butcher Settings',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Manage your business profile, billing, delivery addresses, privacy and notifications.',
+                            style: TextStyle(
+                              color: Color(0xFF666A70),
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.local_shipping_outlined,
-            title: 'Delivery Addresses',
-            subtitle:
-                'Save multiple delivery locations and choose a default address.',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ButcherDeliveryAddressesPage(),
+              const SizedBox(height: 18),
+              _SettingsTile(
+                icon: Icons.business_outlined,
+                title: 'Business Profile',
+                subtitle:
+                    'Trading name, legal name, business contact details and main address.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ButcherProfileSettingsPage(),
+                  ),
+                ),
               ),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Privacy',
-            subtitle:
-                'Control profile visibility and what approved suppliers can see.',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ButcherPrivacySettingsPage(),
+              _SettingsTile(
+                icon: Icons.receipt_long_outlined,
+                title: 'Billing & Accounts',
+                subtitle:
+                    'ABN, billing address and the accounts contact suppliers should use.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ButcherBillingSettingsPage(),
+                  ),
+                ),
               ),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            subtitle:
-                'Choose which order, invoice and account activity should notify you.',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ButcherNotificationSettingsPage(),
+              _SettingsTile(
+                icon: Icons.local_shipping_outlined,
+                title: 'Delivery Addresses',
+                subtitle:
+                    'Save multiple delivery locations and choose a default address.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ButcherDeliveryAddressesPage(),
+                  ),
+                ),
               ),
-            ),
+              _SettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: 'Privacy',
+                subtitle:
+                    'Control profile visibility and what approved suppliers can see.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ButcherPrivacySettingsPage(),
+                  ),
+                ),
+              ),
+              _SettingsTile(
+                icon: Icons.notifications_outlined,
+                title: 'Notifications',
+                subtitle:
+                    'Choose which order, invoice and account activity should notify you.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ButcherNotificationSettingsPage(),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -100,6 +189,7 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
+      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -116,10 +206,10 @@ class _SettingsTile extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B1E1E).withValues(alpha: 0.08),
+                  color: const Color(0xFF741C1C).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF8B1E1E)),
+                child: Icon(icon, color: const Color(0xFF741C1C)),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -335,19 +425,21 @@ class _ButcherProfileSettingsPageState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Business profile saved successfully.')),
+        const SnackBar(
+          content: Text('Business profile saved successfully.'),
+        ),
       );
     } on PostgrestException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
       }
     } finally {
       if (mounted) {
@@ -379,7 +471,11 @@ class _ButcherProfileSettingsPageState
             'Business Contact Email',
             keyboardType: TextInputType.emailAddress,
           ),
-          _field(_phone, 'Business Phone', keyboardType: TextInputType.phone),
+          _field(
+            _phone,
+            'Business Phone',
+            keyboardType: TextInputType.phone,
+          ),
           _field(_address1, 'Main Address Line 1'),
           _field(_address2, 'Main Address Line 2'),
           _field(_suburb, 'Suburb'),
@@ -468,14 +564,19 @@ class _ButcherBillingSettingsPageState
         _abn.text = row['abn']?.toString() ?? '';
         _billingEmail.text = row['billing_email']?.toString() ?? '';
         _billingPhone.text = row['billing_phone']?.toString() ?? '';
-        _address1.text = row['billing_address_line_1']?.toString() ?? '';
-        _address2.text = row['billing_address_line_2']?.toString() ?? '';
+        _address1.text =
+            row['billing_address_line_1']?.toString() ?? '';
+        _address2.text =
+            row['billing_address_line_2']?.toString() ?? '';
         _suburb.text = row['billing_suburb']?.toString() ?? '';
         _state.text = row['billing_state']?.toString() ?? '';
         _postcode.text = row['billing_postcode']?.toString() ?? '';
-        _accountsName.text = row['accounts_contact_name']?.toString() ?? '';
-        _accountsEmail.text = row['accounts_contact_email']?.toString() ?? '';
-        _accountsPhone.text = row['accounts_contact_phone']?.toString() ?? '';
+        _accountsName.text =
+            row['accounts_contact_name']?.toString() ?? '';
+        _accountsEmail.text =
+            row['accounts_contact_email']?.toString() ?? '';
+        _accountsPhone.text =
+            row['accounts_contact_phone']?.toString() ?? '';
       }
 
       if (!mounted) return;
@@ -500,21 +601,19 @@ class _ButcherBillingSettingsPageState
       final saved = await Supabase.instance.client
           .from('butcher_billing_profiles')
           .upsert({
-            'butcher_business_id': _businessId,
-            'abn': _abn.text.trim(),
-            'billing_email': _billingEmail.text.trim(),
-            'billing_phone': _billingPhone.text.trim(),
-            'billing_address_line_1': _address1.text.trim(),
-            'billing_address_line_2': _address2.text.trim(),
-            'billing_suburb': _suburb.text.trim(),
-            'billing_state': _state.text.trim(),
-            'billing_postcode': _postcode.text.trim(),
-            'accounts_contact_name': _accountsName.text.trim(),
-            'accounts_contact_email': _accountsEmail.text.trim(),
-            'accounts_contact_phone': _accountsPhone.text.trim(),
-          })
-          .select()
-          .single();
+        'butcher_business_id': _businessId,
+        'abn': _abn.text.trim(),
+        'billing_email': _billingEmail.text.trim(),
+        'billing_phone': _billingPhone.text.trim(),
+        'billing_address_line_1': _address1.text.trim(),
+        'billing_address_line_2': _address2.text.trim(),
+        'billing_suburb': _suburb.text.trim(),
+        'billing_state': _state.text.trim(),
+        'billing_postcode': _postcode.text.trim(),
+        'accounts_contact_name': _accountsName.text.trim(),
+        'accounts_contact_email': _accountsEmail.text.trim(),
+        'accounts_contact_phone': _accountsPhone.text.trim(),
+      }).select().single();
 
       if (saved['butcher_business_id']?.toString() != _businessId) {
         throw Exception('The billing settings were not saved.');
@@ -544,16 +643,10 @@ class _ButcherBillingSettingsPageState
         children: [
           const _SectionHeading('Billing Details'),
           _field(_abn, 'ABN'),
-          _field(
-            _billingEmail,
-            'Billing Email',
-            keyboardType: TextInputType.emailAddress,
-          ),
-          _field(
-            _billingPhone,
-            'Billing Phone',
-            keyboardType: TextInputType.phone,
-          ),
+          _field(_billingEmail, 'Billing Email',
+              keyboardType: TextInputType.emailAddress),
+          _field(_billingPhone, 'Billing Phone',
+              keyboardType: TextInputType.phone),
           const Divider(height: 30),
           const _SectionHeading('Billing Address'),
           _field(_address1, 'Address Line 1'),
@@ -575,16 +668,10 @@ class _ButcherBillingSettingsPageState
           const Divider(height: 30),
           const _SectionHeading('Accounts Contact'),
           _field(_accountsName, 'Accounts Contact Name'),
-          _field(
-            _accountsEmail,
-            'Accounts Contact Email',
-            keyboardType: TextInputType.emailAddress,
-          ),
-          _field(
-            _accountsPhone,
-            'Accounts Contact Phone',
-            keyboardType: TextInputType.phone,
-          ),
+          _field(_accountsEmail, 'Accounts Contact Email',
+              keyboardType: TextInputType.emailAddress),
+          _field(_accountsPhone, 'Accounts Contact Phone',
+              keyboardType: TextInputType.phone),
         ],
       ),
     );
@@ -642,42 +729,33 @@ class _ButcherDeliveryAddressesPageState
     final businessId = _businessId;
     if (businessId == null) return;
 
-    final label = TextEditingController(
-      text: existing?['label']?.toString() ?? '',
-    );
+    final label =
+        TextEditingController(text: existing?['label']?.toString() ?? '');
     final contactName = TextEditingController(
-      text: existing?['contact_name']?.toString() ?? '',
-    );
+        text: existing?['contact_name']?.toString() ?? '');
     final contactPhone = TextEditingController(
-      text: existing?['contact_phone']?.toString() ?? '',
-    );
+        text: existing?['contact_phone']?.toString() ?? '');
     final address1 = TextEditingController(
-      text: existing?['address_line_1']?.toString() ?? '',
-    );
+        text: existing?['address_line_1']?.toString() ?? '');
     final address2 = TextEditingController(
-      text: existing?['address_line_2']?.toString() ?? '',
-    );
-    final suburb = TextEditingController(
-      text: existing?['suburb']?.toString() ?? '',
-    );
-    final state = TextEditingController(
-      text: existing?['state']?.toString() ?? 'NSW',
-    );
-    final postcode = TextEditingController(
-      text: existing?['postcode']?.toString() ?? '',
-    );
+        text: existing?['address_line_2']?.toString() ?? '');
+    final suburb =
+        TextEditingController(text: existing?['suburb']?.toString() ?? '');
+    final state =
+        TextEditingController(text: existing?['state']?.toString() ?? 'NSW');
+    final postcode =
+        TextEditingController(text: existing?['postcode']?.toString() ?? '');
     final instructions = TextEditingController(
-      text: existing?['delivery_instructions']?.toString() ?? '',
-    );
+        text: existing?['delivery_instructions']?.toString() ?? '');
     var isDefault = existing?['is_default'] == true;
 
     final save = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            existing == null ? 'Add Delivery Address' : 'Edit Delivery Address',
-          ),
+          title: Text(existing == null
+              ? 'Add Delivery Address'
+              : 'Edit Delivery Address'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -686,11 +764,8 @@ class _ButcherDeliveryAddressesPageState
                 children: [
                   _field(label, 'Address Label'),
                   _field(contactName, 'Contact Name'),
-                  _field(
-                    contactPhone,
-                    'Contact Phone',
-                    keyboardType: TextInputType.phone,
-                  ),
+                  _field(contactPhone, 'Contact Phone',
+                      keyboardType: TextInputType.phone),
                   _field(address1, 'Address Line 1'),
                   _field(address2, 'Address Line 2'),
                   _field(suburb, 'Suburb'),
@@ -707,7 +782,11 @@ class _ButcherDeliveryAddressesPageState
                       ),
                     ],
                   ),
-                  _field(instructions, 'Delivery Instructions', maxLines: 3),
+                  _field(
+                    instructions,
+                    'Delivery Instructions',
+                    maxLines: 3,
+                  ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Default delivery address'),
@@ -747,9 +826,8 @@ class _ButcherDeliveryAddressesPageState
 
       final data = {
         'butcher_business_id': businessId,
-        'label': label.text.trim().isEmpty
-            ? 'Delivery Address'
-            : label.text.trim(),
+        'label':
+            label.text.trim().isEmpty ? 'Delivery Address' : label.text.trim(),
         'contact_name': contactName.text.trim(),
         'contact_phone': contactPhone.text.trim(),
         'address_line_1': address1.text.trim(),
@@ -806,7 +884,7 @@ class _ButcherDeliveryAddressesPageState
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         title: const Text('Delivery Addresses'),
         actions: [
@@ -864,12 +942,12 @@ class _ButcherDeliveryAddressesPageState
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
                               [
-                                    address['address_line_1'],
-                                    address['address_line_2'],
-                                    address['suburb'],
-                                    address['state'],
-                                    address['postcode'],
-                                  ]
+                                address['address_line_1'],
+                                address['address_line_2'],
+                                address['suburb'],
+                                address['state'],
+                                address['postcode'],
+                              ]
                                   .map((e) => e?.toString().trim() ?? '')
                                   .where((e) => e.isNotEmpty)
                                   .join(', '),
@@ -896,7 +974,10 @@ class _ButcherDeliveryAddressesPageState
                   icon: const Icon(Icons.add_location_alt_outlined),
                   label: const Text(
                     'Add Delivery Address',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -943,7 +1024,8 @@ class _ButcherPrivacySettingsPageState
 
       if (row != null) {
         _profileVisible = row['marketplace_profile_visible'] != false;
-        _shareContact = row['share_contact_with_approved_customers'] != false;
+        _shareContact =
+            row['share_contact_with_approved_customers'] != false;
       }
 
       if (!mounted) return;
@@ -968,12 +1050,10 @@ class _ButcherPrivacySettingsPageState
       final saved = await Supabase.instance.client
           .from('business_app_settings')
           .upsert({
-            'business_id': _businessId,
-            'marketplace_profile_visible': _profileVisible,
-            'share_contact_with_approved_customers': _shareContact,
-          })
-          .select()
-          .single();
+        'business_id': _businessId,
+        'marketplace_profile_visible': _profileVisible,
+        'share_contact_with_approved_customers': _shareContact,
+      }).select().single();
 
       if (saved['business_id']?.toString() != _businessId) {
         throw Exception('The privacy settings were not saved.');
@@ -1089,14 +1169,12 @@ class _ButcherNotificationSettingsPageState
       final saved = await Supabase.instance.client
           .from('business_app_settings')
           .upsert({
-            'business_id': _businessId,
-            'notify_new_orders': _orders,
-            'notify_quote_activity': _quotes,
-            'notify_payment_claims': _payments,
-            'notify_invoice_updates': _invoices,
-          })
-          .select()
-          .single();
+        'business_id': _businessId,
+        'notify_new_orders': _orders,
+        'notify_quote_activity': _quotes,
+        'notify_payment_claims': _payments,
+        'notify_invoice_updates': _invoices,
+      }).select().single();
 
       if (saved['business_id']?.toString() != _businessId) {
         throw Exception('The notification settings were not saved.');
@@ -1204,8 +1282,10 @@ class _SettingsFormScaffold extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        title: Text(title),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -1215,7 +1295,10 @@ class _SettingsFormScaffold extends StatelessWidget {
               side: const BorderSide(color: Color(0xFFE0E0E0)),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Padding(padding: const EdgeInsets.all(18), child: child),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: child,
+            ),
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -1257,7 +1340,10 @@ class _SectionHeading extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }

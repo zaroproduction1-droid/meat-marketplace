@@ -455,7 +455,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   size: 15,
                   color: stage['complete'] == true
                       ? const Color(0xFF2E7D32)
-                      : const Color(0xFF777777),
+                      : const Color(0xFF666A70),
                 ),
                 const SizedBox(width: 5),
                 Text(
@@ -467,7 +467,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         ? const Color(0xFFB3261E)
                         : stage['complete'] == true
                         ? const Color(0xFF2E7D32)
-                        : const Color(0xFF666666),
+                        : const Color(0xFF666A70),
                   ),
                 ),
               ],
@@ -994,7 +994,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               final messages = _issueMessages(issue);
 
               return Dialog(
-                backgroundColor: const Color(0xFFF7F7F5),
+                backgroundColor: const Color(0xFFF7F8FA),
                 insetPadding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 24,
@@ -1024,7 +1024,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF5EAEA),
-                                borderRadius: BorderRadius.circular(9),
+                                borderRadius: BorderRadius.circular(11),
                               ),
                               child: const Icon(
                                 Icons.forum_outlined,
@@ -1124,7 +1124,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 decoration: InputDecoration(
                                   hintText: 'Message supplier...',
                                   filled: true,
-                                  fillColor: const Color(0xFFF8F8F6),
+                                  fillColor: const Color(0xFFFAFAFB),
                                   isDense: true,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -1679,7 +1679,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: const Color(0xFFFAFAFB),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE3E3DF)),
       ),
@@ -1811,9 +1811,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F6),
+                  color: const Color(0xFFFAFAFB),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0DD)),
+                  border: Border.all(color: const Color(0xFFE3E5E8)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2453,7 +2453,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   color: selected
                       ? const Color(0xFFF5EAEA)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(11),
                   child: InkWell(
                     onTap: () {
                       setIssuesState(() {
@@ -2574,7 +2574,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0DD)),
+                    border: Border.all(color: const Color(0xFFE3E5E8)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2628,7 +2628,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               }
 
               return Scaffold(
-                backgroundColor: const Color(0xFFF7F7F5),
+                backgroundColor: const Color(0xFFF7F8FA),
                 appBar: AppBar(
                   backgroundColor: Colors.white,
                   surfaceTintColor: Colors.white,
@@ -2653,7 +2653,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 ),
                 body: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
+                    constraints: const BoxConstraints(maxWidth: 1240),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: LayoutBuilder(
@@ -2665,7 +2665,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFE0E0DD),
+                                color: const Color(0xFFE3E5E8),
                               ),
                             ),
                             child: Column(
@@ -2743,17 +2743,38 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Orders',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.shopping_bag_outlined,
+              color: Color(0xFF741C1C),
+              size: 22,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Orders',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
-          TextButton.icon(
+          OutlinedButton.icon(
             onPressed: _openIssuesPanel,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF741C1C),
+              side: const BorderSide(color: Color(0xFFD9DDE1)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -2803,9 +2824,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 7),
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1180),
+                        constraints: const BoxConstraints(maxWidth: 1240),
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
@@ -2820,7 +2841,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   ),
                             isDense: true,
                             filled: true,
-                            fillColor: const Color(0xFFF8F8F6),
+                            fillColor: const Color(0xFFFAFAFB),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(9),
                               borderSide: const BorderSide(
@@ -2844,8 +2865,20 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         isScrollable: true,
                         tabAlignment: TabAlignment.start,
                         labelColor: const Color(0xFF741C1C),
-                        unselectedLabelColor: const Color(0xFF666666),
+                        unselectedLabelColor: const Color(0xFF666A70),
                         indicatorColor: const Color(0xFF741C1C),
+                        indicatorWeight: 3,
+                        labelPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                        ),
+                        labelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                         tabs: [for (final tab in _tabs) _buildTab(tab)],
                       ),
                     ),
@@ -2966,7 +2999,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       onRefresh: _loadOrders,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1150),
+          constraints: const BoxConstraints(maxWidth: 1240),
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
             itemCount: orders.length,
@@ -3000,7 +3033,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             border: Border.all(
               color: _hasOpenIssues(order)
                   ? const Color(0xFFD8A0A0)
-                  : const Color(0xFFE0E0DD),
+                  : const Color(0xFFE3E5E8),
             ),
           ),
           child: LayoutBuilder(
@@ -3217,8 +3250,15 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 9,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -3265,7 +3305,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9F9F7),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE4E4E1)),
+                      border: Border.all(color: const Color(0xFFE3E5E8)),
                     ),
                     child: Row(
                       children: [
@@ -3335,8 +3375,15 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 9,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: ListView(
           children: [
@@ -3488,7 +3535,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -3506,7 +3553,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
             ),
             child: Row(
               children: [
@@ -3570,7 +3617,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
+              constraints: const BoxConstraints(maxWidth: 1240),
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
@@ -3668,7 +3715,7 @@ class _TimelineChip extends StatelessWidget {
         ? const Color(0xFFB3261E)
         : complete
         ? const Color(0xFF2E7D32)
-        : const Color(0xFF777777);
+        : const Color(0xFF666A70);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),

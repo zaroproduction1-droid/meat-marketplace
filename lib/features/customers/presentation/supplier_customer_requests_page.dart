@@ -1169,7 +1169,14 @@ class _SupplierCustomerRequestsPageState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x07000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1193,7 +1200,7 @@ class _SupplierCustomerRequestsPageState
                 hintText:
                     'Search CutLink members or external customers, then press Enter',
                 filled: true,
-                fillColor: const Color(0xFFF8F8F6),
+                fillColor: const Color(0xFFFAFAFB),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
                   borderSide: const BorderSide(color: Color(0xFFDADAD6)),
@@ -1235,29 +1242,57 @@ class _SupplierCustomerRequestsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Customers & Accounts',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.people_alt_outlined, color: _darkRed, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Customers & Accounts',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
-          FilledButton.icon(
-            onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Add External Customer'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: FilledButton.icon(
+              onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
+              style: FilledButton.styleFrom(
+                backgroundColor: _darkRed,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: const Text(
+                'Add External Customer',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: _loadPage,
-            tooltip: 'Refresh',
+            tooltip: 'Refresh customers and accounts',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+        ),
       ),
       body: _buildBody(),
     );
@@ -1348,8 +1383,15 @@ class _SupplierCustomerRequestsPageState
           return Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x07000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -1434,7 +1476,7 @@ class _SupplierCustomerRequestsPageState
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               child: Column(

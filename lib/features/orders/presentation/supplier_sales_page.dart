@@ -3285,44 +3285,129 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Sales',
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Create direct supplier sales, manage open sales and quotes, then move live orders through the Orders workflow.',
-                    style: TextStyle(color: Color(0xFF666666), height: 1.4),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Create and manage supplier sales directly from this workspace.',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontWeight: FontWeight.w600,
-                          ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE3E5E8)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x08000000),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.end,
-                        children: [
-                          _compactTopButton(
-                            icon: Icons.description_outlined,
-                            label: 'Quotes',
-                            onTap: _openQuotes,
-                          ),
-                          _ordersButton(),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final narrow = constraints.maxWidth < 760;
+
+                        final titleBlock = Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8EDEE),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.point_of_sale_outlined,
+                                color: _darkRed,
+                                size: 23,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Sales',
+                                    style: TextStyle(
+                                      fontSize: 23,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'Create direct sales, manage open sales and quotes, then move live orders into fulfilment.',
+                                    style: TextStyle(
+                                      color: Color(0xFF666A70),
+                                      fontSize: 12.5,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+
+                        final actions = Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.end,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: () => _openNewSale(),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.add_shopping_cart_outlined,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'New Sale',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            _compactTopButton(
+                              icon: Icons.description_outlined,
+                              label: 'Quotes',
+                              onTap: _openQuotes,
+                            ),
+                            _ordersButton(),
+                          ],
+                        );
+
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              titleBlock,
+                              const SizedBox(height: 14),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: actions,
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: titleBlock),
+                            const SizedBox(width: 18),
+                            actions,
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   if (_openSaleCount > 0) _openSalesSwitcher(),
                   if (_activeSale != null) _activeSalePanel(),
                   const SizedBox(height: 6),
@@ -3335,7 +3420,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE0E0DD)),
+                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x07000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3391,7 +3483,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE0E0DD)),
+                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x07000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3546,18 +3645,24 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text(
-          'Supplier Sales',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          'Sales',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
         ),
         actions: [
           IconButton(
             onPressed: _loadStock,
-            tooltip: 'Refresh',
+            tooltip: 'Refresh sales workspace',
             icon: const Icon(Icons.refresh),
           ),
           const SizedBox(width: 8),

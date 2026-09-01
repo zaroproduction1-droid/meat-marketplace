@@ -4,77 +4,198 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupplierSettingsPage extends StatelessWidget {
   const SupplierSettingsPage({super.key});
 
+  static const _darkRed = Color(0xFF741C1C);
+  static const _canvas = Color(0xFFF7F8FA);
+  static const _border = Color(0xFFE3E5E8);
+  static const _muted = Color(0xFF666A70);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'Supplier Settings',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Manage your business profile, invoices, privacy and notifications.',
-            style: TextStyle(color: Color(0xFF666666), height: 1.4),
-          ),
-          const SizedBox(height: 20),
-          _SettingsTile(
-            icon: Icons.business_outlined,
-            title: 'Business Profile',
-            subtitle:
-                'Trading name, legal name, contact details and business address.',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SupplierProfileSettingsPage(),
+      backgroundColor: _canvas,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.settings_outlined, color: _darkRed, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Settings',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: _border),
+        ),
+      ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
-          _SettingsTile(
-            icon: Icons.receipt_long_outlined,
-            title: 'Invoice Configuration',
-            subtitle:
-                'ABN, licence number, invoice contact details, invoice address and banking details.',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SupplierInvoiceConfigurationPage(),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF8EEEE),
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                      child: Icon(
+                        Icons.tune_outlined,
+                        color: _darkRed,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Supplier Settings',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Manage your business profile, invoice configuration, privacy and notification preferences.',
+                            style: TextStyle(
+                              color: _muted,
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 18),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final twoColumns = constraints.maxWidth >= 760;
+
+                  final cards = [
+                    _SettingsTile(
+                      icon: Icons.business_outlined,
+                      title: 'Business Profile',
+                      subtitle:
+                          'Trading name, legal name, contact details and business address.',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SupplierProfileSettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'Invoice Configuration',
+                      subtitle:
+                          'ABN, licence number, invoice contact details, invoice address and banking details.',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const SupplierInvoiceConfigurationPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy',
+                      subtitle:
+                          'Control marketplace profile visibility and customer access to contact details.',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SupplierPrivacySettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.notifications_outlined,
+                      title: 'Notifications',
+                      subtitle:
+                          'Choose which order, quote, payment and invoice activity should notify you.',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const SupplierNotificationSettingsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ];
+
+                  if (!twoColumns) {
+                    return Column(
+                      children: [
+                        for (var i = 0; i < cards.length; i++) ...[
+                          cards[i],
+                          if (i != cards.length - 1) const SizedBox(height: 12),
+                        ],
+                      ],
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: cards[0]),
+                          const SizedBox(width: 14),
+                          Expanded(child: cards[1]),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: cards[2]),
+                          const SizedBox(width: 14),
+                          Expanded(child: cards[3]),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
-          _SettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Privacy',
-            subtitle:
-                'Control marketplace profile visibility and customer access to contact details.',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SupplierPrivacySettingsPage(),
-                ),
-              );
-            },
-          ),
-          _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            subtitle:
-                'Choose which order, quote, payment and invoice activity should notify you.',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SupplierNotificationSettingsPage(),
-                ),
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -93,36 +214,45 @@ class _SettingsTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  static const _darkRed = Color(0xFF741C1C);
+  static const _border = Color(0xFFE3E5E8);
+  static const _muted = Color(0xFF666A70);
+
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
-      ),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Padding(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 142),
           padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _border),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x07000000),
+                blurRadius: 10,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B1E1E).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFF8EEEE),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: const SizedBox(),
+                child: Icon(icon, color: _darkRed, size: 22),
               ),
-              Transform.translate(
-                offset: const Offset(-35, 0),
-                child: Icon(icon, color: const Color(0xFF8B1E1E)),
-              ),
-              const SizedBox(width: 0),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,23 +260,32 @@ class _SettingsTile extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E2329),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: Color(0xFF666666),
-                        height: 1.35,
+                        color: _muted,
+                        fontSize: 12.5,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              const Icon(Icons.chevron_right),
+              const SizedBox(width: 10),
+              const Padding(
+                padding: EdgeInsets.only(top: 9),
+                child: Icon(
+                  Icons.chevron_right,
+                  color: Color(0xFF8A8F96),
+                  size: 20,
+                ),
+              ),
             ],
           ),
         ),
@@ -889,35 +1028,129 @@ class _SettingsFormScaffold extends StatelessWidget {
   final VoidCallback onSave;
   final Widget child;
 
+  static const _darkRed = Color(0xFF741C1C);
+  static const _canvas = Color(0xFFF7F8FA);
+  static const _border = Color(0xFFE3E5E8);
+  static const _muted = Color(0xFF666A70);
+
+  IconData get _pageIcon {
+    switch (title) {
+      case 'Business Profile':
+        return Icons.business_outlined;
+      case 'Invoice Configuration':
+        return Icons.receipt_long_outlined;
+      case 'Privacy':
+        return Icons.privacy_tip_outlined;
+      case 'Notifications':
+        return Icons.notifications_outlined;
+      default:
+        return Icons.settings_outlined;
+    }
+  }
+
+  String get _pageDescription {
+    switch (title) {
+      case 'Business Profile':
+        return 'Maintain the supplier details used throughout CutLink.';
+      case 'Invoice Configuration':
+        return 'Manage the supplier information and payment details shown on invoices.';
+      case 'Privacy':
+        return 'Control how your supplier profile and contact information are shared.';
+      case 'Notifications':
+        return 'Choose which supplier activity should generate notifications.';
+      default:
+        return 'Manage this supplier setting.';
+    }
+  }
+
+  AppBar _appBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleSpacing: 8,
+      title: Row(
+        children: [
+          Icon(_pageIcon, color: _darkRed, size: 21),
+          const SizedBox(width: 9),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+          ),
+        ],
+      ),
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(1),
+        child: Divider(height: 1, thickness: 1, color: _border),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: const Center(child: CircularProgressIndicator()),
+        backgroundColor: _canvas,
+        appBar: _appBar(),
+        body: const Center(child: CircularProgressIndicator(color: _darkRed)),
       );
     }
 
     if (error != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        backgroundColor: _canvas,
+        appBar: _appBar(),
         body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF8B1E1E)),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: onRetry,
-                  child: const Text('Try Again'),
-                ),
-              ],
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Container(
+              margin: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x07000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, color: _darkRed, size: 30),
+                  const SizedBox(height: 12),
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF4B4F55),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
+                    ),
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text(
+                      'Try Again',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -925,43 +1158,123 @@ class _SettingsFormScaffold extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(padding: const EdgeInsets.all(18), child: child),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: saving ? null : onSave,
-              icon: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(
-                saving ? 'Saving...' : 'Save Changes',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
+      backgroundColor: _canvas,
+      appBar: _appBar(),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 980),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8EEEE),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(_pageIcon, color: _darkRed, size: 23),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            _pageDescription,
+                            style: const TextStyle(
+                              color: _muted,
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: child,
+              ),
+              const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  height: 48,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _darkRed.withValues(alpha: 0.45),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: saving ? null : onSave,
+                    icon: saving
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined, size: 19),
+                    label: Text(
+                      saving ? 'Saving...' : 'Save Changes',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
@@ -976,9 +1289,26 @@ class _SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFF741C1C),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1E2329),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -990,7 +1320,7 @@ Widget _lockedEmailField(
   String helperText,
 ) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.only(bottom: 14),
     child: TextField(
       controller: controller,
       readOnly: true,
@@ -998,10 +1328,18 @@ Widget _lockedEmailField(
       decoration: InputDecoration(
         labelText: label,
         helperText: helperText,
+        helperMaxLines: 2,
         prefixIcon: const Icon(Icons.lock_outline),
         filled: true,
-        fillColor: const Color(0xFFF1F1F1),
-        border: const OutlineInputBorder(),
+        fillColor: const Color(0xFFF5F6F7),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+        ),
       ),
     ),
   );
@@ -1014,14 +1352,23 @@ Widget _field(
   int maxLines = 1,
 }) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.only(bottom: 14),
     child: TextField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+        ),
       ),
     ),
   );

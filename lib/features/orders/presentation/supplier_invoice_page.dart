@@ -973,7 +973,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           child: Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF666666),
+              color: const Color(0xFF666A70),
               fontSize: 11.5,
               fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
             ),
@@ -1012,8 +1012,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           'Issue ${_invoice?['invoice_number'] ?? 'this invoice'} to '
           '${_invoice?['customer_name_snapshot'] ?? 'the customer'}?\n\n'
           'After issuing, the tax and final invoice total are locked. '
-          'If this is a CutLink member, the invoice will automatically '
-          'appear in their Accounts as outstanding.',
+          'For a linked CutLink butcher, you can then use Send to Butcher '
+          'to make the invoice visible in their account.',
         ),
         actions: [
           TextButton(
@@ -1098,29 +1098,58 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Text(
-          _invoice?['invoice_number']?.toString() ?? 'Supplier Invoice',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            const Icon(Icons.receipt_long_outlined, color: _darkRed, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _invoice?['invoice_number']?.toString() ?? 'Supplier Invoice',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           FilledButton.icon(
             onPressed: _isLoading || _invoice == null ? null : _printInvoice,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.print_outlined),
-            label: const Text('Print Invoice'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.print_outlined, size: 18),
+            label: const Text(
+              'Print Invoice',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: _buildBody(),
     );
@@ -1239,8 +1268,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1273,8 +1309,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1301,8 +1344,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -1358,8 +1408,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(14),
@@ -1461,7 +1518,14 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 onPressed: _canSendToButcher && !_isSaving
                     ? _sendInvoiceToButcher
                     : null,
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 icon: Icon(
                   _sentToButcher
                       ? Icons.mark_email_read_outlined
@@ -1471,8 +1535,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   !_hasButcherAccount
                       ? 'External Customer'
                       : _sentToButcher
-                      ? 'Sent to Customer'
-                      : 'Send Invoice to Customer',
+                      ? 'Sent to Butcher'
+                      : 'Send to Butcher',
                 ),
               ),
               const SizedBox(height: 7),
@@ -1593,11 +1657,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
 
     final header = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Row(
         children: [
@@ -1669,7 +1733,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             padding: const EdgeInsets.all(14),
             children: [
               header,
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               customerSummaryPanel(),
               const SizedBox(height: 10),
               invoiceSummaryPanel(),
@@ -1683,7 +1747,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1240),
+            constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(

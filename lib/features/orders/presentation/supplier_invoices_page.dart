@@ -673,8 +673,16 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE0E0DD)),
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFE3E5E8)),
             borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x07000000),
+                blurRadius: 10,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -860,38 +868,57 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1150),
+        constraints: const BoxConstraints(maxWidth: 1320),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Invoices',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Manage supplier invoices, tax status and payment status.',
-                          style: TextStyle(color: Color(0xFF666666)),
-                        ),
-                      ],
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _loadInvoices,
-                    tooltip: 'Refresh',
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      color: _darkRed,
+                      size: 24,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Invoice Management',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Prepare, issue, send and track customer invoices and receivables.',
+                            style: TextStyle(
+                              color: Color(0xFF666A70),
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -909,7 +936,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                           icon: const Icon(Icons.close),
                         ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0xFFFAFAFB),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
@@ -922,25 +949,43 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               ),
             ),
             const SizedBox(height: 14),
-            Material(
-              color: Colors.white,
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: _darkRed,
-                indicatorColor: _darkRed,
-                tabs: [
-                  Tab(text: 'All (${_countForStatus('all')})'),
-                  Tab(text: 'Draft (${_countForStatus('draft')})'),
-                  Tab(text: 'Ready (${_countForStatus('ready')})'),
-                  Tab(text: 'Issued (${_countForStatus('issued')})'),
-                  Tab(text: 'Part Paid (${_countForStatus('part_paid')})'),
-                  Tab(text: 'Paid (${_countForStatus('paid')})'),
-                  Tab(text: 'Void (${_countForStatus('void')})'),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x07000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: _darkRed,
+                  unselectedLabelColor: const Color(0xFF666A70),
+                  indicatorColor: _darkRed,
+                  indicatorWeight: 3,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  tabs: [
+                    Tab(text: 'All (${_countForStatus('all')})'),
+                    Tab(text: 'Draft (${_countForStatus('draft')})'),
+                    Tab(text: 'Ready (${_countForStatus('ready')})'),
+                    Tab(text: 'Issued (${_countForStatus('issued')})'),
+                    Tab(text: 'Part Paid (${_countForStatus('part_paid')})'),
+                    Tab(text: 'Paid (${_countForStatus('paid')})'),
+                    Tab(text: 'Void (${_countForStatus('void')})'),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child: filtered.isEmpty
                   ? Center(
@@ -990,13 +1035,34 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Supplier Invoices',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.request_quote_outlined, color: _darkRed, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Invoices',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: _loadInvoices,
+            tooltip: 'Refresh invoices',
+            icon: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 10),
+        ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
         ),
       ),
       body: _buildBody(),

@@ -1121,7 +1121,17 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                       entered == null || entered <= 0 || !validWholeNumber
                       ? null
                       : () => Navigator.of(dialogContext).pop(entered),
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _darkRed,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 13,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   icon: const Icon(Icons.add_shopping_cart),
                   label: const Text('Add to Order'),
                 ),
@@ -1468,7 +1478,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
           label,
           style: TextStyle(
             color: label == 'Standard Price'
-                ? const Color(0xFF666666)
+                ? const Color(0xFF666A70)
                 : _darkRed,
             fontWeight: FontWeight.w700,
             fontSize: 12,
@@ -1589,7 +1599,7 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
                       style: TextStyle(
                         color: relationship == 'Approved customer'
                             ? const Color(0xFF2E7D32)
-                            : const Color(0xFF666666),
+                            : const Color(0xFF666A70),
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -1874,13 +1884,22 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
     final activeFilters = _activeFilterCount();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Choose Supplier',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.compare_arrows_outlined, color: _darkRed, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Compare Suppliers',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -1888,8 +1907,12 @@ class _CompareOffersPageState extends State<CompareOffersPage> {
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

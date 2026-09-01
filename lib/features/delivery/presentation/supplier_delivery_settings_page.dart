@@ -113,7 +113,11 @@ class _SupplierDeliverySettingsPageState
             delivery_fee,
             lead_time_days,
             active,
-            notes
+            notes,
+            supplier_delivery_zone_postcodes(
+              id,
+              postcode
+            )
           ''')
           .eq('supplier_business_id', supplierBusinessId)
           .order('zone_name');
@@ -313,12 +317,12 @@ class _SupplierDeliverySettingsPageState
 
     if (_minimumOrderController.text.trim().isNotEmpty &&
         minimumOrder == null) {
-      _showMessage('Enter a valid minimum order amount.');
+      _showMessage('Enter a valid minimum order value for delivery.');
       return;
     }
 
     if (minimumOrder != null && minimumOrder < 0) {
-      _showMessage('Minimum order cannot be negative.');
+      _showMessage('Minimum order value for delivery cannot be negative.');
       return;
     }
 
@@ -386,6 +390,77 @@ class _SupplierDeliverySettingsPageState
     }
   }
 
+  List<String> _zonePostcodes(Map<String, dynamic> zone) {
+    final raw = zone['supplier_delivery_zone_postcodes'];
+
+    if (raw is! List) {
+      return [];
+    }
+
+    final postcodes = raw
+        .whereType<Map>()
+        .map((item) => item['postcode']?.toString().trim())
+        .whereType<String>()
+        .where((postcode) => postcode.isNotEmpty)
+        .toSet()
+        .toList();
+
+    postcodes.sort();
+
+    return postcodes;
+  }
+
+  List<String>? _parsePostcodes(String rawText) {
+    final rawParts = rawText
+        .split(RegExp(r'[\s,;]+'))
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+
+    final unique = <String>{};
+
+    for (final postcode in rawParts) {
+      if (!RegExp(r'^\d{4}$').hasMatch(postcode)) {
+        return null;
+      }
+
+      unique.add(postcode);
+    }
+
+    final result = unique.toList()..sort();
+
+    return result;
+  }
+
+  Future<void> _replaceZonePostcodes({
+    required String zoneId,
+    required List<String> postcodes,
+  }) async {
+    final client = Supabase.instance.client;
+
+    await client
+        .from('supplier_delivery_zone_postcodes')
+        .delete()
+        .eq('delivery_zone_id', zoneId);
+
+    if (postcodes.isEmpty) {
+      return;
+    }
+
+    await client
+        .from('supplier_delivery_zone_postcodes')
+        .insert(
+          postcodes
+              .map(
+                (postcode) => {
+                  'delivery_zone_id': zoneId,
+                  'postcode': postcode,
+                },
+              )
+              .toList(),
+        );
+  }
+
   Future<void> _showZoneDialog({Map<String, dynamic>? zone}) async {
     final nameController = TextEditingController(
       text: zone?['zone_name']?.toString() ?? '',
@@ -401,6 +476,9 @@ class _SupplierDeliverySettingsPageState
     );
     final notesController = TextEditingController(
       text: zone?['notes']?.toString() ?? '',
+    );
+    final postcodeController = TextEditingController(
+      text: zone == null ? '' : _zonePostcodes(zone).join(', '),
     );
 
     var active = zone?['active'] != false;
@@ -434,10 +512,18 @@ class _SupplierDeliverySettingsPageState
                 final minimum = _optionalDouble(minimumController.text);
                 final fee = _optionalDouble(feeController.text);
                 final lead = _optionalInt(leadController.text);
+                final postcodes = _parsePostcodes(postcodeController.text);
+
+                if (postcodes == null) {
+                  _showMessage('Every postcode must contain exactly 4 digits.');
+                  return;
+                }
 
                 if (minimumController.text.trim().isNotEmpty &&
                     minimum == null) {
-                  _showMessage('Enter a valid zone minimum order.');
+                  _showMessage(
+                    'Enter a valid minimum order value for this delivery zone.',
+                  );
                   return;
                 }
 
@@ -452,7 +538,9 @@ class _SupplierDeliverySettingsPageState
                 }
 
                 if (minimum != null && minimum < 0) {
-                  _showMessage('Minimum order cannot be negative.');
+                  _showMessage(
+                    'Minimum order value for delivery cannot be negative.',
+                  );
                   return;
                 }
 
@@ -484,18 +572,31 @@ class _SupplierDeliverySettingsPageState
                     'updated_at': DateTime.now().toUtc().toIso8601String(),
                   };
 
+                  late String savedZoneId;
+
                   if (zone == null) {
-                    await Supabase.instance.client
+                    final insertedZone = await Supabase.instance.client
                         .from('supplier_delivery_zones')
-                        .insert(payload);
+                        .insert(payload)
+                        .select('id')
+                        .single();
+
+                    savedZoneId = insertedZone['id'].toString();
                   } else {
+                    savedZoneId = zone['id'].toString();
+
                     await Supabase.instance.client
                         .from('supplier_delivery_zones')
                         .update(payload)
-                        .eq('id', zone['id']);
+                        .eq('id', savedZoneId);
                   }
 
-                  if (!dialogContext.mounted) {
+                  await _replaceZonePostcodes(
+                    zoneId: savedZoneId,
+                    postcodes: postcodes,
+                  );
+
+                  if (!mounted || !dialogContext.mounted) {
                     return;
                   }
 
@@ -546,7 +647,8 @@ class _SupplierDeliverySettingsPageState
                             decimal: true,
                           ),
                           decoration: const InputDecoration(
-                            labelText: 'Minimum order for this zone',
+                            labelText:
+                                'Minimum order value for delivery (inc GST)',
                             prefixText: '\$',
                             border: OutlineInputBorder(),
                           ),
@@ -558,7 +660,7 @@ class _SupplierDeliverySettingsPageState
                             decimal: true,
                           ),
                           decoration: const InputDecoration(
-                            labelText: 'Delivery fee',
+                            labelText: 'Delivery fee (inc GST)',
                             prefixText: '\$',
                             border: OutlineInputBorder(),
                           ),
@@ -571,6 +673,19 @@ class _SupplierDeliverySettingsPageState
                             labelText: 'Lead time in days',
                             hintText:
                                 'Leave blank to use the default lead time',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: postcodeController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Postcodes',
+                            hintText: 'Example: 2164, 2165, 2166, 2170',
+                            helperText:
+                                'Separate postcodes with commas, spaces or new lines.',
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -634,6 +749,7 @@ class _SupplierDeliverySettingsPageState
       feeController.dispose();
       leadController.dispose();
       notesController.dispose();
+      postcodeController.dispose();
     }
   }
 
@@ -754,6 +870,38 @@ class _SupplierDeliverySettingsPageState
     );
   }
 
+  Widget finalPostcodesWidget(Map<String, dynamic> zone) {
+    final postcodes = _zonePostcodes(zone);
+
+    if (postcodes.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Text(
+          'Postcodes: None',
+          style: TextStyle(
+            color: Color(0xFF9A6700),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    final preview = postcodes.length <= 8
+        ? postcodes.join(', ')
+        : '${postcodes.take(8).join(', ')} +${postcodes.length - 8} more';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        'Postcodes: $preview',
+        style: const TextStyle(
+          color: Color(0xFF555555),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Widget _buildZones() {
     if (_zones.isEmpty) {
       return Container(
@@ -809,9 +957,11 @@ class _SupplierDeliverySettingsPageState
                         runSpacing: 6,
                         children: [
                           Text(
-                            'Minimum: ${_formatMoney(zone['minimum_order_amount'])}',
+                            'Delivery minimum: ${_formatMoney(zone['minimum_order_amount'])} inc GST',
                           ),
-                          Text('Fee: ${_formatMoney(zone['delivery_fee'])}'),
+                          Text(
+                            'Fee: ${_formatMoney(zone['delivery_fee'])} inc GST',
+                          ),
                           Text(
                             zone['lead_time_days'] == null
                                 ? 'Lead time: Default'
@@ -820,6 +970,7 @@ class _SupplierDeliverySettingsPageState
                           Text(zone['active'] == true ? 'Active' : 'Inactive'),
                         ],
                       ),
+                      finalPostcodesWidget(zone),
                       if (zone['notes'] != null &&
                           zone['notes'].toString().trim().isNotEmpty) ...[
                         const SizedBox(height: 8),
@@ -857,22 +1008,35 @@ class _SupplierDeliverySettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'Delivery Settings',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(Icons.local_shipping_outlined, color: _darkRed, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Delivery',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
-            tooltip: 'Refresh',
+            tooltip: 'Refresh delivery settings',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+        ),
       ),
       body: _buildBody(),
     );
@@ -904,243 +1068,243 @@ class _SupplierDeliverySettingsPageState
       );
     }
 
-    Widget generalPanel() {
-      return _sectionCard(
-        title: 'General Delivery Rules',
-        subtitle:
-            'Minimum order, lead time, cut-off time, pickup and delivery availability.',
-        child: Column(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _minimumOrderController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Default minimum order',
-                      prefixText: r'$',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE3E5E8)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x07000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _leadTimeController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Lead time (days)',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            InkWell(
-              borderRadius: BorderRadius.circular(4),
-              onTap: _pickCutoffTime,
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Order cut-off time',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.schedule),
-                  isDense: true,
-                ),
-                child: Text(
-                  _cutoffTime == null
-                      ? 'No cut-off time set'
-                      : _cutoffTime!.format(context),
-                ),
+                ],
               ),
-            ),
-            if (_cutoffTime != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () => setState(() => _cutoffTime = null),
-                  child: const Text('Clear cut-off'),
-                ),
-              ),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              value: _pickupAvailable,
-              title: const Text('Pickup available'),
-              onChanged: (value) => setState(() => _pickupAvailable = value),
-            ),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              value: _settingsActive,
-              title: const Text('Delivery settings active'),
-              onChanged: (value) => setState(() => _settingsActive = value),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _notesController,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Delivery notes',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget daysPanel() {
-      return _sectionCard(
-        title: 'Delivery Days',
-        subtitle: 'Choose the normal delivery days for your business.',
-        child: _buildDeliveryDays(),
-      );
-    }
-
-    Widget zonesPanel() {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 11, 10, 9),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Expanded(
+                  Icon(Icons.route_outlined, color: _darkRed, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Delivery Zones',
+                          'Delivery Configuration',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 20,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        SizedBox(height: 3),
                         Text(
-                          'Minimum order, fee and lead time by area.',
+                          'Manage delivery rules, days, zones, cut-off times and pickup availability.',
                           style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 11.5,
+                            fontSize: 12.5,
+                            color: Color(0xFF666A70),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _showZoneDialog(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                      visualDensity: VisualDensity.compact,
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            _sectionCard(
+              title: 'General Delivery Rules',
+              subtitle:
+                  'Set the minimum total order value required for delivery, lead time, cut-off time and pickup availability.',
+              child: Column(
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 650;
+
+                      final minimumField = TextField(
+                        controller: _minimumOrderController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText:
+                              'Default minimum order value for delivery (inc GST)',
+                          prefixText: '\$',
+                          hintText: 'Example: 300',
+                          border: OutlineInputBorder(),
+                        ),
+                      );
+
+                      final leadField = TextField(
+                        controller: _leadTimeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Default lead time (days)',
+                          hintText: 'Example: 1',
+                          border: OutlineInputBorder(),
+                        ),
+                      );
+
+                      if (narrow) {
+                        return Column(
+                          children: [
+                            minimumField,
+                            const SizedBox(height: 14),
+                            leadField,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: minimumField),
+                          const SizedBox(width: 14),
+                          Expanded(child: leadField),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: _pickCutoffTime,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Order cut-off time',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.schedule),
+                      ),
+                      child: Text(
+                        _cutoffTime == null
+                            ? 'No cut-off time set'
+                            : _cutoffTime!.format(context),
+                      ),
                     ),
-                    icon: const Icon(Icons.add, size: 17),
-                    label: const Text('Add Zone'),
+                  ),
+                  if (_cutoffTime != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _cutoffTime = null;
+                          });
+                        },
+                        child: const Text('Clear cut-off time'),
+                      ),
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _pickupAvailable,
+                    title: const Text('Pickup available'),
+                    subtitle: const Text(
+                      'Butchers can collect orders directly from your business.',
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _pickupAvailable = value;
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _settingsActive,
+                    title: const Text('Delivery settings active'),
+                    subtitle: const Text(
+                      'Turn this off if your delivery information should not be shown to butchers.',
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _settingsActive = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _notesController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Delivery notes',
+                      hintText:
+                          'Example: Orders placed after the cut-off move to the next delivery run.',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: _buildZones(),
+
+            const SizedBox(height: 18),
+
+            _sectionCard(
+              title: 'Delivery Days',
+              subtitle:
+                  'Choose the days your business normally delivers. These will later help calculate the next available delivery.',
+              child: _buildDeliveryDays(),
+            ),
+
+            const SizedBox(height: 18),
+
+            _sectionCard(
+              title: 'Delivery Zones',
+              subtitle:
+                  'Create areas with their own minimum total order value for delivery, delivery fee and lead time.',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: () => _showZoneDialog(),
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Delivery Zone'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildZones(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            FilledButton.icon(
+              onPressed: _isSaving ? null : _saveSettings,
+              style: FilledButton.styleFrom(
+                backgroundColor: _darkRed,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 24,
+                ),
+              ),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(
+                _isSaving ? 'Saving...' : 'Save Delivery Settings',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
-      );
-    }
-
-    final saveButton = SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: _isSaving ? null : _saveSettings,
-        style: FilledButton.styleFrom(
-          backgroundColor: _darkRed,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-        icon: _isSaving
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.save_outlined),
-        label: Text(_isSaving ? 'Saving...' : 'Save Delivery Settings'),
       ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final desktop = constraints.maxWidth >= 920;
-
-        if (!desktop) {
-          return ListView(
-            padding: const EdgeInsets.all(14),
-            children: [
-              generalPanel(),
-              const SizedBox(height: 10),
-              daysPanel(),
-              const SizedBox(height: 10),
-              SizedBox(height: 430, child: zonesPanel()),
-              const SizedBox(height: 10),
-              saveButton,
-            ],
-          );
-        }
-
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 5,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                generalPanel(),
-                                const SizedBox(height: 10),
-                                daysPanel(),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(flex: 5, child: zonesPanel()),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  saveButton,
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

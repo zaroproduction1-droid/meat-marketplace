@@ -20,7 +20,6 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _suppliers = [];
-  Duration _reapplyCooldown = const Duration(hours: 24);
 
   @override
   void initState() {
@@ -47,13 +46,6 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     });
 
     try {
-      final cooldownSecondsResponse = await Supabase.instance.client.rpc(
-        'cutlink_vip_reapply_cooldown_seconds',
-      );
-
-      final cooldownSeconds =
-          int.tryParse(cooldownSecondsResponse?.toString() ?? '') ?? 86400;
-
       final response = await Supabase.instance.client.rpc(
         'list_suppliers_for_butcher_vip',
       );
@@ -61,7 +53,6 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       if (!mounted) return;
 
       setState(() {
-        _reapplyCooldown = Duration(seconds: cooldownSeconds);
         _suppliers = _maps(response);
         _loading = false;
       });
@@ -104,7 +95,8 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
 
       return values.any(
         (value) =>
-            value != null && value.toString().toLowerCase().contains(search),
+            value != null &&
+            value.toString().toLowerCase().contains(search),
       );
     }).toList();
   }
@@ -159,7 +151,8 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     final declined = _date(declinedAt);
     if (declined == null) return null;
 
-    final remaining = declined.add(_reapplyCooldown).difference(DateTime.now());
+    final remaining =
+        declined.add(const Duration(hours: 24)).difference(DateTime.now());
 
     if (remaining.isNegative || remaining.inSeconds <= 0) return null;
     return remaining;
@@ -181,9 +174,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
         supplier['credit_application_status']?.toString() ?? 'not_requested';
 
     if (vipStatus == 'pending') {
-      _message(
-        'You already have a pending VIP application with this supplier.',
-      );
+      _message('You already have a pending VIP application with this supplier.');
       return;
     }
 
@@ -191,7 +182,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       final remaining = _cooldownRemaining(supplier['vip_declined_at']);
       if (remaining != null) {
         _message(
-          'You can apply again after the cooldown. '
+          'You can apply again after the 24-hour cooldown. '
           '${_cooldownText(remaining)}.',
         );
         return;
@@ -212,7 +203,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       final remaining = _cooldownRemaining(supplier['credit_declined_at']);
       if (remaining != null) {
         _message(
-          'You can apply for credit again after the cooldown. '
+          'You can apply for credit again after the 24-hour cooldown. '
           '${_cooldownText(remaining)}.',
         );
         return;
@@ -234,21 +225,37 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   void _message(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text(
-          'VIP Supplier Access',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.workspace_premium_outlined,
+              color: _darkRed,
+              size: 22,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'VIP Supplier Access',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 19,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -256,8 +263,16 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: Color(0xFFE3E5E8),
+          ),
+        ),
       ),
       body: _buildBody(),
     );
@@ -275,11 +290,21 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              const Icon(
+                Icons.error_outline,
+                size: 60,
+                color: _darkRed,
+              ),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 18),
-              FilledButton(onPressed: _load, child: const Text('Try Again')),
+              FilledButton(
+                onPressed: _load,
+                child: const Text('Try Again'),
+              ),
             ],
           ),
         ),
@@ -288,18 +313,24 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100),
+        constraints: const BoxConstraints(maxWidth: 1180),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 50),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
           children: [
             const Text(
-              'Apply for VIP pricing',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+              'Supplier Access',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Your CutLink approval already gives you access to each supplier’s Standard Price. VIP pricing is separate and must be approved by each supplier individually.',
-              style: TextStyle(color: Color(0xFF606060), height: 1.45),
+              style: TextStyle(
+                color: Color(0xFF606060),
+                height: 1.45,
+              ),
             ),
             const SizedBox(height: 20),
             Container(
@@ -307,12 +338,17 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF4F7F4),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFD7E3D8)),
+                border: Border.all(
+                  color: const Color(0xFFD7E3D8),
+                ),
               ),
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lock_outline, color: Color(0xFF35613B)),
+                  Icon(
+                    Icons.lock_outline,
+                    color: Color(0xFF35613B),
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -343,7 +379,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0DD)),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFE0E0DD),
+                  ),
                 ),
               ),
             ),
@@ -405,7 +443,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       actionLabel = 'VIP Pending';
       disabled = true;
     } else if (vipCooldown != null) {
-      actionLabel = 'Cooldown';
+      actionLabel = '24h cooldown';
       disabled = true;
     } else {
       actionLabel = 'Apply for VIP';
@@ -433,7 +471,10 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                 color: _darkRed.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: const Icon(Icons.local_shipping_outlined, color: _darkRed),
+              child: const Icon(
+                Icons.local_shipping_outlined,
+                color: _darkRed,
+              ),
             ),
             const SizedBox(width: 15),
             Expanded(
@@ -466,8 +507,8 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                           creditEnabled
                               ? 'Credit Active'
                               : creditStatus == 'pending'
-                              ? 'Credit Pending'
-                              : 'No Credit Account',
+                                  ? 'Credit Pending'
+                                  : 'No Credit Account',
                           const Color(0xFF2F5F8F),
                         ),
                     ],
@@ -503,9 +544,13 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
               onPressed: disabled ? null : () => _openApplication(supplier),
               style: FilledButton.styleFrom(
                 backgroundColor: _darkRed,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
               icon: Icon(
@@ -555,7 +600,8 @@ class ButcherVipApplicationPage extends StatefulWidget {
       _ButcherVipApplicationPageState();
 }
 
-class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
+class _ButcherVipApplicationPageState
+    extends State<ButcherVipApplicationPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final _formKey = GlobalKey<FormState>();
@@ -627,7 +673,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
   Future<void> _pickDocuments() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: const [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png',
+      ],
     );
 
     if (result.isEmpty) return;
@@ -702,7 +753,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
         'contact_position': reference.contactPosition.text.trim(),
         'contact_email': reference.email.text.trim(),
         'contact_phone': reference.phone.text.trim(),
-        'years_trading_with_reference': reference.yearsTrading.text.trim(),
+        'years_trading_with_reference':
+            reference.yearsTrading.text.trim(),
         'notes': reference.notes.text.trim(),
       });
     }
@@ -768,7 +820,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       return;
     }
 
-    if (!_tradeReferenceConsent || !_privacyAccepted || !_declarationAccepted) {
+    if (!_tradeReferenceConsent ||
+        !_privacyAccepted ||
+        !_declarationAccepted) {
       _message('Please accept the required declarations before submitting.');
       return;
     }
@@ -784,7 +838,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     setState(() => _submitting = true);
 
     try {
-      final supplierId = widget.supplier['supplier_business_id']?.toString();
+      final supplierId =
+          widget.supplier['supplier_business_id']?.toString();
 
       if (supplierId == null || supplierId.isEmpty) {
         throw Exception('Supplier could not be identified.');
@@ -797,24 +852,28 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
           'p_application_type': _applicationType,
           'p_primary_contact_name': _primaryContact.text.trim(),
           'p_primary_contact_position': _position.text.trim(),
-          'p_years_trading': double.tryParse(_yearsTrading.text.trim()),
-          'p_estimated_monthly_purchases': double.tryParse(
-            _monthlyPurchases.text.trim(),
-          ),
+          'p_years_trading':
+              double.tryParse(_yearsTrading.text.trim()),
+          'p_estimated_monthly_purchases':
+              double.tryParse(_monthlyPurchases.text.trim()),
           'p_requested_payment_terms_days':
               _applicationType == 'vip_pricing_and_credit'
-              ? int.tryParse(_requestedTerms.text.trim())
-              : null,
+                  ? int.tryParse(_requestedTerms.text.trim())
+                  : null,
           'p_requested_credit_limit':
               _applicationType == 'vip_pricing_and_credit'
-              ? double.tryParse(_requestedCreditLimit.text.trim())
-              : null,
+                  ? double.tryParse(_requestedCreditLimit.text.trim())
+                  : null,
           'p_application_message': _messageController.text.trim(),
-          'p_trade_reference_contact_consent': _tradeReferenceConsent,
-          'p_commercial_credit_assessment_consent': _commercialCreditConsent,
-          'p_consumer_credit_report_consent': _consumerCreditReportConsent,
+          'p_trade_reference_contact_consent':
+              _tradeReferenceConsent,
+          'p_commercial_credit_assessment_consent':
+              _commercialCreditConsent,
+          'p_consumer_credit_report_consent':
+              _consumerCreditReportConsent,
           'p_privacy_notice_accepted': _privacyAccepted,
-          'p_applicant_declaration_accepted': _declarationAccepted,
+          'p_applicant_declaration_accepted':
+              _declarationAccepted,
           'p_trade_references': _referencePayload(),
         },
       );
@@ -835,7 +894,11 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('VIP application sent to ${_supplierName()}.')),
+        SnackBar(
+          content: Text(
+            'VIP application sent to ${_supplierName()}.',
+          ),
+        ),
       );
 
       Navigator.of(context).pop(true);
@@ -855,9 +918,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     required String supplierId,
   }) async {
     final butcherId = await _resolveButcherBusinessId();
-    final storage = Supabase.instance.client.storage.from(
-      'vip-application-documents',
-    );
+    final storage = Supabase.instance.client.storage
+        .from('vip-application-documents');
 
     for (var index = 0; index < _documents.length; index++) {
       final document = _documents[index];
@@ -884,7 +946,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
         'register_vip_application_document',
         params: {
           'p_application_id': applicationId,
-          'p_document_type': _documentTypeForName(document.fileName),
+          'p_document_type':
+              _documentTypeForName(document.fileName),
           'p_file_name': document.fileName,
           'p_storage_path': path,
           'p_mime_type': _mimeType(document),
@@ -897,9 +960,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
   void _message(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String? _required(String? value, String label) {
@@ -911,25 +974,53 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final creditRequested = _applicationType == 'vip_pricing_and_credit';
+    final creditRequested =
+        _applicationType == 'vip_pricing_and_credit';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Text(
-          'VIP Application • ${_supplierName()}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            const Icon(
+              Icons.workspace_premium_outlined,
+              color: _darkRed,
+              size: 21,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'VIP Application • ${_supplierName()}',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: Color(0xFFE3E5E8),
+          ),
         ),
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 950),
+          constraints: const BoxConstraints(maxWidth: 1000),
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(22, 24, 22, 50),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
               children: [
                 _introCard(),
                 const SizedBox(height: 18),
@@ -944,7 +1035,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           decoration: BoxDecoration(
                             color: const Color(0xFFF3F6F9),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFD6E0EA)),
+                            border: Border.all(
+                              color: const Color(0xFFD6E0EA),
+                            ),
                           ),
                           child: const Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1013,7 +1106,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                             hintText: 'Owner, Director, Purchasing Manager',
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => _required(value, 'Position'),
+                          validator: (value) =>
+                              _required(value, 'Position'),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -1021,7 +1115,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         TextFormField(
                           controller: _yearsTrading,
                           enabled: !_submitting,
-                          keyboardType: const TextInputType.numberWithOptions(
+                          keyboardType:
+                              const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           decoration: const InputDecoration(
@@ -1032,7 +1127,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         TextFormField(
                           controller: _monthlyPurchases,
                           enabled: !_submitting,
-                          keyboardType: const TextInputType.numberWithOptions(
+                          keyboardType:
+                              const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           decoration: const InputDecoration(
@@ -1060,7 +1156,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           TextFormField(
                             controller: _requestedCreditLimit,
                             enabled: !_submitting,
-                            keyboardType: const TextInputType.numberWithOptions(
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
@@ -1095,11 +1192,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       'Provide at least two businesses the supplier may contact to verify your trading history.',
                   child: Column(
                     children: [
-                      for (
-                        var index = 0;
-                        index < _references.length;
-                        index++
-                      ) ...[
+                      for (var index = 0;
+                          index < _references.length;
+                          index++) ...[
                         _referenceCard(index),
                         if (index != _references.length - 1)
                           const SizedBox(height: 12),
@@ -1139,7 +1234,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8F8F6),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E2DE)),
+                          border: Border.all(
+                            color: const Color(0xFFE2E2DE),
+                          ),
                         ),
                         child: const Text(
                           'Accepted examples: commercial credit report, recent supplier statements, financial statement or trade-reference documents. PDF/JPG/PNG, maximum 10 MB each.',
@@ -1157,10 +1254,14 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       ),
                       if (_documents.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        for (var index = 0; index < _documents.length; index++)
+                        for (var index = 0;
+                            index < _documents.length;
+                            index++)
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.description_outlined),
+                            leading: const Icon(
+                              Icons.description_outlined,
+                            ),
                             title: Text(_documents[index].fileName),
                             subtitle: Text(
                               '${(_documents[index].bytes.length / 1024 / 1024).toStringAsFixed(2)} MB',
@@ -1190,7 +1291,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       CheckboxListTile(
                         value: _tradeReferenceConsent,
                         contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
+                        controlAffinity:
+                            ListTileControlAffinity.leading,
                         title: const Text(
                           'I authorise this supplier to contact the trade references I have provided for the purpose of assessing this VIP/Trade application.',
                         ),
@@ -1206,7 +1308,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         CheckboxListTile(
                           value: _commercialCreditConsent,
                           contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
+                          controlAffinity:
+                              ListTileControlAffinity.leading,
                           title: const Text(
                             'I authorise this supplier to undertake reasonable commercial credit checks for the purpose of assessing the requested business credit account.',
                           ),
@@ -1214,7 +1317,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                               ? null
                               : (value) {
                                   setState(() {
-                                    _commercialCreditConsent = value ?? false;
+                                    _commercialCreditConsent =
+                                        value ?? false;
                                   });
                                 },
                         ),
@@ -1222,7 +1326,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         CheckboxListTile(
                           value: _consumerCreditReportConsent,
                           contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
+                          controlAffinity:
+                              ListTileControlAffinity.leading,
                           title: const Text(
                             'Optional: where legally permitted and relevant to the commercial credit assessment, I consent to this supplier requesting consumer credit information about me. CutLink does not obtain this report and ticking this box does not require the supplier to perform a check.',
                           ),
@@ -1238,7 +1343,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       CheckboxListTile(
                         value: _privacyAccepted,
                         contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
+                        controlAffinity:
+                            ListTileControlAffinity.leading,
                         title: const Text(
                           'I understand that the application information and uploaded documents are provided to this supplier for assessment and are not shared with other suppliers.',
                         ),
@@ -1253,7 +1359,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       CheckboxListTile(
                         value: _declarationAccepted,
                         contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
+                        controlAffinity:
+                            ListTileControlAffinity.leading,
                         title: const Text(
                           'I declare that the information I have provided is true and complete to the best of my knowledge, and I understand that VIP pricing or credit approval remains at the supplier’s discretion.',
                         ),
@@ -1272,7 +1379,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 SizedBox(
                   height: 54,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                    ),
                     onPressed: _submitting ? null : _submit,
                     icon: _submitting
                         ? const SizedBox(
@@ -1337,7 +1446,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? _darkRed : const Color(0xFFE0E0DD),
+              color: selected
+                  ? _darkRed
+                  : const Color(0xFFE3E5E8),
               width: selected ? 1.6 : 1,
             ),
           ),
@@ -1355,7 +1466,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? _darkRed : const Color(0xFF606060),
+                  color: selected
+                      ? _darkRed
+                      : const Color(0xFF666A70),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1367,7 +1480,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       title,
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: selected ? _darkRed : const Color(0xFF222222),
+                        color: selected
+                            ? _darkRed
+                            : const Color(0xFF222222),
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -1383,8 +1498,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               ),
               const SizedBox(width: 12),
               Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                color: selected ? _darkRed : const Color(0xFFAAAAAA),
+                selected
+                    ? Icons.check_circle
+                    : Icons.circle_outlined,
+                color: selected
+                    ? _darkRed
+                    : const Color(0xFFAAAAAA),
               ),
             ],
           ),
@@ -1399,7 +1518,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(
+          color: const Color(0xFFE3E5E8),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1431,7 +1552,10 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 const SizedBox(height: 5),
                 const Text(
                   'Your Standard Price access is unchanged while this application is reviewed.',
-                  style: TextStyle(color: Color(0xFF606060), height: 1.4),
+                  style: TextStyle(
+                    color: Color(0xFF606060),
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -1451,19 +1575,27 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(
+          color: const Color(0xFFE3E5E8),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF666666), height: 1.4),
+            style: const TextStyle(
+              color: Color(0xFF666666),
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 18),
           child,
@@ -1480,7 +1612,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F7),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFE2E2DE)),
+        border: Border.all(
+          color: const Color(0xFFE2E2DE),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1490,7 +1624,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               Expanded(
                 child: Text(
                   'Trade Reference ${index + 1}',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               if (_references.length > 2)
@@ -1561,9 +1697,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             TextFormField(
               controller: reference.yearsTrading,
               enabled: !_submitting,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Years trading with them (optional)',
                 border: OutlineInputBorder(),
@@ -1579,7 +1714,13 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 650) {
-          return Column(children: [left, const SizedBox(height: 12), right]);
+          return Column(
+            children: [
+              left,
+              const SizedBox(height: 12),
+              right,
+            ],
+          );
         }
 
         return Row(
