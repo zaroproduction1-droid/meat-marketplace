@@ -32,6 +32,8 @@ class _EditProductPageState extends State<EditProductPage> {
   late final TextEditingController _trimSpecificationController;
   late final TextEditingController _fatSpecificationController;
   late final TextEditingController _supplierSpecificationController;
+  late final TextEditingController _feedingDaysController;
+  late final TextEditingController _ribCountController;
 
   bool _isLoadingPage = true;
   bool _isLoadingCatalogue = false;
@@ -70,6 +72,9 @@ class _EditProductPageState extends State<EditProductPage> {
   String _pieceWeightUnit = 'kg';
   String _cartonWeightUnit = 'kg';
   String _halalStatus = 'not_specified';
+  String _boneState = 'not_specified';
+  String _productionClaim = 'not_specified';
+  bool _hgpFree = false;
 
   List<Map<String, dynamic>> _species = [];
   List<Map<String, dynamic>> _catalogueProducts = [];
@@ -107,6 +112,8 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController = TextEditingController();
     _fatSpecificationController = TextEditingController();
     _supplierSpecificationController = TextEditingController();
+    _feedingDaysController = TextEditingController();
+    _ribCountController = TextEditingController();
 
     _applyProductData(widget.product);
     _loadInitialData();
@@ -134,6 +141,8 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController.dispose();
     _fatSpecificationController.dispose();
     _supplierSpecificationController.dispose();
+    _feedingDaysController.dispose();
+    _ribCountController.dispose();
 
     super.dispose();
   }
@@ -171,6 +180,28 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _supplierSpecificationController.text =
         product['supplier_specification']?.toString() ?? '';
+    _feedingDaysController.text = product['feeding_days']?.toString() ?? '';
+    _ribCountController.text = product['rib_count']?.toString() ?? '';
+
+    final boneState = product['bone_state']?.toString();
+    _boneState =
+        const {'bone_in', 'boneless', 'not_specified'}.contains(boneState)
+        ? boneState!
+        : 'not_specified';
+
+    final productionClaim = product['production_claim']?.toString();
+    _productionClaim =
+        const {
+          'grass_fed',
+          'grain_fed',
+          'mixed',
+          'other',
+          'not_specified',
+        }.contains(productionClaim)
+        ? productionClaim!
+        : 'not_specified';
+
+    _hgpFree = product['hgp_free'] == true;
 
     final temperature = product['temperature_state']?.toString();
 
@@ -1183,6 +1214,11 @@ class _EditProductPageState extends State<EditProductPage> {
         'supplier_specification': _emptyToNull(
           _supplierSpecificationController.text,
         ),
+        'feeding_days': _optionalInt(_feedingDaysController),
+        'bone_state': _boneState,
+        'rib_count': _optionalInt(_ribCountController),
+        'production_claim': _productionClaim,
+        'hgp_free': _hgpFree,
 
         'active': _active,
 
@@ -3186,6 +3222,120 @@ class _EditProductPageState extends State<EditProductPage> {
                                             }
                                           },
                                         ),
+                                      ),
+
+                                      const SizedBox(height: 18),
+
+                                      _twoColumnFields(
+                                        TextFormField(
+                                          controller: _feedingDaysController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            labelText:
+                                                'Feeding days (optional)',
+                                            hintText: 'Example: 100, 150, 200',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                        TextFormField(
+                                          controller: _ribCountController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Rib count (optional)',
+                                            hintText: 'Example: 3, 5, 7',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 18),
+
+                                      _twoColumnFields(
+                                        DropdownButtonFormField<String>(
+                                          initialValue: _boneState,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Bone state',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'not_specified',
+                                              child: Text('Not specified'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'bone_in',
+                                              child: Text('Bone in'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'boneless',
+                                              child: Text('Boneless'),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(
+                                                () => _boneState = value,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                        DropdownButtonFormField<String>(
+                                          initialValue: _productionClaim,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Production claim',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'not_specified',
+                                              child: Text('Not specified'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'grass_fed',
+                                              child: Text('Grass fed'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'grain_fed',
+                                              child: Text('Grain fed'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'mixed',
+                                              child: Text(
+                                                'Mixed / Combination',
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'other',
+                                              child: Text('Other'),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(
+                                                () => _productionClaim = value,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 8),
+
+                                      SwitchListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        value: _hgpFree,
+                                        title: const Text(
+                                          'HGP Free',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        subtitle: const Text(
+                                          'Supplier-declared production claim.',
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() => _hgpFree = value);
+                                        },
                                       ),
 
                                       const SizedBox(height: 18),

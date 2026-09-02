@@ -370,6 +370,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             marbling_score,
             grade,
             breed_program,
+            feeding_days,
+            bone_state,
+            rib_count,
+            production_claim,
+            hgp_free,
             piece_weight_min,
             piece_weight_max,
             piece_weight_unit,
@@ -905,7 +910,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
   String? _beefSectionCodeForRegion(String regionKey) {
     return switch (regionKey) {
-      CutLinkBeefCutKeys.cheek => 'MISC',
+      CutLinkBeefCutKeys.cheek => 'CHEEK',
       CutLinkBeefCutKeys.neck => 'NECK',
       CutLinkBeefCutKeys.shoulder => 'SHOULDER',
       CutLinkBeefCutKeys.chuck => 'CHUCK',
@@ -921,7 +926,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       CutLinkBeefCutKeys.rump => 'RUMP',
       CutLinkBeefCutKeys.round => 'HIND',
       CutLinkBeefCutKeys.silversideOutside => 'SILVERSIDE',
-      CutLinkBeefCutKeys.oxTail => 'MISC',
+      CutLinkBeefCutKeys.oxTail => 'TAIL',
       CutLinkBeefCutKeys.miscOffalOther => 'MISC',
       _ => null,
     };
@@ -1083,6 +1088,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           product['marbling_score'],
           product['grade'],
           product['breed_program'],
+          product['feeding_days'],
+          product['bone_state'],
+          product['rib_count'],
+          product['production_claim'],
+          product['hgp_free'],
           product['packaging_type'],
           product['trim_specification'],
           product['fat_specification'],
@@ -1460,6 +1470,45 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       chips.add(
         _specChip(icon: Icons.badge_outlined, label: breedProgram.trim()),
       );
+    }
+
+    final productionClaim = product['production_claim']?.toString();
+    if (productionClaim == 'grass_fed') {
+      chips.add(_specChip(icon: Icons.grass_outlined, label: 'Grass Fed'));
+    } else if (productionClaim == 'grain_fed') {
+      chips.add(
+        _specChip(icon: Icons.agriculture_outlined, label: 'Grain Fed'),
+      );
+    } else if (productionClaim == 'mixed') {
+      chips.add(_specChip(icon: Icons.tune_outlined, label: 'Mixed Feed'));
+    }
+
+    final feedingDays = product['feeding_days'];
+    if (feedingDays != null) {
+      chips.add(
+        _specChip(
+          icon: Icons.calendar_month_outlined,
+          label: '${feedingDays}D',
+        ),
+      );
+    }
+
+    final boneState = product['bone_state']?.toString();
+    if (boneState == 'bone_in') {
+      chips.add(_specChip(icon: Icons.straighten_outlined, label: 'Bone In'));
+    } else if (boneState == 'boneless') {
+      chips.add(_specChip(icon: Icons.straighten_outlined, label: 'Boneless'));
+    }
+
+    final ribCount = product['rib_count'];
+    if (ribCount != null) {
+      chips.add(
+        _specChip(icon: Icons.view_week_outlined, label: '${ribCount}R'),
+      );
+    }
+
+    if (product['hgp_free'] == true) {
+      chips.add(_specChip(icon: Icons.verified_outlined, label: 'HGP Free'));
     }
 
     if (pieceWeight.isNotEmpty) {
@@ -1862,6 +1911,57 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     );
   }
 
+  String _mainCommercialSummary(Map<String, dynamic> product) {
+    final parts = <String>[];
+
+    final breedProgram = product['breed_program']?.toString().trim() ?? '';
+    final marbling = product['marbling_score']?.toString().trim() ?? '';
+    final productionClaim = product['production_claim']?.toString();
+    final feedingDays = product['feeding_days'];
+    final boneState = product['bone_state']?.toString();
+    final ribCount = product['rib_count'];
+
+    if (breedProgram.isNotEmpty) {
+      parts.add(breedProgram);
+    }
+
+    if (marbling.isNotEmpty) {
+      final clean = marbling.replaceFirst(
+        RegExp(r'^mb\s*', caseSensitive: false),
+        '',
+      );
+      parts.add('MB $clean');
+    }
+
+    if (productionClaim == 'grass_fed') {
+      parts.add('Grass Fed');
+    } else if (productionClaim == 'grain_fed') {
+      parts.add('Grain Fed');
+    } else if (productionClaim == 'mixed') {
+      parts.add('Mixed Feed');
+    }
+
+    if (feedingDays != null) {
+      parts.add('${feedingDays}D');
+    }
+
+    if (boneState == 'bone_in') {
+      parts.add('Bone In');
+    } else if (boneState == 'boneless') {
+      parts.add('Boneless');
+    }
+
+    if (ribCount != null) {
+      parts.add('${ribCount}R');
+    }
+
+    if (product['hgp_free'] == true) {
+      parts.add('HGP Free');
+    }
+
+    return parts.join(' • ');
+  }
+
   Widget _buildMarketplaceProductCard(Map<String, dynamic> product) {
     final price = _findVisiblePrice(product);
     final amount = price?['amount'];
@@ -1869,6 +1969,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final productId = product['id']?.toString();
     final adding = productId != null && _addingProductId == productId;
     final supplierSpecification = product['supplier_specification']?.toString();
+    final commercialSummary = _mainCommercialSummary(product);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
@@ -1927,6 +2028,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (commercialSummary.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        commercialSummary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF3F444A),
+                          fontSize: 10.8,
+                          height: 1.25,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                     if (supplierSpecification != null &&
                         supplierSpecification.trim().isNotEmpty) ...[
                       const SizedBox(height: 4),
