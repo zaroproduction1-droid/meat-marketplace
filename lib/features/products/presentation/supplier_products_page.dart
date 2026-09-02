@@ -18,7 +18,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _sectionScrollController = ScrollController();
+  final ScrollController _cutScrollController = ScrollController();
+  final ScrollController _subcategoryScrollController = ScrollController();
+  final ScrollController _gradeScrollController = ScrollController();
 
   final Map<String, TextEditingController> _matrixStockControllers = {};
   final Map<String, TextEditingController> _matrixStandardControllers = {};
@@ -34,7 +36,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
   String? _selectedSectionId;
-  String? _selectedVisualLabel;
+  String? _selectedSpecificationId;
+  String? _selectedGradeId;
 
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _sections = [];
@@ -50,7 +53,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
-    _sectionScrollController.dispose();
+    _cutScrollController.dispose();
+    _subcategoryScrollController.dispose();
+    _gradeScrollController.dispose();
     for (final controller in [
       ..._matrixStockControllers.values,
       ..._matrixStandardControllers.values,
@@ -177,6 +182,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             brand,
             temperature_state,
             halal_status,
+            feeding_days,
+            bone_state,
+            rib_count,
+            production_claim,
+            hgp_free,
             chicken_skin,
             chicken_bone,
             chicken_production_type,
@@ -712,15 +722,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return null;
   }
 
-  String get _selectedAnimalName {
-    return CutLinkAnimals.all
-        .firstWhere(
-          (animal) => animal.code == _selectedAnimalCode,
-          orElse: () => CutLinkAnimals.all.first,
-        )
-        .name;
-  }
-
   List<Map<String, dynamic>> get _selectedAnimalSections {
     return _sections
         .where(
@@ -735,24 +736,103 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       );
   }
 
-  int _sectionProductCount(String sectionId) {
-    return _products.where((product) {
-      return _productAnimalCode(product) == _selectedAnimalCode &&
-          product['meat_section_id']?.toString() == sectionId;
-    }).length;
+  List<Map<String, dynamic>> get _selectedAnimalProducts {
+    return _products
+        .where((product) => _productAnimalCode(product) == _selectedAnimalCode)
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _availableSpecifications {
+    final byId = <String, Map<String, dynamic>>{};
+
+    for (final product in _selectedAnimalProducts) {
+      if (_selectedSectionId != null &&
+          product['meat_section_id']?.toString() != _selectedSectionId) {
+        continue;
+      }
+
+      final specification = _map(product['meat_specifications']);
+      final id = specification?['id']?.toString();
+
+      if (specification == null || id == null || id.isEmpty) continue;
+      byId[id] = specification;
+    }
+
+    final rows = byId.values.toList();
+    rows.sort(
+      (a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo(
+        (b['name']?.toString() ?? '').toLowerCase(),
+      ),
+    );
+    return rows;
+  }
+
+  List<Map<String, dynamic>> get _availableGrades {
+    final byId = <String, Map<String, dynamic>>{};
+
+    for (final product in _selectedAnimalProducts) {
+      if (_selectedSectionId != null &&
+          product['meat_section_id']?.toString() != _selectedSectionId) {
+        continue;
+      }
+
+      if (_selectedSpecificationId != null &&
+          product['meat_specification_id']?.toString() !=
+              _selectedSpecificationId) {
+        continue;
+      }
+
+      final grade = _map(product['meat_grades']);
+      final id = grade?['id']?.toString();
+
+      if (grade == null || id == null || id.isEmpty) continue;
+      byId[id] = grade;
+    }
+
+    final rows = byId.values.toList();
+    rows.sort(
+      (a, b) =>
+          (a['code']?.toString() ?? '').compareTo(b['code']?.toString() ?? ''),
+    );
+    return rows;
   }
 
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _searchController.text.trim().toLowerCase();
+    final directSearch = search.isNotEmpty;
+    final cutScopedSearch = directSearch && _selectedSectionId != null;
 
     return _products.where((product) {
-      if (_productAnimalCode(product) != _selectedAnimalCode) {
-        return false;
-      }
+      if (directSearch) {
+        if (cutScopedSearch) {
+          if (_productAnimalCode(product) != _selectedAnimalCode) {
+            return false;
+          }
 
-      if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
-        return false;
+          if (product['meat_section_id']?.toString() != _selectedSectionId) {
+            return false;
+          }
+        }
+      } else {
+        if (_productAnimalCode(product) != _selectedAnimalCode) {
+          return false;
+        }
+
+        if (_selectedSectionId != null &&
+            product['meat_section_id']?.toString() != _selectedSectionId) {
+          return false;
+        }
+
+        if (_selectedSpecificationId != null &&
+            product['meat_specification_id']?.toString() !=
+                _selectedSpecificationId) {
+          return false;
+        }
+
+        if (_selectedGradeId != null &&
+            product['meat_grade_id']?.toString() != _selectedGradeId) {
+          return false;
+        }
       }
 
       if (search.isEmpty) return true;
@@ -767,6 +847,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         product['brand'],
         product['temperature_state'],
         product['halal_status'],
+        product['feeding_days'],
+        product['bone_state'],
+        product['rib_count'],
+        product['production_claim'],
+        product['hgp_free'],
         product['chicken_skin'],
         product['chicken_bone'],
         product['chicken_production_type'],
@@ -794,7 +879,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   String? _beefSectionCodeForRegion(String regionKey) {
     return switch (regionKey) {
-      CutLinkBeefCutKeys.cheek => 'MISC',
+      CutLinkBeefCutKeys.cheek => 'CHEEK',
       CutLinkBeefCutKeys.neck => 'NECK',
       CutLinkBeefCutKeys.shoulder => 'SHOULDER',
       CutLinkBeefCutKeys.chuck => 'CHUCK',
@@ -810,33 +895,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       CutLinkBeefCutKeys.rump => 'RUMP',
       CutLinkBeefCutKeys.round => 'HIND',
       CutLinkBeefCutKeys.silversideOutside => 'SILVERSIDE',
-      CutLinkBeefCutKeys.oxTail => 'MISC',
+      CutLinkBeefCutKeys.oxTail => 'TAIL',
       CutLinkBeefCutKeys.miscOffalOther => 'MISC',
       _ => null,
-    };
-  }
-
-  String _beefRegionLabel(String regionKey) {
-    return switch (regionKey) {
-      CutLinkBeefCutKeys.cheek => 'Cheek',
-      CutLinkBeefCutKeys.neck => 'Neck',
-      CutLinkBeefCutKeys.shoulder => 'Shoulder',
-      CutLinkBeefCutKeys.chuck => 'Chuck',
-      CutLinkBeefCutKeys.blade => 'Blade',
-      CutLinkBeefCutKeys.brisket => 'Brisket',
-      CutLinkBeefCutKeys.shinShank => 'Shin / Shank',
-      CutLinkBeefCutKeys.ribs => 'Ribs',
-      CutLinkBeefCutKeys.ribEye => 'Rib Eye',
-      CutLinkBeefCutKeys.plate => 'Plate',
-      CutLinkBeefCutKeys.skirt => 'Skirt',
-      CutLinkBeefCutKeys.loin => 'Loin',
-      CutLinkBeefCutKeys.flank => 'Flank',
-      CutLinkBeefCutKeys.rump => 'Rump',
-      CutLinkBeefCutKeys.round => 'Round',
-      CutLinkBeefCutKeys.silversideOutside => 'Silverside / Outside',
-      CutLinkBeefCutKeys.oxTail => 'Ox Tail',
-      CutLinkBeefCutKeys.miscOffalOther => 'Miscellaneous / Offal',
-      _ => regionKey,
     };
   }
 
@@ -847,7 +908,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedAnimalCode = animalCode;
       _selectedAnimalRegionKey = null;
       _selectedSectionId = null;
-      _selectedVisualLabel = null;
+      _selectedSpecificationId = null;
+      _selectedGradeId = null;
       _searchController.clear();
     });
   }
@@ -866,7 +928,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     setState(() {
       _selectedAnimalRegionKey = regionKey;
       _selectedSectionId = section['id']?.toString();
-      _selectedVisualLabel = _beefRegionLabel(regionKey);
+      _selectedSpecificationId = null;
+      _selectedGradeId = null;
       _searchController.clear();
     });
   }
@@ -875,16 +938,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     setState(() {
       _selectedAnimalRegionKey = null;
       _selectedSectionId = section['id'].toString();
-      _selectedVisualLabel = section['name']?.toString();
+      _selectedSpecificationId = null;
+      _selectedGradeId = null;
       _searchController.clear();
-    });
-  }
-
-  void _clearSectionSelection() {
-    setState(() {
-      _selectedAnimalRegionKey = null;
-      _selectedSectionId = null;
-      _selectedVisualLabel = null;
     });
   }
 
@@ -900,8 +956,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     return null;
   }
-
-  bool get _searching => _searchController.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -970,412 +1024,763 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       );
     }
 
-    return Column(
-      children: [
-        _buildSearchHeader(),
-        Expanded(
-          child: _searching
-              ? _buildImmediateResults(
-                  title: 'Search Results',
-                  showBackToCow: false,
-                )
-              : _selectedSectionId != null
-              ? _buildImmediateResults(
-                  title:
-                      '${_selectedVisualLabel ?? _selectedSectionName ?? 'Selected'} Stock',
-                  showBackToCow: true,
-                )
-              : _buildBrowseView(),
-        ),
-      ],
-    );
-  }
+    final cutSelected = _selectedSectionId != null;
+    final subcategorySelected = _selectedSpecificationId != null;
+    final gradeSelected = _selectedGradeId != null;
+    final directSearch = _searchController.text.trim().isNotEmpty;
 
-  Widget _buildSearchHeader() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1250),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _searchController,
-                autofocus: false,
-                onChanged: (_) => _refresh(),
-                decoration: InputDecoration(
-                  hintText: _selectedAnimalCode == CutLinkAnimals.chicken
-                      ? 'Search cut, sub-cut, skin, bone, state, brand or SKU'
-                      : 'Search cut, specification, category, product name or SKU',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: _searchController.clear,
-                          icon: const Icon(Icons.close),
+    Widget animalPanel() {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 11, 14, 0),
+              child: Text(
+                'Browse by Animal',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 2, 14, 7),
+              child: Text(
+                'Choose the animal, cut, subcategory and grade.',
+                style: TextStyle(color: Color(0xFF666666), fontSize: 10.5),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InteractiveAnimalBrowser(
+                      selectedAnimalCode: _selectedAnimalCode,
+                      selectedRegionKey: _selectedAnimalRegionKey,
+                      onAnimalChanged: _selectAnimal,
+                      onRegionSelected: _selectAnimalRegion,
+                      maxWidth: 650,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'CUT',
+                      style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _buildSectionStrip(),
+                    if (cutSelected) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'SUBCATEGORY',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
                         ),
-                  filled: true,
-                  fillColor: const Color(0xFFF8F8F6),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E2DE)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E2DE)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: _darkRed, width: 1.5),
-                  ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildSpecificationStrip(),
+                    ],
+                    if (subcategorySelected) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'GRADE',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildGradeStrip(),
+                    ],
+                  ],
                 ),
               ),
-              if (_searching) ...[
-                const SizedBox(height: 10),
-                Text(
-                  '${_filteredProducts.length} search result${_filteredProducts.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget rightChoiceCard({
+      required IconData icon,
+      required String title,
+      String? subtitle,
+      required VoidCallback onTap,
+      Widget? trailing,
+    }) {
+      return Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5EAEA),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icon, size: 18, color: _darkRed),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF777777),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing,
+                ] else
+                  const Icon(Icons.chevron_right, size: 19, color: _darkRed),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget subcategoryStage() {
+      final specifications = _availableSpecifications;
+
+      if (specifications.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'No subcategories are linked to this cut yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF777777),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _selectedSectionId == null
+                      ? null
+                      : () =>
+                            _openAddProductPage(sectionId: _selectedSectionId),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Product'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _darkRed,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ],
-            ],
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: specifications.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) {
+          final specification = specifications[index];
+          final name = specification['name']?.toString() ?? 'Subcategory';
+
+          return rightChoiceCard(
+            icon: Icons.category_outlined,
+            title: name,
+            subtitle: 'Choose this subcategory to view its grades.',
+            onTap: () {
+              setState(() {
+                _selectedSpecificationId = specification['id']?.toString();
+                _selectedGradeId = null;
+              });
+            },
+          );
+        },
+      );
+    }
+
+    Widget gradeStage() {
+      final grades = _availableGrades;
+
+      if (grades.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'No grades are linked to this subcategory yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF777777),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _selectedSectionId == null
+                      ? null
+                      : () => _openAddProductPage(
+                          sectionId: _selectedSectionId,
+                          specificationId: _selectedSpecificationId,
+                        ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Product'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _darkRed,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: grades.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) {
+          final grade = grades[index];
+          final code = grade['code']?.toString() ?? 'N/A';
+          final name = grade['name']?.toString() ?? '';
+
+          return rightChoiceCard(
+            icon: Icons.workspace_premium_outlined,
+            title: code,
+            subtitle: name,
+            onTap: () {
+              setState(() {
+                _selectedGradeId = grade['id']?.toString();
+              });
+            },
+          );
+        },
+      );
+    }
+
+    Widget stockStage() {
+      if (_filteredProducts.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.inventory_2_outlined,
+                  size: 46,
+                  color: Color(0xFFAAAAAA),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'No stock matches this selection',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Add a product for this cut, subcategory or grade.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF777777), height: 1.35),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => _openAddProductPage(
+                    sectionId: _selectedSectionId,
+                    specificationId: _selectedSpecificationId,
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Product'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _darkRed,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      final groups = _groupedFilteredProducts.entries.toList();
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: groups.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, index) {
+          final group = groups[index];
+          return _buildGradeMatrixCard(group.key, group.value);
+        },
+      );
+    }
+
+    Widget searchBar() {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(11, 0, 11, 10),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: _selectedSectionId == null
+                ? 'Search all stock — cut, subcategory, SKU, brand...'
+                : 'Search within ${_selectedSectionName ?? 'this cut'}...',
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    onPressed: _searchController.clear,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+            isDense: true,
+            filled: true,
+            fillColor: const Color(0xFFFBFBF9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(9),
+              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(9),
+              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget resultsPanel() {
+      final title = directSearch
+          ? 'Search Results'
+          : !cutSelected
+          ? 'Choose a Cut'
+          : !subcategorySelected
+          ? 'Subcategories'
+          : !gradeSelected
+          ? 'Choose Grade'
+          : 'My Stock';
+
+      final subtitle = directSearch
+          ? 'Matching products in your supplier inventory.'
+          : !cutSelected
+          ? 'Select a cut from the animal diagram or cut row.'
+          : !subcategorySelected
+          ? 'Choose the exact subcategory for this cut.'
+          : !gradeSelected
+          ? 'Choose the commercial grade/category.'
+          : 'Update stock, pricing and availability for this selection.';
+
+      final showingStock = directSearch || gradeSelected;
+
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF666666),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showingStock)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5EAEA),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${_filteredProducts.length} product${_filteredProducts.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: _darkRed,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            searchBar(),
+            Expanded(
+              child: directSearch
+                  ? stockStage()
+                  : !cutSelected
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.touch_app_outlined,
+                              size: 48,
+                              color: Color(0xFFAAAAAA),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Select a cut or search above',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : !subcategorySelected
+                  ? subcategoryStage()
+                  : !gradeSelected
+                  ? gradeStage()
+                  : stockStage(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1320),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 930;
+
+              if (narrow) {
+                return ListView(
+                  children: [
+                    SizedBox(height: 640, child: animalPanel()),
+                    const SizedBox(height: 14),
+                    SizedBox(height: 720, child: resultsPanel()),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: animalPanel()),
+                  const SizedBox(width: 14),
+                  Expanded(flex: 5, child: resultsPanel()),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildImmediateResults({
-    required String title,
-    required bool showBackToCow,
+  Widget _thinChoice({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1250),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${_filteredProducts.length} product${_filteredProducts.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (showBackToCow) ...[
-                    const SizedBox(width: 14),
-                    OutlinedButton.icon(
-                      onPressed: _clearSectionSelection,
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Back to animal'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        selected: selected,
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
+        selectedColor: _darkRed,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: selected ? _darkRed : const Color(0xFFD9D9D5)),
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : const Color(0xFF444444),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
         ),
-        Expanded(
-          child: _filteredProducts.isEmpty
-              ? Center(
-                  child: Text(
-                    showBackToCow
-                        ? 'No stock has been added for this section yet.'
-                        : 'No stock matches your search.',
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                )
-              : Builder(
-                  builder: (context) {
-                    final groups = _groupedFilteredProducts.entries.toList();
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(22, 10, 22, 110),
-                      itemCount: groups.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final group = groups[index];
-                        return Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1250),
-                            child: _buildGradeMatrixCard(
-                              group.key,
-                              group.value,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-        ),
-      ],
+        label: Text(label),
+        onSelected: (_) => onTap(),
+      ),
     );
   }
 
-  Widget _buildBrowseView() {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1250),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Browse $_selectedAnimalName Stock',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Use the arrows to switch animals. Select a cut '
-                                'region or section to filter your stock.',
-                                style: TextStyle(color: Color(0xFF666666)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_selectedSectionId != null)
-                          TextButton.icon(
-                            onPressed: _clearSectionSelection,
-                            icon: const Icon(Icons.close),
-                            label: const Text('Show all stock'),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    InteractiveAnimalBrowser(
-                      selectedAnimalCode: _selectedAnimalCode,
-                      selectedRegionKey: _selectedAnimalRegionKey,
-                      onAnimalChanged: _selectAnimal,
-                      onRegionSelected: _selectAnimalRegion,
-                      maxWidth: 760,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSectionStrip(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1250),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 24, 22, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _selectedSectionName == null
-                            ? 'All $_selectedAnimalName Stock'
-                            : '${_selectedSectionName!} Stock',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${_filteredProducts.length} product${_filteredProducts.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        if (_filteredProducts.isEmpty)
-          SliverToBoxAdapter(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 55, 24, 100),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.inventory_2_outlined,
-                      size: 52,
-                      color: Color(0xFF999999),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      _selectedSectionName == null
-                          ? 'No $_selectedAnimalName stock has been added yet.'
-                          : 'No ${_selectedSectionName!} stock has been added yet.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (_selectedSectionId != null) ...[
-                      const SizedBox(height: 18),
-                      FilledButton.icon(
-                        onPressed: () =>
-                            _openAddProductPage(sectionId: _selectedSectionId),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _darkRed,
-                          foregroundColor: Colors.white,
-                        ),
-                        icon: const Icon(Icons.add),
-                        label: Text(
-                          'Add Product to ${_selectedSectionName ?? 'Section'}',
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      Text(
-                        '$_selectedAnimalName and '
-                        '${_selectedSectionName ?? 'this section'} '
-                        'will be selected automatically.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          )
-        else
-          Builder(
-            builder: (context) {
-              final groups = _groupedFilteredProducts.entries.toList();
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(22, 8, 22, 110),
-                sliver: SliverList.separated(
-                  itemCount: groups.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1250),
-                        child: _buildGradeMatrixCard(group.key, group.value),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-      ],
-    );
-  }
+  Widget _arrowScrollStrip({
+    required ScrollController controller,
+    required double height,
+    required List<Widget> children,
+  }) {
+    Future<void> move(double direction) async {
+      if (!controller.hasClients) return;
 
-  Future<void> _scrollSectionStrip(double direction) async {
-    if (!_sectionScrollController.hasClients) {
-      return;
+      final position = controller.position;
+      final target = (controller.offset + (direction * 240))
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+
+      await controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
     }
 
-    final position = _sectionScrollController.position;
-    final target = (_sectionScrollController.offset + (320 * direction))
-        .clamp(position.minScrollExtent, position.maxScrollExtent)
-        .toDouble();
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          _stripArrow(
+            icon: Icons.chevron_left,
+            tooltip: 'Scroll left',
+            onTap: () => move(-1),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: ListView(
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: children,
+            ),
+          ),
+          const SizedBox(width: 5),
+          _stripArrow(
+            icon: Icons.chevron_right,
+            tooltip: 'Scroll right',
+            onTap: () => move(1),
+          ),
+        ],
+      ),
+    );
+  }
 
-    await _sectionScrollController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
+  Widget _stripArrow({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
+            ),
+            child: Icon(icon, size: 19, color: _darkRed),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildSectionStrip() {
     final sections = _selectedAnimalSections;
 
-    if (sections.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (sections.isEmpty) return const SizedBox.shrink();
 
-    return Row(
+    return _arrowScrollStrip(
+      controller: _cutScrollController,
+      height: 38,
       children: [
-        IconButton(
-          tooltip: 'Previous cut sections',
-          onPressed: () => _scrollSectionStrip(-1),
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.chevron_left),
+        _thinChoice(
+          label: 'All cuts',
+          selected: _selectedSectionId == null,
+          onTap: () {
+            setState(() {
+              _selectedAnimalRegionKey = null;
+              _selectedSectionId = null;
+              _selectedSpecificationId = null;
+              _selectedGradeId = null;
+            });
+          },
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _sectionScrollController,
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final section in sections) ...[
-                  _sectionChip(section),
-                  const SizedBox(width: 8),
-                ],
-              ],
-            ),
+        for (final section in sections)
+          _thinChoice(
+            label: section['name']?.toString() ?? 'Cut',
+            selected: _selectedSectionId == section['id']?.toString(),
+            onTap: () => _selectSection(section),
           ),
-        ),
-        IconButton(
-          tooltip: 'Next cut sections',
-          onPressed: () => _scrollSectionStrip(1),
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.chevron_right),
-        ),
       ],
     );
   }
 
-  Widget _sectionChip(Map<String, dynamic> section) {
-    final id = section['id'].toString();
-    final selected = _selectedSectionId == id;
-    final count = _sectionProductCount(id);
+  Widget _buildSpecificationStrip() {
+    final specifications = _availableSpecifications;
 
-    return ChoiceChip(
-      selected: selected,
-      onSelected: (_) => _selectSection(section),
-      selectedColor: const Color(0xFFF3E8E8),
-      side: BorderSide(color: selected ? _darkRed : const Color(0xFFD9D9D5)),
-      label: Text(
-        '${section['name']} ($count)',
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          color: selected ? _darkRed : const Color(0xFF4D4D4D),
+    if (specifications.isEmpty) return const SizedBox.shrink();
+
+    return _arrowScrollStrip(
+      controller: _subcategoryScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All subcategories',
+          selected: _selectedSpecificationId == null,
+          onTap: () {
+            setState(() {
+              _selectedSpecificationId = null;
+              _selectedGradeId = null;
+            });
+          },
         ),
-      ),
+        for (final specification in specifications)
+          _thinChoice(
+            label: specification['name']?.toString() ?? 'Subcategory',
+            selected:
+                _selectedSpecificationId == specification['id']?.toString(),
+            onTap: () {
+              setState(() {
+                _selectedSpecificationId = specification['id']?.toString();
+                _selectedGradeId = null;
+              });
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGradeStrip() {
+    final grades = _availableGrades;
+
+    if (grades.isEmpty) return const SizedBox.shrink();
+
+    return _arrowScrollStrip(
+      controller: _gradeScrollController,
+      height: 45,
+      children: [
+        _thinChoice(
+          label: 'All grades',
+          selected: _selectedGradeId == null,
+          onTap: () {
+            setState(() => _selectedGradeId = null);
+          },
+        ),
+        for (final grade in grades)
+          Padding(
+            padding: const EdgeInsets.only(right: 7),
+            child: ChoiceChip(
+              selected: _selectedGradeId == grade['id']?.toString(),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              selectedColor: _darkRed,
+              backgroundColor: Colors.white,
+              side: BorderSide(
+                color: _selectedGradeId == grade['id']?.toString()
+                    ? _darkRed
+                    : const Color(0xFFD9D9D5),
+              ),
+              labelStyle: TextStyle(
+                color: _selectedGradeId == grade['id']?.toString()
+                    ? Colors.white
+                    : const Color(0xFF444444),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+              label: Text(
+                grade['code']?.toString().trim().isNotEmpty == true
+                    ? grade['code'].toString()
+                    : grade['name']?.toString() ?? 'Grade',
+              ),
+              onSelected: (_) {
+                setState(() {
+                  _selectedGradeId = grade['id']?.toString();
+                });
+              },
+            ),
+          ),
+      ],
     );
   }
 

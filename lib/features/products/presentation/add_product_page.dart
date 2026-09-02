@@ -39,6 +39,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _packaging = TextEditingController();
   final _piecesPerCarton = TextEditingController();
   final _supplierNotes = TextEditingController();
+  final _feedingDays = TextEditingController();
+  final _ribCount = TextEditingController();
   final _chickenSizeWeight = TextEditingController();
   final _chickenCartonSize = TextEditingController();
 
@@ -51,6 +53,9 @@ class _AddProductPageState extends State<AddProductPage> {
   String _temperature = 'chilled';
   String _availability = 'in_stock';
   String _halal = 'not_specified';
+  String _boneState = 'not_specified';
+  String _productionClaim = 'not_specified';
+  bool _hgpFree = false;
 
   String _chickenSkin = 'not_applicable';
   String _chickenBone = 'not_applicable';
@@ -93,6 +98,8 @@ class _AddProductPageState extends State<AddProductPage> {
       _packaging,
       _piecesPerCarton,
       _supplierNotes,
+      _feedingDays,
+      _ribCount,
       _chickenSizeWeight,
       _chickenCartonSize,
     ]) {
@@ -541,7 +548,7 @@ class _AddProductPageState extends State<AddProductPage> {
           },
         );
       } else {
-        await Supabase.instance.client.rpc(
+        final createdProductId = await Supabase.instance.client.rpc(
           'create_supplier_spec_grade_product',
           params: {
             'p_supplier_business_id': _supplierBusinessId,
@@ -592,6 +599,21 @@ class _AddProductPageState extends State<AddProductPage> {
                 : _supplierNotes.text.trim(),
           },
         );
+
+        final productId = createdProductId?.toString();
+        if (productId != null && productId.isNotEmpty) {
+          await Supabase.instance.client
+              .from('products')
+              .update({
+                'feeding_days': int.tryParse(_feedingDays.text.trim()),
+                'bone_state': _boneState,
+                'rib_count': int.tryParse(_ribCount.text.trim()),
+                'production_claim': _productionClaim,
+                'hgp_free': _hgpFree,
+                'updated_at': DateTime.now().toUtc().toIso8601String(),
+              })
+              .eq('id', productId);
+        }
       }
 
       if (!mounted) return;
@@ -1468,6 +1490,101 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _feedingDays,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Feeding Days (optional)',
+                                hintText: 'Example: 100, 150, 200',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _ribCount,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Rib Count (optional)',
+                                hintText: 'Example: 3, 5, 7',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            CutLinkPickerField<String>(
+                              label: 'Bone State',
+                              value: _boneState,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'not_specified',
+                                  label: 'Not specified',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'bone_in',
+                                  label: 'Bone in',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'boneless',
+                                  label: 'Boneless',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _boneState = value);
+                                }
+                              },
+                            ),
+                            CutLinkPickerField<String>(
+                              label: 'Production Claim',
+                              value: _productionClaim,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'not_specified',
+                                  label: 'Not specified',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'grass_fed',
+                                  label: 'Grass fed',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'grain_fed',
+                                  label: 'Grain fed',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'mixed',
+                                  label: 'Mixed / Combination',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'other',
+                                  label: 'Other',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _productionClaim = value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: _hgpFree,
+                            title: const Text(
+                              'HGP Free',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            subtitle: const Text(
+                              'Supplier-declared production claim.',
+                            ),
+                            onChanged: _saving
+                                ? null
+                                : (value) => setState(() => _hgpFree = value),
                           ),
                           const SizedBox(height: 14),
                           _twoFields(
