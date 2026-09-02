@@ -10,9 +10,14 @@ import 'supplier_quotes_page.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierSalesPage extends StatefulWidget {
-  const SupplierSalesPage({super.key, this.embedded = false});
+  const SupplierSalesPage({
+    super.key,
+    this.embedded = false,
+    this.initialQuoteOrderId,
+  });
 
   final bool embedded;
+  final String? initialQuoteOrderId;
 
   @override
   State<SupplierSalesPage> createState() => _SupplierSalesPageState();
@@ -47,7 +52,16 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void initState() {
     super.initState();
     _searchController.addListener(_refresh);
-    _loadStock();
+    _initialise();
+  }
+
+  Future<void> _initialise() async {
+    await _loadStock();
+
+    final quoteOrderId = widget.initialQuoteOrderId;
+    if (mounted && quoteOrderId != null && quoteOrderId.isNotEmpty) {
+      await _loadQuoteIntoWorkspace(quoteOrderId);
+    }
   }
 
   @override

@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/invoice_pdf_service.dart';
+import 'supplier_work_order_page.dart';
 
 class SupplierInvoicePage extends StatefulWidget {
   const SupplierInvoicePage({
@@ -12,6 +15,7 @@ class SupplierInvoicePage extends StatefulWidget {
     this.orderId,
     this.invoiceId,
     this.openPdfOnLoad = false,
+    this.initialTabIndex = 0,
   }) : assert(
          (orderId != null && orderId != '') ||
              (invoiceId != null && invoiceId != ''),
@@ -21,6 +25,7 @@ class SupplierInvoicePage extends StatefulWidget {
   final String? orderId;
   final String? invoiceId;
   final bool openPdfOnLoad;
+  final int initialTabIndex;
 
   @override
   State<SupplierInvoicePage> createState() => _SupplierInvoicePageState();
@@ -36,18 +41,24 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   Map<String, dynamic>? _invoice;
   List<Map<String, dynamic>> _items = [];
   bool _didAutoOpenPdf = false;
+  late int _workspaceTabIndex;
+  final _previewTransformController = TransformationController();
+  final _previewViewportKey = GlobalKey();
+  double _previewZoom = 1;
 
   final _notesController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _workspaceTabIndex = widget.initialTabIndex.clamp(0, 2);
     _loadPage();
   }
 
   @override
   void dispose() {
     _notesController.dispose();
+    _previewTransformController.dispose();
     super.dispose();
   }
 
@@ -152,6 +163,21 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             customer_billing_postcode_snapshot,
             created_at,
             updated_at,
+            orders(
+              created_at,
+              submitted_at,
+              accepted_at,
+              dispatched_at,
+              delivered_at,
+              completed_at,
+              warehouse_work_orders(
+                created_at,
+                printed_at,
+                picking_started_at,
+                picked_at,
+                completed_at
+              )
+            ),
             invoice_items(
               id,
               order_item_id,
@@ -1122,23 +1148,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           ],
         ),
         actions: [
-          FilledButton.icon(
-            onPressed: _isLoading || _invoice == null ? null : _printInvoice,
-            style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.print_outlined, size: 18),
-            label: const Text(
-              'Print Invoice',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ),
-          const SizedBox(width: 6),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
@@ -1146,12 +1155,454 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           ),
           const SizedBox(width: 10),
         ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(49),
+          child: _workspaceTabs(),
         ),
       ),
-      body: _buildBody(),
+      body: switch (_workspaceTabIndex) {
+        0 => _buildBody(),
+        1 => _buildPreviewTab(),
+        _ => _buildHistoryTab(),
+      },
+    );
+  }
+
+  Widget _workspaceTabs() {
+    return Container(
+      height: 49,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
+      ),
+      child: Row(
+        children: [
+          _workspaceTab(0, Icons.receipt_long_outlined, 'Invoice'),
+          _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
+          _workspaceTab(2, Icons.history, 'Order History'),
+        ],
+      ),
+    );
+  }
+
+  Widget _workspaceTab(int index, IconData icon, String label) {
+    final selected = _workspaceTabIndex == index;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: TextButton.icon(
+        onPressed: () => setState(() => _workspaceTabIndex = index),
+        style: TextButton.styleFrom(
+          foregroundColor: selected ? Colors.white : const Color(0xFF5E6369),
+          backgroundColor: selected ? _darkRed : const Color(0xFFF4F5F6),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+            side: BorderSide(
+              color: selected ? _darkRed : const Color(0xFFE1E3E6),
+            ),
+          ),
+        ),
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewTab() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_errorMessage != null || _invoice == null) return _buildBody();
+    final orderId = _invoice?['order_id']?.toString();
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+          ),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Invoice PDF',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              _zoomControls(),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: _downloadInvoice,
+                icon: const Icon(Icons.download_outlined, size: 17),
+                label: const Text('Download'),
+              ),
+              const SizedBox(width: 7),
+              FilledButton.icon(
+                onPressed: _printInvoice,
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                icon: const Icon(Icons.print_outlined, size: 17),
+                label: const Text('Print'),
+              ),
+              if (orderId != null && orderId.isNotEmpty) ...[
+                const SizedBox(width: 7),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => SupplierWorkOrderPage(
+                        orderId: orderId,
+                        initialTabIndex: 1,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.assignment_outlined, size: 17),
+                  label: const Text('View Picking Slip'),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableHeight = constraints.maxHeight > 24
+                  ? constraints.maxHeight - 24
+                  : constraints.maxHeight;
+              final availableWidth = constraints.maxWidth > 24
+                  ? constraints.maxWidth - 24
+                  : constraints.maxWidth;
+              final fitWidth =
+                  availableHeight *
+                  PdfPageFormat.a4.width /
+                  PdfPageFormat.a4.height;
+              final maxWidth = fitWidth < availableWidth
+                  ? fitWidth
+                  : availableWidth;
+              return ClipRect(
+                key: _previewViewportKey,
+                child: Listener(
+                  onPointerSignal: _handlePreviewPointerSignal,
+                  child: InteractiveViewer(
+                    transformationController: _previewTransformController,
+                    minScale: 0.75,
+                    maxScale: 4,
+                    panEnabled: _previewZoom > 1,
+                    child: PdfPreview(
+                      build: (_) => _buildInvoicePdf(),
+                      pdfFileName:
+                          '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
+                      maxPageWidth: maxWidth,
+                      canChangeOrientation: false,
+                      canChangePageFormat: false,
+                      canDebug: false,
+                      allowPrinting: false,
+                      allowSharing: false,
+                      useActions: false,
+                      initialPageFormat: PdfPageFormat.a4,
+                      dpi: 220,
+                      padding: const EdgeInsets.all(12),
+                      scrollViewDecoration: const BoxDecoration(
+                        color: Color(0xFFE9EBEE),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _zoomControls() {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F6),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFFE0E2E5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: _previewZoom <= 0.75
+                ? null
+                : () => _setPreviewZoom(_previewZoom - 0.25),
+            tooltip: 'Zoom out',
+            icon: const Icon(Icons.zoom_out, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+          Tooltip(
+            message: 'Reset and centre preview',
+            child: TextButton.icon(
+              onPressed: _resetPreviewZoom,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4F555B),
+                minimumSize: const Size(72, 34),
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+              ),
+              icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
+              label: Text(
+                '${(_previewZoom * 100).round()}%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _previewZoom >= 4
+                ? null
+                : () => _setPreviewZoom(_previewZoom + 0.25),
+            tooltip: 'Zoom in',
+            icon: const Icon(Icons.zoom_in, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handlePreviewPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    _setPreviewZoom(
+      _previewZoom + (event.scrollDelta.dy < 0 ? 0.15 : -0.15),
+      focalPoint: event.localPosition,
+    );
+  }
+
+  void _setPreviewZoom(double value, {Offset? focalPoint}) {
+    final zoom = value.clamp(0.75, 4.0);
+    if (zoom == _previewZoom) return;
+
+    final focal = focalPoint ?? _previewCentre();
+    final factor = zoom / _previewZoom;
+    final adjustment = Matrix4.identity()
+      ..translateByDouble(focal.dx, focal.dy, 0, 1)
+      ..scaleByDouble(factor, factor, 1, 1)
+      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
+      ..multiply(_previewTransformController.value);
+    _previewTransformController.value = adjustment;
+    setState(() => _previewZoom = zoom);
+  }
+
+  Offset _previewCentre() {
+    final renderObject = _previewViewportKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox) {
+      return renderObject.size.center(Offset.zero);
+    }
+    return Offset.zero;
+  }
+
+  void _resetPreviewZoom() {
+    _previewTransformController.value = Matrix4.identity();
+    setState(() => _previewZoom = 1);
+  }
+
+  Future<void> _downloadInvoice() async {
+    try {
+      await Printing.sharePdf(
+        bytes: await _buildInvoicePdf(),
+        filename: '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download invoice: $error')),
+        );
+      }
+    }
+  }
+
+  Widget _buildHistoryTab() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_errorMessage != null || _invoice == null) return _buildBody();
+    final order = _nestedMap(_invoice?['orders']);
+    final workOrder = _nestedMap(order?['warehouse_work_orders']);
+    final events = <({String title, dynamic value, IconData icon})>[
+      (
+        title: 'Order created',
+        value: order?['created_at'],
+        icon: Icons.add_circle_outline,
+      ),
+      (
+        title: 'Order submitted',
+        value: order?['submitted_at'],
+        icon: Icons.send_outlined,
+      ),
+      (
+        title: 'Order accepted',
+        value: order?['accepted_at'],
+        icon: Icons.check_circle_outline,
+      ),
+      (
+        title: 'Work order created',
+        value: workOrder?['created_at'],
+        icon: Icons.assignment_outlined,
+      ),
+      (
+        title: 'Picking slip printed',
+        value: workOrder?['printed_at'],
+        icon: Icons.print_outlined,
+      ),
+      (
+        title: 'Picking started',
+        value: workOrder?['picking_started_at'],
+        icon: Icons.play_circle_outline,
+      ),
+      (
+        title: 'Picking completed',
+        value: workOrder?['picked_at'],
+        icon: Icons.inventory_2_outlined,
+      ),
+      (
+        title: 'Invoice created',
+        value: _invoice?['created_at'],
+        icon: Icons.receipt_long_outlined,
+      ),
+      (
+        title: 'Invoice issued',
+        value: _invoice?['issued_at'],
+        icon: Icons.verified_outlined,
+      ),
+      (
+        title: 'Invoice sent',
+        value: _invoice?['sent_to_butcher_at'],
+        icon: Icons.email_outlined,
+      ),
+      (
+        title: 'Invoice paid',
+        value: _invoice?['paid_at'],
+        icon: Icons.payments_outlined,
+      ),
+      (
+        title: 'Invoice voided',
+        value: _invoice?['voided_at'],
+        icon: Icons.block_outlined,
+      ),
+      (
+        title: 'Order dispatched',
+        value: order?['dispatched_at'],
+        icon: Icons.local_shipping_outlined,
+      ),
+      (
+        title: 'Order delivered',
+        value: order?['delivered_at'],
+        icon: Icons.inventory_outlined,
+      ),
+      (
+        title: 'Order completed',
+        value: order?['completed_at'],
+        icon: Icons.task_alt,
+      ),
+    ].where((event) => event.value != null).toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE3E5E8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Order History',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 3),
+              const Text(
+                'Recorded order, warehouse and invoice milestones.',
+                style: TextStyle(color: Color(0xFF73777D), fontSize: 12),
+              ),
+              const SizedBox(height: 18),
+              if (events.isEmpty)
+                const Text('No recorded milestones yet.')
+              else
+                for (var index = 0; index < events.length; index++)
+                  _historyEvent(
+                    events[index],
+                    last: index == events.length - 1,
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Map<String, dynamic>? _nestedMap(dynamic raw) {
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+    return null;
+  }
+
+  Widget _historyEvent(
+    ({String title, dynamic value, IconData icon}) event, {
+    required bool last,
+  }) {
+    final parsed = DateTime.tryParse(event.value.toString())?.toLocal();
+    final date = parsed == null
+        ? event.value.toString()
+        : '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}  ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5EAEA),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(event.icon, size: 16, color: _darkRed),
+              ),
+              if (!last)
+                Expanded(
+                  child: Container(width: 1, color: const Color(0xFFE0E2E5)),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    date,
+                    style: const TextStyle(
+                      color: Color(0xFF71767C),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

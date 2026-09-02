@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupplierQuotesPage extends StatefulWidget {
-  const SupplierQuotesPage({super.key});
+  const SupplierQuotesPage({
+    super.key,
+    this.embedded = false,
+    this.onQuoteSelected,
+  });
+
+  final bool embedded;
+  final ValueChanged<String>? onQuoteSelected;
 
   @override
   State<SupplierQuotesPage> createState() => _SupplierQuotesPageState();
@@ -245,6 +252,12 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final id = quote['id']?.toString();
 
     if (id == null || id.isEmpty) {
+      return;
+    }
+
+    final onQuoteSelected = widget.onQuoteSelected;
+    if (onQuoteSelected != null) {
+      onQuoteSelected(id);
       return;
     }
 
@@ -585,6 +598,10 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(color: const Color(0xFFF7F8FA), child: _buildBody());
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
       appBar: AppBar(

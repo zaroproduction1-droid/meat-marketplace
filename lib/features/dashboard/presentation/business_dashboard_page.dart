@@ -16,6 +16,7 @@ import '../../orders/presentation/supplier_orders_page.dart';
 import '../../orders/presentation/supplier_invoices_page.dart';
 import '../../orders/presentation/supplier_sales_page.dart';
 import '../../orders/presentation/supplier_settings_page.dart';
+import '../../orders/presentation/supplier_unified_orders_page.dart';
 import '../../orders/presentation/supplier_work_orders_page.dart';
 
 class BusinessDashboardPage extends StatefulWidget {
@@ -378,6 +379,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (page is ButcherSettingsPage) return 'settings';
 
     if (page is SupplierSalesPage) return 'sales';
+    if (page is SupplierUnifiedOrdersPage) return 'orders';
     if (page is SupplierOrdersPage) return 'orders';
     if (page is SupplierInventoryPage) return 'inventory';
     if (page is SupplierCustomerRequestsPage) return 'customers';
@@ -2733,7 +2735,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$marketplacePending marketplace order${marketplacePending == 1 ? '' : 's'} await review',
           action: 'Review Orders',
-          onTap: () => _openPage(const SupplierOrdersPage(embedded: true)),
+          onTap: () =>
+              _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
         ),
       );
     }
@@ -2747,7 +2750,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierInvoicesToIssue invoice${_supplierInvoicesToIssue == 1 ? '' : 's'} ready to issue',
           action: 'View Invoices',
-          onTap: () => _openPage(const SupplierInvoicesPage(embedded: true)),
+          onTap: () => _openPage(
+            const SupplierUnifiedOrdersPage(
+              embedded: true,
+              initialType: SupplierDocumentType.invoices,
+            ),
+          ),
         ),
       );
     }
@@ -2804,7 +2812,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           iconColor: const Color(0xFF2E7D32),
           message: 'Nothing urgent needs your attention right now',
           action: 'View Orders',
-          onTap: () => _openPage(const SupplierOrdersPage(embedded: true)),
+          onTap: () =>
+              _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
         ),
       );
     }
@@ -2828,7 +2837,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Today’s Orders',
       actionText: 'View All Orders',
-      onAction: () => _openPage(const SupplierOrdersPage(embedded: true)),
+      onAction: () =>
+          _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
       child: _supplierRecentOrders.isEmpty
           ? _emptyState(
               Icons.receipt_long_outlined,
@@ -2848,8 +2858,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final order in _supplierRecentOrders)
                   InkWell(
-                    onTap: () =>
-                        _openPage(const SupplierOrdersPage(embedded: true)),
+                    onTap: () => _openPage(
+                      const SupplierUnifiedOrdersPage(embedded: true),
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -2906,7 +2917,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Work Orders',
       actionText: 'View All',
-      onAction: () => _openPage(const SupplierWorkOrdersPage(embedded: true)),
+      onAction: () => _openPage(
+        const SupplierUnifiedOrdersPage(
+          embedded: true,
+          initialType: SupplierDocumentType.workOrders,
+        ),
+      ),
       child: rows.isEmpty
           ? _emptyState(
               Icons.build_outlined,
@@ -2925,8 +2941,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final row in rows)
                   InkWell(
-                    onTap: () =>
-                        _openPage(const SupplierWorkOrdersPage(embedded: true)),
+                    onTap: () => _openPage(
+                      const SupplierUnifiedOrdersPage(
+                        embedded: true,
+                        initialType: SupplierDocumentType.workOrders,
+                      ),
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -3287,19 +3307,29 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.shopping_cart_checkout_outlined,
             'Review Orders',
-            () => _openPage(const SupplierOrdersPage(embedded: true)),
+            () => _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.build_outlined,
             'Open Work Orders',
-            () => _openPage(const SupplierWorkOrdersPage(embedded: true)),
+            () => _openPage(
+              const SupplierUnifiedOrdersPage(
+                embedded: true,
+                initialType: SupplierDocumentType.workOrders,
+              ),
+            ),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.request_quote_outlined,
             'Issue Invoices',
-            () => _openPage(const SupplierInvoicesPage(embedded: true)),
+            () => _openPage(
+              const SupplierUnifiedOrdersPage(
+                embedded: true,
+                initialType: SupplierDocumentType.invoices,
+              ),
+            ),
           ),
           const SizedBox(height: 9),
           _quickAction(
@@ -3345,8 +3375,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.receipt_long_outlined,
                     'Orders',
                     selected: _workspaceKey == 'orders',
-                    onTap: () =>
-                        _openPage(const SupplierOrdersPage(embedded: true)),
+                    onTap: () => _openPage(
+                      const SupplierUnifiedOrdersPage(embedded: true),
+                    ),
                   ),
                   _sideItem(
                     Icons.inventory_2_outlined,
@@ -3376,25 +3407,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     ),
                   ),
                   _sideItem(
-                    Icons.assignment_outlined,
-                    'Work Orders',
-                    selected: _workspaceKey == 'work_orders',
-                    onTap: () =>
-                        _openPage(const SupplierWorkOrdersPage(embedded: true)),
-                  ),
-                  _sideItem(
                     Icons.local_shipping_outlined,
                     'Delivery',
                     selected: _workspaceKey == 'delivery',
                     onTap: () =>
                         _openPage(const SupplierDeliverySettingsPage()),
-                  ),
-                  _sideItem(
-                    Icons.request_quote_outlined,
-                    'Invoices',
-                    selected: _workspaceKey == 'invoices',
-                    onTap: () =>
-                        _openPage(const SupplierInvoicesPage(embedded: true)),
                   ),
                   _sideItem(
                     Icons.bar_chart_outlined,
@@ -3700,7 +3717,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         description:
                             'Manage warehouse picking, weighing and fulfilment.',
                         onTap: () => _openPage(
-                          const SupplierWorkOrdersPage(embedded: true),
+                          const SupplierUnifiedOrdersPage(
+                            embedded: true,
+                            initialType: SupplierDocumentType.workOrders,
+                          ),
                         ),
                       ),
                       _LegacyDashboardCard(
@@ -3710,7 +3730,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         description:
                             'View draft, issued, paid and outstanding invoices.',
                         onTap: () => _openPage(
-                          const SupplierInvoicesPage(embedded: true),
+                          const SupplierUnifiedOrdersPage(
+                            embedded: true,
+                            initialType: SupplierDocumentType.invoices,
+                          ),
                         ),
                       ),
                       _LegacyDashboardCard(
