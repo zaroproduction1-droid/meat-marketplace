@@ -5,6 +5,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
+class _PendingPriceChange {
+  _PendingPriceChange({
+    required this.product,
+    required this.visibility,
+    required this.amountText,
+    required this.priceBasis,
+    required this.minimumQuantity,
+    required this.minimumQuantityUnit,
+    this.priceListId,
+  });
+
+  final Map<String, dynamic> product;
+  final String visibility;
+  final String amountText;
+  final String priceBasis;
+  final double? minimumQuantity;
+  final dynamic minimumQuantityUnit;
+  String? priceListId;
+}
+
 class QuickPriceManagementPage extends StatefulWidget {
   const QuickPriceManagementPage({super.key});
 
@@ -31,6 +51,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   List<Map<String, dynamic>> _priceLists = [];
   List<Map<String, dynamic>> _approvedCustomers = [];
   List<Map<String, dynamic>> _productPrices = [];
+  final Map<String, TextEditingController> _inlinePriceControllers = {};
+  final Map<String, _PendingPriceChange> _pendingChanges = {};
+  bool _isSavingChanges = false;
 
   @override
   void initState() {
@@ -43,6 +66,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
+    for (final controller in _inlinePriceControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -204,6 +230,12 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _approvedCustomers = List<Map<String, dynamic>>.from(customerResponse);
         _productPrices = productPrices;
+        if (_pendingChanges.isEmpty) {
+          for (final controller in _inlinePriceControllers.values) {
+            controller.dispose();
+          }
+          _inlinePriceControllers.clear();
+        }
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -552,32 +584,139 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     return Map<String, dynamic>.from(inserted);
   }
 
-  Future<void> _editMainPrice({
+  String _changeKey(String productId, String visibility, [String? listId]) =>
+      '$productId|$visibility|${listId ?? ''}';
+
+  TextEditingController _inlineController({
     required Map<String, dynamic> product,
     required String visibility,
-  }) async {
-    final productId = product['id']?.toString();
-    if (productId == null || productId.isEmpty) return;
+    required Map<String, dynamic>? price,
+  }) {
+    final key = _changeKey(product['id'].toString(), visibility);
+    return _inlinePriceControllers.putIfAbsent(
+      key,
+      () => TextEditingController(text: price?['amount']?.toString() ?? ''),
+    );
+  }
+
+  void _queueInlinePrice({
+    required Map<String, dynamic> product,
+    required String visibility,
+    required Map<String, dynamic>? priceList,
+    required Map<String, dynamic>? existingPrice,
+    required String amountText,
+  }) {
+    final productId = product['id'].toString();
+    final key = _changeKey(productId, visibility);
+    final catchWeight = _isCatchWeight(product);
+
+    setState(() {
+      _pendingChanges[key] = _PendingPriceChange(
+        product: product,
+        visibility: visibility,
+        priceListId: priceList?['id']?.toString(),
+        amountText: amountText.trim(),
+        priceBasis: catchWeight
+            ? 'kilogram'
+            : existingPrice?['price_basis']?.toString() ??
+                  product['price_basis']?.toString() ??
+                  'unit',
+        minimumQuantity: existingPrice?['minimum_quantity'] is num
+            ? (existingPrice!['minimum_quantity'] as num).toDouble()
+            : double.tryParse(
+                existingPrice?['minimum_quantity']?.toString() ?? '',
+              ),
+        minimumQuantityUnit: catchWeight
+            ? 'carton'
+            : existingPrice?['minimum_quantity_unit'] ?? product['order_unit'],
+      );
+    });
+  }
+
+  void _queueDialogPrice({
+    required Map<String, dynamic> product,
+    required Map<String, dynamic> priceList,
+    required String amountText,
+    required String basis,
+    required double? minimum,
+  }) {
+    final productId = product['id'].toString();
+    final listId = priceList['id'].toString();
+    final key = _changeKey(productId, 'private', listId);
+    final catchWeight = _isCatchWeight(product);
+
+    setState(() {
+      _pendingChanges[key] = _PendingPriceChange(
+        product: product,
+        visibility: 'private',
+        priceListId: listId,
+        amountText: amountText.trim(),
+        priceBasis: catchWeight ? 'kilogram' : basis,
+        minimumQuantity: minimum,
+        minimumQuantityUnit: catchWeight ? 'carton' : product['order_unit'],
+      );
+    });
+  }
+
+  Future<void> _saveAllChanges() async {
+    if (_pendingChanges.isEmpty || _isSavingChanges) return;
+
+    final changes = _pendingChanges.values.toList();
+    for (final change in changes) {
+      final amount = double.tryParse(change.amountText);
+      if (amount == null || amount < 0) {
+        _message('Enter a valid price for ${change.product['product_name']}.');
+        return;
+      }
+    }
+
+    setState(() => _isSavingChanges = true);
 
     try {
-      final list = await _ensurePriceList(
-        visibility: visibility,
-        defaultName: visibility == 'public'
-            ? 'Standard Pricing'
-            : 'Trade Pricing',
+      for (final change in changes) {
+        if (change.priceListId != null) continue;
+        final list = await _ensurePriceList(
+          visibility: change.visibility,
+          defaultName: change.visibility == 'public'
+              ? 'Standard Pricing'
+              : 'Trade Pricing',
+        );
+        change.priceListId = list['id']?.toString();
+      }
+
+      final now = DateTime.now().toIso8601String();
+      await Supabase.instance.client.from('product_prices').upsert(
+        [
+          for (final change in changes)
+            {
+              'price_list_id': change.priceListId,
+              'product_id': change.product['id'].toString(),
+              'amount': double.parse(change.amountText),
+              'price_basis': change.priceBasis,
+              'minimum_quantity': change.minimumQuantity,
+              'minimum_quantity_unit': change.minimumQuantityUnit,
+              'active': true,
+              'updated_at': now,
+            },
+        ],
+        onConflict: 'price_list_id,product_id',
       );
 
-      final priceListId = list['id']?.toString();
-      if (priceListId == null || priceListId.isEmpty) return;
-
-      final existing = _priceForProductAndList(productId, priceListId);
-      await _openPriceDialog(
-        product: product,
-        priceList: list,
-        existingPrice: existing,
-        title: visibility == 'public' ? 'Standard Price' : 'Trade Price',
-      );
+      if (!mounted) return;
+      final count = changes.length;
+      setState(() {
+        _pendingChanges.clear();
+        _isSavingChanges = false;
+      });
+      await _loadPage();
+      _message('$count price change${count == 1 ? '' : 's'} saved.');
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      setState(() => _isSavingChanges = false);
+      _message(error.message);
     } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSavingChanges = false);
       _message(error.toString());
     }
   }
@@ -591,19 +730,24 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     final productId = product['id']?.toString();
     final priceListId = priceList['id']?.toString();
     if (productId == null || priceListId == null) return;
+    final pending =
+        _pendingChanges[_changeKey(productId, 'private', priceListId)];
 
     final catchWeight = _isCatchWeight(product);
     final initialBasis = catchWeight
         ? 'kilogram'
-        : existingPrice?['price_basis']?.toString() ??
+        : pending?.priceBasis ??
+              existingPrice?['price_basis']?.toString() ??
               product['price_basis']?.toString() ??
               'unit';
 
     final amountController = TextEditingController(
-      text: existingPrice?['amount']?.toString() ?? '',
+      text: pending?.amountText ?? existingPrice?['amount']?.toString() ?? '',
     );
     final minimumController = TextEditingController(
-      text: existingPrice?['minimum_quantity']?.toString() ?? '',
+      text: pending?.minimumQuantity?.toString() ??
+          existingPrice?['minimum_quantity']?.toString() ??
+          '',
     );
 
     var basis = ['kilogram', 'carton', 'unit'].contains(initialBasis)
@@ -614,8 +758,6 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        bool saving = false;
-
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> save() async {
@@ -660,32 +802,16 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
                 }
               }
 
-              setDialogState(() => saving = true);
+              _queueDialogPrice(
+                product: product,
+                priceList: priceList,
+                amountText: amountController.text,
+                basis: basis,
+                minimum: minimum,
+              );
 
-              try {
-                await Supabase.instance.client.from('product_prices').upsert({
-                  'price_list_id': priceListId,
-                  'product_id': productId,
-                  'amount': amount,
-                  'price_basis': catchWeight ? 'kilogram' : basis,
-                  'minimum_quantity': minimum,
-                  'minimum_quantity_unit': catchWeight
-                      ? 'carton'
-                      : product['order_unit'],
-                  'active': true,
-                  'updated_at': DateTime.now().toIso8601String(),
-                }, onConflict: 'price_list_id,product_id');
-
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(true);
-                }
-              } on PostgrestException catch (error) {
-                if (!dialogContext.mounted) return;
-
-                setDialogState(() => saving = false);
-                ScaffoldMessenger.of(
-                  dialogContext,
-                ).showSnackBar(SnackBar(content: Text(error.message)));
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop(true);
               }
             }
 
@@ -791,24 +917,13 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: saving
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  onPressed: saving ? null : save,
-                  child: saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Save Price'),
+                  onPressed: save,
+                  child: const Text('Add to changes'),
                 ),
               ],
             );
@@ -820,9 +935,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     amountController.dispose();
     minimumController.dispose();
 
-    if (saved == true) {
-      await _loadPage();
-    }
+    if (saved == true && mounted) setState(() {});
   }
 
   Future<void> _manageCustomerPrices(Map<String, dynamic> product) async {
@@ -1040,7 +1153,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   }
 
   int _specialPriceCountForProduct(String productId) {
-    var count = 0;
+    final priceListIds = <String>{};
 
     for (final customer in _approvedCustomers) {
       final customerId = customer['butcher_business_id']?.toString();
@@ -1051,10 +1164,18 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
 
       final price = _priceForProductAndList(productId, list['id'].toString());
 
-      if (price != null) count++;
+      if (price != null) priceListIds.add(list['id'].toString());
     }
 
-    return count;
+    for (final change in _pendingChanges.values) {
+      if (change.visibility == 'private' &&
+          change.product['id']?.toString() == productId &&
+          change.priceListId != null) {
+        priceListIds.add(change.priceListId!);
+      }
+    }
+
+    return priceListIds.length;
   }
 
   Widget _buildSectionStrip() {
@@ -1195,7 +1316,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final narrow = constraints.maxWidth < 850;
@@ -1334,22 +1455,22 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
 
             return Row(
               children: [
-                Expanded(flex: 4, child: productInfo),
+                Expanded(child: productInfo),
                 const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 155,
                   child: _priceCell(product: product, visibility: 'public'),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 155,
                   child: _priceCell(
                     product: product,
                     visibility: 'approved_customers',
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(flex: 2, child: _customerPriceCell(product)),
+                SizedBox(width: 190, child: _customerPriceCell(product)),
               ],
             );
           },
@@ -1409,37 +1530,51 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
         ? null
         : _priceForProductAndList(productId, list['id'].toString());
 
-    final amount = price?['amount'];
     final basis = _isCatchWeight(product)
         ? 'kilogram'
         : price?['price_basis']?.toString() ??
               product['price_basis']?.toString() ??
               'unit';
+    final controller = _inlineController(
+      product: product,
+      visibility: visibility,
+      price: price,
+    );
+    final changed = _pendingChanges.containsKey(
+      _changeKey(productId, visibility),
+    );
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => _editMainPrice(product: product, visibility: visibility),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE3E3DF)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                amount == null
-                    ? 'Not set'
-                    : '${_money(amount)} / ${_basisLabel(basis)}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: amount == null ? const Color(0xFF777777) : _darkRed,
-                ),
-              ),
-            ),
-            const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF666666)),
-          ],
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (value) => _queueInlinePrice(
+        product: product,
+        visibility: visibility,
+        priceList: list,
+        existingPrice: price,
+        amountText: value,
+      ),
+      style: TextStyle(
+        color: _darkRed,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Not set',
+        prefixText: r'$ ',
+        suffixText: '/ ${_basisLabel(basis)}',
+        isDense: true,
+        filled: changed,
+        fillColor: changed ? const Color(0xFFFFF4E5) : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: changed
+                ? const Color(0xFFE6A04B)
+                : const Color(0xFFE3E3DF),
+          ),
         ),
       ),
     );
@@ -1510,7 +1645,47 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _buildBody(),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (_pendingChanges.isNotEmpty)
+            Positioned(
+              right: 20,
+              top: 20,
+              child: SafeArea(
+                child: Material(
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(12),
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                    ),
+                    onPressed: _isSavingChanges ? null : _saveAllChanges,
+                    icon: _isSavingChanges
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(
+                      _isSavingChanges
+                          ? 'Saving all changes...'
+                          : 'Save all (${_pendingChanges.length})',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -1612,10 +1787,10 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      const Expanded(flex: 4, child: SizedBox()),
+                      const Expanded(child: SizedBox()),
                       const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
+                      SizedBox(
+                        width: 155,
                         child: _priceHeader(
                           title: 'Standard Price',
                           subtitle: 'Normal marketplace price',
@@ -1623,8 +1798,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
+                      SizedBox(
+                        width: 155,
                         child: _priceHeader(
                           title: 'Trade Price',
                           subtitle: 'Approved customers',
@@ -1632,8 +1807,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
+                      SizedBox(
+                        width: 190,
                         child: _priceHeader(
                           title: 'Customer Specific',
                           subtitle: 'Private negotiated prices',

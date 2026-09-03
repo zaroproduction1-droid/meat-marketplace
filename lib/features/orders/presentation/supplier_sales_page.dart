@@ -205,9 +205,29 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             id,
             sku,
             product_name,
+            description,
             brand,
+            origin_country,
+            origin_state,
             temperature_state,
             halal_status,
+            marbling_score,
+            breed_program,
+            feeding_days,
+            bone_state,
+            rib_count,
+            production_claim,
+            hgp_free,
+            piece_weight_min,
+            piece_weight_max,
+            piece_weight_unit,
+            carton_weight,
+            carton_weight_unit,
+            pieces_per_carton,
+            packaging_type,
+            trim_specification,
+            fat_specification,
+            supplier_specification,
             chicken_skin,
             chicken_bone,
             chicken_production_type,
@@ -689,6 +709,17 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           }
 
           if (product['meat_section_id']?.toString() != _selectedSectionId) {
+            return false;
+          }
+
+          if (_selectedSpecificationId != null &&
+              product['meat_specification_id']?.toString() !=
+                  _selectedSpecificationId) {
+            return false;
+          }
+
+          if (_selectedGradeId != null &&
+              product['meat_grade_id']?.toString() != _selectedGradeId) {
             return false;
           }
         }
@@ -3018,6 +3049,172 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
+  Future<void> _openSalesProductInfo(Map<String, dynamic> product) async {
+    String value(dynamic raw, {String fallback = 'Not provided'}) {
+      final text = raw?.toString().trim() ?? '';
+      return text.isEmpty ? fallback : text;
+    }
+
+    Widget detail(String label, String content) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 135,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                content,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final catchWeight = _isCatchWeight(product);
+    final pieceMin = value(product['piece_weight_min'], fallback: '');
+    final pieceMax = value(product['piece_weight_max'], fallback: '');
+    final pieceUnit = value(product['piece_weight_unit'], fallback: 'kg');
+    final pieceWeight = pieceMin.isEmpty && pieceMax.isEmpty
+        ? 'Not provided'
+        : pieceMin == pieceMax || pieceMax.isEmpty
+        ? '$pieceMin $pieceUnit'
+        : '$pieceMin–$pieceMax $pieceUnit';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820, maxHeight: 760),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 18, 12, 14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, color: _darkRed),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Product Information',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            _specificationName(product),
+                            style: const TextStyle(color: Color(0xFF666666)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Product',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 13),
+                      detail('Animal', value(_nestedMap(product['meat_animals'])?['name'])),
+                      detail('Cut', _sectionName(product)),
+                      detail('Subcategory', _specificationName(product)),
+                      detail('Grade', '${_gradeCode(product)} — ${_gradeName(product)}'),
+                      detail('SKU', value(product['sku'])),
+                      detail('Brand', value(product['brand'])),
+                      detail('Storage', value(product['temperature_state'])),
+                      detail('Availability', _availabilityLabel(product['availability_status']?.toString())),
+                      detail('Available', _quantityLabel(product)),
+                      detail('Origin', [value(product['origin_state'], fallback: ''), value(product['origin_country'], fallback: '')].where((item) => item.isNotEmpty).join(', ').isEmpty ? 'Not provided' : [value(product['origin_state'], fallback: ''), value(product['origin_country'], fallback: '')].where((item) => item.isNotEmpty).join(', ')),
+                      const Divider(height: 28),
+                      const Text(
+                        'Specification',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 13),
+                      detail('Marbling / MB', value(product['marbling_score'])),
+                      detail('Breed / program', value(product['breed_program'])),
+                      detail('Halal status', value(product['halal_status'], fallback: 'Not specified')),
+                      detail('Trim', value(product['trim_specification'])),
+                      detail('Fat spec', value(product['fat_specification'])),
+                      detail('Piece weight', pieceWeight),
+                      detail('Carton weight', '${value(product['carton_weight'])}${product['carton_weight'] == null ? '' : ' ${value(product['carton_weight_unit'], fallback: 'kg')}'}'),
+                      detail('Pieces per carton', value(product['pieces_per_carton'])),
+                      detail('Packaging', value(product['packaging_type'])),
+                      detail('Catch weight', catchWeight ? 'Yes' : 'No'),
+                      detail('Supplier specification', value(product['supplier_specification'])),
+                      if (value(product['description'], fallback: '').isNotEmpty) ...[
+                        const Divider(height: 28),
+                        const Text('Description', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 8),
+                        Text(value(product['description']), style: const TextStyle(height: 1.45)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Close'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      onPressed: product['availability_status']?.toString() == 'out_of_stock'
+                          ? null
+                          : () {
+                              Navigator.of(dialogContext).pop();
+                              _handleAddToSale(product);
+                            },
+                      icon: const Icon(Icons.add_shopping_cart_outlined),
+                      label: const Text('Add to Sale'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProductCard(Map<String, dynamic> product) {
     final standardPrice = _standardPrice(product);
     final price = standardPrice?['amount'];
@@ -3214,27 +3411,44 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ),
                   ),
                   const SizedBox(height: 7),
-                  FilledButton.icon(
-                    onPressed: available
-                        ? () => _handleAddToSale(product)
-                        : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                      foregroundColor: Colors.white,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    alignment: narrow
+                        ? WrapAlignment.start
+                        : WrapAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _openSalesProductInfo(product),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(Icons.info_outline, size: 17),
+                        label: const Text('Info'),
                       ),
-                    ),
-                    icon: const Icon(
-                      Icons.add_shopping_cart_outlined,
-                      size: 17,
-                    ),
-                    label: const Text(
-                      'Add to Sale',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
+                      FilledButton.icon(
+                        onPressed: available
+                            ? () => _handleAddToSale(product)
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _darkRed,
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.add_shopping_cart_outlined,
+                          size: 17,
+                        ),
+                        label: const Text(
+                          'Add to Sale',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               );
@@ -3668,16 +3882,28 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       }
 
                       Widget subcategoryStage() {
-                        final specifications = _availableSpecifications;
+                        final query = _searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final specifications = _availableSpecifications.where((
+                          specification,
+                        ) {
+                          if (query.isEmpty) return true;
+                          return (specification['name']?.toString() ?? '')
+                              .toLowerCase()
+                              .contains(query);
+                        }).toList();
 
                         if (specifications.isEmpty) {
-                          return const Center(
+                          return Center(
                             child: Padding(
-                              padding: EdgeInsets.all(26),
+                              padding: const EdgeInsets.all(26),
                               child: Text(
-                                'No subcategories are linked to this cut yet.',
+                                query.isEmpty
+                                    ? 'No subcategories are linked to this cut yet.'
+                                    : 'No subcategories match “${_searchController.text.trim()}”.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Color(0xFF777777),
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -3707,6 +3933,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                       ?.toString();
                                   _selectedGradeId = null;
                                 });
+                                _searchController.clear();
                               },
                             );
                           },
@@ -3714,16 +3941,27 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       }
 
                       Widget gradeStage() {
-                        final grades = _availableGrades;
+                        final query = _searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final grades = _availableGrades.where((grade) {
+                          if (query.isEmpty) return true;
+                          final code = grade['code']?.toString() ?? '';
+                          final name = grade['name']?.toString() ?? '';
+                          return code.toLowerCase().contains(query) ||
+                              name.toLowerCase().contains(query);
+                        }).toList();
 
                         if (grades.isEmpty) {
-                          return const Center(
+                          return Center(
                             child: Padding(
-                              padding: EdgeInsets.all(26),
+                              padding: const EdgeInsets.all(26),
                               child: Text(
-                                'No grades are linked to this subcategory yet.',
+                                query.isEmpty
+                                    ? 'No grades are linked to this subcategory yet.'
+                                    : 'No grades match “${_searchController.text.trim()}”.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Color(0xFF777777),
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -3749,6 +3987,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                 setState(() {
                                   _selectedGradeId = grade['id']?.toString();
                                 });
+                                _searchController.clear();
                               },
                             );
                           },
@@ -3806,9 +4045,13 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: _selectedSectionId == null
+                              hintText: !cutSelected
                                   ? 'Search all stock — cut, subcategory, SKU, brand...'
-                                  : 'Search within ${_selectedSectionName ?? 'this cut'}...',
+                                  : !subcategorySelected
+                                  ? 'Search subcategories within ${_selectedSectionName ?? 'this cut'}...'
+                                  : !gradeSelected
+                                  ? 'Search grades for this subcategory...'
+                                  : 'Search this selected stock...',
                               prefixIcon: const Icon(Icons.search, size: 20),
                               suffixIcon: _searchController.text.isEmpty
                                   ? null
@@ -3837,7 +4080,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       }
 
                       Widget resultsPanel() {
-                        final title = directSearch
+                        final globalSearch = directSearch && !cutSelected;
+                        final title = globalSearch
                             ? 'Search Results'
                             : !cutSelected
                             ? 'Choose a Cut'
@@ -3847,7 +4091,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ? 'Choose Grade'
                             : 'Sales Stock';
 
-                        final subtitle = directSearch
+                        final subtitle = globalSearch
                             ? 'Matching products in your supplier inventory.'
                             : !cutSelected
                             ? 'Select a cut from the animal diagram or cut row.'
@@ -3857,7 +4101,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ? 'Choose the commercial grade/category.'
                             : 'Choose a product to add it to the active sale.';
 
-                        final showingStock = directSearch || gradeSelected;
+                        final showingStock = globalSearch || gradeSelected;
 
                         return Container(
                           decoration: BoxDecoration(
@@ -3933,7 +4177,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               ),
                               searchBar(),
                               Expanded(
-                                child: directSearch
+                                child: globalSearch
                                     ? stockStage()
                                     : !cutSelected
                                     ? const Center(

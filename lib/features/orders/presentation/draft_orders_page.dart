@@ -9,11 +9,14 @@ class DraftOrdersPage extends StatefulWidget {
 }
 
 class _DraftOrdersPageState extends State<DraftOrdersPage> {
+  static const _darkRed = Color(0xFF741C1C);
+  static const _canvas = Color(0xFFF5F6F8);
   bool _isLoading = true;
   String? _errorMessage;
   String? _butcherBusinessId;
 
   List<Map<String, dynamic>> _orders = [];
+  String? _openOrderId;
 
   @override
   void initState() {
@@ -127,6 +130,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       setState(() {
         _butcherBusinessId = butcherBusinessId;
         _orders = List<Map<String, dynamic>>.from(response);
+        if (_orders.isEmpty) {
+          _openOrderId = null;
+        } else if (_openOrderId == null ||
+            !_orders.any((order) => order['id']?.toString() == _openOrderId)) {
+          _openOrderId = _orders.first['id']?.toString();
+        }
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -727,12 +736,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE1E1DE)),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -874,10 +880,111 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     }
   }
 
+  Widget _buildCartOverview() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your cart',
+            style: TextStyle(
+              fontSize: 30,
+              height: 1.1,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Your products are separated into an order for each supplier.',
+            style: TextStyle(
+              color: Color(0xFF666A70),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildSupplierOrderSelector(),
+          const Divider(height: 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierOrderSelector() {
+    return SizedBox(
+      height: 58,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _orders.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 22),
+        itemBuilder: (context, index) {
+          final order = _orders[index];
+          final orderId = order['id']?.toString();
+          final selected = orderId != null && orderId == _openOrderId;
+          final itemCount = _items(order).length;
+
+          return InkWell(
+            onTap: () {
+              setState(() {
+                _openOrderId = selected ? null : orderId;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: selected ? _darkRed : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _supplierName(order),
+                        style: TextStyle(
+                          color: selected
+                              ? const Color(0xFF202020)
+                              : const Color(0xFF55585D),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '$itemCount product line${itemCount == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: Color(0xFF777B80),
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    selected ? Icons.expand_less : Icons.expand_more,
+                    size: 19,
+                    color: selected ? _darkRed : const Color(0xFF777B80),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _canvas,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
@@ -951,29 +1058,38 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     }
 
     if (_orders.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.shopping_cart_outlined,
-                size: 76,
-                color: Color(0xFF741C1C),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'No draft orders',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Products added from the marketplace will appear here before you submit them to a supplier.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF666666), height: 1.5),
-              ),
-            ],
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 46),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 58,
+                  color: _darkRed,
+                ),
+                SizedBox(height: 18),
+                Text(
+                  'Your cart is ready when you are',
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Products added from the marketplace are grouped into a separate draft for each supplier.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF666A70), height: 1.45),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -985,20 +1101,25 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
           child: ListView.separated(
-            padding: const EdgeInsets.all(24),
-            itemCount: _orders.length,
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+            itemCount: _openOrderId == null ? 1 : 2,
             separatorBuilder: (context, index) {
               return const SizedBox(height: 18);
             },
             itemBuilder: (context, index) {
-              final order = _orders[index];
+              if (index == 0) return _buildCartOverview();
+
+              final order = _orders.firstWhere(
+                (order) => order['id']?.toString() == _openOrderId,
+              );
               final items = _items(order);
 
               return Card(
                 elevation: 0,
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xFFE3E5E8)),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(22),
@@ -1009,44 +1130,42 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         builder: (context, constraints) {
                           final narrow = constraints.maxWidth < 650;
 
-                          final header = Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          final header = Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                order['order_number']?.toString() ??
-                                    'Draft order',
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _supplierName(order),
-                                style: const TextStyle(
-                                  color: Color(0xFF741C1C),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _supplierName(order),
+                                      style: const TextStyle(
+                                        fontSize: 21,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${order['order_number']?.toString() ?? 'Draft order'} • ${items.length} product line${items.length == 1 ? '' : 's'}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF666A70),
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           );
 
-                          final status = Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF4E5E5),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'Draft',
-                              style: TextStyle(
-                                color: Color(0xFF741C1C),
-                                fontWeight: FontWeight.w700,
-                              ),
+                          final status = const Text(
+                            'DRAFT',
+                            style: TextStyle(
+                              color: _darkRed,
+                              fontSize: 10.5,
+                              letterSpacing: 1.1,
+                              fontWeight: FontWeight.w900,
                             ),
                           );
 
@@ -1073,7 +1192,28 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
                       const SizedBox(height: 20),
                       const Divider(),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Text(
+                            'Products',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${items.length} line${items.length == 1 ? '' : 's'}',
+                            style: const TextStyle(
+                              color: Color(0xFF666A70),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
 
                       if (items.isEmpty)
                         const Padding(
@@ -1100,10 +1240,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F8F6),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE1E1DE)),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Color(0xFFE3E5E8)),
+                            bottom: BorderSide(color: Color(0xFFE3E5E8)),
+                          ),
                         ),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
@@ -1179,12 +1320,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F6),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE1E1DE)),
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Text(
                             _draftPricingStatusText(order),
                             style: const TextStyle(
@@ -1194,6 +1330,21 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           ),
                         ),
                       ],
+
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 340,
+                          child: Text(
+                            'Order summary',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
 
                       Align(
                         alignment: Alignment.centerRight,
@@ -1262,10 +1413,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                               ? null
                               : () => _submitOrder(order),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF741C1C),
+                            backgroundColor: _darkRed,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 22,
-                              vertical: 16,
+                              horizontal: 24,
+                              vertical: 17,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           icon: const Icon(Icons.send_outlined),
@@ -1317,12 +1471,9 @@ class _OrderItemCard extends StatelessWidget {
         item['price_basis']?.toString() == 'kilogram';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 18),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

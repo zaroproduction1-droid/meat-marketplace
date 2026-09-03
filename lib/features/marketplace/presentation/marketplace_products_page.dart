@@ -1003,6 +1003,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             if (_productSectionId(product) != _selectedSectionId) {
               return false;
             }
+
+            if (_selectedSpecificationId != null &&
+                !_matchesSpecification(product, _selectedSpecificationId!)) {
+              return false;
+            }
+
+            if (_selectedGradeId != null &&
+                !_matchesGrade(product, _selectedGradeId!)) {
+              return false;
+            }
           }
         } else {
           if (_animalCode(product) != _selectedAnimalCode) {
@@ -2378,9 +2388,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         child: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: _selectedSectionId == null
+            hintText: !cutSelected
                 ? 'Search all products — e.g. Scotch Fillet, Brisket...'
-                : 'Search within ${_selectedSectionName ?? 'this cut'}...',
+                : !subcategorySelected
+                ? 'Search subcategories within ${_selectedSectionName ?? 'this cut'}...'
+                : !gradeSelected
+                ? 'Search grades for this subcategory...'
+                : 'Search this selected stock...',
             prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: _searchController.text.isEmpty
                 ? null
@@ -2655,16 +2669,24 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     Widget subcategoryStage() {
-      final specifications = _availableSpecifications;
+      final query = _searchController.text.trim().toLowerCase();
+      final specifications = _availableSpecifications.where((specification) {
+        if (query.isEmpty) return true;
+        return (specification['name']?.toString() ?? '')
+            .toLowerCase()
+            .contains(query);
+      }).toList();
 
       if (specifications.isEmpty) {
-        return const Center(
+        return Center(
           child: Padding(
-            padding: EdgeInsets.all(26),
+            padding: const EdgeInsets.all(26),
             child: Text(
-              'No subcategories are linked to this cut yet.',
+              query.isEmpty
+                  ? 'No subcategories are linked to this cut yet.'
+                  : 'No subcategories match “${_searchController.text.trim()}”.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF777777),
                 fontWeight: FontWeight.w700,
               ),
@@ -2690,6 +2712,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 _selectedSpecificationId = specification['id']?.toString();
                 _selectedGradeId = null;
               });
+              _searchController.clear();
               _applySearch();
             },
           );
@@ -2698,16 +2721,25 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
 
     Widget gradeStage() {
-      final grades = _availableGrades;
+      final query = _searchController.text.trim().toLowerCase();
+      final grades = _availableGrades.where((grade) {
+        if (query.isEmpty) return true;
+        final code = grade['code']?.toString() ?? '';
+        final name = grade['name']?.toString() ?? '';
+        return code.toLowerCase().contains(query) ||
+            name.toLowerCase().contains(query);
+      }).toList();
 
       if (grades.isEmpty) {
-        return const Center(
+        return Center(
           child: Padding(
-            padding: EdgeInsets.all(26),
+            padding: const EdgeInsets.all(26),
             child: Text(
-              'No grades are linked to this subcategory yet.',
+              query.isEmpty
+                  ? 'No grades are linked to this subcategory yet.'
+                  : 'No grades match “${_searchController.text.trim()}”.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF777777),
                 fontWeight: FontWeight.w700,
               ),
@@ -2733,6 +2765,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               setState(() {
                 _selectedGradeId = grade['id']?.toString();
               });
+              _searchController.clear();
               _applySearch();
             },
           );
@@ -2781,8 +2814,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     Widget resultsPanel() {
       final directSearch = _searchController.text.trim().isNotEmpty;
+      final globalSearch = directSearch && !cutSelected;
 
-      final title = directSearch
+      final title = globalSearch
           ? 'Search Results'
           : !cutSelected
           ? 'Choose a Cut'
@@ -2792,7 +2826,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Choose Grade'
           : 'Supplier Stock';
 
-      final subtitle = directSearch
+      final subtitle = globalSearch
           ? 'Matching products from all suppliers.'
           : !cutSelected
           ? 'Select a cut from the animal diagram or cut row.'
@@ -2802,7 +2836,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Choose the commercial grade/category.'
           : 'Compare matching supplier offers and pricing.';
 
-      final showingStock = directSearch || exactSelection;
+      final showingStock = globalSearch || exactSelection;
 
       return Container(
         decoration: BoxDecoration(
@@ -2871,7 +2905,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             universalSearchBar(),
             if (showingStock) resultsToolbar(),
             Expanded(
-              child: directSearch
+              child: globalSearch
                   ? supplierStockStage()
                   : !cutSelected
                   ? const Center(
