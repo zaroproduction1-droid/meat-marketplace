@@ -36,6 +36,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   final _previewTransformController = TransformationController();
   final _previewViewportKey = GlobalKey();
   double _previewZoom = 1;
+  bool _isPreviewDragging = false;
 
   final _instructionsController = TextEditingController();
   final _pickedByController = TextEditingController();
@@ -1434,13 +1435,31 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   : availableWidth;
               return ClipRect(
                 key: _previewViewportKey,
-                child: Listener(
-                  onPointerSignal: _handlePreviewPointerSignal,
-                  child: InteractiveViewer(
+                child: MouseRegion(
+                  cursor: _previewZoom > 1
+                      ? (_isPreviewDragging
+                            ? SystemMouseCursors.grabbing
+                            : SystemMouseCursors.grab)
+                      : MouseCursor.defer,
+                  child: Listener(
+                    onPointerSignal: _handlePreviewPointerSignal,
+                    child: InteractiveViewer(
                     transformationController: _previewTransformController,
                     minScale: 0.75,
-                    maxScale: 4,
+                    maxScale: 3,
                     panEnabled: _previewZoom > 1,
+                    onInteractionStart: (_) {
+                      if (_previewZoom > 1) {
+                        setState(() => _isPreviewDragging = true);
+                      }
+                    },
+                    onInteractionUpdate: (_) => _syncPreviewZoom(),
+                    onInteractionEnd: (_) {
+                      _syncPreviewZoom();
+                      if (_isPreviewDragging) {
+                        setState(() => _isPreviewDragging = false);
+                      }
+                    },
                     child: PdfPreview(
                       build: (_) => _buildPickSlipPdf(),
                       pdfFileName:
@@ -1458,6 +1477,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       scrollViewDecoration: const BoxDecoration(
                         color: Color(0xFFE9EBEE),
                       ),
+                    ),
                     ),
                   ),
                 ),
@@ -1483,7 +1503,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           IconButton(
             onPressed: _previewZoom <= 0.75
                 ? null
-                : () => _setPreviewZoom(_previewZoom - 0.25),
+                : () => _setPreviewZoom(_previewZoom - 0.1),
             tooltip: 'Zoom out',
             icon: const Icon(Icons.zoom_out, size: 18),
             visualDensity: VisualDensity.compact,
@@ -1508,9 +1528,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
           ),
           IconButton(
-            onPressed: _previewZoom >= 4
+            onPressed: _previewZoom >= 3
                 ? null
-                : () => _setPreviewZoom(_previewZoom + 0.25),
+                : () => _setPreviewZoom(_previewZoom + 0.1),
             tooltip: 'Zoom in',
             icon: const Icon(Icons.zoom_in, size: 18),
             visualDensity: VisualDensity.compact,
@@ -1523,13 +1543,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   void _handlePreviewPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     _setPreviewZoom(
-      _previewZoom + (event.scrollDelta.dy < 0 ? 0.15 : -0.15),
+      _previewZoom + (event.scrollDelta.dy < 0 ? 0.1 : -0.1),
       focalPoint: event.localPosition,
     );
   }
 
   void _setPreviewZoom(double value, {Offset? focalPoint}) {
-    final zoom = value.clamp(0.75, 4.0);
+    final zoom = value.clamp(0.75, 3.0);
     if (zoom == _previewZoom) return;
 
     final focal = focalPoint ?? _previewCentre();
@@ -1541,6 +1561,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       ..multiply(_previewTransformController.value);
     _previewTransformController.value = adjustment;
     setState(() => _previewZoom = zoom);
+  }
+
+  void _syncPreviewZoom() {
+    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
+      0.75,
+      3.0,
+    );
+    if ((zoom - _previewZoom).abs() > 0.001 && mounted) {
+      setState(() => _previewZoom = zoom);
+    }
   }
 
   Offset _previewCentre() {

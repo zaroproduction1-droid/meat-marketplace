@@ -37,8 +37,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   bool _isLoading = true;
   bool _isAdmin = false;
   bool _sidebarCollapsed = false;
-  double _sidebarLayoutWidth = _expandedSidebarWidth;
-  bool _sidebarTransitioning = false;
 
   Widget? _workspacePage;
   String _workspaceKey = 'dashboard';
@@ -395,7 +393,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   void _openPage(Widget page, {String? workspaceKey}) {
     final nextKey = workspaceKey ?? _workspaceKeyForPage(page);
-    if (_workspacePage != null && _workspaceKey == nextKey) return;
+    if (_workspacePage != null &&
+        _workspaceKey == nextKey &&
+        _workspacePage.runtimeType == page.runtimeType) {
+      return;
+    }
 
     setState(() {
       _workspaceKey = nextKey;
@@ -404,34 +406,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   void _toggleSidebar() {
-    if (_sidebarTransitioning) return;
-
-    final collapsing = !_sidebarCollapsed;
     setState(() {
-      _sidebarTransitioning = true;
-      _sidebarCollapsed = collapsing;
-
-      // Expansion reserves the final side-by-side space before its visual
-      // animation. Collapse keeps the expanded reservation until animation
-      // completion, so the workspace is never resized on animation frames.
-      if (!collapsing) {
-        _sidebarLayoutWidth = _expandedSidebarWidth;
-      }
+      _sidebarCollapsed = !_sidebarCollapsed;
     });
-  }
-
-  void _onSidebarVisualAnimationEnd() {
-    if (!_sidebarTransitioning) return;
-
-    if (_sidebarCollapsed) {
-      setState(() {
-        _sidebarLayoutWidth = _collapsedSidebarWidth;
-        _sidebarTransitioning = false;
-      });
-      return;
-    }
-
-    _sidebarTransitioning = false;
   }
 
   Widget _sidebarTransitionFrame({required Widget child}) {
@@ -439,20 +416,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         ? _collapsedSidebarWidth
         : _expandedSidebarWidth;
 
-    return SizedBox(
-      width: _sidebarLayoutWidth,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: AnimatedContainer(
-          duration: _sidebarAnimationDuration,
-          curve: Curves.easeOutCubic,
-          width: visualWidth,
-          color: _deepNavy,
-          clipBehavior: Clip.hardEdge,
-          onEnd: _onSidebarVisualAnimationEnd,
-          child: child,
-        ),
-      ),
+    return AnimatedContainer(
+      duration: _sidebarAnimationDuration,
+      curve: Curves.easeOutCubic,
+      width: visualWidth,
+      color: _deepNavy,
+      clipBehavior: Clip.hardEdge,
+      child: child,
     );
   }
 
@@ -2075,6 +2045,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     String label, {
     required VoidCallback onTap,
     bool selected = false,
+    int badgeCount = 0,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2094,7 +2065,23 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   children: [
                     SizedBox(
                       width: showLabel ? 45 : constraints.maxWidth,
-                      child: Icon(icon, color: Colors.white, size: 20),
+                      child: Center(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(icon, color: Colors.white, size: 20),
+                            if (badgeCount > 0 && !showLabel)
+                              Positioned(
+                                right: -10,
+                                top: -9,
+                                child: _sidebarBadge(
+                                  badgeCount,
+                                  selected: selected,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     if (showLabel)
                       Expanded(
@@ -2111,6 +2098,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           ),
                         ),
                       ),
+                    if (showLabel && badgeCount > 0) ...[
+                      _sidebarBadge(badgeCount, selected: selected),
+                      const SizedBox(width: 10),
+                    ],
                   ],
                 ),
               ),
@@ -2118,6 +2109,33 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ),
         );
       },
+    );
+  }
+
+  void _openSalesOrders(String initialTabKey) {
+    _openPage(
+      SupplierOrdersPage(embedded: true, initialTabKey: initialTabKey),
+      workspaceKey: 'sales',
+    );
+  }
+
+  Widget _sidebarBadge(int count, {required bool selected}) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selected ? _deepNavy : _darkRed,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        count > 99 ? '99+' : count.toString(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 
@@ -2735,8 +2753,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$marketplacePending marketplace order${marketplacePending == 1 ? '' : 's'} await review',
           action: 'Review Orders',
-          onTap: () =>
-              _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
+          onTap: () => _openSalesOrders('new'),
         ),
       );
     }
@@ -2750,12 +2767,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierInvoicesToIssue invoice${_supplierInvoicesToIssue == 1 ? '' : 's'} ready to issue',
           action: 'View Invoices',
-          onTap: () => _openPage(
-            const SupplierUnifiedOrdersPage(
-              embedded: true,
-              initialType: SupplierDocumentType.invoices,
-            ),
-          ),
+          onTap: () => _openSalesOrders('invoices'),
         ),
       );
     }
@@ -2812,8 +2824,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           iconColor: const Color(0xFF2E7D32),
           message: 'Nothing urgent needs your attention right now',
           action: 'View Orders',
-          onTap: () =>
-              _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
+          onTap: () => _openSalesOrders('new'),
         ),
       );
     }
@@ -2837,8 +2848,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Today’s Orders',
       actionText: 'View All Orders',
-      onAction: () =>
-          _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
+      onAction: () => _openSalesOrders('new'),
       child: _supplierRecentOrders.isEmpty
           ? _emptyState(
               Icons.receipt_long_outlined,
@@ -2858,9 +2868,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final order in _supplierRecentOrders)
                   InkWell(
-                    onTap: () => _openPage(
-                      const SupplierUnifiedOrdersPage(embedded: true),
-                    ),
+                    onTap: () => _openSalesOrders('new'),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -2917,12 +2925,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Work Orders',
       actionText: 'View All',
-      onAction: () => _openPage(
-        const SupplierUnifiedOrdersPage(
-          embedded: true,
-          initialType: SupplierDocumentType.workOrders,
-        ),
-      ),
+      onAction: () => _openSalesOrders('work_orders'),
       child: rows.isEmpty
           ? _emptyState(
               Icons.build_outlined,
@@ -2941,12 +2944,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final row in rows)
                   InkWell(
-                    onTap: () => _openPage(
-                      const SupplierUnifiedOrdersPage(
-                        embedded: true,
-                        initialType: SupplierDocumentType.workOrders,
-                      ),
-                    ),
+                    onTap: () => _openSalesOrders('work_orders'),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -3307,29 +3305,19 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.shopping_cart_checkout_outlined,
             'Review Orders',
-            () => _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
+            () => _openSalesOrders('new'),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.build_outlined,
             'Open Work Orders',
-            () => _openPage(
-              const SupplierUnifiedOrdersPage(
-                embedded: true,
-                initialType: SupplierDocumentType.workOrders,
-              ),
-            ),
+            () => _openSalesOrders('work_orders'),
           ),
           const SizedBox(height: 9),
           _quickAction(
             Icons.request_quote_outlined,
             'Issue Invoices',
-            () => _openPage(
-              const SupplierUnifiedOrdersPage(
-                embedded: true,
-                initialType: SupplierDocumentType.invoices,
-              ),
-            ),
+            () => _openSalesOrders('invoices'),
           ),
           const SizedBox(height: 9),
           _quickAction(
@@ -3368,6 +3356,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.point_of_sale_outlined,
                     'Sales',
                     selected: _workspaceKey == 'sales',
+                    badgeCount: _newSupplierOrderCount,
                     onTap: () =>
                         _openPage(const SupplierSalesPage(embedded: true)),
                   ),
@@ -3716,12 +3705,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Work Orders',
                         description:
                             'Manage warehouse picking, weighing and fulfilment.',
-                        onTap: () => _openPage(
-                          const SupplierUnifiedOrdersPage(
-                            embedded: true,
-                            initialType: SupplierDocumentType.workOrders,
-                          ),
-                        ),
+                        onTap: () => _openSalesOrders('work_orders'),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3729,12 +3713,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Invoices',
                         description:
                             'View draft, issued, paid and outstanding invoices.',
-                        onTap: () => _openPage(
-                          const SupplierUnifiedOrdersPage(
-                            embedded: true,
-                            initialType: SupplierDocumentType.invoices,
-                          ),
-                        ),
+                        onTap: () => _openSalesOrders('invoices'),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
