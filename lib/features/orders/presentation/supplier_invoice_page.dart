@@ -1149,6 +1149,19 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           ],
         ),
         actions: [
+          OutlinedButton.icon(
+            onPressed: _isLoading || _isSaving ? null : _downloadInvoice,
+            icon: const Icon(Icons.download_outlined, size: 17),
+            label: const Text('Download'),
+          ),
+          const SizedBox(width: 7),
+          FilledButton.icon(
+            onPressed: _isLoading || _isSaving ? null : _printInvoice,
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            icon: const Icon(Icons.print_outlined, size: 17),
+            label: const Text('Print'),
+          ),
+          const SizedBox(width: 7),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
@@ -1235,19 +1248,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ),
               ),
               _zoomControls(),
-              const SizedBox(width: 10),
-              OutlinedButton.icon(
-                onPressed: _downloadInvoice,
-                icon: const Icon(Icons.download_outlined, size: 17),
-                label: const Text('Download'),
-              ),
-              const SizedBox(width: 7),
-              FilledButton.icon(
-                onPressed: _printInvoice,
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                icon: const Icon(Icons.print_outlined, size: 17),
-                label: const Text('Print'),
-              ),
               if (orderId != null && orderId.isNotEmpty) ...[
                 const SizedBox(width: 7),
                 OutlinedButton.icon(
@@ -1293,40 +1293,40 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   child: Listener(
                     onPointerSignal: _handlePreviewPointerSignal,
                     child: InteractiveViewer(
-                    transformationController: _previewTransformController,
-                    minScale: 0.75,
-                    maxScale: 3,
-                    panEnabled: _previewZoom > 1,
-                    onInteractionStart: (_) {
-                      if (_previewZoom > 1) {
-                        setState(() => _isPreviewDragging = true);
-                      }
-                    },
-                    onInteractionUpdate: (_) => _syncPreviewZoom(),
-                    onInteractionEnd: (_) {
-                      _syncPreviewZoom();
-                      if (_isPreviewDragging) {
-                        setState(() => _isPreviewDragging = false);
-                      }
-                    },
-                    child: PdfPreview(
-                      build: (_) => _buildInvoicePdf(),
-                      pdfFileName:
-                          '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
-                      maxPageWidth: maxWidth,
-                      canChangeOrientation: false,
-                      canChangePageFormat: false,
-                      canDebug: false,
-                      allowPrinting: false,
-                      allowSharing: false,
-                      useActions: false,
-                      initialPageFormat: PdfPageFormat.a4,
-                      dpi: 220,
-                      padding: const EdgeInsets.all(12),
-                      scrollViewDecoration: const BoxDecoration(
-                        color: Color(0xFFE9EBEE),
+                      transformationController: _previewTransformController,
+                      minScale: 0.75,
+                      maxScale: 3,
+                      panEnabled: _previewZoom > 1,
+                      onInteractionStart: (_) {
+                        if (_previewZoom > 1) {
+                          setState(() => _isPreviewDragging = true);
+                        }
+                      },
+                      onInteractionUpdate: (_) => _syncPreviewZoom(),
+                      onInteractionEnd: (_) {
+                        _syncPreviewZoom();
+                        if (_isPreviewDragging) {
+                          setState(() => _isPreviewDragging = false);
+                        }
+                      },
+                      child: PdfPreview(
+                        build: (_) => _buildInvoicePdf(),
+                        pdfFileName:
+                            '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
+                        maxPageWidth: maxWidth,
+                        canChangeOrientation: false,
+                        canChangePageFormat: false,
+                        canDebug: false,
+                        allowPrinting: false,
+                        allowSharing: false,
+                        useActions: false,
+                        initialPageFormat: PdfPageFormat.a4,
+                        dpi: 220,
+                        padding: const EdgeInsets.all(12),
+                        scrollViewDecoration: const BoxDecoration(
+                          color: Color(0xFFE9EBEE),
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ),

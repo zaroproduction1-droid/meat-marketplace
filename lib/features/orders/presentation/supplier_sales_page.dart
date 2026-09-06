@@ -13,10 +13,12 @@ class SupplierSalesPage extends StatefulWidget {
     super.key,
     this.embedded = false,
     this.initialQuoteOrderId,
+    this.initialWorkOrderOrderId,
   });
 
   final bool embedded;
   final String? initialQuoteOrderId;
+  final String? initialWorkOrderOrderId;
 
   @override
   State<SupplierSalesPage> createState() => _SupplierSalesPageState();
@@ -63,6 +65,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final quoteOrderId = widget.initialQuoteOrderId;
     if (mounted && quoteOrderId != null && quoteOrderId.isNotEmpty) {
       await _loadQuoteIntoWorkspace(quoteOrderId);
+      return;
+    }
+    final workOrderOrderId = widget.initialWorkOrderOrderId;
+    if (mounted && workOrderOrderId != null && workOrderOrderId.isNotEmpty) {
+      await _loadQuoteIntoWorkspace(workOrderOrderId, workOrderAmendment: true);
     }
   }
 
@@ -338,12 +345,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
   }
 
-  Future<void> _loadQuoteIntoWorkspace(String quoteOrderId) async {
+  Future<void> _loadQuoteIntoWorkspace(
+    String quoteOrderId, {
+    bool workOrderAmendment = false,
+  }) async {
     try {
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
 
-      final raw = await client
+      var query = client
           .from('orders')
           .select('''
             id,
@@ -389,9 +399,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             )
           ''')
           .eq('id', quoteOrderId)
-          .eq('supplier_business_id', supplierBusinessId)
-          .eq('status', 'draft')
-          .single();
+          .eq('supplier_business_id', supplierBusinessId);
+      final raw = workOrderAmendment
+          ? await query.neq('status', 'draft').single()
+          : await query.eq('status', 'draft').single();
 
       if (!mounted) {
         return;
@@ -418,6 +429,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
         _activeSale = {
           'quote_order_id': quote['id'],
+          'work_order_amendment': workOrderAmendment,
           'quote_number': quote['quote_number'] ?? quote['order_number'],
           'quote_revision': quote['quote_revision'],
           'supplier_customer_account_id':
@@ -2184,7 +2196,19 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final existingQuoteId = sale['quote_order_id']?.toString();
       late String orderId;
 
-      if (existingQuoteId != null && existingQuoteId.isNotEmpty) {
+      if (sale['work_order_amendment'] == true) {
+        if (existingQuoteId == null || existingQuoteId.isEmpty) {
+          throw Exception('The work order could not be identified.');
+        }
+        await Supabase.instance.client.rpc(
+          'update_supplier_work_order_cuts',
+          params: {
+            'target_order_id': existingQuoteId,
+            'p_items': _activeSaleRpcItems(),
+          },
+        );
+        orderId = existingQuoteId;
+      } else if (existingQuoteId != null && existingQuoteId.isNotEmpty) {
         await Supabase.instance.client.rpc(
           'update_supplier_sales_desk_quote',
           params: {
@@ -2250,10 +2274,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         orderId = orderIdRaw.toString();
       }
 
-      await Supabase.instance.client.rpc(
-        'create_or_get_warehouse_work_order',
-        params: {'target_order_id': orderId},
-      );
+      if (sale['work_order_amendment'] != true) {
+        await Supabase.instance.client.rpc(
+          'create_or_get_warehouse_work_order',
+          params: {'target_order_id': orderId},
+        );
+      }
 
       if (!mounted) {
         return;
@@ -2264,7 +2290,13 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       _closeActiveSale();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Work order created for $customerName.')),
+        SnackBar(
+          content: Text(
+            sale['work_order_amendment'] == true
+                ? 'Work order cuts updated for $customerName.'
+                : 'Work order created for $customerName.',
+          ),
+        ),
       );
 
       await Navigator.of(context).push(
@@ -2311,6 +2343,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         final time = sale['requested_fulfilment_time']?.toString() ?? 'Not set';
 
         final isQuote = sale['quote_order_id'] != null;
+        final isWorkOrderAmendment = sale['work_order_amendment'] == true;
         final quoteNumber = sale['quote_number']?.toString();
         final revision = (sale['quote_revision'] as num?)?.toInt() ?? 0;
         final documentLabel = isQuote
@@ -2507,7 +2540,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             icon: const Icon(Icons.assignment_outlined),
-            label: const Text('Create Work Order'),
+            label: Text(
+              isWorkOrderAmendment ? 'Update Work Order' : 'Create Work Order',
+            ),
           );
 
           return Container(
@@ -2549,8 +2584,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ),
                 ),
                 const Spacer(),
-                quoteButton,
-                const SizedBox(height: 9),
+                if (!isWorkOrderAmendment) ...[
+                  quoteButton,
+                  const SizedBox(height: 9),
+                ],
                 workOrderButton,
               ],
             ),
@@ -2568,7 +2605,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 icon: const Icon(Icons.close),
               ),
               title: Text(
-                isQuote
+                isWorkOrderAmendment
+                    ? 'Add Cuts • $documentLabel'
+                    : isQuote
                     ? 'Quote • $documentLabel'
                     : 'Review Sale • $_activeSaleCustomerName',
                 style: const TextStyle(fontWeight: FontWeight.w900),
@@ -2672,10 +2711,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Create Work Order?'),
+          title: Text(
+            sale['work_order_amendment'] == true
+                ? 'Update Work Order?'
+                : 'Create Work Order?',
+          ),
           content: Text(
-            'Confirm this sale for $_activeSaleCustomerName and send it to '
-            'the warehouse for picking and weighing? Agreed rates will be locked.',
+            sale['work_order_amendment'] == true
+                ? 'Save these cuts to the existing work order for $_activeSaleCustomerName? Existing picking values will be reset so the warehouse can pick and weigh the updated order.'
+                : 'Confirm this sale for $_activeSaleCustomerName and send it to the warehouse for picking and weighing? Agreed rates will be locked.',
           ),
           actions: [
             TextButton(
@@ -2685,7 +2729,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              child: const Text('Create Work Order'),
+              child: Text(
+                sale['work_order_amendment'] == true
+                    ? 'Update Work Order'
+                    : 'Create Work Order',
+              ),
             ),
           ],
         ),
@@ -3143,41 +3191,105 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     children: [
                       const Text(
                         'Product',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: 13),
-                      detail('Animal', value(_nestedMap(product['meat_animals'])?['name'])),
+                      detail(
+                        'Animal',
+                        value(_nestedMap(product['meat_animals'])?['name']),
+                      ),
                       detail('Cut', _sectionName(product)),
                       detail('Subcategory', _specificationName(product)),
-                      detail('Grade', '${_gradeCode(product)} — ${_gradeName(product)}'),
+                      detail(
+                        'Grade',
+                        '${_gradeCode(product)} — ${_gradeName(product)}',
+                      ),
                       detail('SKU', value(product['sku'])),
                       detail('Brand', value(product['brand'])),
                       detail('Storage', value(product['temperature_state'])),
-                      detail('Availability', _availabilityLabel(product['availability_status']?.toString())),
+                      detail(
+                        'Availability',
+                        _availabilityLabel(
+                          product['availability_status']?.toString(),
+                        ),
+                      ),
                       detail('Available', _quantityLabel(product)),
-                      detail('Origin', [value(product['origin_state'], fallback: ''), value(product['origin_country'], fallback: '')].where((item) => item.isNotEmpty).join(', ').isEmpty ? 'Not provided' : [value(product['origin_state'], fallback: ''), value(product['origin_country'], fallback: '')].where((item) => item.isNotEmpty).join(', ')),
+                      detail(
+                        'Origin',
+                        [
+                                  value(product['origin_state'], fallback: ''),
+                                  value(
+                                    product['origin_country'],
+                                    fallback: '',
+                                  ),
+                                ]
+                                .where((item) => item.isNotEmpty)
+                                .join(', ')
+                                .isEmpty
+                            ? 'Not provided'
+                            : [
+                                value(product['origin_state'], fallback: ''),
+                                value(product['origin_country'], fallback: ''),
+                              ].where((item) => item.isNotEmpty).join(', '),
+                      ),
                       const Divider(height: 28),
                       const Text(
                         'Specification',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: 13),
                       detail('Marbling / MB', value(product['marbling_score'])),
-                      detail('Breed / program', value(product['breed_program'])),
-                      detail('Halal status', value(product['halal_status'], fallback: 'Not specified')),
+                      detail(
+                        'Breed / program',
+                        value(product['breed_program']),
+                      ),
+                      detail(
+                        'Halal status',
+                        value(
+                          product['halal_status'],
+                          fallback: 'Not specified',
+                        ),
+                      ),
                       detail('Trim', value(product['trim_specification'])),
                       detail('Fat spec', value(product['fat_specification'])),
                       detail('Piece weight', pieceWeight),
-                      detail('Carton weight', '${value(product['carton_weight'])}${product['carton_weight'] == null ? '' : ' ${value(product['carton_weight_unit'], fallback: 'kg')}'}'),
-                      detail('Pieces per carton', value(product['pieces_per_carton'])),
+                      detail(
+                        'Carton weight',
+                        '${value(product['carton_weight'])}${product['carton_weight'] == null ? '' : ' ${value(product['carton_weight_unit'], fallback: 'kg')}'}',
+                      ),
+                      detail(
+                        'Pieces per carton',
+                        value(product['pieces_per_carton']),
+                      ),
                       detail('Packaging', value(product['packaging_type'])),
                       detail('Catch weight', catchWeight ? 'Yes' : 'No'),
-                      detail('Supplier specification', value(product['supplier_specification'])),
-                      if (value(product['description'], fallback: '').isNotEmpty) ...[
+                      detail(
+                        'Supplier specification',
+                        value(product['supplier_specification']),
+                      ),
+                      if (value(
+                        product['description'],
+                        fallback: '',
+                      ).isNotEmpty) ...[
                         const Divider(height: 28),
-                        const Text('Description', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+                        const Text(
+                          'Description',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        Text(value(product['description']), style: const TextStyle(height: 1.45)),
+                        Text(
+                          value(product['description']),
+                          style: const TextStyle(height: 1.45),
+                        ),
                       ],
                     ],
                   ),
@@ -3196,7 +3308,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     const SizedBox(width: 8),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                      onPressed: product['availability_status']?.toString() == 'out_of_stock'
+                      onPressed:
+                          product['availability_status']?.toString() ==
+                              'out_of_stock'
                           ? null
                           : () {
                               Navigator.of(dialogContext).pop();
@@ -3414,9 +3528,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   Wrap(
                     spacing: 7,
                     runSpacing: 7,
-                    alignment: narrow
-                        ? WrapAlignment.start
-                        : WrapAlignment.end,
+                    alignment: narrow ? WrapAlignment.start : WrapAlignment.end,
                     children: [
                       OutlinedButton.icon(
                         onPressed: () => _openSalesProductInfo(product),

@@ -377,7 +377,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (page is ButcherSettingsPage) return 'settings';
 
     if (page is SupplierSalesPage) return 'sales';
-    if (page is SupplierUnifiedOrdersPage) return 'orders';
+    if (page is SupplierUnifiedOrdersPage) return 'invoices';
     if (page is SupplierOrdersPage) return 'orders';
     if (page is SupplierInventoryPage) return 'inventory';
     if (page is SupplierCustomerRequestsPage) return 'customers';
@@ -3362,8 +3362,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   ),
                   _sideItem(
                     Icons.receipt_long_outlined,
-                    'Orders',
-                    selected: _workspaceKey == 'orders',
+                    'Invoices',
+                    selected: _workspaceKey == 'invoices',
                     onTap: () => _openPage(
                       const SupplierUnifiedOrdersPage(embedded: true),
                     ),

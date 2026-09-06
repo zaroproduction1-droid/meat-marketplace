@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supplier_invoice_page.dart';
+import 'supplier_sales_page.dart';
 
 class SupplierWorkOrderPage extends StatefulWidget {
   const SupplierWorkOrderPage({
@@ -189,6 +190,36 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _reopenForCuts() async {
+    if (_invoiceId != null || _isSaving) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add more cuts?'),
+        content: const Text(
+          'This reopens the order in the sales workspace so products, quantities and rates can be changed. The warehouse order can then be created again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reopen Order'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) =>
+            SupplierSalesPage(initialWorkOrderOrderId: widget.orderId),
+      ),
+    );
   }
 
   List<Map<String, dynamic>> get _items {
@@ -1299,6 +1330,26 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           ],
         ),
         actions: [
+          if (_invoiceId == null)
+            TextButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _reopenForCuts,
+              icon: const Icon(Icons.add_box_outlined, size: 17),
+              label: const Text('Add Cuts'),
+            ),
+          if (_invoiceId == null) const SizedBox(width: 7),
+          OutlinedButton.icon(
+            onPressed: _isLoading || _isSaving ? null : _downloadPickSlip,
+            icon: const Icon(Icons.download_outlined, size: 17),
+            label: const Text('Download'),
+          ),
+          const SizedBox(width: 7),
+          FilledButton.icon(
+            onPressed: _isLoading || _isSaving ? null : _printPickSlip,
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            icon: const Icon(Icons.print_outlined, size: 17),
+            label: const Text('Print'),
+          ),
+          const SizedBox(width: 7),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
@@ -1386,19 +1437,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ),
               _zoomControls(),
-              const SizedBox(width: 10),
-              OutlinedButton.icon(
-                onPressed: _isSaving ? null : _downloadPickSlip,
-                icon: const Icon(Icons.download_outlined, size: 17),
-                label: const Text('Download'),
-              ),
-              const SizedBox(width: 7),
-              FilledButton.icon(
-                onPressed: _isSaving ? null : _printPickSlip,
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                icon: const Icon(Icons.print_outlined, size: 17),
-                label: const Text('Print'),
-              ),
               if (_invoiceId != null) ...[
                 const SizedBox(width: 7),
                 OutlinedButton.icon(
@@ -1444,40 +1482,40 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   child: Listener(
                     onPointerSignal: _handlePreviewPointerSignal,
                     child: InteractiveViewer(
-                    transformationController: _previewTransformController,
-                    minScale: 0.75,
-                    maxScale: 3,
-                    panEnabled: _previewZoom > 1,
-                    onInteractionStart: (_) {
-                      if (_previewZoom > 1) {
-                        setState(() => _isPreviewDragging = true);
-                      }
-                    },
-                    onInteractionUpdate: (_) => _syncPreviewZoom(),
-                    onInteractionEnd: (_) {
-                      _syncPreviewZoom();
-                      if (_isPreviewDragging) {
-                        setState(() => _isPreviewDragging = false);
-                      }
-                    },
-                    child: PdfPreview(
-                      build: (_) => _buildPickSlipPdf(),
-                      pdfFileName:
-                          '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
-                      maxPageWidth: maxWidth,
-                      canChangeOrientation: false,
-                      canChangePageFormat: false,
-                      canDebug: false,
-                      allowPrinting: false,
-                      allowSharing: false,
-                      useActions: false,
-                      initialPageFormat: PdfPageFormat.a4,
-                      dpi: 220,
-                      padding: const EdgeInsets.all(12),
-                      scrollViewDecoration: const BoxDecoration(
-                        color: Color(0xFFE9EBEE),
+                      transformationController: _previewTransformController,
+                      minScale: 0.75,
+                      maxScale: 3,
+                      panEnabled: _previewZoom > 1,
+                      onInteractionStart: (_) {
+                        if (_previewZoom > 1) {
+                          setState(() => _isPreviewDragging = true);
+                        }
+                      },
+                      onInteractionUpdate: (_) => _syncPreviewZoom(),
+                      onInteractionEnd: (_) {
+                        _syncPreviewZoom();
+                        if (_isPreviewDragging) {
+                          setState(() => _isPreviewDragging = false);
+                        }
+                      },
+                      child: PdfPreview(
+                        build: (_) => _buildPickSlipPdf(),
+                        pdfFileName:
+                            '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
+                        maxPageWidth: maxWidth,
+                        canChangeOrientation: false,
+                        canChangePageFormat: false,
+                        canDebug: false,
+                        allowPrinting: false,
+                        allowSharing: false,
+                        useActions: false,
+                        initialPageFormat: PdfPageFormat.a4,
+                        dpi: 220,
+                        padding: const EdgeInsets.all(12),
+                        scrollViewDecoration: const BoxDecoration(
+                          color: Color(0xFFE9EBEE),
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ),

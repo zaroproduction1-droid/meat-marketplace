@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supplier_quote_page.dart';
+
 class SupplierQuotesPage extends StatefulWidget {
   const SupplierQuotesPage({
     super.key,
@@ -248,20 +250,24 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     return '$day/$month/${parsed.year}';
   }
 
-  void _openQuote(Map<String, dynamic> quote) {
+  Future<void> _openQuote(Map<String, dynamic> quote) async {
     final id = quote['id']?.toString();
 
     if (id == null || id.isEmpty) {
       return;
     }
 
+    final editRequested = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => SupplierQuotePage(orderId: id)),
+    );
+    if (editRequested != true || !mounted) return;
+
     final onQuoteSelected = widget.onQuoteSelected;
     if (onQuoteSelected != null) {
       onQuoteSelected(id);
-      return;
+    } else {
+      Navigator.of(context).pop(id);
     }
-
-    Navigator.of(context).pop(id);
   }
 
   Widget _quoteCard(Map<String, dynamic> quote) {

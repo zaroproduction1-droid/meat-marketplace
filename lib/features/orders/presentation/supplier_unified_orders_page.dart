@@ -5,6 +5,7 @@ import 'supplier_invoice_page.dart';
 import 'supplier_marketplace_order_detail_page.dart';
 import 'supplier_orders_page.dart';
 import 'supplier_sales_page.dart';
+import 'supplier_quote_page.dart';
 import 'supplier_work_order_page.dart';
 
 enum SupplierDocumentType { all, quotes, workOrders, invoices }
@@ -35,9 +36,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   final _customerFocusNode = FocusNode();
   final _documentNumberController = TextEditingController();
   late SupplierDocumentType _selectedType;
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isLoadingMore = false;
-  bool _hasMore = true;
+  bool _hasMore = false;
+  bool _hasSearched = false;
   int _loadedOrderCount = 0;
   String? _errorMessage;
   _CustomerOption? _selectedCustomer;
@@ -54,7 +56,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     _selectedType = widget.initialType;
     _searchController.addListener(_refreshView);
     _documentNumberController.addListener(_refreshView);
-    _loadAllDocuments();
+    _loadCustomerOptions();
   }
 
   @override
@@ -70,6 +72,31 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   void _refreshView() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadCustomerOptions() async {
+    try {
+      final supplierBusinessId = await _resolveSupplierBusinessId();
+      final response = await Supabase.instance.client
+          .from('supplier_customer_accounts')
+          .select(
+            'id, customer_name, legal_name, linked_butcher_business_id, account_source',
+          )
+          .eq('supplier_business_id', supplierBusinessId)
+          .eq('active', true)
+          .order('customer_name');
+      if (!mounted) return;
+      setState(() {
+        _customerOptions = (response as List)
+            .whereType<Map>()
+            .map(
+              (row) => _CustomerOption.fromMap(Map<String, dynamic>.from(row)),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // A document search will surface any authentication or database error.
+    }
   }
 
   Future<String> _resolveSupplierBusinessId() async {
@@ -106,6 +133,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Future<void> _loadAllDocuments({bool append = false}) async {
     if (append && (_isLoadingMore || !_hasMore)) return;
     setState(() {
+      _hasSearched = true;
       if (append) {
         _isLoadingMore = true;
       } else {
@@ -241,9 +269,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ''')
         .eq('supplier_business_id', supplierBusinessId);
 
-    if (_selectedType == SupplierDocumentType.quotes) {
-      query = query.eq('status', 'draft');
-    }
+    // Orders are represented here only while they are quotes. Once converted,
+    // the work-order and invoice records become their searchable documents.
+    query = query.eq('status', 'draft');
+    final number = _documentNumberController.text.trim();
+    if (number.isNotEmpty) query = query.ilike('quote_number', '%$number%');
     query = _applyCustomerToTopLevelQuery(query);
     final response = await query
         .order('updated_at', ascending: false)
@@ -255,7 +285,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     String supplierBusinessId,
     int offset,
   ) async {
-    final response = await Supabase.instance.client
+    var query = Supabase.instance.client
         .from('warehouse_work_orders')
         .select('''
           id,
@@ -282,7 +312,13 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             order_items(product_name_snapshot, sku_snapshot, notes)
           )
         ''')
-        .eq('supplier_business_id', supplierBusinessId)
+        .eq('supplier_business_id', supplierBusinessId);
+    if (_selectedStatus != null) query = query.eq('status', _selectedStatus!);
+    final number = _documentNumberController.text.trim();
+    if (number.isNotEmpty) {
+      query = query.ilike('work_order_number', '%$number%');
+    }
+    final response = await query
         .order('updated_at', ascending: false)
         .range(offset, offset + _pageSize - 1);
     return _maps(response);
@@ -325,6 +361,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         .eq('supplier_business_id', supplierBusinessId);
 
     query = _applyCustomerToTopLevelQuery(query);
+    if (_selectedStatus != null) query = query.eq('status', _selectedStatus!);
+    final number = _documentNumberController.text.trim();
+    if (number.isNotEmpty) query = query.ilike('invoice_number', '%$number%');
     final response = await query
         .order('updated_at', ascending: false)
         .range(offset, offset + _pageSize - 1);
@@ -415,23 +454,55 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           document.type == _UnifiedDocumentType.invoice,
       };
 
-  List<String> get _sources =>
-      _documents
-          .where(_matchesSelectedType)
-          .map((document) => document.sourceValue)
-          .where((source) => source.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
+  List<String> get _sources => <String>{
+    'marketplace',
+    'phone',
+    'email',
+    'sales_rep',
+    'manual',
+    'replacement',
+    ..._documents
+        .where(_matchesSelectedType)
+        .map((document) => document.sourceValue)
+        .where((source) => source.isNotEmpty),
+  }.toList()..sort();
 
-  List<String> get _statuses =>
-      _documents
-          .where(_matchesSelectedType)
-          .map((document) => document.statusValue)
-          .where((status) => status.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
+  List<String> get _statuses => <String>{
+    ...switch (_selectedType) {
+      SupplierDocumentType.quotes => const ['draft'],
+      SupplierDocumentType.workOrders => const [
+        'created',
+        'printed',
+        'picking',
+        'picked',
+        'completed',
+      ],
+      SupplierDocumentType.invoices => const [
+        'ready',
+        'issued',
+        'part_paid',
+        'paid',
+        'void',
+      ],
+      SupplierDocumentType.all => const [
+        'draft',
+        'created',
+        'printed',
+        'picking',
+        'picked',
+        'completed',
+        'ready',
+        'issued',
+        'part_paid',
+        'paid',
+        'void',
+      ],
+    },
+    ..._documents
+        .where(_matchesSelectedType)
+        .map((document) => document.statusValue)
+        .where((status) => status.isNotEmpty),
+  }.toList()..sort();
 
   void _clearFilters() {
     _customerController.clear();
@@ -443,15 +514,18 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       _selectedStatus = null;
       _dateRange = _DocumentDateRange.any;
       _customDateRange = null;
+      _documents = [];
+      _hasMore = false;
+      _hasSearched = false;
+      _errorMessage = null;
     });
-    _loadAllDocuments();
   }
 
   Future<void> _openDocument(_UnifiedDocument document) async {
     Widget page;
     switch (document.type) {
       case _UnifiedDocumentType.quote:
-        page = SupplierSalesPage(initialQuoteOrderId: document.orderId);
+        page = SupplierQuotePage(orderId: document.orderId);
       case _UnifiedDocumentType.workOrder:
         page = SupplierWorkOrderPage(orderId: document.orderId);
       case _UnifiedDocumentType.invoice:
@@ -464,8 +538,20 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         }
     }
 
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-    if (mounted) await _loadAllDocuments();
+    final editRequested = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => page));
+    if (editRequested == true &&
+        document.type == _UnifiedDocumentType.quote &&
+        mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              SupplierSalesPage(initialQuoteOrderId: document.orderId),
+        ),
+      );
+    }
+    if (mounted && _hasSearched) await _loadAllDocuments();
   }
 
   Widget _header() {
@@ -498,12 +584,12 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Orders',
+                  'Invoices',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
                 SizedBox(height: 1),
                 Text(
-                  'Search and manage customer orders, quotes, work orders and invoices',
+                  'Search quotes, work orders and invoices only when you need them',
                   style: TextStyle(
                     color: Color(0xFF74787E),
                     fontSize: 10.8,
@@ -522,7 +608,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           ),
           const SizedBox(width: 6),
           IconButton(
-            onPressed: _loadAllDocuments,
+            onPressed: _hasSearched ? _loadAllDocuments : null,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -585,7 +671,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             _selectedStatus = null;
           });
           _documentNumberController.clear();
-          _loadAllDocuments();
+          setState(() {
+            _documents = [];
+            _hasMore = false;
+            _hasSearched = false;
+          });
         },
         style: TextButton.styleFrom(
           foregroundColor: selected ? Colors.white : const Color(0xFF565B61),
@@ -629,48 +719,59 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       children: [
         _filterPanel(),
         const SizedBox(height: 10),
-        _resultsHeader(),
-        const SizedBox(height: 4),
         Expanded(
-          child: documents.isEmpty
+          child: !_hasSearched
+              ? const _SearchPrompt()
+              : documents.isEmpty
               ? const Center(
-                  child: Text('No commercial records match this search.'),
+                  child: Text('No invoice records match this search.'),
                 )
               : RefreshIndicator(
                   onRefresh: _loadAllDocuments,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
-                    itemCount: documents.length + (_hasMore ? 1 : 0),
-                    separatorBuilder: (_, _) => const SizedBox(height: 4),
-                    itemBuilder: (_, index) {
-                      if (index == documents.length) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: OutlinedButton.icon(
-                              onPressed: _isLoadingMore
-                                  ? null
-                                  : () => _loadAllDocuments(append: true),
-                              icon: _isLoadingMore
-                                  ? const SizedBox(
-                                      width: 15,
-                                      height: 15,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.expand_more, size: 18),
-                              label: Text(
-                                _isLoadingMore
-                                    ? 'Loading...'
-                                    : 'Load More Records',
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      return _documentRow(documents[index]);
-                    },
+                  child: Column(
+                    children: [
+                      _resultsHeader(),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+                          itemCount: documents.length + (_hasMore ? 1 : 0),
+                          separatorBuilder: (_, _) => const SizedBox(height: 4),
+                          itemBuilder: (_, index) {
+                            if (index == documents.length) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: OutlinedButton.icon(
+                                    onPressed: _isLoadingMore
+                                        ? null
+                                        : () => _loadAllDocuments(append: true),
+                                    icon: _isLoadingMore
+                                        ? const SizedBox(
+                                            width: 15,
+                                            height: 15,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.expand_more,
+                                            size: 18,
+                                          ),
+                                    label: Text(
+                                      _isLoadingMore
+                                          ? 'Loading...'
+                                          : 'Load More Records',
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return _documentRow(documents[index]);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
         ),
@@ -862,7 +963,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               setState(() => _selectedCustomer = null);
             }
           },
-          onSubmitted: (_) => _submitCustomer(),
+          onSubmitted: (_) => _submitCustomer(executeSearch: true),
           decoration:
               _inputDecoration(
                 label: 'Customer',
@@ -874,8 +975,12 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                     : IconButton(
                         onPressed: () {
                           _customerController.clear();
-                          setState(() => _selectedCustomer = null);
-                          _loadAllDocuments();
+                          setState(() {
+                            _selectedCustomer = null;
+                            _documents = [];
+                            _hasMore = false;
+                            _hasSearched = false;
+                          });
                         },
                         icon: const Icon(Icons.close, size: 18),
                       ),
@@ -913,16 +1018,15 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   void _selectCustomer(_CustomerOption customer) {
     _customerController.text = customer.displayName;
     setState(() => _selectedCustomer = customer);
-    _loadAllDocuments();
   }
 
-  void _submitCustomer() {
+  void _submitCustomer({bool executeSearch = false}) {
     final input = _customerController.text.trim().toLowerCase();
     if (input.isEmpty) {
       if (_selectedCustomer != null) {
         setState(() => _selectedCustomer = null);
-        _loadAllDocuments();
       }
+      if (executeSearch) _loadAllDocuments();
       return;
     }
     final matches = _customerOptions
@@ -933,8 +1037,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         .toList();
     if (exact.length == 1) {
       _selectCustomer(exact.single);
+      if (executeSearch) _loadAllDocuments();
     } else if (matches.length == 1) {
       _selectCustomer(matches.single);
+      if (executeSearch) _loadAllDocuments();
     } else {
       _customerFocusNode.requestFocus();
       setState(() {});
@@ -944,7 +1050,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   void _executeSearch() {
     if (_customerController.text.trim().isNotEmpty &&
         _selectedCustomer == null) {
-      _submitCustomer();
+      _submitCustomer(executeSearch: true);
       return;
     }
     _loadAllDocuments();
@@ -1224,6 +1330,34 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 }
 
 enum _UnifiedDocumentType { order, quote, workOrder, invoice }
+
+class _SearchPrompt extends StatelessWidget {
+  const _SearchPrompt();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.manage_search_rounded, size: 54, color: Color(0xFF741C1C)),
+          SizedBox(height: 12),
+          Text(
+            'Search invoices',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
+          SizedBox(height: 7),
+          Text(
+            'Choose filters or enter a customer, document number, or description, then press Enter. Press Enter with empty filters to show every quote, work order, and invoice.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF6D7278), height: 1.45),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
 class _ColumnHeading extends StatelessWidget {
   const _ColumnHeading(this.text);
