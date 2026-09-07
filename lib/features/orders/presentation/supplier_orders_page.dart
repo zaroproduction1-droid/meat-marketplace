@@ -48,7 +48,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       key: 'invoices',
     ),
     _OrderTabDefinition(
-      label: 'Dispatched / Ready',
+      label: 'Delivery / Pickup',
       icon: Icons.local_shipping_outlined,
       key: 'dispatched_ready',
     ),
@@ -142,6 +142,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             order_number,
             butcher_business_id,
             supplier_business_id,
+            assigned_delivery_driver_id,
             status,
             order_source,
             source_reference,
@@ -214,6 +215,32 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               id,
               work_order_number,
               status
+            ),
+
+            supplier_delivery_run_stops(
+              id,
+              delivery_run_id,
+              stop_sequence,
+              status,
+              customer_name_snapshot,
+              contact_name_snapshot,
+              contact_phone_snapshot,
+              address_line_1_snapshot,
+              address_line_2_snapshot,
+              suburb_snapshot,
+              state_snapshot,
+              postcode_snapshot,
+              delivery_instructions_snapshot,
+              out_for_delivery_at,
+              delivered_at,
+              recipient_name,
+              failed_at,
+              failed_reason,
+              supplier_delivery_runs(
+                run_number,
+                delivery_date,
+                status
+              )
             ),
 
             order_items(
@@ -323,6 +350,150 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         .toList();
   }
 
+  List<Map<String, dynamic>> _deliveryStops(Map<String, dynamic> order) {
+    final raw = order['supplier_delivery_run_stops'];
+
+    if (raw is! List) {
+      return [];
+    }
+
+    final stops = raw
+        .whereType<Map>()
+        .map((stop) => Map<String, dynamic>.from(stop))
+        .toList();
+
+    stops.sort((a, b) {
+      final aDate = DateTime.tryParse(
+        a['delivered_at']?.toString() ??
+            a['failed_at']?.toString() ??
+            a['out_for_delivery_at']?.toString() ??
+            '',
+      );
+      final bDate = DateTime.tryParse(
+        b['delivered_at']?.toString() ??
+            b['failed_at']?.toString() ??
+            b['out_for_delivery_at']?.toString() ??
+            '',
+      );
+
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+      if (aDate == null) {
+        return 1;
+      }
+      if (bDate == null) {
+        return -1;
+      }
+
+      return bDate.compareTo(aDate);
+    });
+
+    return stops;
+  }
+
+  Map<String, dynamic>? _currentDeliveryStop(Map<String, dynamic> order) {
+    final stops = _deliveryStops(order);
+
+    for (final stop in stops) {
+      final status = stop['status']?.toString();
+      if (status == 'pending' ||
+          status == 'loaded' ||
+          status == 'out_for_delivery') {
+        return stop;
+      }
+    }
+
+    if (stops.isNotEmpty) {
+      return stops.first;
+    }
+
+    return null;
+  }
+
+  bool _deliveryAssigned(Map<String, dynamic> order) {
+    final status = _currentDeliveryStop(order)?['status']?.toString();
+    return status == 'pending' ||
+        status == 'loaded' ||
+        status == 'out_for_delivery';
+  }
+
+  bool _deliveryFailed(Map<String, dynamic> order) {
+    return _deliveryStops(
+      order,
+    ).any((stop) => stop['status']?.toString() == 'failed');
+  }
+
+  String _deliveryOperationalLabel(Map<String, dynamic> order) {
+    if (order['fulfilment_method']?.toString() == 'pickup') {
+      if (order['ready_for_pickup_at'] != null &&
+          order['status']?.toString() != 'completed') {
+        return 'Ready for Pickup';
+      }
+      if (order['status']?.toString() == 'completed') {
+        return 'Picked Up / Complete';
+      }
+      return 'Pickup';
+    }
+
+    final orderStatus = order['status']?.toString();
+    final stopStatus = _currentDeliveryStop(order)?['status']?.toString();
+
+    if (orderStatus == 'completed') {
+      return 'Delivered / Complete';
+    }
+
+    if (orderStatus == 'delivered' || stopStatus == 'delivered') {
+      return 'Delivered';
+    }
+
+    if (stopStatus == 'out_for_delivery' || orderStatus == 'dispatched') {
+      return 'Out for Delivery';
+    }
+
+    if (stopStatus == 'loaded') {
+      return 'Loaded for Delivery';
+    }
+
+    if (stopStatus == 'pending') {
+      return 'Scheduled for Delivery';
+    }
+
+    if (_deliveryFailed(order)) {
+      return 'Delivery Attempt Failed';
+    }
+
+    return 'Ready for Delivery';
+  }
+
+  String _deliveryRunDate(Map<String, dynamic> order) {
+    final rawRun = _currentDeliveryStop(order)?['supplier_delivery_runs'];
+    Map<String, dynamic>? run;
+
+    if (rawRun is Map) {
+      run = Map<String, dynamic>.from(rawRun);
+    } else if (rawRun is List && rawRun.isNotEmpty && rawRun.first is Map) {
+      run = Map<String, dynamic>.from(rawRun.first as Map);
+    }
+
+    final raw = run?['delivery_date']?.toString() ?? '';
+
+    if (raw.isEmpty) {
+      return '';
+    }
+
+    final parsed = DateTime.tryParse(raw);
+
+    if (parsed == null) {
+      return raw;
+    }
+
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+
+    return '$day/$month/${parsed.year}';
+  }
+
   bool _hasOpenIssues(Map<String, dynamic> order) {
     return _issues(order).any((issue) {
       final status = issue['status']?.toString();
@@ -357,12 +528,21 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         return _orders.where((order) {
           final invoice = _invoiceForOrder(order);
           final status = order['status']?.toString();
+          final pickup = order['fulfilment_method']?.toString() == 'pickup';
           final readyForPickup = order['ready_for_pickup_at'] != null;
 
-          return invoice != null &&
-              status != 'completed' &&
-              status != 'dispatched' &&
-              !readyForPickup;
+          if (invoice == null || status == 'completed') {
+            return false;
+          }
+
+          if (pickup) {
+            return !readyForPickup;
+          }
+
+          return status == 'processing' ||
+              status == 'dispatched' ||
+              status == 'delivered' ||
+              _deliveryFailed(order);
         }).toList();
 
       case 'dispatched_ready':
@@ -379,7 +559,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             return order['ready_for_pickup_at'] != null;
           }
 
-          return status == 'dispatched';
+          return _deliveryAssigned(order) ||
+              _deliveryFailed(order) ||
+              status == 'dispatched' ||
+              status == 'delivered';
         }).toList();
 
       case 'completed':
@@ -2104,40 +2287,69 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
   }
 
-  Future<void> _markOutForDelivery(Map<String, dynamic> order) async {
+  Future<void> _markOnDelivery(Map<String, dynamic> order) async {
     final orderId = order['id']?.toString();
+
     if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
+      return;
+    }
+
+    if (order['assigned_delivery_driver_id'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Assign a delivery driver from the Work Order before marking this order On Delivery.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark On Delivery?'),
+        content: const Text(
+          'This will start delivery for this order using the driver assigned from the Work Order.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Back'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+            ),
+            icon: const Icon(Icons.local_shipping_outlined),
+            label: const Text('On Delivery'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
       return;
     }
 
     setState(() => _updatingOrderId = orderId);
 
     try {
-      if (_isMarketplaceOrder(order)) {
-        await Supabase.instance.client.rpc(
-          'mark_marketplace_order_dispatched',
-          params: {'target_order_id': orderId},
-        );
-      } else {
-        await Supabase.instance.client
-            .from('orders')
-            .update({
-              'status': 'dispatched',
-              'dispatched_at': DateTime.now().toUtc().toIso8601String(),
-            })
-            .eq('id', orderId)
-            .eq('supplier_business_id', _supplierBusinessId!);
+      await Supabase.instance.client.rpc(
+        'quick_dispatch_supplier_delivery_order',
+        params: {'p_order_id': orderId},
+      );
+
+      if (!mounted) {
+        return;
       }
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Order marked Out for Delivery.')),
-      );
       await _loadOrders();
+
       if (mounted) {
-        _tabController.animateTo(
-          _tabs.indexWhere((tab) => tab.key == 'dispatched_ready'),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Order marked On Delivery.')),
         );
       }
     } on PostgrestException catch (error) {
@@ -2147,28 +2359,132 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
+    }
+  }
+
+  Future<void> _markDelivered(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+
+    if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
+      return;
+    }
+
+    final recipientController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark Delivered?'),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Confirm that this order has been delivered to the customer.',
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: recipientController,
+                decoration: const InputDecoration(
+                  labelText: 'Received by (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Back'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Delivered'),
+          ),
+        ],
+      ),
+    );
+
+    final recipient = recipientController.text.trim();
+    recipientController.dispose();
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _updatingOrderId = orderId);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'quick_complete_supplier_delivery_order',
+        params: {
+          'p_order_id': orderId,
+          'p_recipient_name': recipient.isEmpty ? null : recipient,
+        },
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      await _loadOrders();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Delivery marked as delivered.')),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
   Future<void> _completeOrder(Map<String, dynamic> order) async {
     final orderId = order['id']?.toString();
+
     if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
       return;
     }
 
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
+    final status = order['status']?.toString();
+
+    if (!pickup && status != 'delivered') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mark the order Delivered before completing it.'),
+        ),
+      );
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
-          pickup ? 'Mark Picked Up / Complete?' : 'Mark Delivered / Complete?',
+          pickup ? 'Mark Picked Up / Complete?' : 'Complete Delivered Order?',
         ),
         content: Text(
           pickup
               ? 'Confirm the customer has collected this order.'
-              : 'Confirm this order has been delivered.',
+              : 'This delivery has already been confirmed. Mark the order complete?',
         ),
         actions: [
           TextButton(
@@ -2181,28 +2497,28 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               backgroundColor: const Color(0xFF741C1C),
             ),
             icon: const Icon(Icons.task_alt),
-            label: Text(
-              pickup ? 'Picked Up / Complete' : 'Delivered / Complete',
-            ),
+            label: Text(pickup ? 'Picked Up / Complete' : 'Complete Order'),
           ),
         ],
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     setState(() => _updatingOrderId = orderId);
 
     try {
-      if (_isMarketplaceOrder(order)) {
-        await Supabase.instance.client.rpc(
-          'complete_marketplace_order_delivery',
-          params: {'target_order_id': orderId},
-        );
-      } else {
-        final now = DateTime.now().toUtc().toIso8601String();
+      if (pickup) {
+        if (_isMarketplaceOrder(order)) {
+          await Supabase.instance.client.rpc(
+            'complete_marketplace_order_delivery',
+            params: {'target_order_id': orderId},
+          );
+        } else {
+          final now = DateTime.now().toUtc().toIso8601String();
 
-        if (pickup) {
           await Supabase.instance.client
               .from('orders')
               .update({
@@ -2212,26 +2528,17 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               })
               .eq('id', orderId)
               .eq('supplier_business_id', _supplierBusinessId!);
-        } else {
-          // Keep the salesperson UX as one action, but honour the database
-          // lifecycle internally: dispatched -> delivered -> completed.
-          await Supabase.instance.client
-              .from('orders')
-              .update({'status': 'delivered', 'delivered_at': now})
-              .eq('id', orderId)
-              .eq('supplier_business_id', _supplierBusinessId!)
-              .eq('status', 'dispatched');
-
-          await Supabase.instance.client
-              .from('orders')
-              .update({'status': 'completed', 'completed_at': now})
-              .eq('id', orderId)
-              .eq('supplier_business_id', _supplierBusinessId!)
-              .eq('status', 'delivered');
         }
+      } else {
+        await Supabase.instance.client.rpc(
+          'finalise_supplier_delivered_order',
+          params: {'p_order_id': orderId},
+        );
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await _loadOrders();
 
@@ -2247,7 +2554,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
@@ -2778,20 +3087,61 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             icon: const Icon(Icons.picture_as_pdf_outlined),
             label: const Text('View PDF Invoice'),
           ),
-          FilledButton.icon(
-            onPressed: pickup
-                ? () => _markReadyForPickup(order)
-                : () => _markOutForDelivery(order),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF741C1C),
+          if (pickup)
+            FilledButton.icon(
+              onPressed: () => _markReadyForPickup(order),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+              ),
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const Text('Ready for Pickup'),
+            )
+          else if (order['status']?.toString() == 'processing')
+            FilledButton.icon(
+              onPressed: () => _markOnDelivery(order),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+              ),
+              icon: const Icon(Icons.local_shipping_outlined),
+              label: const Text('On Delivery'),
+            )
+          else if (order['status']?.toString() == 'dispatched')
+            FilledButton.icon(
+              onPressed: () => _markDelivered(order),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+              ),
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Mark Delivered'),
+            )
+          else if (order['status']?.toString() == 'delivered')
+            FilledButton.icon(
+              onPressed: () => _completeOrder(order),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+              ),
+              icon: const Icon(Icons.task_alt),
+              label: const Text('Complete Order'),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: _deliveryFailed(order)
+                    ? const Color(0xFFFDECEC)
+                    : const Color(0xFFEAF6F8),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                _deliveryOperationalLabel(order),
+                style: TextStyle(
+                  color: _deliveryFailed(order)
+                      ? const Color(0xFFB3261E)
+                      : const Color(0xFF27666F),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
-            icon: Icon(
-              pickup
-                  ? Icons.inventory_2_outlined
-                  : Icons.local_shipping_outlined,
-            ),
-            label: Text(pickup ? 'Ready for Pickup' : 'Out for Delivery'),
-          ),
         ],
       );
     }
@@ -2807,39 +3157,61 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             icon: const Icon(Icons.picture_as_pdf_outlined),
             label: const Text('View PDF Invoice'),
           ),
-          Material(
-            color: const Color(0xFFF3F8F3),
-            borderRadius: BorderRadius.circular(9),
-            child: InkWell(
-              onTap: () => _completeOrder(order),
+          if (pickup || order['status']?.toString() == 'delivered')
+            Material(
+              color: const Color(0xFFF3F8F3),
               borderRadius: BorderRadius.circular(9),
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 5,
-                  right: 12,
-                  top: 3,
-                  bottom: 3,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Checkbox(
-                      value: false,
-                      onChanged: (_) => _completeOrder(order),
-                      activeColor: const Color(0xFF2E7D32),
-                    ),
-                    Text(
-                      pickup ? 'Picked Up / Complete' : 'Delivered / Complete',
-                      style: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontWeight: FontWeight.w900,
+              child: InkWell(
+                onTap: () => _completeOrder(order),
+                borderRadius: BorderRadius.circular(9),
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 5,
+                    right: 12,
+                    top: 3,
+                    bottom: 3,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: false,
+                        onChanged: (_) => _completeOrder(order),
+                        activeColor: const Color(0xFF2E7D32),
                       ),
-                    ),
-                  ],
+                      Text(
+                        pickup
+                            ? 'Picked Up / Complete'
+                            : 'Complete Delivered Order',
+                        style: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: _deliveryFailed(order)
+                    ? const Color(0xFFFDECEC)
+                    : const Color(0xFFEAF6F8),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                _deliveryOperationalLabel(order),
+                style: TextStyle(
+                  color: _deliveryFailed(order)
+                      ? const Color(0xFFB3261E)
+                      : const Color(0xFF27666F),
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-          ),
         ],
       );
     }
@@ -3184,7 +3556,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       case 'invoices':
         return 'No invoices awaiting fulfilment';
       case 'dispatched_ready':
-        return 'Nothing dispatched or ready';
+        return 'No delivery or pickup orders in progress';
       case 'completed':
         return 'No completed orders';
       case 'issues':
@@ -3201,9 +3573,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       case 'work_orders':
         return 'All active warehouse work orders appear here, whether they came from Marketplace, phone, email, a sales rep or a direct sale.';
       case 'invoices':
-        return 'Finalised invoices wait here until you mark the order Ready for Pickup or Out for Delivery.';
+        return 'Finalised pickup orders wait here until Ready for Pickup. Delivery orders are assigned to runs from the Delivery workspace.';
       case 'dispatched_ready':
-        return 'Orders stay here until the salesperson confirms Delivered or Picked Up.';
+        return 'Delivery orders show their run status here. Pickup orders stay here until collection is confirmed.';
       case 'completed':
         return 'Delivered and collected orders appear here as complete.';
       case 'issues':
@@ -3254,19 +3626,30 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         break;
 
       case 'dispatched_ready':
+        final deliveryLabel = _deliveryOperationalLabel(order);
+        final failed = !pickup && _deliveryFailed(order);
+
         icon = pickup
             ? Icons.inventory_2_outlined
+            : failed
+            ? Icons.error_outline
             : Icons.local_shipping_outlined;
-        iconBackground = const Color(0xFFEAF6F8);
-        iconForeground = const Color(0xFF27666F);
+        iconBackground = failed
+            ? const Color(0xFFFDECEC)
+            : const Color(0xFFEAF6F8);
+        iconForeground = failed
+            ? const Color(0xFFB3261E)
+            : const Color(0xFF27666F);
         leadingLabel =
             order['order_number']?.toString() ??
             invoice?['invoice_number']?.toString() ??
             'Order';
-        dateLabel = pickup ? 'Ready Since' : 'Dispatched';
-        dateValue = _formatDate(
-          pickup ? order['ready_for_pickup_at'] : order['dispatched_at'],
-        );
+        dateLabel = pickup ? 'Ready Since' : deliveryLabel;
+        dateValue = pickup
+            ? _formatDate(order['ready_for_pickup_at'])
+            : _deliveryRunDate(order).isNotEmpty
+            ? _deliveryRunDate(order)
+            : _formatDate(order['delivered_at'] ?? order['dispatched_at']);
         onTap = null;
         break;
 
@@ -3400,6 +3783,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   ),
                   if (requested.isNotEmpty && tabKey == 'new')
                     _CompactOrderFact(label: 'REQUESTED', value: requested),
+                  if (!pickup &&
+                      (tabKey == 'invoices' || tabKey == 'dispatched_ready'))
+                    _CompactOrderFact(
+                      label: 'DELIVERY STATUS',
+                      value: _deliveryOperationalLabel(order),
+                    ),
                 ],
               );
 

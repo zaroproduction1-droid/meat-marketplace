@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_product_page.dart';
 import 'edit_product_page.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
+import '../../../shared/chicken_catalogue_repository.dart';
+import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -39,6 +41,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   String? _selectedSpecificationId;
   String? _selectedGradeId;
 
+  ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _sections = [];
 
@@ -81,6 +84,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     try {
+      final chickenCatalogue = await ChickenCatalogueRepository(
+        Supabase.instance.client,
+      ).load();
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
 
@@ -239,6 +245,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       setState(() {
         _supplierBusinessId = supplierBusinessId;
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
+        _chickenCatalogue = chickenCatalogue;
         _products = List<Map<String, dynamic>>.from(productResponse);
         _sections = sections;
         _isLoading = false;
@@ -264,11 +271,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     String? sectionId,
     String? specificationId,
   }) async {
+    final chickenSpecification = _chickenCatalogue.specificationById(specificationId);
+    final chickenSectionId = chickenSpecification?['section_id']?.toString() ?? sectionId;
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddProductPage(
           initialAnimalCode: _selectedAnimalCode,
-          initialSectionId: sectionId,
+          initialSectionId: _selectedAnimalCode == CutLinkAnimals.chicken
+              ? chickenSectionId
+              : sectionId,
           initialSpecificationId: specificationId,
         ),
       ),
@@ -724,6 +735,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   List<Map<String, dynamic>> get _selectedAnimalSections {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.sections;
+    }
     return _sections
         .where(
           (section) =>
@@ -743,12 +757,27 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         .toList();
   }
 
+  bool _matchesSelectedCut(Map<String, dynamic> product) {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.productMatches(
+        product, region: _selectedAnimalRegionKey, sectionId: _selectedSectionId,
+      );
+    }
+    return product['meat_section_id']?.toString() == _selectedSectionId;
+  }
+
   List<Map<String, dynamic>> get _availableSpecifications {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.specificationsFor(
+        region: _selectedAnimalRegionKey,
+        sectionId: _selectedSectionId,
+      );
+    }
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -773,7 +802,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -810,7 +839,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             return false;
           }
 
-          if (product['meat_section_id']?.toString() != _selectedSectionId) {
+          if (!_matchesSelectedCut(product)) {
             return false;
           }
         }
@@ -820,7 +849,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         }
 
         if (_selectedSectionId != null &&
-            product['meat_section_id']?.toString() != _selectedSectionId) {
+            !_matchesSelectedCut(product)) {
           return false;
         }
 
@@ -916,19 +945,32 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   void _selectAnimalRegion(String regionKey) {
-    if (_selectedAnimalCode != CutLinkAnimals.beef) {
+    final Map<String, dynamic>? section;
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      final specifications = _chickenCatalogue.specificationsFor(region: regionKey);
+      section = ChickenCutCatalogue.sectionForRegion(regionKey, _selectedAnimalSections) ??
+          (specifications.isEmpty ? null : _chickenCatalogue.sectionById(
+            specifications.first['section_id']?.toString(),
+          ));
+    } else if (_selectedAnimalCode == CutLinkAnimals.beef) {
+      final sectionCode = _beefSectionCodeForRegion(regionKey);
+      section = sectionCode == null ? null : _sectionByCode(sectionCode);
+    } else {
+      return;
+    }
+    if (section == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This cut is not available in the catalogue yet.'),
+        ),
+      );
       return;
     }
 
-    final sectionCode = _beefSectionCodeForRegion(regionKey);
-    if (sectionCode == null) return;
-
-    final section = _sectionByCode(sectionCode);
-    if (section == null) return;
-
+    final sectionId = section['id']?.toString();
     setState(() {
       _selectedAnimalRegionKey = regionKey;
-      _selectedSectionId = section['id']?.toString();
+      _selectedSectionId = sectionId;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _searchController.clear();
@@ -946,6 +988,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   String? get _selectedSectionName {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken && _selectedAnimalRegionKey != null) {
+      return ChickenCutCatalogue.regionNames[_selectedAnimalRegionKey];
+    }
     final selected = _selectedSectionId;
     if (selected == null) return null;
 
@@ -2072,7 +2117,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     final cutSelected = _selectedSectionId != null;
     final subcategorySelected = _selectedSpecificationId != null;
-    final gradeSelected = _selectedGradeId != null;
+    final gradeSelected = _selectedGradeId != null ||
+        (_selectedAnimalCode == CutLinkAnimals.chicken && subcategorySelected);
     final directSearch = _searchController.text.trim().isNotEmpty;
 
     Widget animalPanel() {
@@ -2143,7 +2189,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       const SizedBox(height: 4),
                       _buildSpecificationStrip(),
                     ],
-                    if (subcategorySelected) ...[
+                    if (subcategorySelected && _selectedAnimalCode != CutLinkAnimals.chicken) ...[
                       const SizedBox(height: 8),
                       const Text(
                         'GRADE',
@@ -2283,7 +2329,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           return rightChoiceCard(
             icon: Icons.category_outlined,
             title: name,
-            subtitle: 'Choose this subcategory to view its grades.',
+            subtitle: _selectedAnimalCode == CutLinkAnimals.chicken
+                ? 'Choose this subcategory to view its products.'
+                : 'Choose this subcategory to view its grades.',
             onTap: () {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();

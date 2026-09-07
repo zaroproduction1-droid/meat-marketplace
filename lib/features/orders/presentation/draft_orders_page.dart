@@ -80,6 +80,15 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             delivery_zone_id,
             delivery_zone_name_snapshot,
             delivery_postcode_snapshot,
+            delivery_address_label_snapshot,
+            delivery_contact_name_snapshot,
+            delivery_contact_phone_snapshot,
+            delivery_address_line_1_snapshot,
+            delivery_address_line_2_snapshot,
+            delivery_suburb_snapshot,
+            delivery_state_snapshot,
+            delivery_address_postcode_snapshot,
+            delivery_instructions_snapshot,
             delivery_minimum_order_snapshot,
             delivery_lead_time_days_snapshot,
             delivery_cutoff_time_snapshot,
@@ -748,6 +757,29 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
+          if ((order['delivery_address_line_1_snapshot']?.toString().trim() ??
+                  '')
+              .isNotEmpty) ...[
+            Text(
+              [
+                    order['delivery_address_label_snapshot'],
+                    order['delivery_address_line_1_snapshot'],
+                    order['delivery_address_line_2_snapshot'],
+                    order['delivery_suburb_snapshot'],
+                    order['delivery_state_snapshot'],
+                    order['delivery_address_postcode_snapshot'],
+                  ]
+                  .map((value) => value?.toString().trim() ?? '')
+                  .where((value) => value.isNotEmpty)
+                  .join(', '),
+              style: const TextStyle(
+                color: Color(0xFF333333),
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             'Zone: ${_deliveryZoneLabel(order)}',
             style: const TextStyle(color: Color(0xFF555555)),
@@ -779,6 +811,70 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> _resolveDefaultDeliveryAddress() async {
+    final butcherBusinessId = _butcherBusinessId;
+
+    if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
+      return null;
+    }
+
+    final rows = await Supabase.instance.client
+        .from('butcher_delivery_addresses')
+        .select("""
+          id,
+          label,
+          contact_name,
+          contact_phone,
+          address_line_1,
+          address_line_2,
+          suburb,
+          state,
+          postcode,
+          delivery_instructions,
+          is_default,
+          is_active
+        """)
+        .eq('butcher_business_id', butcherBusinessId)
+        .eq('is_active', true)
+        .order('is_default', ascending: false)
+        .order('label')
+        .limit(1);
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    return Map<String, dynamic>.from(rows.first);
+  }
+
+  Map<String, dynamic> _deliverySnapshotPayload(
+    Map<String, dynamic> order,
+    Map<String, dynamic> address,
+  ) {
+    String? clean(dynamic value) {
+      final valueText = value?.toString().trim() ?? '';
+      return valueText.isEmpty ? null : valueText;
+    }
+
+    final postcode = clean(address['postcode']);
+
+    return {
+      'fulfilment_method': 'delivery',
+      'delivery_address_label_snapshot': clean(address['label']),
+      'delivery_contact_name_snapshot': clean(address['contact_name']),
+      'delivery_contact_phone_snapshot': clean(address['contact_phone']),
+      'delivery_address_line_1_snapshot': clean(address['address_line_1']),
+      'delivery_address_line_2_snapshot': clean(address['address_line_2']),
+      'delivery_suburb_snapshot': clean(address['suburb']),
+      'delivery_state_snapshot': clean(address['state']),
+      'delivery_address_postcode_snapshot': postcode,
+      'delivery_postcode_snapshot': postcode,
+      'delivery_instructions_snapshot':
+          clean(address['delivery_instructions']) ??
+          clean(order['delivery_notes']),
+    };
   }
 
   Future<void> _submitOrder(Map<String, dynamic> order) async {
@@ -849,9 +945,48 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     }
 
     try {
+      final deliveryAddress = await _resolveDefaultDeliveryAddress();
+
+      if (deliveryAddress == null) {
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Add an active delivery address in Settings before submitting this order.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final addressLine1 =
+          deliveryAddress['address_line_1']?.toString().trim() ?? '';
+      final postcode = deliveryAddress['postcode']?.toString().trim() ?? '';
+
+      if (addressLine1.isEmpty || postcode.isEmpty) {
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your delivery address must include an address line and postcode before submitting.',
+            ),
+          ),
+        );
+        return;
+      }
+
       await Supabase.instance.client
           .from('orders')
-          .update({'status': 'submitted'})
+          .update({
+            ..._deliverySnapshotPayload(order, deliveryAddress),
+            'status': 'submitted',
+          })
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
@@ -1072,11 +1207,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             child: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.shopping_cart_outlined,
-                  size: 58,
-                  color: _darkRed,
-                ),
+                Icon(Icons.shopping_cart_outlined, size: 58, color: _darkRed),
                 SizedBox(height: 18),
                 Text(
                   'Your cart is ready when you are',

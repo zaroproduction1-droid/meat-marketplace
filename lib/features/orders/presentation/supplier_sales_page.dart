@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/chicken_catalogue_repository.dart';
+import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 import 'supplier_create_order_page.dart';
@@ -40,6 +42,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String? _selectedSpecificationId;
   String? _selectedGradeId;
 
+  ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _sections = [];
   int _newMarketplaceItemCount = 0;
@@ -161,6 +164,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     });
 
     try {
+      final chickenCatalogue = await ChickenCatalogueRepository(
+        Supabase.instance.client,
+      ).load();
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
 
@@ -316,6 +322,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
 
       setState(() {
+        _chickenCatalogue = chickenCatalogue;
         _products = (productResponse as List)
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
@@ -634,6 +641,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   List<Map<String, dynamic>> get _selectedAnimalSections {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.sections;
+    }
     return _sections
         .where(
           (section) =>
@@ -653,12 +663,27 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         .toList();
   }
 
+  bool _matchesSelectedCut(Map<String, dynamic> product) {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.productMatches(
+        product, region: _selectedAnimalRegionKey, sectionId: _selectedSectionId,
+      );
+    }
+    return product['meat_section_id']?.toString() == _selectedSectionId;
+  }
+
   List<Map<String, dynamic>> get _availableSpecifications {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.specificationsFor(
+        region: _selectedAnimalRegionKey,
+        sectionId: _selectedSectionId,
+      );
+    }
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -683,7 +708,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -720,7 +745,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             return false;
           }
 
-          if (product['meat_section_id']?.toString() != _selectedSectionId) {
+          if (!_matchesSelectedCut(product)) {
             return false;
           }
 
@@ -741,7 +766,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         }
 
         if (_selectedSectionId != null &&
-            product['meat_section_id']?.toString() != _selectedSectionId) {
+            !_matchesSelectedCut(product)) {
           return false;
         }
 
@@ -848,19 +873,32 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   void _selectAnimalRegion(String regionKey) {
-    if (_selectedAnimalCode != CutLinkAnimals.beef) {
+    final Map<String, dynamic>? section;
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      final specifications = _chickenCatalogue.specificationsFor(region: regionKey);
+      section = ChickenCutCatalogue.sectionForRegion(regionKey, _selectedAnimalSections) ??
+          (specifications.isEmpty ? null : _chickenCatalogue.sectionById(
+            specifications.first['section_id']?.toString(),
+          ));
+    } else if (_selectedAnimalCode == CutLinkAnimals.beef) {
+      final sectionCode = _beefSectionCodeForRegion(regionKey);
+      section = sectionCode == null ? null : _sectionByCode(sectionCode);
+    } else {
+      return;
+    }
+    if (section == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This cut is not available in the catalogue yet.'),
+        ),
+      );
       return;
     }
 
-    final sectionCode = _beefSectionCodeForRegion(regionKey);
-    if (sectionCode == null) return;
-
-    final section = _sectionByCode(sectionCode);
-    if (section == null) return;
-
+    final sectionId = section['id']?.toString();
     setState(() {
       _selectedAnimalRegionKey = regionKey;
-      _selectedSectionId = section['id']?.toString();
+      _selectedSectionId = sectionId;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _searchController.clear();
@@ -878,6 +916,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   String? get _selectedSectionName {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken && _selectedAnimalRegionKey != null) {
+      return ChickenCutCatalogue.regionNames[_selectedAnimalRegionKey];
+    }
     final selected = _selectedSectionId;
     if (selected == null) return null;
 
@@ -3805,7 +3846,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       final cutSelected = _selectedSectionId != null;
                       final subcategorySelected =
                           _selectedSpecificationId != null;
-                      final gradeSelected = _selectedGradeId != null;
+                      final gradeSelected = _selectedGradeId != null ||
+        (_selectedAnimalCode == CutLinkAnimals.chicken && subcategorySelected);
                       final directSearch = _searchController.text
                           .trim()
                           .isNotEmpty;
@@ -3891,7 +3933,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                         const SizedBox(height: 4),
                                         _buildSpecificationStrip(),
                                       ],
-                                      if (subcategorySelected) ...[
+                                      if (subcategorySelected && _selectedAnimalCode != CutLinkAnimals.chicken) ...[
                                         const SizedBox(height: 8),
                                         const Text(
                                           'GRADE',

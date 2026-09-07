@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/chicken_catalogue_repository.dart';
+import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -47,6 +49,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   String? _errorMessage;
   String? _supplierBusinessId;
 
+  ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _priceLists = [];
   List<Map<String, dynamic>> _approvedCustomers = [];
@@ -85,6 +88,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     }
 
     try {
+      final chickenCatalogue = await ChickenCatalogueRepository(
+        Supabase.instance.client,
+      ).load();
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user == null) {
@@ -226,6 +232,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
+        _chickenCatalogue = chickenCatalogue;
         _products = products;
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _approvedCustomers = List<Map<String, dynamic>>.from(customerResponse);
@@ -296,6 +303,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   }
 
   List<Map<String, dynamic>> get _selectedAnimalSections {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.sections;
+    }
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
@@ -317,12 +327,27 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     return result;
   }
 
+  bool _matchesSelectedCut(Map<String, dynamic> product) {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.productMatches(
+        product, region: _selectedAnimalRegionKey, sectionId: _selectedSectionId,
+      );
+    }
+    return product['meat_section_id']?.toString() == _selectedSectionId;
+  }
+
   List<Map<String, dynamic>> get _availableSpecifications {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      return _chickenCatalogue.specificationsFor(
+        region: _selectedAnimalRegionKey,
+        sectionId: _selectedSectionId,
+      );
+    }
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -346,7 +371,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
 
     final result = _selectedAnimalProducts.where((product) {
       if (_selectedSectionId != null &&
-          product['meat_section_id']?.toString() != _selectedSectionId) {
+          !_matchesSelectedCut(product)) {
         return false;
       }
 
@@ -428,17 +453,32 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
   }
 
   void _selectAnimalRegion(String regionKey) {
-    if (_selectedAnimalCode != CutLinkAnimals.beef) return;
+    final Map<String, dynamic>? section;
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      final specifications = _chickenCatalogue.specificationsFor(region: regionKey);
+      section = ChickenCutCatalogue.sectionForRegion(regionKey, _selectedAnimalSections) ??
+          (specifications.isEmpty ? null : _chickenCatalogue.sectionById(
+            specifications.first['section_id']?.toString(),
+          ));
+    } else if (_selectedAnimalCode == CutLinkAnimals.beef) {
+      final sectionCode = _beefSectionCodeForRegion(regionKey);
+      section = sectionCode == null ? null : _sectionByCode(sectionCode);
+    } else {
+      return;
+    }
+    if (section == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This cut is not available in the catalogue yet.'),
+        ),
+      );
+      return;
+    }
 
-    final sectionCode = _beefSectionCodeForRegion(regionKey);
-    if (sectionCode == null) return;
-
-    final section = _sectionByCode(sectionCode);
-    if (section == null) return;
-
+    final sectionId = section['id']?.toString();
     setState(() {
       _selectedAnimalRegionKey = regionKey;
-      _selectedSectionId = section['id']?.toString();
+      _selectedSectionId = sectionId;
       _selectedSpecificationId = null;
       _searchController.clear();
     });

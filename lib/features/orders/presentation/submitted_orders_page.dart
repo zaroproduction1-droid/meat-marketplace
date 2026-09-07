@@ -21,6 +21,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   late final TabController _tabController;
 
   List<Map<String, dynamic>> _orders = [];
+  final Map<String, List<Map<String, dynamic>>> _deliveryTrackingByOrder = {};
 
   static const _tabs = <_ButcherOrderTab>[
     _ButcherOrderTab(
@@ -216,6 +217,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return true;
       }).toList();
 
+      await _loadDeliveryTrackingForOrders(visibleOrders);
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _butcherBusinessId = butcherBusinessId;
         _orders = visibleOrders;
@@ -284,6 +291,309 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         .whereType<Map>()
         .map((issue) => Map<String, dynamic>.from(issue))
         .toList();
+  }
+
+  Future<void> _loadDeliveryTrackingForOrders(
+    List<Map<String, dynamic>> orders,
+  ) async {
+    _deliveryTrackingByOrder.clear();
+
+    final client = Supabase.instance.client;
+
+    for (final order in orders) {
+      final orderId = order['id']?.toString();
+      final fulfilmentMethod = order['fulfilment_method']?.toString();
+
+      if (orderId == null ||
+          orderId.isEmpty ||
+          fulfilmentMethod != 'delivery') {
+        continue;
+      }
+
+      try {
+        final response = await client.rpc(
+          'get_my_order_delivery_tracking',
+          params: {'target_order_id': orderId},
+        );
+
+        final rows = response is List
+            ? response
+                  .whereType<Map>()
+                  .map((row) => Map<String, dynamic>.from(row))
+                  .toList()
+            : <Map<String, dynamic>>[];
+
+        _deliveryTrackingByOrder[orderId] = rows;
+      } on PostgrestException {
+        _deliveryTrackingByOrder[orderId] = [];
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _deliveryStops(Map<String, dynamic> order) {
+    final orderId = order['id']?.toString();
+
+    if (orderId == null || orderId.isEmpty) {
+      return [];
+    }
+
+    return List<Map<String, dynamic>>.from(
+      _deliveryTrackingByOrder[orderId] ?? const [],
+    );
+  }
+
+  Map<String, dynamic>? _currentDeliveryStop(Map<String, dynamic> order) {
+    final stops = _deliveryStops(order);
+
+    for (final stop in stops) {
+      final status = stop['stop_status']?.toString();
+      if (status == 'pending' ||
+          status == 'loaded' ||
+          status == 'out_for_delivery') {
+        return stop;
+      }
+    }
+
+    if (stops.isNotEmpty) {
+      return stops.first;
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _deliveryRun(Map<String, dynamic>? stop) {
+    if (stop == null) {
+      return null;
+    }
+
+    final runNumber = stop['run_number'];
+    final deliveryDate = stop['delivery_date'];
+    final runStatus = stop['run_status'];
+
+    if (runNumber == null && deliveryDate == null && runStatus == null) {
+      return null;
+    }
+
+    return {
+      'run_number': runNumber,
+      'delivery_date': deliveryDate,
+      'status': runStatus,
+    };
+  }
+
+  bool _hasActiveDeliveryRun(Map<String, dynamic> order) {
+    final stop = _currentDeliveryStop(order);
+    final status = stop?['stop_status']?.toString();
+
+    return status == 'pending' ||
+        status == 'loaded' ||
+        status == 'out_for_delivery';
+  }
+
+  bool _hasFailedDeliveryAttempt(Map<String, dynamic> order) {
+    return _deliveryStops(
+      order,
+    ).any((stop) => stop['stop_status']?.toString() == 'failed');
+  }
+
+  String _deliveryRunDate(Map<String, dynamic> order) {
+    final run = _deliveryRun(_currentDeliveryStop(order));
+    final raw = run?['delivery_date']?.toString() ?? '';
+
+    if (raw.isEmpty) {
+      return '';
+    }
+
+    final parsed = DateTime.tryParse(raw);
+
+    if (parsed == null) {
+      return raw;
+    }
+
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+
+    return '$day/$month/${parsed.year}';
+  }
+
+  String _deliveryTrackingLabel(Map<String, dynamic> order) {
+    if (order['fulfilment_method']?.toString() != 'delivery') {
+      return _buyerLifecycleLabel(order);
+    }
+
+    final stop = _currentDeliveryStop(order);
+    final stopStatus = stop?['stop_status']?.toString();
+    final orderStatus = order['status']?.toString();
+
+    if (stopStatus == 'failed') {
+      return 'Delivery Attempt Failed';
+    }
+
+    if (stopStatus == 'out_for_delivery' || orderStatus == 'dispatched') {
+      return 'Out for Delivery';
+    }
+
+    if (stopStatus == 'loaded') {
+      return 'Loaded for Delivery';
+    }
+
+    if (stopStatus == 'pending' && orderStatus == 'processing') {
+      return 'Scheduled for Delivery';
+    }
+
+    if (orderStatus == 'delivered') {
+      return 'Delivered';
+    }
+
+    if (orderStatus == 'completed') {
+      return 'Delivered / Complete';
+    }
+
+    return _buyerLifecycleLabel(order);
+  }
+
+  Widget _buildDeliveryTracking(Map<String, dynamic> order) {
+    if (order['fulfilment_method']?.toString() != 'delivery') {
+      return const SizedBox.shrink();
+    }
+
+    final stop = _currentDeliveryStop(order);
+
+    if (stop == null) {
+      return const SizedBox.shrink();
+    }
+
+    final run = _deliveryRun(stop);
+    final stopStatus = stop['stop_status']?.toString() ?? '';
+    final runDate = _deliveryRunDate(order);
+    final recipient = stop['recipient_name']?.toString().trim() ?? '';
+    final failedReason = stop['failed_reason']?.toString().trim() ?? '';
+    final instructions = stop['delivery_instructions']?.toString().trim() ?? '';
+
+    final address =
+        [
+              stop['address_line_1'],
+              stop['address_line_2'],
+              stop['suburb'],
+              stop['state'],
+              stop['postcode'],
+            ]
+            .map((value) => value?.toString().trim() ?? '')
+            .where((value) => value.isNotEmpty)
+            .join(', ');
+
+    Color background = const Color(0xFFEAF6F8);
+    Color foreground = const Color(0xFF27666F);
+    IconData icon = Icons.local_shipping_outlined;
+
+    if (stopStatus == 'failed') {
+      background = const Color(0xFFFDECEC);
+      foreground = const Color(0xFFB3261E);
+      icon = Icons.error_outline;
+    } else if (stopStatus == 'delivered') {
+      background = const Color(0xFFE8F5E9);
+      foreground = const Color(0xFF2E7D32);
+      icon = Icons.check_circle_outline;
+    } else if (stopStatus == 'pending' || stopStatus == 'loaded') {
+      background = const Color(0xFFFFF4E5);
+      foreground = const Color(0xFF8A5B00);
+      icon = Icons.event_available_outlined;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: foreground.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: foreground, size: 21),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  _deliveryTrackingLabel(order),
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (run?['run_number'] != null)
+                Text(
+                  run!['run_number'].toString(),
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
+          ),
+          if (runDate.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            Text(
+              'Scheduled delivery: $runDate',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
+          if (address.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(address, style: const TextStyle(fontSize: 11.5, height: 1.35)),
+          ],
+          if (instructions.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Delivery instructions: $instructions',
+              style: const TextStyle(
+                color: Color(0xFF555555),
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
+          if (stopStatus == 'out_for_delivery') ...[
+            const SizedBox(height: 7),
+            const Text(
+              'Your order is with the supplier’s delivery driver.',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+            ),
+          ],
+          if (stopStatus == 'delivered') ...[
+            const SizedBox(height: 7),
+            Text(
+              recipient.isEmpty
+                  ? 'Delivery confirmed ${_formatDate(stop['delivered_at'])}'
+                  : 'Received by $recipient • ${_formatDate(stop['delivered_at'])}',
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+          if (stopStatus == 'failed') ...[
+            const SizedBox(height: 7),
+            Text(
+              failedReason.isEmpty
+                  ? 'The supplier could not complete this delivery attempt.'
+                  : 'Delivery attempt failed: $failedReason',
+              style: TextStyle(
+                color: foreground,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   bool _hasOpenIssues(Map<String, dynamic> order) {
@@ -503,6 +813,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           final hasInvoice = _invoiceForOrder(order) != null;
 
           return status == 'dispatched' ||
+              status == 'delivered' ||
               (status == 'processing' && hasInvoice);
         }).toList();
 
@@ -535,7 +846,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         order['customer_reference']?.toString() ?? '',
         order['delivery_zone_name_snapshot']?.toString() ?? '',
         order['delivery_postcode_snapshot']?.toString() ?? '',
-        _buyerLifecycleLabel(order),
+        _deliveryTrackingLabel(order),
         ...items.map((item) => item['product_name_snapshot']?.toString() ?? ''),
         ...items.map((item) => item['sku_snapshot']?.toString() ?? ''),
       ];
@@ -1661,6 +1972,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   Widget _buildTimeline(Map<String, dynamic> order) {
     final status = order['status']?.toString();
+    final pickup = order['fulfilment_method']?.toString() == 'pickup';
 
     const steps = <String>[
       'submitted',
@@ -1673,6 +1985,31 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     final currentIndex = steps.indexOf(status ?? '');
     final closed = status == 'cancelled' || status == 'declined';
+
+    String timelineLabel(String step) {
+      if (pickup) {
+        if (step == 'processing' && order['ready_for_pickup_at'] != null) {
+          return 'Ready for Pickup';
+        }
+        if (step == 'completed') {
+          return 'Picked Up / Complete';
+        }
+        if (step == 'dispatched' || step == 'delivered') {
+          return step == 'dispatched' ? 'Collection' : 'Collected';
+        }
+      } else {
+        if (step == 'processing' && _hasActiveDeliveryRun(order)) {
+          return 'Scheduled for Delivery';
+        }
+        if (step == 'dispatched') {
+          return 'Out for Delivery';
+        }
+        if (step == 'delivered') {
+          return 'Delivered';
+        }
+      }
+      return _statusLabel(step);
+    }
 
     return Container(
       width: double.infinity,
@@ -1697,7 +2034,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             children: [
               for (var index = 0; index < steps.length; index++)
                 _TimelineChip(
-                  label: _statusLabel(steps[index]),
+                  label: timelineLabel(steps[index]),
                   complete: !closed && currentIndex >= index,
                   active: !closed && currentIndex == index,
                 ),
@@ -1741,7 +2078,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           _InfoBlock(label: 'Confirmed', value: _confirmedSchedule(order)),
           _InfoBlock(
             label: 'Current status',
-            value: _buyerLifecycleLabel(order),
+            value: _deliveryTrackingLabel(order),
           ),
           _InfoBlock(label: 'Payment terms', value: _paymentTermsText(order)),
           _InfoBlock(
@@ -2246,6 +2583,20 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return 'Ready for Pickup';
       }
 
+      if (!pickup &&
+          _hasFailedDeliveryAttempt(order) &&
+          !_hasActiveDeliveryRun(order)) {
+        return 'Delivery Attempt Failed';
+      }
+
+      if (!pickup && _hasActiveDeliveryRun(order)) {
+        final stopStatus = _currentDeliveryStop(order)?['status']?.toString();
+        if (stopStatus == 'loaded') {
+          return 'Loaded for Delivery';
+        }
+        return 'Scheduled for Delivery';
+      }
+
       if (hasInvoice) {
         return pickup ? 'Invoice Ready' : 'Preparing for Delivery';
       }
@@ -2254,7 +2605,16 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
 
     if (status == 'dispatched') {
+      if (!pickup &&
+          _hasFailedDeliveryAttempt(order) &&
+          !_hasActiveDeliveryRun(order)) {
+        return 'Delivery Attempt Failed';
+      }
       return 'Out for Delivery';
+    }
+
+    if (status == 'delivered') {
+      return 'Delivered';
     }
 
     if (status == 'completed') {
@@ -3122,7 +3482,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 children: [
                   _CompactBuyerOrderFact(
                     label: 'STATUS',
-                    value: _buyerLifecycleLabel(order),
+                    value: _deliveryTrackingLabel(order),
                   ),
                   _CompactBuyerOrderFact(
                     label: 'ITEMS',
@@ -3142,6 +3502,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     _CompactBuyerOrderFact(
                       label: 'CONFIRMED',
                       value: _confirmedSchedule(order),
+                    ),
+                  if (!pickup && _deliveryRunDate(order).isNotEmpty)
+                    _CompactBuyerOrderFact(
+                      label: 'DELIVERY RUN',
+                      value: _deliveryRunDate(order),
                     ),
                   if (statusDate.isNotEmpty)
                     _CompactBuyerOrderFact(label: 'UPDATED', value: statusDate),
@@ -3388,6 +3753,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         child: ListView(
           children: [
             _buildTimeline(order),
+            if (!pickup) _buildDeliveryTracking(order),
             _buildCommercialDetails(order),
 
             if (status == 'declined' &&
