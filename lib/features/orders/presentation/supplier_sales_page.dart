@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../shared/chicken_catalogue_repository.dart';
-import '../../../shared/widgets/chicken_cut_catalogue.dart';
+import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
-import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 import 'supplier_create_order_page.dart';
 import 'supplier_orders_page.dart';
 import 'supplier_quotes_page.dart';
@@ -38,10 +36,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String? _selectedAnimalRegionKey;
   String? _selectedSpecificationId;
   String? _selectedGradeId;
+  final Map<String, String> _chickenAttributeFilters = <String, String>{};
+  final Map<String, String> _goatAttributeFilters = <String, String>{};
 
   final ScrollController _specificationScrollController = ScrollController();
 
-  ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   int _newMarketplaceItemCount = 0;
 
@@ -181,7 +180,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     try {
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
-      final chickenCatalogue = await ChickenCatalogueRepository(client).load();
 
       final productResponse = await client
           .from('products')
@@ -272,7 +270,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
 
       setState(() {
-        _chickenCatalogue = chickenCatalogue;
         _products = (productResponse as List)
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
@@ -483,29 +480,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   List<Map<String, dynamic>> get _animalRegionProducts {
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+
     return _products.where((product) {
       if (_productAnimalCode(product) != _selectedAnimalCode) {
         return false;
       }
 
-      if (_selectedAnimalRegionKey != null) {
-        if (_selectedAnimalCode == CutLinkAnimals.beef &&
-            !_productMatchesBeefCut(product, _selectedAnimalRegionKey!)) {
-          return false;
-        }
-
-        if (_selectedAnimalCode == CutLinkAnimals.goat &&
-            !_productMatchesGoatCut(product, _selectedAnimalRegionKey!)) {
-          return false;
-        }
-
-        if (_selectedAnimalCode == CutLinkAnimals.chicken &&
-            !_chickenCatalogue.productMatches(
-              product,
-              region: _selectedAnimalRegionKey!,
-            )) {
-          return false;
-        }
+      final regionKey = _selectedAnimalRegionKey;
+      if (regionKey != null &&
+          catalogue != null &&
+          !catalogue.productMatchesRegion(product, regionKey)) {
+        return false;
       }
 
       return true;
@@ -647,11 +633,241 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return rows;
   }
 
+  bool get _isChickenSelection => _selectedAnimalCode == CutLinkAnimals.chicken;
+
+  List<String> _availableChickenAttributeValues(String field) {
+    final values = <String>{};
+
+    for (final product in _animalRegionProducts) {
+      if (_selectedSpecificationId != null &&
+          _specificationId(product) != _selectedSpecificationId) {
+        continue;
+      }
+
+      final raw = product[field]?.toString().trim();
+      if (raw != null && raw.isNotEmpty) {
+        values.add(raw);
+      }
+    }
+
+    final rows = values.toList()
+      ..sort(
+        (a, b) => _prettyChickenValue(
+          a,
+        ).toLowerCase().compareTo(_prettyChickenValue(b).toLowerCase()),
+      );
+
+    return rows;
+  }
+
+  bool _matchesChickenAttributeFilters(Map<String, dynamic> product) {
+    if (!_isChickenSelection || _chickenAttributeFilters.isEmpty) {
+      return true;
+    }
+
+    for (final entry in _chickenAttributeFilters.entries) {
+      if (product[entry.key]?.toString() != entry.value) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Widget _buildChickenAttributeStrip() {
+    const fields = <MapEntry<String, String>>[
+      MapEntry('chicken_production_type', 'Production Type'),
+      MapEntry('chicken_skin', 'Skin'),
+      MapEntry('chicken_bone', 'Bone'),
+      MapEntry('chicken_preparation', 'Preparation'),
+      MapEntry('temperature_state', 'Product State'),
+      MapEntry('halal_status', 'Halal'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final field in fields)
+          if (_availableChickenAttributeValues(field.key).isNotEmpty) ...[
+            Text(
+              field.value.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF777777),
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: const Text('Any'),
+                      selected: !_chickenAttributeFilters.containsKey(
+                        field.key,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _chickenAttributeFilters.remove(field.key);
+                        });
+                      },
+                    ),
+                  ),
+                  for (final value in _availableChickenAttributeValues(
+                    field.key,
+                  ))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(_prettyChickenValue(value)),
+                        selected: _chickenAttributeFilters[field.key] == value,
+                        onSelected: (_) {
+                          setState(() {
+                            _chickenAttributeFilters[field.key] = value;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 7),
+          ],
+      ],
+    );
+  }
+
+  bool get _isGoatSelection => _selectedAnimalCode == CutLinkAnimals.goat;
+
+  String _prettyGoatValue(dynamic raw) {
+    final value = raw?.toString().trim() ?? '';
+    if (value.isEmpty) return '';
+
+    return value
+        .split('_')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) => part.length == 1
+              ? part.toUpperCase()
+              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
+  List<String> _availableGoatAttributeValues(String field) {
+    final values = <String>{};
+
+    for (final product in _animalRegionProducts) {
+      if (_selectedSpecificationId != null &&
+          product['meat_specification_id']?.toString() !=
+              _selectedSpecificationId) {
+        continue;
+      }
+
+      final raw = product[field]?.toString().trim();
+      if (raw != null && raw.isNotEmpty) {
+        values.add(raw);
+      }
+    }
+
+    final rows = values.toList()
+      ..sort(
+        (a, b) => _prettyGoatValue(
+          a,
+        ).toLowerCase().compareTo(_prettyGoatValue(b).toLowerCase()),
+      );
+
+    return rows;
+  }
+
+  bool _matchesGoatAttributeFilters(Map<String, dynamic> product) {
+    if (!_isGoatSelection || _goatAttributeFilters.isEmpty) {
+      return true;
+    }
+
+    for (final entry in _goatAttributeFilters.entries) {
+      if (product[entry.key]?.toString() != entry.value) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Widget _buildGoatAttributeStrip() {
+    const fields = <MapEntry<String, String>>[
+      MapEntry('bone_state', 'Bone'),
+      MapEntry('temperature_state', 'Product State'),
+      MapEntry('halal_status', 'Halal'),
+      MapEntry('packaging_type', 'Packaging'),
+      MapEntry('brand', 'Brand'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final field in fields)
+          if (_availableGoatAttributeValues(field.key).isNotEmpty) ...[
+            Text(
+              field.value.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF777777),
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: const Text('Any'),
+                      selected: !_goatAttributeFilters.containsKey(field.key),
+                      onSelected: (_) {
+                        setState(() {
+                          _goatAttributeFilters.remove(field.key);
+                        });
+                      },
+                    ),
+                  ),
+                  for (final value in _availableGoatAttributeValues(field.key))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(_prettyGoatValue(value)),
+                        selected: _goatAttributeFilters[field.key] == value,
+                        onSelected: (_) {
+                          setState(() {
+                            _goatAttributeFilters[field.key] = value;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 7),
+          ],
+      ],
+    );
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _searchController.text.trim().toLowerCase();
 
     final results = _animalRegionProducts.where((product) {
-      if (_selectedAnimalCode != CutLinkAnimals.chicken &&
+      if ((AnimalCatalogueRegistry.forCode(
+                _selectedAnimalCode,
+              )?.usesGradeStage ??
+              true) &&
           _selectedGradeId != null &&
           product['meat_grade_id']?.toString() != _selectedGradeId) {
         return false;
@@ -659,6 +875,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
       if (_selectedSpecificationId != null &&
           _specificationId(product) != _selectedSpecificationId) {
+        return false;
+      }
+
+      if (!_matchesGoatAttributeFilters(product)) {
+        return false;
+      }
+
+      if (!_matchesChickenAttributeFilters(product)) {
         return false;
       }
 
@@ -681,7 +905,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           specification.contains(search) ||
           brand.contains(search) ||
           chickenVariation.contains(search) ||
-          (_selectedAnimalCode != CutLinkAnimals.chicken &&
+          ((AnimalCatalogueRegistry.forCode(
+                    _selectedAnimalCode,
+                  )?.usesGradeStage ??
+                  true) &&
               (gradeCode.contains(search) || gradeName.contains(search)));
     }).toList();
 
@@ -690,154 +917,33 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         a,
       ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
       if (specificationCompare != 0) return specificationCompare;
-      if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-        return _chickenVariationLabel(
-          a,
-        ).toLowerCase().compareTo(_chickenVariationLabel(b).toLowerCase());
+      final usesGradeStage =
+          AnimalCatalogueRegistry.forCode(
+            _selectedAnimalCode,
+          )?.usesGradeStage ??
+          true;
+
+      if (!usesGradeStage) {
+        if (_isChickenSelection) {
+          return _chickenVariationLabel(
+            a,
+          ).toLowerCase().compareTo(_chickenVariationLabel(b).toLowerCase());
+        }
+
+        return (a['product_name']?.toString() ?? '').toLowerCase().compareTo(
+          (b['product_name']?.toString() ?? '').toLowerCase(),
+        );
       }
+
       return _gradeCode(a).compareTo(_gradeCode(b));
     });
 
     return results;
   }
 
-  String? _goatSectionCodeForRegion(String regionKey) {
-    return switch (regionKey) {
-      'Whole Goat' => 'WHOLE',
-      'Forequarter' => 'FOREQUARTER',
-      'Hindquarter' => 'HINDQUARTER',
-      'Leg' => 'LEG',
-      'Shoulder' => 'SHOULDER',
-      'Loin' => 'LOIN',
-      'Rack / Rib' => 'RACK_RIB',
-      'Breast / Flap' => 'BREAST_FLAP',
-      'Neck' => 'NECK',
-      'Shank' => 'SHANK',
-      'Trim / Manufacturing' => 'TRIM',
-      'Offal / Other' => 'OFFAL',
-      _ => null,
-    };
-  }
-
-  bool _productMatchesGoatCut(Map<String, dynamic> product, String cutKey) {
-    final section = _nestedMap(product['meat_sections']);
-    if (section == null) return false;
-
-    final expectedCode = _goatSectionCodeForRegion(cutKey);
-    if (expectedCode == null) return false;
-
-    return section['code']?.toString().trim().toUpperCase() == expectedCode;
-  }
-
-  bool _productMatchesBeefCut(Map<String, dynamic> product, String cutKey) {
-    final rawSection = product['meat_sections'];
-
-    if (rawSection is! Map) {
-      return false;
-    }
-
-    final section = Map<String, dynamic>.from(rawSection);
-    final code = section['code']?.toString().trim().toLowerCase() ?? '';
-    final name = section['name']?.toString().trim().toLowerCase() ?? '';
-    final miscellaneous = section['is_miscellaneous'] == true;
-
-    final aliases = _sectionAliasesForCut(cutKey);
-
-    if (miscellaneous && cutKey == CutLinkBeefCutKeys.miscOffalOther) {
-      return true;
-    }
-
-    return aliases.contains(code) || aliases.contains(name);
-  }
-
-  Set<String> _sectionAliasesForCut(String cutKey) {
-    return switch (cutKey) {
-      CutLinkBeefCutKeys.cheek => {'cheek', 'misc', 'miscellaneous / offal'},
-      CutLinkBeefCutKeys.neck => {'neck'},
-      CutLinkBeefCutKeys.shoulder => {'shoulder'},
-      CutLinkBeefCutKeys.chuck => {'chuck'},
-      CutLinkBeefCutKeys.blade => {'blade', 'chuck'},
-      CutLinkBeefCutKeys.brisket => {'brisket'},
-      CutLinkBeefCutKeys.shinShank => {
-        'shin / shank',
-        'shin/shank',
-        'shin-shank',
-        'shin',
-        'shank',
-      },
-      CutLinkBeefCutKeys.ribs => {'ribs', 'rib'},
-      CutLinkBeefCutKeys.ribEye => {'rib eye', 'ribeye', 'rib-eye'},
-      CutLinkBeefCutKeys.plate => {'plate', 'short plate'},
-      CutLinkBeefCutKeys.skirt => {'skirt'},
-      CutLinkBeefCutKeys.loin => {'loin'},
-      CutLinkBeefCutKeys.flank => {'flank'},
-      CutLinkBeefCutKeys.rump => {'rump'},
-      CutLinkBeefCutKeys.round => {
-        'round',
-        'hind',
-        'topside / thick flank / knuckle',
-        'topside',
-        'thick flank',
-        'knuckle',
-      },
-      CutLinkBeefCutKeys.silversideOutside => {
-        'silverside / outside',
-        'silverside/outside',
-        'silverside-outside',
-        'silverside',
-        'outside',
-      },
-      CutLinkBeefCutKeys.oxTail => {
-        'ox tail',
-        'oxtail',
-        'ox-tail',
-        'misc',
-        'miscellaneous / offal',
-      },
-      CutLinkBeefCutKeys.miscOffalOther => {
-        'misc',
-        'miscellaneous / offal',
-        'miscellaneous / offal · other',
-        'miscellaneous/offal',
-        'misc / offal',
-        'offal',
-      },
-      _ => {cutKey.toLowerCase()},
-    };
-  }
-
   String _selectedCutLabel(String cutKey) {
-    if (_selectedAnimalCode == CutLinkAnimals.goat) {
-      return cutKey;
-    }
-    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      return ChickenCutCatalogue.regionNames[cutKey] ?? cutKey;
-    }
-    return _beefCutLabel(cutKey);
-  }
-
-  String _beefCutLabel(String cutKey) {
-    return switch (cutKey) {
-      CutLinkBeefCutKeys.cheek => 'Cheek',
-      CutLinkBeefCutKeys.neck => 'Neck',
-      CutLinkBeefCutKeys.shoulder => 'Shoulder',
-      CutLinkBeefCutKeys.chuck => 'Chuck',
-      CutLinkBeefCutKeys.blade => 'Blade',
-      CutLinkBeefCutKeys.brisket => 'Brisket',
-      CutLinkBeefCutKeys.shinShank => 'Shin / Shank',
-      CutLinkBeefCutKeys.ribs => 'Ribs',
-      CutLinkBeefCutKeys.ribEye => 'Rib Eye',
-      CutLinkBeefCutKeys.plate => 'Plate',
-      CutLinkBeefCutKeys.skirt => 'Skirt',
-      CutLinkBeefCutKeys.loin => 'Loin',
-      CutLinkBeefCutKeys.flank => 'Flank',
-      CutLinkBeefCutKeys.rump => 'Rump',
-      CutLinkBeefCutKeys.round => 'Round',
-      CutLinkBeefCutKeys.silversideOutside => 'Silverside / Outside',
-      CutLinkBeefCutKeys.oxTail => 'Ox Tail',
-      CutLinkBeefCutKeys.miscOffalOther => 'Miscellaneous / Offal',
-      _ => cutKey,
-    };
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    return catalogue?.regionLabel(cutKey) ?? cutKey;
   }
 
   String get _selectedAnimalName {
@@ -854,11 +960,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return;
     }
 
+    final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
+
     setState(() {
       _selectedAnimalCode = animalCode;
-      _selectedAnimalRegionKey = animalCode == CutLinkAnimals.goat
-          ? 'Whole Goat'
-          : null;
+      _selectedAnimalRegionKey = catalogue?.defaultRegionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _searchController.clear();
@@ -3004,7 +3110,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ),
                     label: const Text('All'),
                     onSelected: (_) {
-                      setState(() => _selectedSpecificationId = null);
+                      setState(() {
+                        _selectedSpecificationId = null;
+                        _chickenAttributeFilters.clear();
+                        _goatAttributeFilters.clear();
+                      });
                     },
                   ),
                 ),
@@ -3605,7 +3715,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              _selectedAnimalCode == CutLinkAnimals.chicken
+                              !(AnimalCatalogueRegistry.forCode(
+                                        _selectedAnimalCode,
+                                      )?.usesGradeStage ??
+                                      true)
                                   ? 'Find the Chicken cut, variation or SKU the customer is asking for.'
                                   : 'Find the cut, grade or SKU the customer is asking for.',
                               style: TextStyle(color: Color(0xFF666666)),
@@ -3640,6 +3753,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               const SizedBox(height: 10),
                             ],
                             _buildSpecificationStrip(),
+                            if (_isChickenSelection) ...[
+                              const SizedBox(height: 10),
+                              _buildChickenAttributeStrip(),
+                            ],
+                            if (_isGoatSelection) ...[
+                              const SizedBox(height: 10),
+                              _buildGoatAttributeStrip(),
+                            ],
                             const SizedBox(height: 12),
                             if (_selectedAnimalRegionKey != null)
                               Container(

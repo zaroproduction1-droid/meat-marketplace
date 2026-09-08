@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/widgets/cutlink_picker.dart';
+import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({
@@ -210,8 +211,19 @@ class _AddProductPageState extends State<AddProductPage> {
     return null;
   }
 
-  bool get _isChicken => _selectedAnimal?['code']?.toString() == 'CHICKEN';
-  bool get _isGoat => _selectedAnimal?['code']?.toString() == 'GOAT';
+  String? get _selectedAnimalCode =>
+      _selectedAnimal?['code']?.toString().trim().toUpperCase();
+
+  dynamic get _animalCatalogue =>
+      AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+
+  bool get _usesGradeStage => _animalCatalogue?.usesGradeStage ?? true;
+
+  String get _gradeStageLabel =>
+      _animalCatalogue?.gradeStageLabel ?? 'Grade / Category';
+
+  bool get _isChicken => _selectedAnimalCode == 'CHICKEN';
+  bool get _isGoat => _selectedAnimalCode == 'GOAT';
 
   Future<void> _selectAnimal(String? id) async {
     if (id == null) return;
@@ -331,11 +343,11 @@ class _AddProductPageState extends State<AddProductPage> {
       _specificationId = id;
       _gradeId = null;
       _grades = [];
-      _loadingGrades = !_isChicken;
+      _loadingGrades = _usesGradeStage;
       _productName.text = selectedSpecification['name']?.toString() ?? '';
     });
 
-    if (_isChicken) {
+    if (!_usesGradeStage) {
       return;
     }
 
@@ -368,14 +380,6 @@ class _AddProductPageState extends State<AddProductPage> {
       final loadedGrades = List<Map<String, dynamic>>.from(grades);
       setState(() {
         _grades = loadedGrades;
-        if (_isGoat && loadedGrades.isNotEmpty) {
-          final naIndex = loadedGrades.indexWhere(
-            (grade) => grade['code']?.toString() == 'NA',
-          );
-          _gradeId =
-              (naIndex >= 0 ? loadedGrades[naIndex] : loadedGrades.first)['id']
-                  ?.toString();
-        }
         _loadingGrades = false;
       });
     } catch (e) {
@@ -398,7 +402,7 @@ class _AddProductPageState extends State<AddProductPage> {
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Specification Manually'),
+        title: const Text('Add Supplier-Specific Cut'),
         content: SizedBox(
           width: 520,
           child: Column(
@@ -469,7 +473,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
       final row = Map<String, dynamic>.from(created as Map);
       await _loadSpecifications(selectId: row['id'].toString());
-      _message('Custom specification added.');
+      _message('Supplier-specific cut added.');
     } on PostgrestException catch (e) {
       if (mounted) setState(() => _loadingSpecifications = false);
       _message(e.message);
@@ -513,12 +517,8 @@ class _AddProductPageState extends State<AddProductPage> {
       return;
     }
 
-    if (!_isChicken && _gradeId == null) {
-      _message(
-        _isGoat
-            ? 'The Goat catalogue category could not be resolved.'
-            : 'Select the product category / grade.',
-      );
+    if (_usesGradeStage && _gradeId == null) {
+      _message('Select $_gradeStageLabel.');
       return;
     }
 
@@ -1252,21 +1252,21 @@ class _AddProductPageState extends State<AddProductPage> {
                           validator: (value) =>
                               value == null ? 'Sub-cut is required.' : null,
                         ),
-                        if (!_isChicken && !_isGoat) ...[
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: OutlinedButton.icon(
-                              onPressed: _sectionId == null || _saving
-                                  ? null
-                                  : _addManualSpecification,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Specification Manually'),
-                            ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: _sectionId == null || _saving
+                                ? null
+                                : _addManualSpecification,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Supplier-Specific Cut'),
                           ),
+                        ),
+                        if (_usesGradeStage) ...[
                           const SizedBox(height: 14),
                           _cutLinkPickerField(
-                            label: 'Grade / AUS-MEAT Category',
+                            label: _gradeStageLabel,
                             value: _gradeId,
                             options: _grades
                                 .map(
@@ -1290,15 +1290,16 @@ class _AddProductPageState extends State<AddProductPage> {
                                 ? 'Choose specification first'
                                 : _grades.isEmpty && !_loadingGrades
                                 ? 'No mapped categories'
-                                : 'Choose grade / category',
+                                : 'Choose $_gradeStageLabel',
                             helperText: _specificationId == null
                                 ? 'Choose a specification first.'
                                 : _grades.isEmpty && !_loadingGrades
-                                ? 'No categories are mapped to this specification yet.'
-                                : 'The supplier price below is specific to this category.',
-                            validator: (value) => _isChicken || value != null
+                                ? 'No $_gradeStageLabel options are mapped to this specification yet.'
+                                : 'The supplier price below is specific to this $_gradeStageLabel.',
+                            validator: (value) =>
+                                !_usesGradeStage || value != null
                                 ? null
-                                : 'Category is required.',
+                                : '$_gradeStageLabel is required.',
                           ),
                         ],
                       ],
@@ -1635,7 +1636,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         ],
                       ),
                     ),
-                  if (!_isChicken && !_isGoat)
+                  if (_usesGradeStage)
                     _sectionCard(
                       title: 'Additional Product Details',
                       subtitle:
@@ -1747,7 +1748,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         ],
                       ),
                     ),
-                  if (!_isChicken) const SizedBox(height: 14),
+                  if (_usesGradeStage) const SizedBox(height: 14),
                   _sectionCard(
                     title: 'Supplier Notes',
                     subtitle:

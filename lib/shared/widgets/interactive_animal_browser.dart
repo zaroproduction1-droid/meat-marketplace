@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../animal_catalogues/animal_catalogue_registry.dart';
+
 import 'interactive_beef_cuts_map.dart';
 import 'interactive_chicken_cuts_map.dart';
 import 'interactive_goat_cuts_map.dart';
@@ -24,26 +26,28 @@ abstract final class CutLinkAnimals {
   static const goat = 'GOAT';
   static const chicken = 'CHICKEN';
 
-  static const all = <CutLinkAnimalOption>[
-    CutLinkAnimalOption(
-      code: beef,
-      name: 'Beef',
-      svgAssetPath: 'assets/images/CutLink-Beef-Cuts.svg',
-    ),
-    CutLinkAnimalOption(code: veal, name: 'Veal'),
-    CutLinkAnimalOption(code: lamb, name: 'Lamb'),
-    CutLinkAnimalOption(code: mutton, name: 'Mutton'),
-    CutLinkAnimalOption(
-      code: goat,
-      name: 'Goat',
-      svgAssetPath: 'assets/images/CutLink-Goat-Cuts-v2.svg',
-    ),
-    CutLinkAnimalOption(
-      code: chicken,
-      name: 'Chicken',
-      svgAssetPath: 'assets/images/CutLink-Chicken-Cuts.svg',
-    ),
-  ];
+  static List<CutLinkAnimalOption> get all {
+    CutLinkAnimalOption supported(String code, String fallbackName) {
+      final catalogue = AnimalCatalogueRegistry.forCode(code);
+      return CutLinkAnimalOption(
+        code: code,
+        name: catalogue?.animalName ?? fallbackName,
+        svgAssetPath: catalogue?.svgAssetPath,
+      );
+    }
+
+    return <CutLinkAnimalOption>[
+      supported(beef, 'Beef'),
+      const CutLinkAnimalOption(code: veal, name: 'Veal'),
+      const CutLinkAnimalOption(code: lamb, name: 'Lamb'),
+      const CutLinkAnimalOption(code: mutton, name: 'Mutton'),
+      supported(goat, 'Goat'),
+      supported(chicken, 'Chicken'),
+    ];
+  }
+
+  static String? defaultRegionKey(String animalCode) =>
+      AnimalCatalogueRegistry.forCode(animalCode)?.defaultRegionKey;
 }
 
 /// Reusable CutLink animal browser shell.
@@ -68,24 +72,26 @@ class InteractiveAnimalBrowser extends StatelessWidget {
   final double maxWidth;
 
   CutLinkAnimalOption get _selectedAnimal {
-    return CutLinkAnimals.all.firstWhere(
+    final animals = CutLinkAnimals.all;
+    return animals.firstWhere(
       (animal) => animal.code == selectedAnimalCode,
-      orElse: () => CutLinkAnimals.all.first,
+      orElse: () => animals.first,
     );
   }
 
   int get _selectedIndex {
-    final index = CutLinkAnimals.all.indexWhere(
+    final animals = CutLinkAnimals.all;
+    final index = animals.indexWhere(
       (animal) => animal.code == selectedAnimalCode,
     );
     return index < 0 ? 0 : index;
   }
 
   void _moveAnimal(int direction) {
+    final animals = CutLinkAnimals.all;
     final nextIndex =
-        (_selectedIndex + direction + CutLinkAnimals.all.length) %
-        CutLinkAnimals.all.length;
-    onAnimalChanged(CutLinkAnimals.all[nextIndex].code);
+        (_selectedIndex + direction + animals.length) % animals.length;
+    onAnimalChanged(animals[nextIndex].code);
   }
 
   @override

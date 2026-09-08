@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
+
 class EditProductPage extends StatefulWidget {
   const EditProductPage({super.key, required this.product});
 
@@ -32,8 +34,6 @@ class _EditProductPageState extends State<EditProductPage> {
   late final TextEditingController _trimSpecificationController;
   late final TextEditingController _fatSpecificationController;
   late final TextEditingController _supplierSpecificationController;
-  late final TextEditingController _feedingDaysController;
-  late final TextEditingController _ribCountController;
 
   bool _isLoadingPage = true;
   bool _isLoadingCatalogue = false;
@@ -45,6 +45,38 @@ class _EditProductPageState extends State<EditProductPage> {
 
   bool _usesCanonicalCatalogue = false;
   bool _usesSpecGradeCatalogue = false;
+
+  String? get _selectedAnimalCode {
+    final selectedId = _selectedAnimalId;
+    if (selectedId != null) {
+      for (final animal in _animals) {
+        if (animal['id']?.toString() == selectedId) {
+          final code = animal['code']?.toString().trim().toUpperCase();
+          if (code != null && code.isNotEmpty) return code;
+        }
+      }
+    }
+
+    final nested = widget.product['meat_animals'];
+    if (nested is Map) {
+      final code = nested['code']?.toString().trim().toUpperCase();
+      if (code != null && code.isNotEmpty) return code;
+    }
+
+    final direct = widget.product['animal_code']
+        ?.toString()
+        .trim()
+        .toUpperCase();
+    return direct == null || direct.isEmpty ? null : direct;
+  }
+
+  dynamic get _animalCatalogue =>
+      AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+
+  bool get _usesGradeStage => _animalCatalogue?.usesGradeStage ?? true;
+
+  String get _gradeStageLabel =>
+      _animalCatalogue?.gradeStageLabel ?? 'Grade / Category';
 
   String? _selectedAnimalId;
   String? _selectedSectionId;
@@ -72,9 +104,6 @@ class _EditProductPageState extends State<EditProductPage> {
   String _pieceWeightUnit = 'kg';
   String _cartonWeightUnit = 'kg';
   String _halalStatus = 'not_specified';
-  String _boneState = 'not_specified';
-  String _productionClaim = 'not_specified';
-  bool _hgpFree = false;
 
   List<Map<String, dynamic>> _species = [];
   List<Map<String, dynamic>> _catalogueProducts = [];
@@ -112,8 +141,6 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController = TextEditingController();
     _fatSpecificationController = TextEditingController();
     _supplierSpecificationController = TextEditingController();
-    _feedingDaysController = TextEditingController();
-    _ribCountController = TextEditingController();
 
     _applyProductData(widget.product);
     _loadInitialData();
@@ -141,8 +168,6 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController.dispose();
     _fatSpecificationController.dispose();
     _supplierSpecificationController.dispose();
-    _feedingDaysController.dispose();
-    _ribCountController.dispose();
 
     super.dispose();
   }
@@ -180,28 +205,6 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _supplierSpecificationController.text =
         product['supplier_specification']?.toString() ?? '';
-    _feedingDaysController.text = product['feeding_days']?.toString() ?? '';
-    _ribCountController.text = product['rib_count']?.toString() ?? '';
-
-    final boneState = product['bone_state']?.toString();
-    _boneState =
-        const {'bone_in', 'boneless', 'not_specified'}.contains(boneState)
-        ? boneState!
-        : 'not_specified';
-
-    final productionClaim = product['production_claim']?.toString();
-    _productionClaim =
-        const {
-          'grass_fed',
-          'grain_fed',
-          'mixed',
-          'other',
-          'not_specified',
-        }.contains(productionClaim)
-        ? productionClaim!
-        : 'not_specified';
-
-    _hgpFree = product['hgp_free'] == true;
 
     final temperature = product['temperature_state']?.toString();
 
@@ -465,26 +468,28 @@ class _EditProductPageState extends State<EditProductPage> {
         .order('display_order')
         .order('name');
 
-    final mappingResponse = await Supabase.instance.client
-        .from('meat_specification_grades')
-        .select('grade_id, display_order')
-        .eq('specification_id', _selectedSpecificationId!)
-        .eq('is_active', true)
-        .order('display_order');
-
-    final gradeIds = List<Map<String, dynamic>>.from(
-      mappingResponse,
-    ).map((row) => row['grade_id'].toString()).toList();
-
     List<Map<String, dynamic>> grades = [];
-    if (gradeIds.isNotEmpty) {
-      final gradeResponse = await Supabase.instance.client
-          .from('meat_grades')
-          .select('id, code, name, description, display_order')
-          .inFilter('id', gradeIds)
+    if (_usesGradeStage) {
+      final mappingResponse = await Supabase.instance.client
+          .from('meat_specification_grades')
+          .select('grade_id, display_order')
+          .eq('specification_id', _selectedSpecificationId!)
           .eq('is_active', true)
           .order('display_order');
-      grades = List<Map<String, dynamic>>.from(gradeResponse);
+
+      final gradeIds = List<Map<String, dynamic>>.from(
+        mappingResponse,
+      ).map((row) => row['grade_id'].toString()).toList();
+
+      if (gradeIds.isNotEmpty) {
+        final gradeResponse = await Supabase.instance.client
+            .from('meat_grades')
+            .select('id, code, name, description, display_order')
+            .inFilter('id', gradeIds)
+            .eq('is_active', true)
+            .order('display_order');
+        grades = List<Map<String, dynamic>>.from(gradeResponse);
+      }
     }
 
     if (_selectedGradeId != null) {
@@ -604,8 +609,18 @@ class _EditProductPageState extends State<EditProductPage> {
       _gradeController.clear();
       _productNameController.text =
           selectedSpecification['name']?.toString() ?? '';
-      _isLoadingGrades = true;
+      _isLoadingGrades = _usesGradeStage;
     });
+
+    if (!_usesGradeStage) {
+      if (!mounted) return;
+      setState(() {
+        _grades = [];
+        _selectedGradeId = null;
+        _isLoadingGrades = false;
+      });
+      return;
+    }
 
     try {
       final mappings = await Supabase.instance.client
@@ -681,7 +696,7 @@ class _EditProductPageState extends State<EditProductPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Add Specification Manually'),
+          title: const Text('Add Supplier-Specific Cut'),
           content: SizedBox(
             width: 520,
             child: Column(
@@ -691,7 +706,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   controller: nameController,
                   autofocus: true,
                   decoration: const InputDecoration(
-                    labelText: 'Specification name',
+                    labelText: 'Supplier-specific cut name',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -728,7 +743,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   'details': detailsController.text.trim(),
                 });
               },
-              child: const Text('Add Specification'),
+              child: const Text('Add Supplier-Specific Cut'),
             ),
           ],
         );
@@ -760,7 +775,7 @@ class _EditProductPageState extends State<EditProductPage> {
       final row = Map<String, dynamic>.from(created as Map);
       await _loadSpecificationsNew(selectId: row['id'].toString());
 
-      _showMessage('Custom specification added.');
+      _showMessage('Supplier-specific cut added under this section.');
     } on PostgrestException catch (error) {
       if (mounted) setState(() => _isLoadingSpecifications = false);
       _showMessage(error.message);
@@ -1116,9 +1131,11 @@ class _EditProductPageState extends State<EditProductPage> {
       if (_selectedAnimalId == null ||
           _selectedSectionId == null ||
           _selectedSpecificationId == null ||
-          _selectedGradeId == null) {
+          (_usesGradeStage && _selectedGradeId == null)) {
         _showMessage(
-          'Please select the animal, section, specification and AUS-MEAT category.',
+          _usesGradeStage
+              ? 'Please select the animal, section, specification and $_gradeStageLabel.'
+              : 'Please select the animal, section and specification.',
         );
         return;
       }
@@ -1214,11 +1231,6 @@ class _EditProductPageState extends State<EditProductPage> {
         'supplier_specification': _emptyToNull(
           _supplierSpecificationController.text,
         ),
-        'feeding_days': _optionalInt(_feedingDaysController),
-        'bone_state': _boneState,
-        'rib_count': _optionalInt(_ribCountController),
-        'production_claim': _productionClaim,
-        'hgp_free': _hgpFree,
 
         'active': _active,
 
@@ -1229,7 +1241,7 @@ class _EditProductPageState extends State<EditProductPage> {
         updateData['meat_animal_id'] = _selectedAnimalId;
         updateData['meat_section_id'] = _selectedSectionId;
         updateData['meat_specification_id'] = _selectedSpecificationId;
-        updateData['meat_grade_id'] = _selectedGradeId;
+        updateData['meat_grade_id'] = _usesGradeStage ? _selectedGradeId : null;
         updateData['product_variant_id'] = null;
         updateData['animal_type_id'] = null;
         updateData['cut_id'] = null;
@@ -1269,7 +1281,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 .from('supplier_spec_grade_offers')
                 .update({
                   'specification_id': _selectedSpecificationId,
-                  'grade_id': _selectedGradeId,
+                  'grade_id': _usesGradeStage ? _selectedGradeId : null,
                   'supplier_sku': _skuController.text.trim(),
                   'supplier_product_name': _productNameController.text.trim(),
                   'is_available': _availabilityStatus != 'out_of_stock',
@@ -2561,7 +2573,9 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                   Text(
                                     _usesSpecGradeCatalogue
-                                        ? 'This product uses CutLink specification + grade pricing.'
+                                        ? (_usesGradeStage
+                                              ? 'This product uses CutLink specification + $_gradeStageLabel pricing.'
+                                              : 'This product uses CutLink animal-specific specification pricing.')
                                         : _usesCanonicalCatalogue
                                         ? 'This product is linked to the previous recursive marketplace catalogue.'
                                         : 'This is a legacy product. Supplier listing information can still be edited.',
@@ -2576,8 +2590,9 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                     _sectionTitle(
                                       'Product classification',
-                                      subtitle:
-                                          'Choose the animal, section, cut specification and AUS-MEAT category.',
+                                      subtitle: _usesGradeStage
+                                          ? 'Choose the animal, section, cut specification and $_gradeStageLabel.'
+                                          : 'Choose the animal, section and cut specification.',
                                     ),
 
                                     const SizedBox(height: 20),
@@ -2705,51 +2720,54 @@ class _EditProductPageState extends State<EditProductPage> {
                                           : _addManualSpecificationNew,
                                       icon: const Icon(Icons.add),
                                       label: const Text(
-                                        'Add Specification Manually',
+                                        'Add Supplier-Specific Cut',
                                       ),
                                     ),
 
                                     const SizedBox(height: 18),
 
-                                    DropdownButtonFormField<String>(
-                                      key: ValueKey(
-                                        'new-grade-$_selectedSpecificationId-$_selectedGradeId',
+                                    if (_usesGradeStage) ...[
+                                      DropdownButtonFormField<String>(
+                                        key: ValueKey(
+                                          'new-grade-$_selectedSpecificationId-$_selectedGradeId',
+                                        ),
+                                        initialValue: _selectedGradeId,
+                                        isExpanded: true,
+                                        decoration: InputDecoration(
+                                          labelText: _gradeStageLabel,
+                                          helperText:
+                                              _grades.isEmpty &&
+                                                  !_isLoadingGrades &&
+                                                  _selectedSpecificationId !=
+                                                      null
+                                              ? 'No $_gradeStageLabel options are mapped to this specification yet.'
+                                              : 'The price below belongs to this exact $_gradeStageLabel.',
+                                          border: const OutlineInputBorder(),
+                                          suffixIcon: _isLoadingGrades
+                                              ? const Padding(
+                                                  padding: EdgeInsets.all(12),
+                                                  child: SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                        items: _grades.map((grade) {
+                                          return DropdownMenuItem<String>(
+                                            value: grade['id'].toString(),
+                                            child: Text(_gradeLabelNew(grade)),
+                                          );
+                                        }).toList(),
+                                        onChanged: _grades.isEmpty || _isSaving
+                                            ? null
+                                            : _selectGradeNew,
                                       ),
-                                      initialValue: _selectedGradeId,
-                                      isExpanded: true,
-                                      decoration: InputDecoration(
-                                        labelText: 'Grade / AUS-MEAT Category',
-                                        helperText:
-                                            _grades.isEmpty &&
-                                                !_isLoadingGrades &&
-                                                _selectedSpecificationId != null
-                                            ? 'No categories are mapped to this specification yet.'
-                                            : 'The price below belongs to this exact category.',
-                                        border: const OutlineInputBorder(),
-                                        suffixIcon: _isLoadingGrades
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child: SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      items: _grades.map((grade) {
-                                        return DropdownMenuItem<String>(
-                                          value: grade['id'].toString(),
-                                          child: Text(_gradeLabelNew(grade)),
-                                        );
-                                      }).toList(),
-                                      onChanged: _grades.isEmpty || _isSaving
-                                          ? null
-                                          : _selectGradeNew,
-                                    ),
+                                    ],
 
                                     const SizedBox(height: 18),
 
@@ -2783,9 +2801,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),
-                                                const Text(
-                                                  'Standard, Trade and Customer-Specific prices all belong to this exact specification and grade.',
-                                                  style: TextStyle(
+                                                Text(
+                                                  _usesGradeStage
+                                                      ? 'Standard, Trade and Customer-Specific prices all belong to this exact specification and $_gradeStageLabel.'
+                                                      : 'Standard, Trade and Customer-Specific prices all belong to this exact specification.',
+                                                  style: const TextStyle(
                                                     color: Color(0xFF666666),
                                                     height: 1.4,
                                                   ),
@@ -3222,120 +3242,6 @@ class _EditProductPageState extends State<EditProductPage> {
                                             }
                                           },
                                         ),
-                                      ),
-
-                                      const SizedBox(height: 18),
-
-                                      _twoColumnFields(
-                                        TextFormField(
-                                          controller: _feedingDaysController,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            labelText:
-                                                'Feeding days (optional)',
-                                            hintText: 'Example: 100, 150, 200',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        ),
-                                        TextFormField(
-                                          controller: _ribCountController,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Rib count (optional)',
-                                            hintText: 'Example: 3, 5, 7',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 18),
-
-                                      _twoColumnFields(
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _boneState,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Bone state',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'not_specified',
-                                              child: Text('Not specified'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'bone_in',
-                                              child: Text('Bone in'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'boneless',
-                                              child: Text('Boneless'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            if (value != null) {
-                                              setState(
-                                                () => _boneState = value,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _productionClaim,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Production claim',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'not_specified',
-                                              child: Text('Not specified'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'grass_fed',
-                                              child: Text('Grass fed'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'grain_fed',
-                                              child: Text('Grain fed'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'mixed',
-                                              child: Text(
-                                                'Mixed / Combination',
-                                              ),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'other',
-                                              child: Text('Other'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            if (value != null) {
-                                              setState(
-                                                () => _productionClaim = value,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 8),
-
-                                      SwitchListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        value: _hgpFree,
-                                        title: const Text(
-                                          'HGP Free',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        subtitle: const Text(
-                                          'Supplier-declared production claim.',
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() => _hgpFree = value);
-                                        },
                                       ),
 
                                       const SizedBox(height: 18),
