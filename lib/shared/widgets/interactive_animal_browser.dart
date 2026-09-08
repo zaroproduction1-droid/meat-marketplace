@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'interactive_cuts_map.dart';
+import 'interactive_beef_cuts_map.dart';
+import 'interactive_chicken_cuts_map.dart';
+import 'interactive_goat_cuts_map.dart';
 
 class CutLinkAnimalOption {
   const CutLinkAnimalOption({
@@ -31,7 +33,11 @@ abstract final class CutLinkAnimals {
     CutLinkAnimalOption(code: veal, name: 'Veal'),
     CutLinkAnimalOption(code: lamb, name: 'Lamb'),
     CutLinkAnimalOption(code: mutton, name: 'Mutton'),
-    CutLinkAnimalOption(code: goat, name: 'Goat'),
+    CutLinkAnimalOption(
+      code: goat,
+      name: 'Goat',
+      svgAssetPath: 'assets/images/CutLink-Goat-Cuts-v2.svg',
+    ),
     CutLinkAnimalOption(
       code: chicken,
       name: 'Chicken',
@@ -43,8 +49,8 @@ abstract final class CutLinkAnimals {
 /// Reusable CutLink animal browser shell.
 ///
 /// Sales, Inventory and Butcher Browse can all use this same component.
-/// Beef and chicken are interactive. Other animals are navigable and can be
-/// given their own SVG asset later without changing the surrounding pages.
+/// Beef, Goat and Chicken are interactive. Other animals are already navigable
+/// and can be given their own SVG asset later without changing surrounding pages.
 class InteractiveAnimalBrowser extends StatelessWidget {
   const InteractiveAnimalBrowser({
     super.key,
@@ -85,6 +91,8 @@ class InteractiveAnimalBrowser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final animal = _selectedAnimal;
+    final isBeef = animal.code == CutLinkAnimals.beef;
+    final isGoat = animal.code == CutLinkAnimals.goat;
     final isChicken = animal.code == CutLinkAnimals.chicken;
 
     return Column(
@@ -146,13 +154,23 @@ class InteractiveAnimalBrowser extends StatelessWidget {
         const SizedBox(height: 10),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
-          child: animal.svgAssetPath != null
-              ? InteractiveCutsMap(
-                  key: ValueKey('${animal.code}_MAP'),
-                  assetPath: animal.svgAssetPath!,
-                  viewBoxWidth: isChicken ? 1536 : 1672,
-                  viewBoxHeight: isChicken ? 1250 : 941,
-                  renderSvg: isChicken,
+          child: isBeef
+              ? InteractiveBeefCutsMap(
+                  key: const ValueKey('BEEF_MAP'),
+                  selectedCut: selectedRegionKey,
+                  onCutSelected: onRegionSelected,
+                  maxWidth: maxWidth,
+                )
+              : isGoat
+              ? InteractiveGoatCutsMap(
+                  key: const ValueKey('GOAT_MAP'),
+                  selectedCut: selectedRegionKey,
+                  onCutSelected: onRegionSelected,
+                  maxWidth: maxWidth,
+                )
+              : isChicken
+              ? InteractiveChickenCutsMap(
+                  key: const ValueKey('CHICKEN_MAP'),
                   selectedCut: selectedRegionKey,
                   onCutSelected: onRegionSelected,
                   maxWidth: maxWidth,

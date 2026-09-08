@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -6,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supplier_invoice_page.dart';
+import 'supplier_sales_page.dart';
 
 class SupplierWorkOrderPage extends StatefulWidget {
   const SupplierWorkOrderPage({
@@ -32,6 +34,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   Map<String, dynamic>? _order;
   List<Map<String, dynamic>> _deliveryDrivers = [];
   String? _selectedDeliveryDriverId;
+  String? _invoiceId;
+  late int _workspaceTabIndex;
+  final _previewTransformController = TransformationController();
+  final _previewViewportKey = GlobalKey();
+  double _previewZoom = 1;
+  bool _isPreviewDragging = false;
 
   final _instructionsController = TextEditingController();
   final _pickedByController = TextEditingController();
@@ -40,6 +48,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   @override
   void initState() {
     super.initState();
+    _workspaceTabIndex = widget.initialTabIndex.clamp(0, 2);
     _loadPage();
   }
 
@@ -48,6 +57,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     _instructionsController.dispose();
     _pickedByController.dispose();
     _checkedByController.dispose();
+    _previewTransformController.dispose();
     super.dispose();
   }
 
@@ -67,23 +77,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           .limit(1);
 
       if (existingInvoices.isNotEmpty) {
-        final invoiceId = existingInvoices.first['id']?.toString();
-
-        if (!mounted || invoiceId == null || invoiceId.isEmpty) {
-          return;
-        }
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => SupplierInvoicePage(invoiceId: invoiceId),
-            ),
-          );
-        });
-
-        return;
+        _invoiceId = existingInvoices.first['id']?.toString();
       }
 
       final existingWorkOrders = await client
@@ -223,6 +217,36 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
   }
 
+  Future<void> _reopenForCuts() async {
+    if (_invoiceId != null || _isSaving) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add more cuts?'),
+        content: const Text(
+          'This reopens the order in the sales workspace so products, quantities and rates can be changed. The warehouse order can then be created again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reopen Order'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) =>
+            SupplierSalesPage(initialWorkOrderOrderId: widget.orderId),
+      ),
+    );
+  }
+
   List<Map<String, dynamic>> get _items {
     final raw = _order?['order_items'];
 
@@ -345,19 +369,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     };
   }
 
-  String _assignedDriverName() {
-    for (final driver in _deliveryDrivers) {
-      if (driver['id']?.toString() == _selectedDeliveryDriverId) {
-        final name = driver['display_name']?.toString().trim() ?? '';
-        if (name.isNotEmpty) {
-          return name;
-        }
-      }
-    }
-
-    return 'Not assigned';
-  }
-
   String _fulfilmentMethodLabel() {
     return switch (_order?['fulfilment_method']?.toString()) {
       'pickup' => 'Pickup',
@@ -426,10 +437,18 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return '$day/$month/${date.year} $hour12:$minute $period';
   }
 
-  Future<void> _assignDeliveryDriver(String? driverId) async {
-    if (_isSaving || driverId == null || driverId.isEmpty) {
-      return;
+  String _assignedDriverName() {
+    for (final driver in _deliveryDrivers) {
+      if (driver['id']?.toString() == _selectedDeliveryDriverId) {
+        final name = driver['display_name']?.toString().trim() ?? '';
+        if (name.isNotEmpty) return name;
+      }
     }
+    return 'Not assigned';
+  }
+
+  Future<void> _assignDeliveryDriver(String? driverId) async {
+    if (_isSaving || driverId == null || driverId.isEmpty) return;
 
     setState(() => _isSaving = true);
 
@@ -439,9 +458,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         params: {'target_order_id': widget.orderId, 'p_driver_id': driverId},
       );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _selectedDeliveryDriverId = driverId;
@@ -460,9 +477,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -892,7 +907,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           Container(
                             padding: const EdgeInsets.all(11),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF7F7F5),
+                              color: const Color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(9),
                             ),
                             child: const Row(
@@ -1359,32 +1374,489 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: Text(
-          _workOrder?['work_order_number']?.toString() ??
-              'Warehouse Work Order',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            const Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _workOrder?['work_order_number']?.toString() ??
+                    'Warehouse Work Order',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
+          if (_invoiceId == null)
+            TextButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _reopenForCuts,
+              icon: const Icon(Icons.add_box_outlined, size: 17),
+              label: const Text('Add Cuts'),
+            ),
+          if (_invoiceId == null) const SizedBox(width: 7),
+          OutlinedButton.icon(
+            onPressed: _isLoading || _isSaving ? null : _downloadPickSlip,
+            icon: const Icon(Icons.download_outlined, size: 17),
+            label: const Text('Download'),
+          ),
+          const SizedBox(width: 7),
           FilledButton.icon(
             onPressed: _isLoading || _isSaving ? null : _printPickSlip,
             style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.print_outlined),
-            label: const Text('Print Pick Slip'),
+            icon: const Icon(Icons.print_outlined, size: 17),
+            label: const Text('Print'),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 7),
           IconButton(
             onPressed: _isLoading ? null : _loadPage,
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(49),
+          child: _workspaceTabs(),
+        ),
+      ),
+      body: switch (_workspaceTabIndex) {
+        0 => _buildBody(),
+        1 => _buildPreviewTab(),
+        _ => _buildHistoryTab(),
+      },
+    );
+  }
+
+  Widget _workspaceTabs() {
+    return Container(
+      height: 49,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
+      ),
+      child: Row(
+        children: [
+          _workspaceTab(0, Icons.assignment_outlined, 'Working Order'),
+          _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
+          _workspaceTab(2, Icons.history, 'Order History'),
         ],
       ),
-      body: _buildBody(),
+    );
+  }
+
+  Widget _workspaceTab(int index, IconData icon, String label) {
+    final selected = _workspaceTabIndex == index;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: TextButton.icon(
+        onPressed: () => setState(() => _workspaceTabIndex = index),
+        style: TextButton.styleFrom(
+          foregroundColor: selected ? Colors.white : const Color(0xFF5E6369),
+          backgroundColor: selected ? _darkRed : const Color(0xFFF4F5F6),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+            side: BorderSide(
+              color: selected ? _darkRed : const Color(0xFFE1E3E6),
+            ),
+          ),
+        ),
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewTab() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_errorMessage != null || _workOrder == null || _order == null) {
+      return _buildBody();
+    }
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+          ),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Picking Slip / Work Order',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              _zoomControls(),
+              if (_invoiceId != null) ...[
+                const SizedBox(width: 7),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => SupplierInvoicePage(
+                        invoiceId: _invoiceId,
+                        initialTabIndex: 1,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.receipt_long_outlined, size: 17),
+                  label: const Text('View Invoice PDF'),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableHeight = constraints.maxHeight > 24
+                  ? constraints.maxHeight - 24
+                  : constraints.maxHeight;
+              final availableWidth = constraints.maxWidth > 24
+                  ? constraints.maxWidth - 24
+                  : constraints.maxWidth;
+              final fitWidth =
+                  availableHeight *
+                  PdfPageFormat.a4.width /
+                  PdfPageFormat.a4.height;
+              final maxWidth = fitWidth < availableWidth
+                  ? fitWidth
+                  : availableWidth;
+              return ClipRect(
+                key: _previewViewportKey,
+                child: MouseRegion(
+                  cursor: _previewZoom > 1
+                      ? (_isPreviewDragging
+                            ? SystemMouseCursors.grabbing
+                            : SystemMouseCursors.grab)
+                      : MouseCursor.defer,
+                  child: Listener(
+                    onPointerSignal: _handlePreviewPointerSignal,
+                    child: InteractiveViewer(
+                      transformationController: _previewTransformController,
+                      minScale: 0.75,
+                      maxScale: 3,
+                      panEnabled: _previewZoom > 1,
+                      onInteractionStart: (_) {
+                        if (_previewZoom > 1) {
+                          setState(() => _isPreviewDragging = true);
+                        }
+                      },
+                      onInteractionUpdate: (_) => _syncPreviewZoom(),
+                      onInteractionEnd: (_) {
+                        _syncPreviewZoom();
+                        if (_isPreviewDragging) {
+                          setState(() => _isPreviewDragging = false);
+                        }
+                      },
+                      child: PdfPreview(
+                        build: (_) => _buildPickSlipPdf(),
+                        pdfFileName:
+                            '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
+                        maxPageWidth: maxWidth,
+                        canChangeOrientation: false,
+                        canChangePageFormat: false,
+                        canDebug: false,
+                        allowPrinting: false,
+                        allowSharing: false,
+                        useActions: false,
+                        initialPageFormat: PdfPageFormat.a4,
+                        dpi: 220,
+                        padding: const EdgeInsets.all(12),
+                        scrollViewDecoration: const BoxDecoration(
+                          color: Color(0xFFE9EBEE),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _zoomControls() {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F6),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFFE0E2E5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: _previewZoom <= 0.75
+                ? null
+                : () => _setPreviewZoom(_previewZoom - 0.1),
+            tooltip: 'Zoom out',
+            icon: const Icon(Icons.zoom_out, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+          Tooltip(
+            message: 'Reset and centre preview',
+            child: TextButton.icon(
+              onPressed: _resetPreviewZoom,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4F555B),
+                minimumSize: const Size(72, 34),
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+              ),
+              icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
+              label: Text(
+                '${(_previewZoom * 100).round()}%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _previewZoom >= 3
+                ? null
+                : () => _setPreviewZoom(_previewZoom + 0.1),
+            tooltip: 'Zoom in',
+            icon: const Icon(Icons.zoom_in, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handlePreviewPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    _setPreviewZoom(
+      _previewZoom + (event.scrollDelta.dy < 0 ? 0.1 : -0.1),
+      focalPoint: event.localPosition,
+    );
+  }
+
+  void _setPreviewZoom(double value, {Offset? focalPoint}) {
+    final zoom = value.clamp(0.75, 3.0);
+    if (zoom == _previewZoom) return;
+
+    final focal = focalPoint ?? _previewCentre();
+    final factor = zoom / _previewZoom;
+    final adjustment = Matrix4.identity()
+      ..translateByDouble(focal.dx, focal.dy, 0, 1)
+      ..scaleByDouble(factor, factor, 1, 1)
+      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
+      ..multiply(_previewTransformController.value);
+    _previewTransformController.value = adjustment;
+    setState(() => _previewZoom = zoom);
+  }
+
+  void _syncPreviewZoom() {
+    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
+      0.75,
+      3.0,
+    );
+    if ((zoom - _previewZoom).abs() > 0.001 && mounted) {
+      setState(() => _previewZoom = zoom);
+    }
+  }
+
+  Offset _previewCentre() {
+    final renderObject = _previewViewportKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox) {
+      return renderObject.size.center(Offset.zero);
+    }
+    return Offset.zero;
+  }
+
+  void _resetPreviewZoom() {
+    _previewTransformController.value = Matrix4.identity();
+    setState(() => _previewZoom = 1);
+  }
+
+  Future<void> _downloadPickSlip() async {
+    try {
+      await Printing.sharePdf(
+        bytes: await _buildPickSlipPdf(),
+        filename:
+            '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download pick slip: $error')),
+        );
+      }
+    }
+  }
+
+  Widget _buildHistoryTab() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_errorMessage != null) return _buildBody();
+    final events = <({String title, dynamic value, IconData icon})>[
+      (
+        title: 'Order created',
+        value: _order?['created_at'],
+        icon: Icons.add_circle_outline,
+      ),
+      (
+        title: 'Order accepted',
+        value: _order?['accepted_at'],
+        icon: Icons.check_circle_outline,
+      ),
+      (
+        title: 'Work order created',
+        value: _workOrder?['created_at'],
+        icon: Icons.assignment_outlined,
+      ),
+      (
+        title: 'Picking slip printed',
+        value: _workOrder?['printed_at'],
+        icon: Icons.print_outlined,
+      ),
+      (
+        title: 'Picking started',
+        value: _workOrder?['picking_started_at'],
+        icon: Icons.play_circle_outline,
+      ),
+      (
+        title: 'Picking completed',
+        value: _workOrder?['picked_at'],
+        icon: Icons.inventory_2_outlined,
+      ),
+      (
+        title: 'Work order completed',
+        value: _workOrder?['completed_at'],
+        icon: Icons.task_alt,
+      ),
+    ].where((event) => event.value != null).toList();
+
+    return _historyPanel(
+      title: 'Order History',
+      subtitle: 'Recorded milestones for this order and warehouse workflow.',
+      events: events,
+    );
+  }
+
+  Widget _historyPanel({
+    required String title,
+    required String subtitle,
+    required List<({String title, dynamic value, IconData icon})> events,
+  }) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE3E5E8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Color(0xFF73777D), fontSize: 12),
+              ),
+              const SizedBox(height: 18),
+              if (events.isEmpty)
+                const Text('No recorded milestones yet.')
+              else
+                for (var index = 0; index < events.length; index++)
+                  _historyEvent(
+                    events[index],
+                    last: index == events.length - 1,
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _historyEvent(
+    ({String title, dynamic value, IconData icon}) event, {
+    required bool last,
+  }) {
+    final parsed = DateTime.tryParse(event.value.toString())?.toLocal();
+    final date = parsed == null
+        ? event.value.toString()
+        : '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}  ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5EAEA),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(event.icon, size: 16, color: _darkRed),
+              ),
+              if (!last)
+                Expanded(
+                  child: Container(width: 1, color: const Color(0xFFE0E2E5)),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    date,
+                    style: const TextStyle(
+                      color: Color(0xFF71767C),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1422,8 +1894,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1441,6 +1920,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             const SizedBox(height: 11),
             _compactInfoLine('Business', _customerName()),
             _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
+            if (!pickup) _compactInfoLine('Driver', _assignedDriverName()),
             if (!pickup) _compactInfoLine('Address', _deliveryAddress()),
             if ((_order?['customer_reference']?.toString().trim() ?? '')
                 .isNotEmpty)
@@ -1458,8 +1938,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE0E0DD)),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x07000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1482,7 +1969,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             _compactInfoLine('Status', _workOrderStatusLabel(status)),
             _compactInfoLine('Requested', _requestedFulfilmentDateLabel()),
             _compactInfoLine('Confirmed', _confirmedFulfilmentLabel()),
-            if (!pickup) _compactInfoLine('Driver', _assignedDriverName()),
             _compactInfoLine('Placed', _orderCreatedDateTimeLabel()),
           ],
         ),
@@ -1497,14 +1983,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         if (!desktop) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 34),
             children: [
               _buildCompactWorkOrderHeader(status),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               customerPanel(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               workOrderSummaryPanel(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               pickPanel,
               const SizedBox(height: 10),
               warehousePanel,
@@ -1514,13 +2000,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1240),
+            constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
               child: Column(
                 children: [
                   _buildCompactWorkOrderHeader(status),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1529,7 +2015,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       Expanded(child: workOrderSummaryPanel()),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1554,11 +2040,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -1644,7 +2130,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF777777)),
+            Icon(icon, size: 18, color: const Color(0xFF666A70)),
             const SizedBox(width: 8),
             Flexible(
               child: Column(
@@ -1693,7 +2179,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1740,7 +2226,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: SingleChildScrollView(
@@ -1770,8 +2256,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     : null,
                 decoration: const InputDecoration(
                   labelText: 'Delivery driver',
-                  helperText:
-                      'Assign the driver for this job before the invoice is created.',
+                  helperText: 'Assign the driver responsible for this job.',
                   isDense: true,
                   border: OutlineInputBorder(),
                 ),
@@ -1791,7 +2276,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               if (_deliveryDrivers.isEmpty) ...[
                 const SizedBox(height: 7),
                 const Text(
-                  'No active delivery drivers are available. Add one in Delivery → Drivers & Vehicles.',
+                  'No active drivers. Add one in Delivery → Drivers & Vehicles.',
                   style: TextStyle(
                     color: Color(0xFF9A6700),
                     fontSize: 11.5,
@@ -1883,7 +2368,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 margin: const EdgeInsets.only(bottom: 9),
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F5),
+                  color: const Color(0xFFF7F8FA),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Row(
@@ -1917,44 +2402,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   !_allLinesFinalised
                       ? 'Finalise All Lines First'
                       : 'Create Invoice',
-                ),
-              ),
-            ],
-            if (status == 'picking' && !pickup && _allLinesFinalised) ...[
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF6F8),
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: const Color(0xFFB9D9DE)),
-                ),
-                child: const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.route_outlined,
-                      size: 18,
-                      color: Color(0xFF27666F),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Creating the invoice completes the warehouse handoff. '
-                        'The assigned driver will carry through to delivery, and you can mark the order On Delivery from the Orders invoice tab.',
-                        style: TextStyle(
-                          color: Color(0xFF27666F),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],

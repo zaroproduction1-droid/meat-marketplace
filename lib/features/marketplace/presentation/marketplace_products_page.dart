@@ -31,6 +31,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _filteredProducts = [];
+  List<Map<String, dynamic>> _goatCatalogueSections = [];
 
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
@@ -462,6 +463,33 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       final products = List<Map<String, dynamic>>.from(response);
 
+      var goatCatalogueSections = <Map<String, dynamic>>[];
+      final goatRows = await Supabase.instance.client
+          .from('meat_animals')
+          .select('id')
+          .eq('code', 'GOAT')
+          .eq('is_active', true)
+          .limit(1);
+
+      if (goatRows.isNotEmpty) {
+        final goatAnimalId = goatRows.first['id']?.toString();
+
+        if (goatAnimalId != null && goatAnimalId.isNotEmpty) {
+          final goatSectionsResponse = await Supabase.instance.client
+              .from('meat_sections')
+              .select(
+                'id, animal_id, code, name, is_miscellaneous, display_order',
+              )
+              .eq('animal_id', goatAnimalId)
+              .eq('is_active', true)
+              .order('display_order');
+
+          goatCatalogueSections = List<Map<String, dynamic>>.from(
+            goatSectionsResponse,
+          );
+        }
+      }
+
       final meatProductIds = <String>{};
 
       for (final product in products) {
@@ -509,6 +537,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       setState(() {
         _chickenCatalogue = chickenCatalogue;
         _products = products;
+        _goatCatalogueSections = goatCatalogueSections;
         _cataloguePathsByProductId
           ..clear()
           ..addAll(cataloguePathsByProductId);
@@ -810,7 +839,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   String? get _selectedSectionName {
-    if (_selectedAnimalCode == CutLinkAnimals.chicken && _selectedAnimalRegionKey != null) {
+    if (_selectedAnimalCode == CutLinkAnimals.chicken &&
+        _selectedAnimalRegionKey != null) {
       return ChickenCutCatalogue.regionNames[_selectedAnimalRegionKey];
     }
     if (_selectedSectionId == null) {
@@ -830,6 +860,18 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
       return _chickenCatalogue.sections;
     }
+
+    if (_selectedAnimalCode == CutLinkAnimals.goat) {
+      return List<Map<String, dynamic>>.from(_goatCatalogueSections)
+        ..sort((a, b) {
+          final aOrder =
+              int.tryParse(a['display_order']?.toString() ?? '') ?? 9999;
+          final bOrder =
+              int.tryParse(b['display_order']?.toString() ?? '') ?? 9999;
+          return aOrder.compareTo(bOrder);
+        });
+    }
+
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
@@ -859,7 +901,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   bool _matchesSelectedCut(Map<String, dynamic> product) {
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
       return _chickenCatalogue.productMatches(
-        product, region: _selectedAnimalRegionKey, sectionId: _selectedSectionId,
+        product,
+        region: _selectedAnimalRegionKey,
+        sectionId: _selectedSectionId,
       );
     }
     return _productSectionId(product) == _selectedSectionId;
@@ -875,8 +919,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
-      if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+      if (_selectedSectionId != null && !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -902,8 +945,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
-      if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+      if (_selectedSectionId != null && !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -936,6 +978,24 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return null;
   }
 
+  String? _goatSectionCodeForRegion(String regionKey) {
+    return switch (regionKey) {
+      'Whole Goat' => 'WHOLE',
+      'Forequarter' => 'FOREQUARTER',
+      'Hindquarter' => 'HINDQUARTER',
+      'Leg' => 'LEG',
+      'Shoulder' => 'SHOULDER',
+      'Loin' => 'LOIN',
+      'Rack / Rib' => 'RACK_RIB',
+      'Breast / Flap' => 'BREAST_FLAP',
+      'Neck' => 'NECK',
+      'Shank' => 'SHANK',
+      'Trim / Manufacturing' => 'TRIM',
+      'Offal / Other' => 'OFFAL',
+      _ => null,
+    };
+  }
+
   String? _beefSectionCodeForRegion(String regionKey) {
     return switch (regionKey) {
       CutLinkBeefCutKeys.cheek => 'CHEEK',
@@ -963,10 +1023,23 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   void _selectAnimal(String animalCode) {
     if (animalCode == _selectedAnimalCode) return;
 
+    String? defaultSectionId;
+    String? defaultRegionKey;
+
+    if (animalCode == CutLinkAnimals.goat) {
+      for (final section in _goatCatalogueSections) {
+        if (section['code']?.toString() == 'WHOLE' && section['id'] != null) {
+          defaultSectionId = section['id'].toString();
+          defaultRegionKey = 'Whole Goat';
+          break;
+        }
+      }
+    }
+
     setState(() {
       _selectedAnimalCode = animalCode;
-      _selectedAnimalRegionKey = null;
-      _selectedSectionId = null;
+      _selectedAnimalRegionKey = defaultRegionKey;
+      _selectedSectionId = defaultSectionId;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
     });
@@ -977,13 +1050,24 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   void _selectAnimalRegion(String regionKey) {
     final Map<String, dynamic>? section;
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      final specifications = _chickenCatalogue.specificationsFor(region: regionKey);
-      section = ChickenCutCatalogue.sectionForRegion(regionKey, _selectedAnimalSections) ??
-          (specifications.isEmpty ? null : _chickenCatalogue.sectionById(
-            specifications.first['section_id']?.toString(),
-          ));
+      final specifications = _chickenCatalogue.specificationsFor(
+        region: regionKey,
+      );
+      section =
+          ChickenCutCatalogue.sectionForRegion(
+            regionKey,
+            _selectedAnimalSections,
+          ) ??
+          (specifications.isEmpty
+              ? null
+              : _chickenCatalogue.sectionById(
+                  specifications.first['section_id']?.toString(),
+                ));
     } else if (_selectedAnimalCode == CutLinkAnimals.beef) {
       final sectionCode = _beefSectionCodeForRegion(regionKey);
+      section = sectionCode == null ? null : _sectionByCode(sectionCode);
+    } else if (_selectedAnimalCode == CutLinkAnimals.goat) {
+      final sectionCode = _goatSectionCodeForRegion(regionKey);
       section = sectionCode == null ? null : _sectionByCode(sectionCode);
     } else {
       return;
@@ -1062,8 +1146,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             return false;
           }
 
-          if (_selectedSectionId != null &&
-              !_matchesSelectedCut(product)) {
+          if (_selectedSectionId != null && !_matchesSelectedCut(product)) {
             return false;
           }
 
@@ -2271,7 +2354,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     final cutSelected = _selectedSectionId != null;
     final subcategorySelected = _selectedSpecificationId != null;
-    final gradeSelected = _selectedGradeId != null ||
+    final gradeSelected =
+        _selectedGradeId != null ||
         (_selectedAnimalCode == CutLinkAnimals.chicken && subcategorySelected);
     final exactSelection = subcategorySelected && gradeSelected;
 
@@ -2358,7 +2442,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                       const SizedBox(height: 4),
                       _buildSpecificationStrip(),
                     ],
-                    if (subcategorySelected && _selectedAnimalCode != CutLinkAnimals.chicken) ...[
+                    if (subcategorySelected &&
+                        _selectedAnimalCode != CutLinkAnimals.chicken) ...[
                       const SizedBox(height: 8),
                       const Text(
                         'GRADE',
@@ -2716,9 +2801,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       final query = _searchController.text.trim().toLowerCase();
       final specifications = _availableSpecifications.where((specification) {
         if (query.isEmpty) return true;
-        return (specification['name']?.toString() ?? '')
-            .toLowerCase()
-            .contains(query);
+        return (specification['name']?.toString() ?? '').toLowerCase().contains(
+          query,
+        );
       }).toList();
 
       if (specifications.isEmpty) {

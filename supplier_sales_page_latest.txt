@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../shared/chicken_catalogue_repository.dart';
-import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
@@ -12,16 +10,9 @@ import 'supplier_quotes_page.dart';
 import 'supplier_work_order_page.dart';
 
 class SupplierSalesPage extends StatefulWidget {
-  const SupplierSalesPage({
-    super.key,
-    this.embedded = false,
-    this.initialQuoteOrderId,
-    this.initialWorkOrderOrderId,
-  });
+  const SupplierSalesPage({super.key, this.embedded = false});
 
   final bool embedded;
-  final String? initialQuoteOrderId;
-  final String? initialWorkOrderOrderId;
 
   @override
   State<SupplierSalesPage> createState() => _SupplierSalesPageState();
@@ -41,7 +32,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   final ScrollController _specificationScrollController = ScrollController();
 
-  ChickenCutCatalogue _chickenCatalogue = const ChickenCutCatalogue();
   List<Map<String, dynamic>> _products = [];
   int _newMarketplaceItemCount = 0;
 
@@ -57,40 +47,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void initState() {
     super.initState();
     _searchController.addListener(_refresh);
-    _initialiseSalesWorkspace();
-  }
-
-  Future<void> _initialiseSalesWorkspace() async {
-    await _loadStock();
-
-    if (!mounted) {
-      return;
-    }
-
-    final quoteOrderId = widget.initialQuoteOrderId?.trim();
-
-    if (quoteOrderId != null && quoteOrderId.isNotEmpty) {
-      await _loadQuoteIntoWorkspace(quoteOrderId);
-      return;
-    }
-
-    // Keep constructor compatibility with the Work Order reopen route.
-    // The existing Work Order page passes this ID when returning to Sales.
-    // The live-order edit/reservation workflow is intentionally not changed
-    // here because stock for an existing warehouse work order may already
-    // have been reserved. Changing those lines requires a controlled
-    // stock-release/re-reservation backend flow rather than a client-only edit.
-    final workOrderOrderId = widget.initialWorkOrderOrderId?.trim();
-
-    if (workOrderOrderId != null && workOrderOrderId.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Work order reopened in Sales. Existing warehouse stock reservations remain protected.',
-          ),
-        ),
-      );
-    }
+    _loadStock();
   }
 
   @override
@@ -181,7 +138,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     try {
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
-      final chickenCatalogue = await ChickenCatalogueRepository(client).load();
 
       final productResponse = await client
           .from('products')
@@ -272,7 +228,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
 
       setState(() {
-        _chickenCatalogue = chickenCatalogue;
         _products = (productResponse as List)
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
@@ -496,14 +451,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
         if (_selectedAnimalCode == CutLinkAnimals.goat &&
             !_productMatchesGoatCut(product, _selectedAnimalRegionKey!)) {
-          return false;
-        }
-
-        if (_selectedAnimalCode == CutLinkAnimals.chicken &&
-            !_chickenCatalogue.productMatches(
-              product,
-              region: _selectedAnimalRegionKey!,
-            )) {
           return false;
         }
       }
@@ -809,9 +756,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String _selectedCutLabel(String cutKey) {
     if (_selectedAnimalCode == CutLinkAnimals.goat) {
       return cutKey;
-    }
-    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      return ChickenCutCatalogue.regionNames[cutKey] ?? cutKey;
     }
     return _beefCutLabel(cutKey);
   }

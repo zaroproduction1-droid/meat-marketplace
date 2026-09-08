@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/chicken_catalogue_repository.dart';
+import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import 'add_product_page.dart';
 import 'edit_product_page.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
-import '../../../shared/chicken_catalogue_repository.dart';
-import '../../../shared/widgets/chicken_cut_catalogue.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
 
@@ -84,10 +84,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     try {
-      final chickenCatalogue = await ChickenCatalogueRepository(
-        Supabase.instance.client,
-      ).load();
       final client = Supabase.instance.client;
+      final chickenCatalogue = await ChickenCatalogueRepository(client).load();
       final user = client.auth.currentUser;
 
       if (user == null) {
@@ -200,7 +198,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             chicken_size_weight,
             chicken_carton_size,
             available_quantity,
-            available_weight_kg,
             quantity_unit,
             availability_status,
             active,
@@ -244,8 +241,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
-        _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _chickenCatalogue = chickenCatalogue;
+        _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _products = List<Map<String, dynamic>>.from(productResponse);
         _sections = sections;
         _isLoading = false;
@@ -271,15 +268,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     String? sectionId,
     String? specificationId,
   }) async {
-    final chickenSpecification = _chickenCatalogue.specificationById(specificationId);
-    final chickenSectionId = chickenSpecification?['section_id']?.toString() ?? sectionId;
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddProductPage(
           initialAnimalCode: _selectedAnimalCode,
-          initialSectionId: _selectedAnimalCode == CutLinkAnimals.chicken
-              ? chickenSectionId
-              : sectionId,
+          initialSectionId: sectionId,
           initialSpecificationId: specificationId,
         ),
       ),
@@ -735,9 +728,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   List<Map<String, dynamic>> get _selectedAnimalSections {
-    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      return _chickenCatalogue.sections;
-    }
     return _sections
         .where(
           (section) =>
@@ -758,26 +748,27 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   bool _matchesSelectedCut(Map<String, dynamic> product) {
+    if (_selectedSectionId == null && _selectedAnimalRegionKey == null) {
+      return true;
+    }
+
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
       return _chickenCatalogue.productMatches(
-        product, region: _selectedAnimalRegionKey, sectionId: _selectedSectionId,
-      );
-    }
-    return product['meat_section_id']?.toString() == _selectedSectionId;
-  }
-
-  List<Map<String, dynamic>> get _availableSpecifications {
-    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      return _chickenCatalogue.specificationsFor(
+        product,
         region: _selectedAnimalRegionKey,
         sectionId: _selectedSectionId,
       );
     }
+
+    return _selectedSectionId == null ||
+        product['meat_section_id']?.toString() == _selectedSectionId;
+  }
+
+  List<Map<String, dynamic>> get _availableSpecifications {
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
-      if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+      if (!_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -802,7 +793,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     for (final product in _selectedAnimalProducts) {
       if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+          product['meat_section_id']?.toString() != _selectedSectionId) {
         continue;
       }
 
@@ -848,7 +839,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           return false;
         }
 
-        if (_selectedSectionId != null &&
+        if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
             !_matchesSelectedCut(product)) {
           return false;
         }
@@ -907,6 +898,24 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     return null;
   }
 
+  String? _goatSectionCodeForRegion(String regionKey) {
+    return switch (regionKey) {
+      'Whole Goat' => 'WHOLE',
+      'Forequarter' => 'FOREQUARTER',
+      'Hindquarter' => 'HINDQUARTER',
+      'Leg' => 'LEG',
+      'Shoulder' => 'SHOULDER',
+      'Loin' => 'LOIN',
+      'Rack / Rib' => 'RACK_RIB',
+      'Breast / Flap' => 'BREAST_FLAP',
+      'Neck' => 'NECK',
+      'Shank' => 'SHANK',
+      'Trim / Manufacturing' => 'TRIM',
+      'Offal / Other' => 'OFFAL',
+      _ => null,
+    };
+  }
+
   String? _beefSectionCodeForRegion(String regionKey) {
     return switch (regionKey) {
       CutLinkBeefCutKeys.cheek => 'CHEEK',
@@ -934,10 +943,25 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   void _selectAnimal(String animalCode) {
     if (animalCode == _selectedAnimalCode) return;
 
+    String? defaultSectionId;
+    String? defaultRegionKey;
+
+    if (animalCode == CutLinkAnimals.goat) {
+      for (final section in _sections) {
+        if (section['animal_code']?.toString() == CutLinkAnimals.goat &&
+            section['code']?.toString() == 'WHOLE' &&
+            section['id'] != null) {
+          defaultSectionId = section['id'].toString();
+          defaultRegionKey = 'Whole Goat';
+          break;
+        }
+      }
+    }
+
     setState(() {
       _selectedAnimalCode = animalCode;
-      _selectedAnimalRegionKey = null;
-      _selectedSectionId = null;
+      _selectedAnimalRegionKey = defaultRegionKey;
+      _selectedSectionId = defaultSectionId;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _searchController.clear();
@@ -945,19 +969,38 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   void _selectAnimalRegion(String regionKey) {
-    final Map<String, dynamic>? section;
+    Map<String, dynamic>? section;
+
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
-      final specifications = _chickenCatalogue.specificationsFor(region: regionKey);
-      section = ChickenCutCatalogue.sectionForRegion(regionKey, _selectedAnimalSections) ??
-          (specifications.isEmpty ? null : _chickenCatalogue.sectionById(
-            specifications.first['section_id']?.toString(),
-          ));
-    } else if (_selectedAnimalCode == CutLinkAnimals.beef) {
-      final sectionCode = _beefSectionCodeForRegion(regionKey);
-      section = sectionCode == null ? null : _sectionByCode(sectionCode);
+      final specifications = _chickenCatalogue.specificationsFor(
+        region: regionKey,
+      );
+
+      section =
+          ChickenCutCatalogue.sectionForRegion(
+            regionKey,
+            _selectedAnimalSections,
+          ) ??
+          (specifications.isEmpty
+              ? null
+              : _chickenCatalogue.sectionById(
+                  specifications.first['section_id']?.toString(),
+                ));
     } else {
-      return;
+      final String? sectionCode;
+
+      if (_selectedAnimalCode == CutLinkAnimals.beef) {
+        sectionCode = _beefSectionCodeForRegion(regionKey);
+      } else if (_selectedAnimalCode == CutLinkAnimals.goat) {
+        sectionCode = _goatSectionCodeForRegion(regionKey);
+      } else {
+        return;
+      }
+
+      if (sectionCode == null) return;
+      section = _sectionByCode(sectionCode);
     }
+
     if (section == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -967,10 +1010,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       return;
     }
 
-    final sectionId = section['id']?.toString();
     setState(() {
       _selectedAnimalRegionKey = regionKey;
-      _selectedSectionId = sectionId;
+      _selectedSectionId = section?['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _searchController.clear();
@@ -988,9 +1030,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   String? get _selectedSectionName {
-    if (_selectedAnimalCode == CutLinkAnimals.chicken && _selectedAnimalRegionKey != null) {
-      return ChickenCutCatalogue.regionNames[_selectedAnimalRegionKey];
-    }
     final selected = _selectedSectionId;
     if (selected == null) return null;
 
@@ -1001,1051 +1040,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     return null;
-  }
-
-  double _stockNumber(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  String _stockFormat(dynamic value, {int decimals = 2}) {
-    final number = value is num
-        ? value.toDouble()
-        : double.tryParse(value?.toString() ?? '');
-    if (number == null) return '0';
-    if (number == number.roundToDouble()) return number.toInt().toString();
-    return number.toStringAsFixed(decimals);
-  }
-
-  String _stockUnitLabel(String? unit, {bool plural = false}) {
-    return switch (unit) {
-      'carton' => plural ? 'cartons' : 'carton',
-      'kilogram' => 'kg',
-      'unit' => plural ? 'units' : 'unit',
-      _ => unit ?? 'unit',
-    };
-  }
-
-  bool _tracksSeparateWeight(Map<String, dynamic> product) {
-    return product['catch_weight'] == true ||
-        product['weight_type']?.toString() == 'catch_weight' ||
-        product['available_weight_kg'] != null;
-  }
-
-  String _movementDateTime(dynamic value) {
-    final parsed = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
-    if (parsed == null) return 'Unknown time';
-
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    final hour12 = parsed.hour == 0
-        ? 12
-        : parsed.hour > 12
-        ? parsed.hour - 12
-        : parsed.hour;
-    final minute = parsed.minute.toString().padLeft(2, '0');
-    final period = parsed.hour >= 12 ? 'PM' : 'AM';
-
-    return '${parsed.day.toString().padLeft(2, '0')} '
-        '${months[parsed.month - 1]} ${parsed.year}, '
-        '$hour12:$minute $period';
-  }
-
-  String _movementLabel(Map<String, dynamic> row) {
-    final reason = row['reason']?.toString() ?? '';
-    final source = row['source']?.toString() ?? '';
-
-    if (source == 'supplier_inventory_receive_stock' || reason == 'restock') {
-      return 'RECEIVED';
-    }
-
-    if (reason == 'order_fulfilment' || reason == 'sale') {
-      return 'FULFILLED';
-    }
-
-    return switch (reason) {
-      'initial_stock' => 'OPENING BALANCE',
-      'return' => 'RETURN',
-      'damaged' => 'DAMAGED',
-      'wastage' => 'WASTAGE',
-      'supplier_return' => 'SUPPLIER RETURN',
-      'correction' => 'ADJUSTMENT',
-      'manual_adjustment' => 'ADJUSTMENT',
-      'system_adjustment' => 'ADJUSTMENT',
-      'cancellation' => 'CANCELLATION',
-      _ => 'ADJUSTMENT',
-    };
-  }
-
-  Color _movementColour(String label) {
-    return switch (label) {
-      'RECEIVED' => const Color(0xFF197A45),
-      'RETURN' => const Color(0xFF197A45),
-      'FULFILLED' => const Color(0xFF355C9A),
-      'DAMAGED' => const Color(0xFFB15C00),
-      'WASTAGE' => const Color(0xFFB3261E),
-      'SUPPLIER RETURN' => const Color(0xFFB3261E),
-      _ => _darkRed,
-    };
-  }
-
-  String _signedQuantity(dynamic value) {
-    final number = _stockNumber(value);
-    if (number > 0) return '+${_stockFormat(number)}';
-    return _stockFormat(number);
-  }
-
-  Widget _stockSummaryMetric(
-    String label,
-    String value, {
-    bool strong = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF777777),
-            fontSize: 9.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            color: strong ? _darkRed : const Color(0xFF222222),
-            fontSize: strong ? 17 : 14,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _receiveStock(Map<String, dynamic> product) async {
-    final productId = product['id']?.toString();
-    if (productId == null || productId.isEmpty) return;
-
-    final quantityUnit = product['quantity_unit']?.toString() ?? 'carton';
-    final separateWeight = _tracksSeparateWeight(product);
-    final currentQuantity = _stockNumber(product['available_quantity']);
-    final currentWeight = product['available_weight_kg'] == null
-        ? null
-        : _stockNumber(product['available_weight_kg']);
-
-    final quantityController = TextEditingController();
-    final weightController = TextEditingController();
-    final referenceController = TextEditingController();
-    final notesController = TextEditingController();
-
-    var receivedDate = DateTime.now();
-    var saving = false;
-
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final quantity = double.tryParse(quantityController.text.trim());
-            final weight = double.tryParse(weightController.text.trim());
-            final wholeQuantity =
-                quantityUnit == 'carton' || quantityUnit == 'unit';
-
-            final validQuantity =
-                quantityController.text.trim().isEmpty ||
-                (quantity != null &&
-                    quantity >= 0 &&
-                    (!wholeQuantity || quantity == quantity.roundToDouble()));
-            final validWeight =
-                !separateWeight ||
-                weightController.text.trim().isEmpty ||
-                (weight != null && weight >= 0);
-
-            final quantityDelta = quantity ?? 0;
-            final weightDelta = weight ?? 0;
-            final hasMovement =
-                quantityDelta > 0 || (separateWeight && weightDelta > 0);
-
-            final newQuantity = currentQuantity + quantityDelta;
-            final newWeight = separateWeight
-                ? (currentWeight ?? 0) + weightDelta
-                : null;
-
-            Future<void> chooseDate() async {
-              final picked = await showDatePicker(
-                context: dialogContext,
-                initialDate: receivedDate,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now().add(const Duration(days: 1)),
-              );
-              if (picked != null) {
-                final now = DateTime.now();
-                setDialogState(() {
-                  receivedDate = DateTime(
-                    picked.year,
-                    picked.month,
-                    picked.day,
-                    now.hour,
-                    now.minute,
-                  );
-                });
-              }
-            }
-
-            Future<void> submit() async {
-              if (saving || !validQuantity || !validWeight || !hasMovement) {
-                return;
-              }
-
-              setDialogState(() => saving = true);
-
-              try {
-                await Supabase.instance.client.rpc(
-                  'receive_supplier_stock',
-                  params: {
-                    'p_product_id': productId,
-                    'p_quantity_delta': quantityController.text.trim().isEmpty
-                        ? null
-                        : quantity,
-                    'p_weight_delta_kg':
-                        !separateWeight || weightController.text.trim().isEmpty
-                        ? null
-                        : weight,
-                    'p_reference_number':
-                        referenceController.text.trim().isEmpty
-                        ? null
-                        : referenceController.text.trim(),
-                    'p_notes': notesController.text.trim().isEmpty
-                        ? null
-                        : notesController.text.trim(),
-                    'p_effective_at': receivedDate.toUtc().toIso8601String(),
-                  },
-                );
-
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(true);
-                }
-              } on PostgrestException catch (error) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(
-                    dialogContext,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
-                  setDialogState(() => saving = false);
-                }
-              } catch (error) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(
-                    dialogContext,
-                  ).showSnackBar(SnackBar(content: Text(error.toString())));
-                  setDialogState(() => saving = false);
-                }
-              }
-            }
-
-            final productName = product['product_name']?.toString().trim();
-            final title = productName == null || productName.isEmpty
-                ? '${_specificationName(product)} • ${_gradeCode(product)}'
-                : productName;
-
-            return Dialog(
-              insetPadding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 46,
-                            height: 46,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF4E5E5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.move_to_inbox_outlined,
-                              color: _darkRed,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Receive Stock',
-                                  style: TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  title,
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F8F6),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE3E3DF)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _stockSummaryMetric(
-                                'CURRENT STOCK',
-                                '${_stockFormat(currentQuantity)} '
-                                    '${_stockUnitLabel(quantityUnit, plural: true)}',
-                              ),
-                            ),
-                            if (separateWeight) ...[
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: _stockSummaryMetric(
-                                  'CURRENT WEIGHT',
-                                  currentWeight == null
-                                      ? 'Not yet tracked'
-                                      : '${_stockFormat(currentWeight)} kg',
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: quantityController,
-                        autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: !wholeQuantity,
-                        ),
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: quantityUnit == 'kilogram'
-                              ? 'Weight Received'
-                              : quantityUnit == 'carton'
-                              ? 'Cartons Received'
-                              : 'Units Received',
-                          suffixText: _stockUnitLabel(
-                            quantityUnit,
-                            plural: true,
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      if (separateWeight) ...[
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: weightController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          onChanged: (_) => setDialogState(() {}),
-                          decoration: const InputDecoration(
-                            labelText: 'Physical Weight Received',
-                            suffixText: 'kg',
-                            helperText:
-                                'Physical kg are tracked independently from cartons.',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: saving ? null : chooseDate,
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        label: Text(
-                          'Received Date: '
-                          '${receivedDate.day.toString().padLeft(2, '0')}/'
-                          '${receivedDate.month.toString().padLeft(2, '0')}/'
-                          '${receivedDate.year}',
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: referenceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Reference / Docket (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Notes (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5EAEA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD9BDBD)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _stockSummaryMetric(
-                                'NEW STOCK',
-                                '${_stockFormat(newQuantity)} '
-                                    '${_stockUnitLabel(quantityUnit, plural: true)}',
-                                strong: true,
-                              ),
-                            ),
-                            if (separateWeight) ...[
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: _stockSummaryMetric(
-                                  'NEW WEIGHT',
-                                  '${_stockFormat(newWeight ?? 0)} kg',
-                                  strong: true,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: saving
-                                ? null
-                                : () => Navigator.of(dialogContext).pop(false),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.icon(
-                            onPressed:
-                                saving ||
-                                    !validQuantity ||
-                                    !validWeight ||
-                                    !hasMovement
-                                ? null
-                                : submit,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                            ),
-                            icon: saving
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.check),
-                            label: Text(
-                              saving ? 'Receiving...' : 'Receive Stock',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    quantityController.dispose();
-    weightController.dispose();
-    referenceController.dispose();
-    notesController.dispose();
-
-    if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stock received successfully.')),
-      );
-      await _loadProducts();
-    }
-  }
-
-  Future<void> _adjustStock(Map<String, dynamic> product) async {
-    final productId = product['id']?.toString();
-    if (productId == null || productId.isEmpty) return;
-
-    final quantityUnit = product['quantity_unit']?.toString() ?? 'carton';
-    final separateWeight = _tracksSeparateWeight(product);
-    final currentQuantity = _stockNumber(product['available_quantity']);
-    final currentWeight = product['available_weight_kg'] == null
-        ? null
-        : _stockNumber(product['available_weight_kg']);
-
-    final quantityController = TextEditingController(
-      text: _stockFormat(currentQuantity),
-    );
-    final weightController = TextEditingController(
-      text: currentWeight == null ? '' : _stockFormat(currentWeight),
-    );
-    final notesController = TextEditingController();
-
-    var reason = 'correction';
-    var saving = false;
-
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final quantity = double.tryParse(quantityController.text.trim());
-            final weight = double.tryParse(weightController.text.trim());
-            final wholeQuantity =
-                quantityUnit == 'carton' || quantityUnit == 'unit';
-            final quantityValid =
-                quantity != null &&
-                quantity >= 0 &&
-                (!wholeQuantity || quantity == quantity.roundToDouble());
-            final weightValid =
-                !separateWeight ||
-                weightController.text.trim().isEmpty ||
-                (weight != null && weight >= 0);
-            final otherNeedsNote =
-                reason == 'manual_adjustment' &&
-                notesController.text.trim().isEmpty;
-
-            Future<void> submit() async {
-              if (saving || !quantityValid || !weightValid || otherNeedsNote) {
-                return;
-              }
-
-              setDialogState(() => saving = true);
-
-              try {
-                await Supabase.instance.client.rpc(
-                  'adjust_supplier_stock',
-                  params: {
-                    'p_product_id': productId,
-                    'p_actual_quantity': quantity,
-                    'p_actual_weight_kg':
-                        !separateWeight || weightController.text.trim().isEmpty
-                        ? null
-                        : weight,
-                    'p_reason': reason,
-                    'p_notes': notesController.text.trim().isEmpty
-                        ? null
-                        : notesController.text.trim(),
-                    'p_effective_at': DateTime.now().toUtc().toIso8601String(),
-                  },
-                );
-
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(true);
-                }
-              } on PostgrestException catch (error) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(
-                    dialogContext,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
-                  setDialogState(() => saving = false);
-                }
-              } catch (error) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(
-                    dialogContext,
-                  ).showSnackBar(SnackBar(content: Text(error.toString())));
-                  setDialogState(() => saving = false);
-                }
-              }
-            }
-
-            return AlertDialog(
-              title: const Text(
-                'Adjust Stock',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-              content: SizedBox(
-                width: 560,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        '${_specificationName(product)} • ${_gradeCode(product)}',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Enter the actual physical stock. CutLink will record the difference in Stock History.',
-                        style: TextStyle(height: 1.4),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: quantityController,
-                        autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: !wholeQuantity,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: quantityUnit == 'kilogram'
-                              ? 'Actual Weight'
-                              : quantityUnit == 'carton'
-                              ? 'Actual Cartons'
-                              : 'Actual Units',
-                          suffixText: _stockUnitLabel(
-                            quantityUnit,
-                            plural: true,
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      if (separateWeight) ...[
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: weightController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Actual Physical Weight',
-                            suffixText: 'kg',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-                      CutLinkPickerField<String>(
-                        label: 'Reason',
-                        value: reason,
-                        enableSearch: false,
-                        options: const [
-                          CutLinkPickerOption(
-                            value: 'correction',
-                            label: 'Stock Count / Data Entry Correction',
-                          ),
-                          CutLinkPickerOption(
-                            value: 'damaged',
-                            label: 'Damaged',
-                          ),
-                          CutLinkPickerOption(
-                            value: 'wastage',
-                            label: 'Wastage',
-                          ),
-                          CutLinkPickerOption(
-                            value: 'manual_adjustment',
-                            label: 'Other',
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setDialogState(() => reason = value);
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: reason == 'manual_adjustment'
-                              ? 'Reason note (required)'
-                              : 'Notes (optional)',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton.icon(
-                  onPressed:
-                      saving || !quantityValid || !weightValid || otherNeedsNote
-                      ? null
-                      : submit,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.tune),
-                  label: Text(saving ? 'Saving...' : 'Adjust Stock'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    quantityController.dispose();
-    weightController.dispose();
-    notesController.dispose();
-
-    if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stock adjustment recorded.')),
-      );
-      await _loadProducts();
-    }
-  }
-
-  Future<void> _showStockHistory(Map<String, dynamic> product) async {
-    final productId = product['id']?.toString();
-    final supplierId = _supplierBusinessId;
-
-    if (productId == null ||
-        productId.isEmpty ||
-        supplierId == null ||
-        supplierId.isEmpty) {
-      return;
-    }
-
-    var loading = true;
-    String? error;
-    List<Map<String, dynamic>> movements = [];
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        var started = false;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> load() async {
-              try {
-                final response = await Supabase.instance.client
-                    .from('supplier_inventory_stock_ledger')
-                    .select(
-                      'id, changed_at, effective_at, quantity_before, '
-                      'quantity_delta, quantity_after, quantity_unit, '
-                      'weight_before_kg, weight_delta_kg, weight_after_kg, '
-                      'reason, actor_user_id, source, reference_type, '
-                      'reference_id, reference_number, notes',
-                    )
-                    .eq('supplier_business_id', supplierId)
-                    .eq('product_id', productId)
-                    .order('effective_at', ascending: false)
-                    .limit(200);
-
-                if (!dialogContext.mounted) return;
-
-                setDialogState(() {
-                  movements = List<Map<String, dynamic>>.from(response);
-                  loading = false;
-                  error = null;
-                });
-              } on PostgrestException catch (e) {
-                if (!dialogContext.mounted) return;
-                setDialogState(() {
-                  error = e.message;
-                  loading = false;
-                });
-              } catch (e) {
-                if (!dialogContext.mounted) return;
-                setDialogState(() {
-                  error = e.toString();
-                  loading = false;
-                });
-              }
-            }
-
-            if (!started) {
-              started = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) => load());
-            }
-
-            final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-            return Dialog(
-              insetPadding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 820,
-                  maxHeight: 760,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF4E5E5),
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                            child: const Icon(Icons.history, color: _darkRed),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Stock History',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                Text(
-                                  '${_specificationName(product)} • ${_gradeCode(product)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : error != null
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Text(
-                                  error!,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            )
-                          : movements.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No stock movements have been recorded yet.',
-                                style: TextStyle(
-                                  color: Color(0xFF666666),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: movements.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                final movement = movements[index];
-                                final label = _movementLabel(movement);
-                                final colour = _movementColour(label);
-                                final quantityUnit = movement['quantity_unit']
-                                    ?.toString();
-                                final actor = movement['actor_user_id']
-                                    ?.toString();
-                                final reference = movement['reference_number']
-                                    ?.toString()
-                                    .trim();
-                                final notes = movement['notes']
-                                    ?.toString()
-                                    .trim();
-
-                                return Container(
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: const Color(0xFFE3E3DF),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: colour.withValues(
-                                                alpha: 0.09,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              label,
-                                              style: TextStyle(
-                                                color: colour,
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Text(
-                                            _movementDateTime(
-                                              movement['effective_at'] ??
-                                                  movement['changed_at'],
-                                            ),
-                                            style: const TextStyle(
-                                              color: Color(0xFF666666),
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Wrap(
-                                        spacing: 14,
-                                        runSpacing: 6,
-                                        children: [
-                                          Text(
-                                            '${_signedQuantity(movement['quantity_delta'])} '
-                                            '${_stockUnitLabel(quantityUnit, plural: true)}',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          if (movement['weight_delta_kg'] !=
-                                              null)
-                                            Text(
-                                              '${_signedQuantity(movement['weight_delta_kg'])} kg',
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Stock: ${_stockFormat(movement['quantity_before'])} '
-                                        '→ ${_stockFormat(movement['quantity_after'])} '
-                                        '${_stockUnitLabel(quantityUnit, plural: true)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF666666),
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (movement['weight_after_kg'] != null)
-                                        Text(
-                                          'Weight: ${_stockFormat(movement['weight_before_kg'])} '
-                                          '→ ${_stockFormat(movement['weight_after_kg'])} kg',
-                                          style: const TextStyle(
-                                            color: Color(0xFF666666),
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      if (reference != null &&
-                                          reference.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Ref: $reference',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                      if (notes != null &&
-                                          notes.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          notes,
-                                          style: const TextStyle(
-                                            color: Color(0xFF555555),
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        actor == null || actor.isEmpty
-                                            ? 'Entered by: System'
-                                            : actor == currentUserId
-                                            ? 'Entered by: You'
-                                            : 'Entered by: Staff member',
-                                        style: const TextStyle(
-                                          color: Color(0xFF777777),
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -2117,8 +1111,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     final cutSelected = _selectedSectionId != null;
     final subcategorySelected = _selectedSpecificationId != null;
-    final gradeSelected = _selectedGradeId != null ||
-        (_selectedAnimalCode == CutLinkAnimals.chicken && subcategorySelected);
+    final gradeSelected = _selectedGradeId != null;
     final directSearch = _searchController.text.trim().isNotEmpty;
 
     Widget animalPanel() {
@@ -2189,7 +1182,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       const SizedBox(height: 4),
                       _buildSpecificationStrip(),
                     ],
-                    if (subcategorySelected && _selectedAnimalCode != CutLinkAnimals.chicken) ...[
+                    if (subcategorySelected) ...[
                       const SizedBox(height: 8),
                       const Text(
                         'GRADE',
@@ -2329,9 +1322,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           return rightChoiceCard(
             icon: Icons.category_outlined,
             title: name,
-            subtitle: _selectedAnimalCode == CutLinkAnimals.chicken
-                ? 'Choose this subcategory to view its products.'
-                : 'Choose this subcategory to view its grades.',
+            subtitle: 'Choose this subcategory to view its grades.',
             onTap: () {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
@@ -3058,7 +2049,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 138),
+                      const SizedBox(width: 38),
                     ],
                   ),
                 );
@@ -3078,6 +2069,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   Widget _buildGradeMatrixRow(Map<String, dynamic> product) {
     final productId = product['id'].toString();
+    final stockController = _matrixController(
+      _matrixStockControllers,
+      productId,
+      _matrixNumber(product['available_quantity']),
+    );
     final standardController = _matrixController(
       _matrixStandardControllers,
       productId,
@@ -3124,42 +2120,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           ),
         );
 
-        final quantityUnit = product['quantity_unit']?.toString() ?? 'carton';
-        final separateWeight = _tracksSeparateWeight(product);
-        final weight = product['available_weight_kg'];
-
-        final stockField = Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F8F6),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFDADAD6)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${_matrixNumber(product['available_quantity']).isEmpty ? '0' : _matrixNumber(product['available_quantity'])} '
-                '${_stockUnitLabel(quantityUnit, plural: true)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12.5,
-                ),
-              ),
-              if (separateWeight)
-                Text(
-                  weight == null
-                      ? 'kg not yet tracked'
-                      : '${_stockFormat(weight)} kg',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-            ],
+        final stockField = TextField(
+          controller: stockController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            isDense: true,
+            suffixText: 'ctn',
+            border: OutlineInputBorder(),
           ),
         );
 
@@ -3201,67 +2168,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           },
         );
 
-        final receiveButton = FilledButton.icon(
-          onPressed: () => _receiveStock(product),
-          style: FilledButton.styleFrom(
-            backgroundColor: _darkRed,
-            foregroundColor: Colors.white,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          ),
-          icon: const Icon(Icons.add_box_outlined, size: 16),
-          label: const Text(
-            'Receive',
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900),
-          ),
-        );
-
-        final moreButton = PopupMenuButton<String>(
-          tooltip: 'More stock actions',
-          onSelected: (value) {
-            switch (value) {
-              case 'adjust':
-                _adjustStock(product);
-                break;
-              case 'history':
-                _showStockHistory(product);
-                break;
-              case 'edit':
-                _openEditProductPage(product);
-                break;
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: 'adjust',
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.tune),
-                title: Text('Adjust Stock'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'history',
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.history),
-                title: Text('Stock History'),
-              ),
-            ),
-            PopupMenuDivider(),
-            PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.open_in_new),
-                title: Text('Open Product Editor'),
-              ),
-            ),
-          ],
-          icon: const Icon(Icons.more_vert, size: 19),
+        final editButton = IconButton(
+          tooltip: 'Open full product editor',
+          onPressed: () => _openEditProductPage(product),
+          icon: const Icon(Icons.open_in_new, size: 18),
+          visualDensity: VisualDensity.compact,
         );
 
         if (narrow) {
@@ -3270,14 +2181,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    gradeBadge,
-                    const Spacer(),
-                    receiveButton,
-                    moreButton,
-                  ],
-                ),
+                Row(children: [gradeBadge, const Spacer(), editButton]),
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -3314,9 +2218,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               Expanded(flex: 2, child: tradeField),
               const SizedBox(width: 10),
               Expanded(flex: 2, child: statusField),
-              const SizedBox(width: 8),
-              receiveButton,
-              SizedBox(width: 38, child: moreButton),
+              SizedBox(width: 38, child: editButton),
             ],
           ),
         );

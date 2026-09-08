@@ -39,10 +39,11 @@ class _AddProductPageState extends State<AddProductPage> {
   final _packaging = TextEditingController();
   final _piecesPerCarton = TextEditingController();
   final _supplierNotes = TextEditingController();
-  final _feedingDays = TextEditingController();
-  final _ribCount = TextEditingController();
   final _chickenSizeWeight = TextEditingController();
   final _chickenCartonSize = TextEditingController();
+  final _goatWeightMin = TextEditingController();
+  final _goatWeightMax = TextEditingController();
+  final _goatCartonWeight = TextEditingController();
 
   String? _supplierBusinessId;
   String? _animalId;
@@ -53,9 +54,7 @@ class _AddProductPageState extends State<AddProductPage> {
   String _temperature = 'chilled';
   String _availability = 'in_stock';
   String _halal = 'not_specified';
-  String _boneState = 'not_specified';
-  String _productionClaim = 'not_specified';
-  bool _hgpFree = false;
+  String _goatBoneState = 'bone_in';
 
   String _chickenSkin = 'not_applicable';
   String _chickenBone = 'not_applicable';
@@ -98,10 +97,11 @@ class _AddProductPageState extends State<AddProductPage> {
       _packaging,
       _piecesPerCarton,
       _supplierNotes,
-      _feedingDays,
-      _ribCount,
       _chickenSizeWeight,
       _chickenCartonSize,
+      _goatWeightMin,
+      _goatWeightMax,
+      _goatCartonWeight,
     ]) {
       controller.dispose();
     }
@@ -211,6 +211,7 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   bool get _isChicken => _selectedAnimal?['code']?.toString() == 'CHICKEN';
+  bool get _isGoat => _selectedAnimal?['code']?.toString() == 'GOAT';
 
   Future<void> _selectAnimal(String? id) async {
     if (id == null) return;
@@ -218,6 +219,7 @@ class _AddProductPageState extends State<AddProductPage> {
       (animal) => animal['id']?.toString() == id,
     );
     final chicken = selected['code']?.toString() == 'CHICKEN';
+    final goat = selected['code']?.toString() == 'GOAT';
 
     setState(() {
       _animalId = id;
@@ -228,7 +230,10 @@ class _AddProductPageState extends State<AddProductPage> {
       _specifications = [];
       _grades = [];
       _loadingSections = true;
-      _temperature = chicken ? 'fresh' : 'chilled';
+      _temperature = chicken || goat ? 'fresh' : 'chilled';
+      if (goat) {
+        _goatBoneState = 'bone_in';
+      }
       if (chicken) {
         _chickenSkin = 'not_applicable';
         _chickenBone = 'not_applicable';
@@ -246,10 +251,28 @@ class _AddProductPageState extends State<AddProductPage> {
           .order('display_order');
 
       if (!mounted) return;
+
+      final loadedSections = List<Map<String, dynamic>>.from(rows);
+      String? defaultGoatSectionId;
+
+      if (goat) {
+        for (final section in loadedSections) {
+          if (section['code']?.toString() == 'WHOLE') {
+            defaultGoatSectionId = section['id']?.toString();
+            break;
+          }
+        }
+      }
+
       setState(() {
-        _sections = List<Map<String, dynamic>>.from(rows);
+        _sections = loadedSections;
+        _sectionId = defaultGoatSectionId;
         _loadingSections = false;
       });
+
+      if (defaultGoatSectionId != null) {
+        await _loadSpecifications();
+      }
     } catch (e) {
       if (mounted) setState(() => _loadingSections = false);
       _message('Unable to load sections: $e');
@@ -342,8 +365,17 @@ class _AddProductPageState extends State<AddProductPage> {
           .order('display_order');
 
       if (!mounted) return;
+      final loadedGrades = List<Map<String, dynamic>>.from(grades);
       setState(() {
-        _grades = List<Map<String, dynamic>>.from(grades);
+        _grades = loadedGrades;
+        if (_isGoat && loadedGrades.isNotEmpty) {
+          final naIndex = loadedGrades.indexWhere(
+            (grade) => grade['code']?.toString() == 'NA',
+          );
+          _gradeId =
+              (naIndex >= 0 ? loadedGrades[naIndex] : loadedGrades.first)['id']
+                  ?.toString();
+        }
         _loadingGrades = false;
       });
     } catch (e) {
@@ -482,7 +514,11 @@ class _AddProductPageState extends State<AddProductPage> {
     }
 
     if (!_isChicken && _gradeId == null) {
-      _message('Select the product category / grade.');
+      _message(
+        _isGoat
+            ? 'The Goat catalogue category could not be resolved.'
+            : 'Select the product category / grade.',
+      );
       return;
     }
 
@@ -499,6 +535,37 @@ class _AddProductPageState extends State<AddProductPage> {
     if (piecesText.isNotEmpty && (pieces == null || pieces < 0)) {
       _message('Enter a valid pieces per carton value.');
       return;
+    }
+
+    if (_isGoat) {
+      final weightMin = _goatWeightMin.text.trim().isEmpty
+          ? null
+          : double.tryParse(_goatWeightMin.text.trim());
+      final weightMax = _goatWeightMax.text.trim().isEmpty
+          ? null
+          : double.tryParse(_goatWeightMax.text.trim());
+      final cartonWeight = _goatCartonWeight.text.trim().isEmpty
+          ? null
+          : double.tryParse(_goatCartonWeight.text.trim());
+
+      if ((_goatWeightMin.text.trim().isNotEmpty && weightMin == null) ||
+          (_goatWeightMax.text.trim().isNotEmpty && weightMax == null) ||
+          (_goatCartonWeight.text.trim().isNotEmpty && cartonWeight == null)) {
+        _message('Enter valid Goat weight values.');
+        return;
+      }
+
+      if (weightMin != null && weightMin < 0 ||
+          weightMax != null && weightMax < 0 ||
+          cartonWeight != null && cartonWeight < 0) {
+        _message('Goat weight values cannot be negative.');
+        return;
+      }
+
+      if (weightMin != null && weightMax != null && weightMax < weightMin) {
+        _message('Maximum Goat weight must be greater than minimum weight.');
+        return;
+      }
     }
 
     setState(() => _saving = true);
@@ -601,15 +668,29 @@ class _AddProductPageState extends State<AddProductPage> {
         );
 
         final productId = createdProductId?.toString();
-        if (productId != null && productId.isNotEmpty) {
+
+        if (_isGoat && productId != null && productId.isNotEmpty) {
+          final weightMin = _goatWeightMin.text.trim().isEmpty
+              ? null
+              : double.parse(_goatWeightMin.text.trim());
+          final weightMax = _goatWeightMax.text.trim().isEmpty
+              ? null
+              : double.parse(_goatWeightMax.text.trim());
+          final cartonWeight = _goatCartonWeight.text.trim().isEmpty
+              ? null
+              : double.parse(_goatCartonWeight.text.trim());
+
           await Supabase.instance.client
               .from('products')
               .update({
-                'feeding_days': int.tryParse(_feedingDays.text.trim()),
-                'bone_state': _boneState,
-                'rib_count': int.tryParse(_ribCount.text.trim()),
-                'production_claim': _productionClaim,
-                'hgp_free': _hgpFree,
+                'bone_state': _goatBoneState,
+                'piece_weight_min': weightMin,
+                'piece_weight_max': weightMax,
+                'piece_weight_unit': weightMin == null && weightMax == null
+                    ? null
+                    : 'kilogram',
+                'carton_weight': cartonWeight,
+                'carton_weight_unit': cartonWeight == null ? null : 'kilogram',
                 'updated_at': DateTime.now().toUtc().toIso8601String(),
               })
               .eq('id', productId);
@@ -1171,7 +1252,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           validator: (value) =>
                               value == null ? 'Sub-cut is required.' : null,
                         ),
-                        if (!_isChicken) ...[
+                        if (!_isChicken && !_isGoat) ...[
                           const SizedBox(height: 10),
                           Align(
                             alignment: Alignment.centerLeft,
@@ -1416,7 +1497,145 @@ class _AddProductPageState extends State<AddProductPage> {
                     },
                   ),
                   const SizedBox(height: 14),
-                  if (!_isChicken)
+                  if (_isGoat)
+                    _sectionCard(
+                      title: 'Goat Specifications',
+                      subtitle:
+                          'Goat attributes used by suppliers and shown to butchers.',
+                      icon: Icons.fact_check_outlined,
+                      child: Column(
+                        children: [
+                          _twoFields(
+                            CutLinkPickerField<String>(
+                              label: 'Bone',
+                              value: _goatBoneState,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'bone_in',
+                                  label: 'Bone In',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'boneless',
+                                  label: 'Boneless',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _goatBoneState = value);
+                                }
+                              },
+                            ),
+                            CutLinkPickerField<String>(
+                              label: 'Fresh / Frozen',
+                              value: _temperature,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'fresh',
+                                  label: 'Fresh',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'frozen',
+                                  label: 'Frozen',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _temperature = value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            CutLinkPickerField<String>(
+                              label: 'Halal',
+                              value: _halal,
+                              options: const [
+                                CutLinkPickerOption(
+                                  value: 'not_specified',
+                                  label: 'Not specified',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'halal',
+                                  label: 'Halal',
+                                ),
+                                CutLinkPickerOption(
+                                  value: 'not_halal',
+                                  label: 'Not halal',
+                                ),
+                              ],
+                              enabled: !_saving,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _halal = value);
+                                }
+                              },
+                            ),
+                            TextFormField(
+                              controller: _breed,
+                              decoration: const InputDecoration(
+                                labelText: 'Brand / Supplier Program',
+                                hintText: 'Supplier program or range name',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _goatWeightMin,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Weight Range Minimum',
+                                suffixText: 'kg',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _goatWeightMax,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Weight Range Maximum',
+                                suffixText: 'kg',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _twoFields(
+                            TextFormField(
+                              controller: _goatCartonWeight,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Pack / Carton Size',
+                                suffixText: 'kg',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _packaging,
+                              decoration: const InputDecoration(
+                                labelText: 'Pack Type (optional)',
+                                hintText: 'Vacuum packed, bag, carton',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (!_isChicken && !_isGoat)
                     _sectionCard(
                       title: 'Additional Product Details',
                       subtitle:
@@ -1490,101 +1709,6 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          _twoFields(
-                            TextFormField(
-                              controller: _feedingDays,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Feeding Days (optional)',
-                                hintText: 'Example: 100, 150, 200',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                            TextFormField(
-                              controller: _ribCount,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Rib Count (optional)',
-                                hintText: 'Example: 3, 5, 7',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _twoFields(
-                            CutLinkPickerField<String>(
-                              label: 'Bone State',
-                              value: _boneState,
-                              options: const [
-                                CutLinkPickerOption(
-                                  value: 'not_specified',
-                                  label: 'Not specified',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'bone_in',
-                                  label: 'Bone in',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'boneless',
-                                  label: 'Boneless',
-                                ),
-                              ],
-                              enabled: !_saving,
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() => _boneState = value);
-                                }
-                              },
-                            ),
-                            CutLinkPickerField<String>(
-                              label: 'Production Claim',
-                              value: _productionClaim,
-                              options: const [
-                                CutLinkPickerOption(
-                                  value: 'not_specified',
-                                  label: 'Not specified',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'grass_fed',
-                                  label: 'Grass fed',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'grain_fed',
-                                  label: 'Grain fed',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'mixed',
-                                  label: 'Mixed / Combination',
-                                ),
-                                CutLinkPickerOption(
-                                  value: 'other',
-                                  label: 'Other',
-                                ),
-                              ],
-                              enabled: !_saving,
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() => _productionClaim = value);
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: _hgpFree,
-                            title: const Text(
-                              'HGP Free',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            subtitle: const Text(
-                              'Supplier-declared production claim.',
-                            ),
-                            onChanged: _saving
-                                ? null
-                                : (value) => setState(() => _hgpFree = value),
                           ),
                           const SizedBox(height: 14),
                           _twoFields(
