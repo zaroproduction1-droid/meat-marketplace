@@ -5,6 +5,9 @@ import '../animal_catalogues/animal_catalogue_registry.dart';
 import 'interactive_beef_cuts_map.dart';
 import 'interactive_chicken_cuts_map.dart';
 import 'interactive_goat_cuts_map.dart';
+import 'interactive_lamb_cuts_map.dart';
+import 'interactive_mutton_cuts_map.dart';
+import 'interactive_veal_cuts_map.dart';
 
 class CutLinkAnimalOption {
   const CutLinkAnimalOption({
@@ -38,9 +41,9 @@ abstract final class CutLinkAnimals {
 
     return <CutLinkAnimalOption>[
       supported(beef, 'Beef'),
-      const CutLinkAnimalOption(code: veal, name: 'Veal'),
-      const CutLinkAnimalOption(code: lamb, name: 'Lamb'),
-      const CutLinkAnimalOption(code: mutton, name: 'Mutton'),
+      supported(veal, 'Veal'),
+      supported(lamb, 'Lamb'),
+      supported(mutton, 'Mutton'),
       supported(goat, 'Goat'),
       supported(chicken, 'Chicken'),
     ];
@@ -53,7 +56,7 @@ abstract final class CutLinkAnimals {
 /// Reusable CutLink animal browser shell.
 ///
 /// Sales, Inventory and Butcher Browse can all use this same component.
-/// Beef, Goat and Chicken are interactive. Other animals are already navigable
+/// Beef, Veal, Goat and Chicken are interactive. Other animals are already navigable
 /// and can be given their own SVG asset later without changing surrounding pages.
 class InteractiveAnimalBrowser extends StatelessWidget {
   const InteractiveAnimalBrowser({
@@ -99,6 +102,9 @@ class InteractiveAnimalBrowser extends StatelessWidget {
     final animal = _selectedAnimal;
     final isBeef = animal.code == CutLinkAnimals.beef;
     final isGoat = animal.code == CutLinkAnimals.goat;
+    final isLamb = animal.code == CutLinkAnimals.lamb;
+    final isMutton = animal.code == CutLinkAnimals.mutton;
+    final isVeal = animal.code == CutLinkAnimals.veal;
     final isChicken = animal.code == CutLinkAnimals.chicken;
 
     return Column(
@@ -170,6 +176,27 @@ class InteractiveAnimalBrowser extends StatelessWidget {
               : isGoat
               ? InteractiveGoatCutsMap(
                   key: const ValueKey('GOAT_MAP'),
+                  selectedCut: selectedRegionKey,
+                  onCutSelected: onRegionSelected,
+                  maxWidth: maxWidth,
+                )
+              : isLamb
+              ? InteractiveLambCutsMap(
+                  key: const ValueKey('LAMB_MAP'),
+                  selectedCut: selectedRegionKey,
+                  onCutSelected: onRegionSelected,
+                  maxWidth: maxWidth,
+                )
+              : isMutton
+              ? InteractiveMuttonCutsMap(
+                  key: const ValueKey('MUTTON_MAP'),
+                  selectedCut: selectedRegionKey,
+                  onCutSelected: onRegionSelected,
+                  maxWidth: maxWidth,
+                )
+              : isVeal
+              ? InteractiveVealCutsMap(
+                  key: const ValueKey('VEAL_MAP'),
                   selectedCut: selectedRegionKey,
                   onCutSelected: onRegionSelected,
                   maxWidth: maxWidth,

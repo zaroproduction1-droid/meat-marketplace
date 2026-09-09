@@ -97,22 +97,9 @@ class ChickenCatalogue extends AnimalCatalogue {
 
   @override
   String? sectionCodeForRegion(String regionKey) {
-    return switch (regionKey) {
-      'whole-chicken' => 'WHOLE',
-      'breast' => 'BREAST',
-      'tenderloin' => 'BREAST',
-      'thigh' => 'THIGH',
-      'maryland' => 'MARYLAND',
-      'drumstick' => 'DRUMSTICK',
-      'wing' => 'WING',
-      'chicken-chop-cutlet' => 'CHOP_CUTLET',
-      'mince-manufacturing' => 'MINCE_MANUFACTURING',
-      'back-frame' => 'BONES_FRAMES_SKIN',
-      'neck' => 'NECK',
-      'tail' => 'TAIL',
-      'misc-offal-other' => 'OFFAL_OTHER',
-      _ => null,
-    };
+    final aliases = _regionAliases[regionKey];
+    if (aliases == null || aliases.isEmpty) return null;
+    return aliases.first;
   }
 
   @override
@@ -135,16 +122,6 @@ class ChickenCatalogue extends AnimalCatalogue {
     }
 
     final text = values.join(' ').toLowerCase();
-
-    if (regionKey == 'breast' &&
-        RegExp(r'tenderloin|\btenders?\b').hasMatch(text)) {
-      return true;
-    }
-
-    if (regionKey == 'maryland' &&
-        RegExp(r'\bthigh|drumstick').hasMatch(text)) {
-      return true;
-    }
 
     return switch (regionKey) {
       'whole-chicken' => RegExp(
@@ -172,16 +149,17 @@ class ChickenCatalogue extends AnimalCatalogue {
 
   @override
   List<String> get attributeKeys => const [
-    'chicken_production_type',
-    'chicken_skin',
-    'chicken_bone',
-    'chicken_preparation',
+    'production_claim',
+    'bone_state',
     'temperature_state',
-    'halal_status',
-    'chicken_size_weight',
-    'chicken_carton_size',
     'packaging_type',
     'pieces_per_carton',
+    'piece_weight_min',
+    'piece_weight_max',
+    'piece_weight_unit',
+    'carton_weight',
+    'carton_weight_unit',
+    'halal_status',
     'brand',
   ];
 

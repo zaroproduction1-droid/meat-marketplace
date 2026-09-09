@@ -1,16 +1,16 @@
 import 'animal_catalogue.dart';
 
-class GoatCatalogue extends AnimalCatalogue {
-  const GoatCatalogue();
+class VealCatalogue extends AnimalCatalogue {
+  const VealCatalogue();
 
   @override
-  String get animalCode => 'GOAT';
+  String get animalCode => 'VEAL';
 
   @override
-  String get animalName => 'Goat';
+  String get animalName => 'Veal';
 
   @override
-  String get svgAssetPath => 'assets/images/CutLink-Goat-Cuts.svg';
+  String get svgAssetPath => 'assets/images/CutLink-Veal-Cuts.svg';
 
   @override
   bool get usesGradeStage => false;
@@ -19,39 +19,43 @@ class GoatCatalogue extends AnimalCatalogue {
   String? get gradeStageLabel => null;
 
   @override
-  String get attributeStageLabel => 'Goat Attributes';
+  String get attributeStageLabel => 'Veal Attributes';
 
   @override
-  String? get defaultRegionKey => 'Whole Goat';
+  String? get defaultRegionKey => 'Whole Veal';
 
   static const Map<String, String> _regionLabels = {
-    'Whole Goat': 'Whole Goat',
+    'Whole Veal': 'Whole Veal / Carcase',
     'Forequarter': 'Forequarter',
-    'Hindquarter': 'Hindquarter',
-    'Leg': 'Leg',
-    'Shoulder': 'Shoulder',
-    'Loin': 'Loin',
-    'Rack / Rib': 'Rack / Rib',
-    'Breast / Flap': 'Breast / Flap',
+    'Shoulder / Blade': 'Shoulder / Blade',
     'Neck': 'Neck',
-    'Shank': 'Shank',
+    'Brisket / Breast': 'Brisket / Breast',
+    'Rack / Rib': 'Rack / Rib',
+    'Loin': 'Loin',
+    'Tenderloin': 'Tenderloin',
+    'Leg / Round': 'Leg / Round',
+    'Rump': 'Rump',
+    'Shin / Shank': 'Shin / Shank',
+    'Flank / Flap': 'Flank / Flap',
     'Trim / Manufacturing': 'Trim / Manufacturing',
-    'Offal / Other': 'Offal / Other',
+    'Bones / Offal': 'Bones / Offal',
   };
 
   static const Map<String, String> _regionToSectionCode = {
-    'Whole Goat': 'WHOLE',
+    'Whole Veal': 'WHOLE_CARCASE',
     'Forequarter': 'FOREQUARTER',
-    'Hindquarter': 'HINDQUARTER',
-    'Leg': 'LEG',
-    'Shoulder': 'SHOULDER',
-    'Loin': 'LOIN',
-    'Rack / Rib': 'RACK_RIB',
-    'Breast / Flap': 'BREAST_FLAP',
+    'Shoulder / Blade': 'SHOULDER_BLADE',
     'Neck': 'NECK',
-    'Shank': 'SHANK',
-    'Trim / Manufacturing': 'TRIM',
-    'Offal / Other': 'OFFAL',
+    'Brisket / Breast': 'BRISKET_BREAST',
+    'Rack / Rib': 'RACK_RIB',
+    'Loin': 'LOIN',
+    'Tenderloin': 'TENDERLOIN',
+    'Leg / Round': 'LEG_ROUND',
+    'Rump': 'RUMP',
+    'Shin / Shank': 'SHIN_SHANK',
+    'Flank / Flap': 'FLANK_FLAP',
+    'Trim / Manufacturing': 'TRIM_MANUFACTURING',
+    'Bones / Offal': 'BONES_OFFAL',
   };
 
   @override

@@ -1,16 +1,16 @@
 import 'animal_catalogue.dart';
 
-class GoatCatalogue extends AnimalCatalogue {
-  const GoatCatalogue();
+class LambCatalogue extends AnimalCatalogue {
+  const LambCatalogue();
 
   @override
-  String get animalCode => 'GOAT';
+  String get animalCode => 'LAMB';
 
   @override
-  String get animalName => 'Goat';
+  String get animalName => 'Lamb';
 
   @override
-  String get svgAssetPath => 'assets/images/CutLink-Goat-Cuts.svg';
+  String get svgAssetPath => 'assets/images/CutLink-Lamb-Cuts.svg';
 
   @override
   bool get usesGradeStage => false;
@@ -19,39 +19,41 @@ class GoatCatalogue extends AnimalCatalogue {
   String? get gradeStageLabel => null;
 
   @override
-  String get attributeStageLabel => 'Goat Attributes';
+  String get attributeStageLabel => 'Lamb Attributes';
 
   @override
-  String? get defaultRegionKey => 'Whole Goat';
+  String? get defaultRegionKey => 'Whole Lamb';
 
   static const Map<String, String> _regionLabels = {
-    'Whole Goat': 'Whole Goat',
+    'Whole Lamb': 'Whole Lamb / Carcase',
     'Forequarter': 'Forequarter',
-    'Hindquarter': 'Hindquarter',
-    'Leg': 'Leg',
     'Shoulder': 'Shoulder',
-    'Loin': 'Loin',
-    'Rack / Rib': 'Rack / Rib',
-    'Breast / Flap': 'Breast / Flap',
     'Neck': 'Neck',
+    'Breast / Flap': 'Breast / Flap',
+    'Rack / Rib': 'Rack / Rib',
+    'Loin': 'Loin',
+    'Tenderloin': 'Tenderloin',
+    'Chump / Rump': 'Chump / Rump',
+    'Leg': 'Leg',
     'Shank': 'Shank',
     'Trim / Manufacturing': 'Trim / Manufacturing',
     'Offal / Other': 'Offal / Other',
   };
 
   static const Map<String, String> _regionToSectionCode = {
-    'Whole Goat': 'WHOLE',
+    'Whole Lamb': 'WHOLE_CARCASE',
     'Forequarter': 'FOREQUARTER',
-    'Hindquarter': 'HINDQUARTER',
-    'Leg': 'LEG',
     'Shoulder': 'SHOULDER',
-    'Loin': 'LOIN',
-    'Rack / Rib': 'RACK_RIB',
-    'Breast / Flap': 'BREAST_FLAP',
     'Neck': 'NECK',
+    'Breast / Flap': 'BREAST_FLAP',
+    'Rack / Rib': 'RACK_RIB',
+    'Loin': 'LOIN',
+    'Tenderloin': 'TENDERLOIN',
+    'Chump / Rump': 'CHUMP_RUMP',
+    'Leg': 'LEG',
     'Shank': 'SHANK',
-    'Trim / Manufacturing': 'TRIM',
-    'Offal / Other': 'OFFAL',
+    'Trim / Manufacturing': 'TRIM_MANUFACTURING',
+    'Offal / Other': 'OFFAL_OTHER',
   };
 
   @override

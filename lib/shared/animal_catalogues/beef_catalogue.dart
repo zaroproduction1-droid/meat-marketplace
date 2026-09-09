@@ -22,7 +22,6 @@ class BeefCatalogue extends AnimalCatalogue {
   String? get attributeStageLabel => null;
 
   static const Map<String, String> _regionLabels = {
-    'cheek': 'Cheek',
     'round': 'Round',
     'silverside-outside': 'Silverside / Outside',
     'rump': 'Rump',
@@ -43,7 +42,6 @@ class BeefCatalogue extends AnimalCatalogue {
   };
 
   static const Map<String, String> _regionToSectionCode = {
-    'cheek': 'MISC_OFFAL',
     'round': 'ROUND',
     'silverside-outside': 'SILVERSIDE_OUTSIDE',
     'rump': 'RUMP',
@@ -74,24 +72,12 @@ class BeefCatalogue extends AnimalCatalogue {
       _regionToSectionCode[regionKey];
 
   @override
-  bool productMatchesRegion(
-    Map<String, dynamic> product,
-    String regionKey,
-  ) {
+  bool productMatchesRegion(Map<String, dynamic> product, String regionKey) {
     final expectedCode = sectionCodeForRegion(regionKey);
     if (expectedCode == null) return false;
 
     final section = _nestedMap(product['meat_sections']);
     final sectionCode = section?['code']?.toString().trim().toUpperCase();
-
-    if (regionKey == 'cheek') {
-      final spec = _nestedMap(product['meat_specifications']);
-      final specText = [
-        spec?['name'],
-        product['product_name'],
-      ].whereType<Object>().map((e) => e.toString().toLowerCase()).join(' ');
-      return sectionCode == 'MISC_OFFAL' && RegExp(r'\\bcheek').hasMatch(specText);
-    }
 
     if (regionKey == 'ox-tail') {
       final spec = _nestedMap(product['meat_specifications']);
@@ -109,13 +95,13 @@ class BeefCatalogue extends AnimalCatalogue {
 
   @override
   List<String> get attributeKeys => const [
-        'marbling_score',
-        'grade',
-        'breed_program',
-        'feeding_days',
-        'production_claim',
-        'hgp_free',
-      ];
+    'marbling_score',
+    'grade',
+    'breed_program',
+    'feeding_days',
+    'production_claim',
+    'hgp_free',
+  ];
 
   static Map<String, dynamic>? _nestedMap(dynamic raw) {
     if (raw is Map) {
