@@ -42,12 +42,12 @@ class BeefCatalogue extends AnimalCatalogue {
   };
 
   static const Map<String, String> _regionToSectionCode = {
-    'round': 'ROUND',
-    'silverside-outside': 'SILVERSIDE_OUTSIDE',
+    'round': 'HIND',
+    'silverside-outside': 'SILVERSIDE',
     'rump': 'RUMP',
     'loin': 'LOIN',
-    'rib-eye': 'RIB_EYE',
-    'ribs': 'RIBS',
+    'rib-eye': 'RIBEYE',
+    'ribs': 'RIB',
     'chuck': 'CHUCK',
     'neck': 'NECK',
     'blade': 'BLADE',
@@ -56,9 +56,9 @@ class BeefCatalogue extends AnimalCatalogue {
     'flank': 'FLANK',
     'plate': 'PLATE',
     'skirt': 'SKIRT',
-    'shin-shank': 'SHIN_SHANK',
-    'ox-tail': 'MISC_OFFAL',
-    'misc-offal-other': 'MISC_OFFAL',
+    'shin-shank': 'SHANK',
+    'ox-tail': 'MISC',
+    'misc-offal-other': 'MISC',
   };
 
   @override
@@ -86,7 +86,7 @@ class BeefCatalogue extends AnimalCatalogue {
         product['product_name'],
       ].whereType<Object>().map((e) => e.toString().toLowerCase()).join(' ');
 
-      return sectionCode == 'MISC_OFFAL' &&
+      return sectionCode == 'MISC' &&
           RegExp(r'\box[\s-]?tail\b|\boxtail\b|\btail\b').hasMatch(specText);
     }
 

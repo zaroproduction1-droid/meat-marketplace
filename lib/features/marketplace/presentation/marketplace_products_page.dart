@@ -22,18 +22,24 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   final ScrollController _cutScrollController = ScrollController();
   final ScrollController _subcategoryScrollController = ScrollController();
   final ScrollController _gradeScrollController = ScrollController();
+  final ScrollController _finalSpecificationScrollController =
+      ScrollController();
 
   bool _isLoading = true;
   String? _errorMessage;
 
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _filteredProducts = [];
+  List<Map<String, dynamic>> _catalogueAnimals = [];
+  List<Map<String, dynamic>> _catalogueSections = [];
+  List<Map<String, dynamic>> _catalogueSpecifications = [];
 
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
   String? _selectedSectionId;
   String? _selectedSpecificationId;
   String? _selectedGradeId;
+  String? _selectedCommercialSpecificationKey;
   String _sortMode = 'recommended';
   bool _availableOnly = false;
   final Map<String, String> _chickenAttributeFilters = <String, String>{};
@@ -62,6 +68,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     _cutScrollController.dispose();
     _subcategoryScrollController.dispose();
     _gradeScrollController.dispose();
+    _finalSpecificationScrollController.dispose();
     super.dispose();
   }
 
@@ -462,6 +469,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           .eq('active', true)
           .order('product_name');
 
+      final catalogueAnimalResponse = await Supabase.instance.client
+          .from('meat_animals')
+          .select('id, code, name')
+          .eq('is_active', true);
+
+      final catalogueSectionResponse = await Supabase.instance.client
+          .from('meat_sections')
+          .select('id, animal_id, code, name, slug, hotspot_key, display_order')
+          .eq('is_active', true)
+          .order('display_order');
+
+      final catalogueSpecificationResponse = await Supabase.instance.client
+          .from('meat_specifications')
+          .select(
+            'id, animal_id, section_id, name, slug, display_order, '
+            'specification_type, approval_status',
+          )
+          .eq('is_active', true)
+          .order('display_order');
+
       final products = List<Map<String, dynamic>>.from(response);
 
       final meatProductIds = <String>{};
@@ -510,6 +537,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       setState(() {
         _products = products;
+        _catalogueAnimals = List<Map<String, dynamic>>.from(
+          catalogueAnimalResponse,
+        );
+        _catalogueSections = List<Map<String, dynamic>>.from(
+          catalogueSectionResponse,
+        );
+        _catalogueSpecifications = List<Map<String, dynamic>>.from(
+          catalogueSpecificationResponse,
+        );
         _cataloguePathsByProductId
           ..clear()
           ..addAll(cataloguePathsByProductId);
@@ -883,38 +919,75 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       AnimalCatalogueRegistry.forCode(_selectedAnimalCode)?.gradeStageLabel ??
       'Grade';
 
-  List<Map<String, dynamic>> get _availableSpecifications {
-    final byId = <String, Map<String, dynamic>>{};
+  String _normaliseCatalogueKey(dynamic value) {
+    return (value?.toString() ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '');
+  }
 
-    for (final product in _selectedAnimalProducts) {
-      if ((_selectedAnimalRegionKey != null || _selectedSectionId != null) &&
-          !_matchesSelectedCut(product)) {
-        continue;
+  String? get _selectedCatalogueSectionId {
+    final regionKey = _selectedAnimalRegionKey;
+    if (regionKey == null) return null;
+
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    final expectedCode = catalogue?.sectionCodeForRegion(regionKey);
+    final expectedLabel = catalogue?.regionLabel(regionKey) ?? regionKey;
+
+    String? animalId;
+    for (final animal in _catalogueAnimals) {
+      if (animal['code']?.toString().toUpperCase() == _selectedAnimalCode) {
+        animalId = animal['id']?.toString();
+        break;
       }
+    }
+    if (animalId == null) return null;
 
-      final specification = _nestedMap(product['meat_specifications']);
-      final id = specification?['id']?.toString();
-      if (specification != null && id != null && id.isNotEmpty) {
-        byId[id] = specification;
-      }
+    final targetCode = _normaliseCatalogueKey(expectedCode);
+    final targetRegion = _normaliseCatalogueKey(regionKey);
+    final targetLabel = _normaliseCatalogueKey(expectedLabel);
 
-      for (final offer in _activeSpecGradeOffers(product)) {
-        final offerSpecification = _nestedMap(offer['meat_specifications']);
-        final offerId = offerSpecification?['id']?.toString();
-        if (offerSpecification != null &&
-            offerId != null &&
-            offerId.isNotEmpty) {
-          byId[offerId] = offerSpecification;
-        }
+    for (final section in _catalogueSections) {
+      if (section['animal_id']?.toString() != animalId) continue;
+
+      final code = _normaliseCatalogueKey(section['code']);
+      final name = _normaliseCatalogueKey(section['name']);
+      final slug = _normaliseCatalogueKey(section['slug']);
+      final hotspot = _normaliseCatalogueKey(section['hotspot_key']);
+
+      if ((targetCode.isNotEmpty && code == targetCode) ||
+          hotspot == targetRegion ||
+          slug == targetRegion ||
+          name == targetLabel) {
+        return section['id']?.toString();
       }
     }
 
-    final rows = byId.values.toList();
-    rows.sort(
-      (a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo(
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _availableSpecifications {
+    final sectionId = _selectedCatalogueSectionId;
+    if (sectionId == null) return const [];
+
+    final rows = _catalogueSpecifications
+        .where(
+          (specification) =>
+              specification['section_id']?.toString() == sectionId,
+        )
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+
+    rows.sort((a, b) {
+      final aOrder = (a['display_order'] as num?)?.toInt() ?? 9999;
+      final bOrder = (b['display_order'] as num?)?.toInt() ?? 9999;
+      if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+      return (a['name']?.toString() ?? '').toLowerCase().compareTo(
         (b['name']?.toString() ?? '').toLowerCase(),
-      ),
-    );
+      );
+    });
+
     return rows;
   }
 
@@ -993,36 +1066,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         .join(' ');
   }
 
-  List<String> _availableChickenAttributeValues(String field) {
-    final values = <String>{};
-
-    for (final product in _selectedAnimalProducts) {
-      if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
-          !_matchesSelectedCut(product)) {
-        continue;
-      }
-
-      if (_selectedSpecificationId != null &&
-          !_matchesSpecification(product, _selectedSpecificationId!)) {
-        continue;
-      }
-
-      final raw = product[field]?.toString().trim();
-      if (raw != null && raw.isNotEmpty) {
-        values.add(raw);
-      }
-    }
-
-    final rows = values.toList()
-      ..sort(
-        (a, b) => _prettyChickenValue(
-          a,
-        ).toLowerCase().compareTo(_prettyChickenValue(b).toLowerCase()),
-      );
-
-    return rows;
-  }
-
   bool _matchesChickenAttributeFilters(Map<String, dynamic> product) {
     if (!_isChickenSelection || _chickenAttributeFilters.isEmpty) {
       return true;
@@ -1037,104 +1080,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return true;
   }
 
-  Widget _buildChickenAttributeStage() {
-    const fields = <MapEntry<String, String>>[
-      MapEntry('chicken_production_type', 'Production Type'),
-      MapEntry('chicken_skin', 'Skin'),
-      MapEntry('chicken_bone', 'Bone'),
-      MapEntry('chicken_preparation', 'Preparation'),
-      MapEntry('temperature_state', 'Product State'),
-      MapEntry('halal_status', 'Halal'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final field in fields) ...[
-          if (_availableChickenAttributeValues(field.key).isNotEmpty) ...[
-            Text(
-              field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 34,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: const Text('Any'),
-                      selected: !_chickenAttributeFilters.containsKey(
-                        field.key,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          _chickenAttributeFilters.remove(field.key);
-                        });
-                        _applySearch();
-                      },
-                    ),
-                  ),
-                  for (final value in _availableChickenAttributeValues(
-                    field.key,
-                  ))
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(_prettyChickenValue(value)),
-                        selected: _chickenAttributeFilters[field.key] == value,
-                        onSelected: (_) {
-                          setState(() {
-                            _chickenAttributeFilters[field.key] = value;
-                          });
-                          _applySearch();
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ],
-      ],
-    );
-  }
-
   bool get _isGoatSelection => _selectedAnimalCode == CutLinkAnimals.goat;
-
-  List<String> _availableGoatAttributeValues(String field) {
-    final values = <String>{};
-
-    for (final product in _selectedAnimalProducts) {
-      if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
-          !_matchesSelectedCut(product)) {
-        continue;
-      }
-
-      if (_selectedSpecificationId != null &&
-          !_matchesSpecification(product, _selectedSpecificationId!)) {
-        continue;
-      }
-
-      final raw = product[field]?.toString().trim();
-      if (raw != null && raw.isNotEmpty) values.add(raw);
-    }
-
-    final rows = values.toList()
-      ..sort(
-        (a, b) => _prettyChickenValue(
-          a,
-        ).toLowerCase().compareTo(_prettyChickenValue(b).toLowerCase()),
-      );
-    return rows;
-  }
 
   bool _matchesGoatAttributeFilters(Map<String, dynamic> product) {
     if (!_isGoatSelection || _goatAttributeFilters.isEmpty) return true;
@@ -1143,71 +1089,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       if (product[entry.key]?.toString() != entry.value) return false;
     }
     return true;
-  }
-
-  Widget _buildGoatAttributeStage() {
-    const fields = <MapEntry<String, String>>[
-      MapEntry('bone_state', 'Bone'),
-      MapEntry('temperature_state', 'Product State'),
-      MapEntry('halal_status', 'Halal'),
-      MapEntry('packaging_type', 'Packaging'),
-      MapEntry('brand', 'Brand'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final field in fields) ...[
-          if (_availableGoatAttributeValues(field.key).isNotEmpty) ...[
-            Text(
-              field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 34,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: const Text('Any'),
-                      selected: !_goatAttributeFilters.containsKey(field.key),
-                      onSelected: (_) {
-                        setState(() {
-                          _goatAttributeFilters.remove(field.key);
-                        });
-                        _applySearch();
-                      },
-                    ),
-                  ),
-                  for (final value in _availableGoatAttributeValues(field.key))
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(_prettyChickenValue(value)),
-                        selected: _goatAttributeFilters[field.key] == value,
-                        onSelected: (_) {
-                          setState(() {
-                            _goatAttributeFilters[field.key] = value;
-                          });
-                          _applySearch();
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ],
-      ],
-    );
   }
 
   void _selectAnimal(String animalCode) {
@@ -1222,6 +1103,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       _selectedSectionId = null;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
     });
@@ -1251,6 +1133,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       _selectedSectionId = section?['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
     });
@@ -1264,6 +1147,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       _selectedSectionId = section['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
     });
@@ -1345,6 +1229,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               return false;
             }
           }
+        }
+
+        if (!_matchesCommercialSpecification(product)) {
+          return false;
         }
 
         if (!_matchesGoatAttributeFilters(product)) {
@@ -1911,6 +1799,145 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return chips;
   }
 
+  String _commercialSpecificationLabel(Map<String, dynamic> product) {
+    if (_animalCode(product) == CutLinkAnimals.chicken) {
+      final chickenValues = <String>[
+        _prettyChickenValue(product['chicken_production_type']),
+        _prettyChickenValue(product['chicken_skin']),
+        _prettyChickenValue(product['chicken_bone']),
+        _prettyChickenValue(product['chicken_preparation']),
+        _prettyChickenValue(product['temperature_state']),
+        _prettyChickenValue(product['halal_status']),
+        _prettyChickenValue(product['chicken_size_weight']),
+        _prettyChickenValue(product['chicken_carton_size']),
+        _prettyChickenValue(product['packaging_type']),
+        _prettyChickenValue(product['brand']),
+      ].where((value) => value.isNotEmpty).toList();
+
+      final pieces = product['pieces_per_carton']?.toString().trim() ?? '';
+      if (pieces.isNotEmpty) {
+        chickenValues.add('$pieces pcs/carton');
+      }
+
+      return chickenValues.isEmpty
+          ? 'Standard specification'
+          : chickenValues.join(' • ');
+    }
+
+    final values = <String>[
+      _prettyChickenValue(product['bone_state']),
+      _prettyChickenValue(product['temperature_state']),
+      _prettyChickenValue(product['halal_status']),
+      _prettyChickenValue(product['packaging_type']),
+      _prettyChickenValue(product['brand']),
+      _prettyChickenValue(product['supplier_specification']),
+    ].where((value) => value.isNotEmpty).toList();
+
+    final pieceMin = product['piece_weight_min']?.toString().trim() ?? '';
+    final pieceMax = product['piece_weight_max']?.toString().trim() ?? '';
+    final pieceUnit = product['piece_weight_unit']?.toString().trim() ?? '';
+    if (pieceMin.isNotEmpty || pieceMax.isNotEmpty) {
+      final range = pieceMin.isNotEmpty && pieceMax.isNotEmpty
+          ? '$pieceMin–$pieceMax'
+          : (pieceMin.isNotEmpty ? pieceMin : pieceMax);
+      values.add('$range ${pieceUnit.isEmpty ? 'kg' : pieceUnit}'.trim());
+    }
+
+    final carton = product['carton_weight']?.toString().trim() ?? '';
+    if (carton.isNotEmpty) {
+      final unit =
+          product['carton_weight_unit']?.toString().trim().isNotEmpty == true
+          ? product['carton_weight_unit'].toString().trim()
+          : 'kg';
+      values.add('$carton $unit carton');
+    }
+
+    final pieces = product['pieces_per_carton']?.toString().trim() ?? '';
+    if (pieces.isNotEmpty) values.add('$pieces pcs/carton');
+
+    return values.isEmpty ? 'Standard specification' : values.join(' • ');
+  }
+
+  String _commercialSpecificationKey(Map<String, dynamic> product) {
+    return _commercialSpecificationLabel(product).trim().toLowerCase();
+  }
+
+  List<Map<String, String>> get _availableCommercialSpecifications {
+    if (_selectedSpecificationId == null) return const [];
+
+    final byKey = <String, String>{};
+
+    for (final product in _selectedAnimalProducts) {
+      if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
+          !_matchesSelectedCut(product)) {
+        continue;
+      }
+      if (!_matchesSpecification(product, _selectedSpecificationId!)) {
+        continue;
+      }
+
+      final key = _commercialSpecificationKey(product);
+      if (key.isEmpty) continue;
+      byKey[key] = _commercialSpecificationLabel(product);
+    }
+
+    final rows =
+        [
+          for (final entry in byKey.entries)
+            {'key': entry.key, 'label': entry.value},
+        ]..sort(
+          (a, b) => (a['label'] ?? '').toLowerCase().compareTo(
+            (b['label'] ?? '').toLowerCase(),
+          ),
+        );
+
+    return rows;
+  }
+
+  bool _matchesCommercialSpecification(Map<String, dynamic> product) {
+    if (_usesGradeStage || _selectedCommercialSpecificationKey == null) {
+      return true;
+    }
+    return _commercialSpecificationKey(product) ==
+        _selectedCommercialSpecificationKey;
+  }
+
+  Widget _buildCommercialSpecificationStrip() {
+    final specifications = _availableCommercialSpecifications;
+    if (specifications.isEmpty) return const SizedBox.shrink();
+
+    return _arrowScrollStrip(
+      controller: _finalSpecificationScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All specifications',
+          selected: _selectedCommercialSpecificationKey == null,
+          onTap: () {
+            setState(() {
+              _selectedCommercialSpecificationKey = null;
+              _searchController.clear();
+            });
+            _applySearch();
+          },
+        ),
+        for (final specification in specifications)
+          _thinChoice(
+            label: specification['label'] ?? 'Specification',
+            selected:
+                _selectedCommercialSpecificationKey == specification['key'],
+            onTap: () {
+              setState(() {
+                _selectedCommercialSpecificationKey = specification['key'];
+                _searchController.clear();
+              });
+              _applySearch();
+            },
+          ),
+      ],
+    );
+  }
+
   Widget _thinChoice({
     required String label,
     required bool selected,
@@ -2079,6 +2106,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
                 _selectedGradeId = null;
+                _selectedCommercialSpecificationKey = null;
+                _selectedCommercialSpecificationKey = null;
                 _chickenAttributeFilters.clear();
                 _goatAttributeFilters.clear();
               });
@@ -2547,8 +2576,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     final cutSelected =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     final subcategorySelected = _selectedSpecificationId != null;
-    final gradeSelected = !_usesGradeStage || _selectedGradeId != null;
-    final exactSelection = subcategorySelected && gradeSelected;
+    final finalSpecificationSelected = _usesGradeStage
+        ? _selectedGradeId != null
+        : _selectedCommercialSpecificationKey != null;
+    final exactSelection = subcategorySelected && finalSpecificationSelected;
 
     // ignore: unused_element
     Widget filterLabel(String label) {
@@ -2638,52 +2669,22 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                       const SizedBox(height: 4),
                       _buildSpecificationStrip(),
                     ],
-                    if (subcategorySelected && _isChickenSelection) ...[
+                    if (subcategorySelected) ...[
                       const SizedBox(height: 8),
                       Text(
-                        (AnimalCatalogueRegistry.forCode(
-                                  _selectedAnimalCode,
-                                )?.attributeStageLabel ??
-                                'Chicken Type & Attributes')
-                            .toUpperCase(),
+                        _usesGradeStage
+                            ? _gradeStageLabel.toUpperCase()
+                            : 'SPECIFICATION',
                         style: const TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      _buildChickenAttributeStage(),
-                    ],
-                    if (subcategorySelected && _isGoatSelection) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        (AnimalCatalogueRegistry.forCode(
-                                  _selectedAnimalCode,
-                                )?.attributeStageLabel ??
-                                'Goat Attributes')
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      _buildGoatAttributeStage(),
-                    ],
-                    if (subcategorySelected && _usesGradeStage) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _gradeStageLabel.toUpperCase(),
-                        style: TextStyle(
                           color: Color(0xFF777777),
                           fontSize: 9.5,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      _buildGradeStrip(),
+                      _usesGradeStage
+                          ? _buildGradeStrip()
+                          : _buildCommercialSpecificationStrip(),
                     ],
                   ],
                 ),
@@ -2750,8 +2751,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                 ? 'Search all products — e.g. Scotch Fillet, Brisket...'
                 : !subcategorySelected
                 ? 'Search subcategories within ${_selectedSectionName ?? 'this cut'}...'
-                : !gradeSelected
-                ? 'Search grades for this subcategory...'
+                : !finalSpecificationSelected
+                ? (_usesGradeStage
+                      ? 'Search grades for this subcategory...'
+                      : 'Search specifications for this sub-cut...')
                 : 'Search this selected stock...',
             prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: _searchController.text.isEmpty
@@ -3074,6 +3077,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
                 _selectedGradeId = null;
+                _selectedCommercialSpecificationKey = null;
               });
               _searchController.clear();
               _applySearch();
@@ -3136,6 +3140,51 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       );
     }
 
+    Widget commercialSpecificationStage() {
+      final query = _searchController.text.trim().toLowerCase();
+      final specifications = _availableCommercialSpecifications
+          .where((row) => (row['label'] ?? '').toLowerCase().contains(query))
+          .toList();
+
+      if (specifications.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(26),
+            child: Text(
+              'No product specifications are available for this sub-cut.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF777777),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ListView.separated(
+        padding: const EdgeInsets.all(10),
+        itemCount: specifications.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        itemBuilder: (_, index) {
+          final specification = specifications[index];
+          return rightChoiceCard(
+            icon: Icons.tune_outlined,
+            title: specification['label'] ?? 'Product specification',
+            subtitle:
+                'Choose this specification to compare matching suppliers and pricing.',
+            onTap: () {
+              setState(() {
+                _selectedCommercialSpecificationKey = specification['key'];
+                _searchController.clear();
+              });
+              _applySearch();
+            },
+          );
+        },
+      );
+    }
+
     Widget supplierStockStage() {
       if (_filteredProducts.isEmpty) {
         return const Center(
@@ -3185,8 +3234,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Choose a Cut'
           : !subcategorySelected
           ? 'Subcategories'
-          : !gradeSelected
-          ? 'Choose Grade'
+          : !finalSpecificationSelected
+          ? (_usesGradeStage ? 'Choose Grade' : 'Choose Specification')
           : 'Supplier Stock';
 
       final subtitle = globalSearch
@@ -3195,8 +3244,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ? 'Select a cut from the animal diagram or cut row.'
           : !subcategorySelected
           ? 'Choose the exact subcategory for this cut.'
-          : !gradeSelected
-          ? 'Choose the commercial grade/category.'
+          : !finalSpecificationSelected
+          ? (_usesGradeStage
+                ? 'Choose the commercial grade/category.'
+                : 'Choose the product specification for this sub-cut.')
           : 'Compare matching supplier offers and pricing.';
 
       final showingStock = globalSearch || exactSelection;
@@ -3296,8 +3347,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
                     )
                   : !subcategorySelected
                   ? subcategoryStage()
-                  : !gradeSelected
-                  ? gradeStage()
+                  : !finalSpecificationSelected
+                  ? (_usesGradeStage
+                        ? gradeStage()
+                        : commercialSpecificationStage())
                   : supplierStockStage(),
             ),
           ],

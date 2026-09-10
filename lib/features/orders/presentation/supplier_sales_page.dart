@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
-import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import 'supplier_create_order_page.dart';
 import 'supplier_orders_page.dart';
@@ -29,6 +28,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _cutScrollController = ScrollController();
+  final ScrollController _subcategoryScrollController = ScrollController();
+  final ScrollController _finalSpecificationScrollController =
+      ScrollController();
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -36,12 +39,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String? _selectedAnimalRegionKey;
   String? _selectedSpecificationId;
   String? _selectedGradeId;
-  final Map<String, String> _chickenAttributeFilters = <String, String>{};
-  final Map<String, String> _goatAttributeFilters = <String, String>{};
-
-  final ScrollController _specificationScrollController = ScrollController();
+  String? _selectedCommercialSpecificationKey;
 
   List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _catalogueAnimals = [];
+  List<Map<String, dynamic>> _catalogueSections = [];
+  List<Map<String, dynamic>> _catalogueSpecifications = [];
   int _newMarketplaceItemCount = 0;
 
   Map<String, dynamic>? _activeSale;
@@ -96,7 +99,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void dispose() {
     _searchController.removeListener(_refresh);
     _searchController.dispose();
-    _specificationScrollController.dispose();
+    _cutScrollController.dispose();
+    _subcategoryScrollController.dispose();
+    _finalSpecificationScrollController.dispose();
     super.dispose();
   }
 
@@ -196,6 +201,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             chicken_preparation,
             chicken_size_weight,
             chicken_carton_size,
+            bone_state,
+            packaging_type,
+            pieces_per_carton,
+            piece_weight_min,
+            piece_weight_max,
+            piece_weight_unit,
+            carton_weight,
+            carton_weight_unit,
+            supplier_specification,
             available_quantity,
             quantity_unit,
             availability_status,
@@ -246,6 +260,26 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           .eq('active', true)
           .order('product_name');
 
+      final catalogueAnimalResponse = await client
+          .from('meat_animals')
+          .select('id, code, name')
+          .eq('is_active', true);
+
+      final catalogueSectionResponse = await client
+          .from('meat_sections')
+          .select('id, animal_id, code, name, slug, hotspot_key, display_order')
+          .eq('is_active', true)
+          .order('display_order');
+
+      final catalogueSpecificationResponse = await client
+          .from('meat_specifications')
+          .select(
+            'id, animal_id, section_id, name, slug, display_order, '
+            'specification_type, approval_status',
+          )
+          .eq('is_active', true)
+          .order('display_order');
+
       final marketplaceResponse = await client
           .from('orders')
           .select('''
@@ -274,6 +308,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
             .toList();
+        _catalogueAnimals = List<Map<String, dynamic>>.from(
+          catalogueAnimalResponse,
+        );
+        _catalogueSections = List<Map<String, dynamic>>.from(
+          catalogueSectionResponse,
+        );
+        _catalogueSpecifications = List<Map<String, dynamic>>.from(
+          catalogueSpecificationResponse,
+        );
         _newMarketplaceItemCount = marketplaceItemCount;
         _isLoading = false;
       });
@@ -498,6 +541,51 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> get _filteredProducts {
+    final query = _searchController.text.trim().toLowerCase();
+    final usesGradeStage =
+        AnimalCatalogueRegistry.forCode(_selectedAnimalCode)?.usesGradeStage ??
+        true;
+
+    return _animalRegionProducts.where((product) {
+      if (_selectedSpecificationId != null &&
+          _specificationId(product) != _selectedSpecificationId) {
+        return false;
+      }
+
+      if (usesGradeStage &&
+          _selectedGradeId != null &&
+          product['meat_grade_id']?.toString() != _selectedGradeId) {
+        return false;
+      }
+
+      if (!_matchesCommercialSpecification(product)) {
+        return false;
+      }
+
+      if (query.isEmpty) {
+        return true;
+      }
+
+      final searchable = <String>[
+        product['product_name']?.toString() ?? '',
+        product['sku']?.toString() ?? '',
+        product['brand']?.toString() ?? '',
+        _specificationName(product),
+        _gradeCode(product),
+        _gradeName(product),
+        _commercialSpecificationLabel(product),
+      ].join(' ').toLowerCase();
+
+      return searchable.contains(query);
+    }).toList();
+  }
+
+  String _selectedCutLabel(String regionKey) {
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    return catalogue?.regionLabel(regionKey) ?? regionKey;
+  }
+
   String _specificationId(Map<String, dynamic> product) {
     return product['meat_specification_id']?.toString() ?? '';
   }
@@ -586,29 +674,86 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return values.isEmpty ? 'Standard Chicken' : values.join(' • ');
   }
 
-  List<Map<String, String>> get _availableSpecifications {
-    final byId = <String, String>{};
+  String _normaliseCatalogueKey(dynamic value) {
+    return (value?.toString() ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '');
+  }
 
-    for (final product in _animalRegionProducts) {
-      if (_selectedGradeId != null &&
-          product['meat_grade_id']?.toString() != _selectedGradeId) {
-        continue;
+  String? get _selectedCatalogueSectionId {
+    final regionKey = _selectedAnimalRegionKey;
+    if (regionKey == null) return null;
+
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    final expectedCode = catalogue?.sectionCodeForRegion(regionKey);
+    final expectedLabel = catalogue?.regionLabel(regionKey) ?? regionKey;
+
+    String? animalId;
+    for (final animal in _catalogueAnimals) {
+      if (animal['code']?.toString().toUpperCase() == _selectedAnimalCode) {
+        animalId = animal['id']?.toString();
+        break;
       }
+    }
+    if (animalId == null) return null;
 
-      final id = _specificationId(product);
-      if (id.isEmpty) continue;
-      byId[id] = _specificationName(product);
+    final targetCode = _normaliseCatalogueKey(expectedCode);
+    final targetRegion = _normaliseCatalogueKey(regionKey);
+    final targetLabel = _normaliseCatalogueKey(expectedLabel);
+
+    for (final section in _catalogueSections) {
+      if (section['animal_id']?.toString() != animalId) continue;
+
+      final code = _normaliseCatalogueKey(section['code']);
+      final name = _normaliseCatalogueKey(section['name']);
+      final slug = _normaliseCatalogueKey(section['slug']);
+      final hotspot = _normaliseCatalogueKey(section['hotspot_key']);
+
+      if ((targetCode.isNotEmpty && code == targetCode) ||
+          hotspot == targetRegion ||
+          slug == targetRegion ||
+          name == targetLabel) {
+        return section['id']?.toString();
+      }
     }
 
-    final rows = [
-      for (final entry in byId.entries) {'id': entry.key, 'name': entry.value},
-    ];
+    return null;
+  }
 
-    rows.sort(
-      (a, b) => (a['name'] ?? '').toLowerCase().compareTo(
-        (b['name'] ?? '').toLowerCase(),
-      ),
-    );
+  List<Map<String, String>> get _availableSpecifications {
+    final sectionId = _selectedCatalogueSectionId;
+    final byId = <String, String>{};
+
+    if (sectionId != null) {
+      for (final specification in _catalogueSpecifications) {
+        if (specification['section_id']?.toString() != sectionId) continue;
+        final id = specification['id']?.toString();
+        final name = specification['name']?.toString().trim();
+        if (id == null || id.isEmpty || name == null || name.isEmpty) continue;
+        byId[id] = name;
+      }
+    }
+
+    // Fallback keeps older stock visible if a legacy catalogue row is missing.
+    if (byId.isEmpty) {
+      for (final product in _animalRegionProducts) {
+        final id = _specificationId(product);
+        if (id.isEmpty) continue;
+        byId[id] = _specificationName(product);
+      }
+    }
+
+    final rows =
+        [
+          for (final entry in byId.entries)
+            {'id': entry.key, 'name': entry.value},
+        ]..sort(
+          (a, b) => (a['name'] ?? '').toLowerCase().compareTo(
+            (b['name'] ?? '').toLowerCase(),
+          ),
+        );
 
     return rows;
   }
@@ -617,6 +762,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final byId = <String, Map<String, String>>{};
 
     for (final product in _animalRegionProducts) {
+      if (_selectedSpecificationId != null &&
+          _specificationId(product) != _selectedSpecificationId) {
+        continue;
+      }
+
       final gradeId = product['meat_grade_id']?.toString();
       if (gradeId == null || gradeId.isEmpty) continue;
 
@@ -633,328 +783,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return rows;
   }
 
-  bool get _isChickenSelection => _selectedAnimalCode == CutLinkAnimals.chicken;
-
-  List<String> _availableChickenAttributeValues(String field) {
-    final values = <String>{};
-
-    for (final product in _animalRegionProducts) {
-      if (_selectedSpecificationId != null &&
-          _specificationId(product) != _selectedSpecificationId) {
-        continue;
-      }
-
-      final raw = product[field]?.toString().trim();
-      if (raw != null && raw.isNotEmpty) {
-        values.add(raw);
-      }
-    }
-
-    final rows = values.toList()
-      ..sort(
-        (a, b) => _prettyChickenValue(
-          a,
-        ).toLowerCase().compareTo(_prettyChickenValue(b).toLowerCase()),
-      );
-
-    return rows;
-  }
-
-  bool _matchesChickenAttributeFilters(Map<String, dynamic> product) {
-    if (!_isChickenSelection || _chickenAttributeFilters.isEmpty) {
-      return true;
-    }
-
-    for (final entry in _chickenAttributeFilters.entries) {
-      if (product[entry.key]?.toString() != entry.value) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  Widget _buildChickenAttributeStrip() {
-    const fields = <MapEntry<String, String>>[
-      MapEntry('chicken_production_type', 'Production Type'),
-      MapEntry('chicken_skin', 'Skin'),
-      MapEntry('chicken_bone', 'Bone'),
-      MapEntry('chicken_preparation', 'Preparation'),
-      MapEntry('temperature_state', 'Product State'),
-      MapEntry('halal_status', 'Halal'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final field in fields)
-          if (_availableChickenAttributeValues(field.key).isNotEmpty) ...[
-            Text(
-              field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: const Text('Any'),
-                      selected: !_chickenAttributeFilters.containsKey(
-                        field.key,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          _chickenAttributeFilters.remove(field.key);
-                        });
-                      },
-                    ),
-                  ),
-                  for (final value in _availableChickenAttributeValues(
-                    field.key,
-                  ))
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(_prettyChickenValue(value)),
-                        selected: _chickenAttributeFilters[field.key] == value,
-                        onSelected: (_) {
-                          setState(() {
-                            _chickenAttributeFilters[field.key] = value;
-                          });
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 7),
-          ],
-      ],
-    );
-  }
-
-  bool get _isGoatSelection => _selectedAnimalCode == CutLinkAnimals.goat;
-
-  String _prettyGoatValue(dynamic raw) {
-    final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty) return '';
-
-    return value
-        .split('_')
-        .where((part) => part.isNotEmpty)
-        .map(
-          (part) => part.length == 1
-              ? part.toUpperCase()
-              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
-        )
-        .join(' ');
-  }
-
-  List<String> _availableGoatAttributeValues(String field) {
-    final values = <String>{};
-
-    for (final product in _animalRegionProducts) {
-      if (_selectedSpecificationId != null &&
-          product['meat_specification_id']?.toString() !=
-              _selectedSpecificationId) {
-        continue;
-      }
-
-      final raw = product[field]?.toString().trim();
-      if (raw != null && raw.isNotEmpty) {
-        values.add(raw);
-      }
-    }
-
-    final rows = values.toList()
-      ..sort(
-        (a, b) => _prettyGoatValue(
-          a,
-        ).toLowerCase().compareTo(_prettyGoatValue(b).toLowerCase()),
-      );
-
-    return rows;
-  }
-
-  bool _matchesGoatAttributeFilters(Map<String, dynamic> product) {
-    if (!_isGoatSelection || _goatAttributeFilters.isEmpty) {
-      return true;
-    }
-
-    for (final entry in _goatAttributeFilters.entries) {
-      if (product[entry.key]?.toString() != entry.value) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  Widget _buildGoatAttributeStrip() {
-    const fields = <MapEntry<String, String>>[
-      MapEntry('bone_state', 'Bone'),
-      MapEntry('temperature_state', 'Product State'),
-      MapEntry('halal_status', 'Halal'),
-      MapEntry('packaging_type', 'Packaging'),
-      MapEntry('brand', 'Brand'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final field in fields)
-          if (_availableGoatAttributeValues(field.key).isNotEmpty) ...[
-            Text(
-              field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: const Text('Any'),
-                      selected: !_goatAttributeFilters.containsKey(field.key),
-                      onSelected: (_) {
-                        setState(() {
-                          _goatAttributeFilters.remove(field.key);
-                        });
-                      },
-                    ),
-                  ),
-                  for (final value in _availableGoatAttributeValues(field.key))
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(_prettyGoatValue(value)),
-                        selected: _goatAttributeFilters[field.key] == value,
-                        onSelected: (_) {
-                          setState(() {
-                            _goatAttributeFilters[field.key] = value;
-                          });
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 7),
-          ],
-      ],
-    );
-  }
-
-  List<Map<String, dynamic>> get _filteredProducts {
-    final search = _searchController.text.trim().toLowerCase();
-
-    final results = _animalRegionProducts.where((product) {
-      if ((AnimalCatalogueRegistry.forCode(
-                _selectedAnimalCode,
-              )?.usesGradeStage ??
-              true) &&
-          _selectedGradeId != null &&
-          product['meat_grade_id']?.toString() != _selectedGradeId) {
-        return false;
-      }
-
-      if (_selectedSpecificationId != null &&
-          _specificationId(product) != _selectedSpecificationId) {
-        return false;
-      }
-
-      if (!_matchesGoatAttributeFilters(product)) {
-        return false;
-      }
-
-      if (!_matchesChickenAttributeFilters(product)) {
-        return false;
-      }
-
-      if (search.isEmpty) {
-        return true;
-      }
-
-      final name = product['product_name']?.toString().toLowerCase() ?? '';
-      final sku = product['sku']?.toString().toLowerCase() ?? '';
-      final specification = _specificationName(product).toLowerCase();
-      final gradeCode = _gradeCode(product).toLowerCase();
-      final gradeName = _gradeName(product).toLowerCase();
-      final chickenVariation = _isChickenProduct(product)
-          ? _chickenVariationLabel(product).toLowerCase()
-          : '';
-      final brand = product['brand']?.toString().toLowerCase() ?? '';
-
-      return name.contains(search) ||
-          sku.contains(search) ||
-          specification.contains(search) ||
-          brand.contains(search) ||
-          chickenVariation.contains(search) ||
-          ((AnimalCatalogueRegistry.forCode(
-                    _selectedAnimalCode,
-                  )?.usesGradeStage ??
-                  true) &&
-              (gradeCode.contains(search) || gradeName.contains(search)));
-    }).toList();
-
-    results.sort((a, b) {
-      final specificationCompare = _specificationName(
-        a,
-      ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
-      if (specificationCompare != 0) return specificationCompare;
-      final usesGradeStage =
-          AnimalCatalogueRegistry.forCode(
-            _selectedAnimalCode,
-          )?.usesGradeStage ??
-          true;
-
-      if (!usesGradeStage) {
-        if (_isChickenSelection) {
-          return _chickenVariationLabel(
-            a,
-          ).toLowerCase().compareTo(_chickenVariationLabel(b).toLowerCase());
-        }
-
-        return (a['product_name']?.toString() ?? '').toLowerCase().compareTo(
-          (b['product_name']?.toString() ?? '').toLowerCase(),
-        );
-      }
-
-      return _gradeCode(a).compareTo(_gradeCode(b));
-    });
-
-    return results;
-  }
-
-  String _selectedCutLabel(String cutKey) {
-    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
-    return catalogue?.regionLabel(cutKey) ?? cutKey;
-  }
-
-  String get _selectedAnimalName {
-    return CutLinkAnimals.all
-        .firstWhere(
-          (animal) => animal.code == _selectedAnimalCode,
-          orElse: () => CutLinkAnimals.all.first,
-        )
-        .name;
-  }
-
   void _selectAnimal(String animalCode) {
     if (animalCode == _selectedAnimalCode) {
       return;
@@ -967,6 +795,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       _selectedAnimalRegionKey = catalogue?.defaultRegionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
       _searchController.clear();
     });
   }
@@ -975,6 +804,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     setState(() {
       _selectedAnimalRegionKey = regionKey;
       _selectedSpecificationId = null;
+      _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
+      _searchController.clear();
     });
   }
 
@@ -986,6 +818,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     setState(() {
       _selectedAnimalRegionKey = null;
       _selectedSpecificationId = null;
+      _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
+      _searchController.clear();
     });
   }
 
@@ -2935,234 +2770,337 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
-  Future<void> _scrollSpecifications(double direction) async {
-    if (!_specificationScrollController.hasClients) return;
-
-    final position = _specificationScrollController.position;
-    final target = (position.pixels + (direction * 280)).clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
-
-    await _specificationScrollController.animateTo(
-      target.toDouble(),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
-  }
-
-  Future<void> _openGradeDropdown(BuildContext buttonContext) async {
-    final selected = await showCutLinkPickerDialog<String>(
-      context: buttonContext,
-      title: 'Grade',
-      currentValue: _selectedGradeId,
-      searchHint: 'Search grade code or name',
-      options: [
-        const CutLinkPickerOption<String>(
-          value: '__all__',
-          label: 'All Grades',
-          subtitle: 'Show every grade',
-          icon: Icons.layers_outlined,
-        ),
-        ..._availableGrades.map(
-          (grade) => CutLinkPickerOption<String>(
-            value: grade['id']?.toString() ?? '',
-            label: grade['code']?.toString() ?? 'N/A',
-            subtitle: grade['name']?.toString(),
-            icon: Icons.workspace_premium_outlined,
-          ),
-        ),
-      ],
-    );
-
-    if (selected == null || !mounted) return;
-
-    setState(() {
-      _selectedGradeId = selected == '__all__' ? null : selected;
-    });
-  }
-
-  String get _selectedGradeLabel {
-    final selectedId = _selectedGradeId;
-    if (selectedId == null) return 'All Grades';
-
-    for (final grade in _availableGrades) {
-      if (grade['id']?.toString() == selectedId) {
-        final code = grade['code']?.toString().trim() ?? '';
-        final name = grade['name']?.toString().trim() ?? '';
-        if (code.isNotEmpty && name.isNotEmpty) return '$code • $name';
-        if (code.isNotEmpty) return code;
-        if (name.isNotEmpty) return name;
-      }
+  String _prettySpecificationValue(dynamic raw) {
+    final value = raw?.toString().trim() ?? '';
+    if (value.isEmpty ||
+        value == 'not_applicable' ||
+        value == 'not_specified') {
+      return '';
     }
 
-    return 'Selected Grade';
+    return value
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) => part.length == 1
+              ? part.toUpperCase()
+              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 
-  Widget _buildGradeFilterStrip() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Builder(
-        builder: (buttonContext) {
-          return InkWell(
-            onTap: () => _openGradeDropdown(buttonContext),
-            borderRadius: BorderRadius.circular(9),
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 145, maxWidth: 250),
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: _selectedGradeId == null
-                      ? const Color(0xFFD7D7D3)
-                      : _darkRed,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.tune, size: 16, color: _darkRed),
-                  const SizedBox(width: 7),
-                  Flexible(
-                    child: Text(
-                      _selectedGradeId == null
-                          ? 'All Grades'
-                          : _selectedGradeLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  const Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 18,
-                    color: Color(0xFF555555),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+  String _commercialSpecificationLabel(Map<String, dynamic> product) {
+    if (_productAnimalCode(product) == CutLinkAnimals.chicken) {
+      return _chickenVariationLabel(product);
+    }
+
+    final values = <String>[
+      _prettySpecificationValue(product['bone_state']),
+      _prettySpecificationValue(product['temperature_state']),
+      _prettySpecificationValue(product['halal_status']),
+      _prettySpecificationValue(product['packaging_type']),
+      _prettySpecificationValue(product['brand']),
+      _prettySpecificationValue(product['supplier_specification']),
+    ].where((value) => value.isNotEmpty).toList();
+
+    final pieceMin = product['piece_weight_min']?.toString().trim() ?? '';
+    final pieceMax = product['piece_weight_max']?.toString().trim() ?? '';
+    final pieceUnit = product['piece_weight_unit']?.toString().trim() ?? '';
+    if (pieceMin.isNotEmpty || pieceMax.isNotEmpty) {
+      final range = pieceMin.isNotEmpty && pieceMax.isNotEmpty
+          ? '$pieceMin–$pieceMax'
+          : (pieceMin.isNotEmpty ? pieceMin : pieceMax);
+      values.add('$range ${pieceUnit.isEmpty ? 'kg' : pieceUnit}'.trim());
+    }
+
+    final carton = product['carton_weight']?.toString().trim() ?? '';
+    if (carton.isNotEmpty) {
+      final unit =
+          product['carton_weight_unit']?.toString().trim().isNotEmpty == true
+          ? product['carton_weight_unit'].toString().trim()
+          : 'kg';
+      values.add('$carton $unit carton');
+    }
+
+    final pieces = product['pieces_per_carton']?.toString().trim() ?? '';
+    if (pieces.isNotEmpty) {
+      values.add('$pieces pcs/carton');
+    }
+
+    return values.isEmpty ? 'Standard specification' : values.join(' • ');
+  }
+
+  String _commercialSpecificationKey(Map<String, dynamic> product) {
+    return _commercialSpecificationLabel(product).trim().toLowerCase();
+  }
+
+  List<Map<String, String>> get _availableCommercialSpecifications {
+    if (_selectedSpecificationId == null) return const [];
+
+    final byKey = <String, String>{};
+    for (final product in _animalRegionProducts) {
+      if (_specificationId(product) != _selectedSpecificationId) continue;
+      final key = _commercialSpecificationKey(product);
+      if (key.isEmpty) continue;
+      byKey[key] = _commercialSpecificationLabel(product);
+    }
+
+    final rows =
+        [
+          for (final entry in byKey.entries)
+            {'key': entry.key, 'label': entry.value},
+        ]..sort(
+          (a, b) => (a['label'] ?? '').toLowerCase().compareTo(
+            (b['label'] ?? '').toLowerCase(),
+          ),
+        );
+
+    return rows;
+  }
+
+  bool _matchesCommercialSpecification(Map<String, dynamic> product) {
+    if ((AnimalCatalogueRegistry.forCode(_selectedAnimalCode)?.usesGradeStage ??
+            true) ||
+        _selectedCommercialSpecificationKey == null) {
+      return true;
+    }
+
+    return _commercialSpecificationKey(product) ==
+        _selectedCommercialSpecificationKey;
+  }
+
+  Widget _thinChoice({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        selected: selected,
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        selectedColor: _darkRed,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: selected ? _darkRed : const Color(0xFFD9D9D5)),
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : const Color(0xFF444444),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+        ),
+        label: Text(label),
+        onSelected: (_) => onTap(),
       ),
     );
   }
 
-  Widget _buildSpecificationStrip() {
-    final specifications = _availableSpecifications;
-
-    if (specifications.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => _scrollSpecifications(-1),
-          tooltip: 'Previous cuts',
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.chevron_left),
-        ),
-        Expanded(
-          child: SizedBox(
-            height: 38,
-            child: ListView(
-              controller: _specificationScrollController,
-              scrollDirection: Axis.horizontal,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    selected: _selectedSpecificationId == null,
-                    showCheckmark: false,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 0,
-                    ),
-                    side: BorderSide(
-                      color: _selectedSpecificationId == null
-                          ? _darkRed
-                          : const Color(0xFFD9D9D5),
-                    ),
-                    selectedColor: _darkRed,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: _selectedSpecificationId == null
-                          ? Colors.white
-                          : const Color(0xFF3E3E3E),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    label: const Text('All'),
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedSpecificationId = null;
-                        _chickenAttributeFilters.clear();
-                        _goatAttributeFilters.clear();
-                      });
-                    },
-                  ),
-                ),
-                for (final specification in specifications)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      selected: _selectedSpecificationId == specification['id'],
-                      showCheckmark: false,
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 0,
-                      ),
-                      side: BorderSide(
-                        color: _selectedSpecificationId == specification['id']
-                            ? _darkRed
-                            : const Color(0xFFD9D9D5),
-                      ),
-                      selectedColor: _darkRed,
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: _selectedSpecificationId == specification['id']
-                            ? Colors.white
-                            : const Color(0xFF3E3E3E),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      label: Text(specification['name'] ?? 'Cut'),
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedSpecificationId = specification['id'];
-                        });
-                      },
-                    ),
-                  ),
-              ],
+  Widget _stripArrow({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
             ),
+            child: Icon(icon, size: 19, color: _darkRed),
           ),
         ),
-        IconButton(
-          onPressed: () => _scrollSpecifications(1),
-          tooltip: 'Next cuts',
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+
+  Widget _arrowScrollStrip({
+    required ScrollController controller,
+    required double height,
+    required List<Widget> children,
+  }) {
+    Future<void> move(double direction) async {
+      if (!controller.hasClients) return;
+      final position = controller.position;
+      final target = (controller.offset + (direction * 240))
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      await controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          _stripArrow(
+            icon: Icons.chevron_left,
+            tooltip: 'Scroll left',
+            onTap: () => move(-1),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: ListView(
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: children,
+            ),
+          ),
+          const SizedBox(width: 5),
+          _stripArrow(
+            icon: Icons.chevron_right,
+            tooltip: 'Scroll right',
+            onTap: () => move(1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimalCutStrip() {
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    if (catalogue == null) return const SizedBox.shrink();
+
+    final regions = catalogue.regionKeys.toList();
+    return _arrowScrollStrip(
+      controller: _cutScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All cuts',
+          selected: _selectedAnimalRegionKey == null,
+          onTap: _clearAnimalRegion,
         ),
+        for (final region in regions)
+          _thinChoice(
+            label: catalogue.regionLabel(region),
+            selected: _selectedAnimalRegionKey == region,
+            onTap: () => _selectAnimalRegion(region),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAnimalSubcutStrip() {
+    final specifications = _availableSpecifications;
+    if (specifications.isEmpty) return const SizedBox.shrink();
+
+    return _arrowScrollStrip(
+      controller: _subcategoryScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All sub-cuts',
+          selected: _selectedSpecificationId == null,
+          onTap: () {
+            setState(() {
+              _selectedSpecificationId = null;
+              _selectedGradeId = null;
+              _selectedCommercialSpecificationKey = null;
+              _searchController.clear();
+            });
+          },
+        ),
+        for (final specification in specifications)
+          _thinChoice(
+            label: specification['name'] ?? 'Sub-cut',
+            selected: _selectedSpecificationId == specification['id'],
+            onTap: () {
+              setState(() {
+                _selectedSpecificationId = specification['id'];
+                _selectedGradeId = null;
+                _selectedCommercialSpecificationKey = null;
+                _searchController.clear();
+              });
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFinalSpecificationStrip() {
+    final usesGradeStage =
+        AnimalCatalogueRegistry.forCode(_selectedAnimalCode)?.usesGradeStage ??
+        true;
+
+    if (usesGradeStage) {
+      final grades = _availableGrades;
+      if (grades.isEmpty) return const SizedBox.shrink();
+
+      return _arrowScrollStrip(
+        controller: _finalSpecificationScrollController,
+        height: 45,
+        children: [
+          _thinChoice(
+            label: 'All grades',
+            selected: _selectedGradeId == null,
+            onTap: () {
+              setState(() {
+                _selectedGradeId = null;
+                _searchController.clear();
+              });
+            },
+          ),
+          for (final grade in grades)
+            _thinChoice(
+              label: (grade['code'] ?? grade['name'] ?? 'Grade').toString(),
+              selected: _selectedGradeId == grade['id'],
+              onTap: () {
+                setState(() {
+                  _selectedGradeId = grade['id'];
+                  _searchController.clear();
+                });
+              },
+            ),
+        ],
+      );
+    }
+
+    final specifications = _availableCommercialSpecifications;
+    if (specifications.isEmpty) return const SizedBox.shrink();
+
+    return _arrowScrollStrip(
+      controller: _finalSpecificationScrollController,
+      height: 38,
+      children: [
+        _thinChoice(
+          label: 'All specifications',
+          selected: _selectedCommercialSpecificationKey == null,
+          onTap: () {
+            setState(() {
+              _selectedCommercialSpecificationKey = null;
+              _searchController.clear();
+            });
+          },
+        ),
+        for (final specification in specifications)
+          _thinChoice(
+            label: specification['label'] ?? 'Specification',
+            selected:
+                _selectedCommercialSpecificationKey == specification['key'],
+            onTap: () {
+              setState(() {
+                _selectedCommercialSpecificationKey = specification['key'];
+                _searchController.clear();
+              });
+            },
+          ),
       ],
     );
   }
@@ -3481,9 +3419,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         ),
       );
     }
-
-    final filtered = _filteredProducts;
-
     return RefreshIndicator(
       onRefresh: _loadStock,
       child: ListView(
@@ -3625,72 +3560,301 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final narrow = constraints.maxWidth < 940;
+                      final usesGradeStage =
+                          AnimalCatalogueRegistry.forCode(
+                            _selectedAnimalCode,
+                          )?.usesGradeStage ??
+                          true;
+                      final cutSelected = _selectedAnimalRegionKey != null;
+                      final subcutSelected = _selectedSpecificationId != null;
+                      final finalSpecificationSelected = usesGradeStage
+                          ? _selectedGradeId != null
+                          : _selectedCommercialSpecificationKey != null;
 
-                      final cowPanel = Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
+                      Widget rightChoiceCard({
+                        required IconData icon,
+                        required String title,
+                        String? subtitle,
+                        required VoidCallback onTap,
+                      }) {
+                        return Material(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE3E5E8)),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x07000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Browse Stock by Animal',
-                              style: TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.w900,
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: onTap,
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 13,
+                                vertical: 11,
                               ),
-                            ),
-                            const SizedBox(height: 5),
-                            const Text(
-                              'Choose an animal, then select its cut region to narrow '
-                              'the stock shown to the salesperson.',
-                              style: TextStyle(color: Color(0xFF666666)),
-                            ),
-                            const SizedBox(height: 14),
-                            InteractiveAnimalBrowser(
-                              selectedAnimalCode: _selectedAnimalCode,
-                              selectedRegionKey: _selectedAnimalRegionKey,
-                              onAnimalChanged: _selectAnimal,
-                              onRegionSelected: _selectAnimalRegion,
-                              maxWidth: 700,
-                            ),
-                            if (_selectedAnimalRegionKey != null) ...[
-                              const SizedBox(height: 12),
-                              Row(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0xFFE3E5E8),
+                                ),
+                              ),
+                              child: Row(
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Selected: ${_selectedCutLabel(_selectedAnimalRegionKey!)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: _darkRed,
-                                      ),
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5EAEA),
+                                      borderRadius: BorderRadius.circular(9),
+                                    ),
+                                    child: Icon(
+                                      icon,
+                                      size: 18,
+                                      color: _darkRed,
                                     ),
                                   ),
-                                  TextButton.icon(
-                                    onPressed: _clearAnimalRegion,
-                                    icon: const Icon(Icons.close),
-                                    label: const Text('Show All'),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          title,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        if (subtitle != null &&
+                                            subtitle.trim().isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            subtitle,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Color(0xFF777777),
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    size: 19,
+                                    color: _darkRed,
                                   ),
                                 ],
                               ),
-                            ],
-                          ],
-                        ),
-                      );
+                            ),
+                          ),
+                        );
+                      }
 
-                      final inventoryPanel = Container(
-                        padding: const EdgeInsets.all(18),
+                      Widget subcutStage() {
+                        final query = _searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final specifications = _availableSpecifications
+                            .where(
+                              (row) => (row['name'] ?? '')
+                                  .toLowerCase()
+                                  .contains(query),
+                            )
+                            .toList();
+
+                        if (specifications.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(26),
+                              child: Text(
+                                'No sub-cuts match this main cut.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: specifications.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 7),
+                          itemBuilder: (_, index) {
+                            final specification = specifications[index];
+                            final name = specification['name'] ?? 'Sub-cut';
+
+                            return rightChoiceCard(
+                              icon: Icons.category_outlined,
+                              title: name,
+                              subtitle: usesGradeStage
+                                  ? 'Choose this sub-cut to view its AUS-MEAT Category.'
+                                  : 'Choose this sub-cut to view its specifications.',
+                              onTap: () {
+                                setState(() {
+                                  _selectedSpecificationId =
+                                      specification['id'];
+                                  _selectedGradeId = null;
+                                  _selectedCommercialSpecificationKey = null;
+                                  _searchController.clear();
+                                });
+                              },
+                            );
+                          },
+                        );
+                      }
+
+                      Widget gradeStage() {
+                        final query = _searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final grades = _availableGrades.where((grade) {
+                          final code =
+                              grade['code']?.toString().toLowerCase() ?? '';
+                          final name =
+                              grade['name']?.toString().toLowerCase() ?? '';
+                          return code.contains(query) || name.contains(query);
+                        }).toList();
+
+                        if (grades.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(26),
+                              child: Text(
+                                'No AUS-MEAT categories match this sub-cut.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: grades.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 7),
+                          itemBuilder: (_, index) {
+                            final grade = grades[index];
+                            final code = grade['code']?.toString() ?? 'Grade';
+                            final name = grade['name']?.toString() ?? '';
+
+                            return rightChoiceCard(
+                              icon: Icons.workspace_premium_outlined,
+                              title: code,
+                              subtitle: name,
+                              onTap: () {
+                                setState(() {
+                                  _selectedGradeId = grade['id']?.toString();
+                                  _searchController.clear();
+                                });
+                              },
+                            );
+                          },
+                        );
+                      }
+
+                      Widget commercialSpecificationStage() {
+                        final query = _searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final specifications =
+                            _availableCommercialSpecifications
+                                .where(
+                                  (row) => (row['label'] ?? '')
+                                      .toLowerCase()
+                                      .contains(query),
+                                )
+                                .toList();
+
+                        if (specifications.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(26),
+                              child: Text(
+                                'No product specifications are available for this sub-cut.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: specifications.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 7),
+                          itemBuilder: (_, index) {
+                            final specification = specifications[index];
+                            return rightChoiceCard(
+                              icon: Icons.tune_outlined,
+                              title:
+                                  specification['label'] ??
+                                  'Product specification',
+                              subtitle:
+                                  'Choose this specification to view matching stock and pricing.',
+                              onTap: () {
+                                setState(() {
+                                  _selectedCommercialSpecificationKey =
+                                      specification['key'];
+                                  _searchController.clear();
+                                });
+                              },
+                            );
+                          },
+                        );
+                      }
+
+                      Widget stockStage() {
+                        if (_filteredProducts.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(28),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.search_off_outlined,
+                                    size: 44,
+                                    color: Color(0xFFAAAAAA),
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'No matching stock',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'No stock is linked to this exact selection.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Color(0xFF777777)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: _filteredProducts.length,
+                          itemBuilder: (context, index) =>
+                              _buildProductCard(_filteredProducts[index]),
+                        );
+                      }
+
+                      final cowPanel = Container(
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -3707,128 +3871,209 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const Text(
-                              'Search Inventory',
+                              'Browse by Animal',
                               style: TextStyle(
                                 fontSize: 21,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 5),
+                            const SizedBox(height: 4),
                             Text(
-                              !(AnimalCatalogueRegistry.forCode(
-                                        _selectedAnimalCode,
-                                      )?.usesGradeStage ??
-                                      true)
-                                  ? 'Find the Chicken cut, variation or SKU the customer is asking for.'
-                                  : 'Find the cut, grade or SKU the customer is asking for.',
-                              style: TextStyle(color: Color(0xFF666666)),
-                            ),
-                            const SizedBox(height: 14),
-                            TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText:
-                                    _selectedAnimalCode ==
-                                        CutLinkAnimals.chicken
-                                    ? 'Search cut, skin, bone, state, brand or SKU'
-                                    : 'Search cut, grade or SKU',
-                                prefixIcon: const Icon(Icons.search),
-                                suffixIcon: _searchController.text.isEmpty
-                                    ? null
-                                    : IconButton(
-                                        onPressed: _searchController.clear,
-                                        icon: const Icon(Icons.close),
-                                      ),
-                                filled: true,
-                                fillColor: const Color(0xFFF8F8F6),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                              usesGradeStage
+                                  ? 'Choose the animal, main cut, sub-cut and AUS-MEAT Category.'
+                                  : 'Choose the animal, main cut, sub-cut and product specification.',
+                              style: const TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 10.5,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            if (_selectedAnimalCode !=
-                                CutLinkAnimals.chicken) ...[
-                              _buildGradeFilterStrip(),
-                              const SizedBox(height: 10),
-                            ],
-                            _buildSpecificationStrip(),
-                            if (_isChickenSelection) ...[
-                              const SizedBox(height: 10),
-                              _buildChickenAttributeStrip(),
-                            ],
-                            if (_isGoatSelection) ...[
-                              const SizedBox(height: 10),
-                              _buildGoatAttributeStrip(),
-                            ],
-                            const SizedBox(height: 12),
-                            if (_selectedAnimalRegionKey != null)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 14),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF4E5E5),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.filter_alt_outlined,
-                                      size: 18,
-                                      color: _darkRed,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Showing ${_selectedCutLabel(_selectedAnimalRegionKey!)}',
-                                        style: const TextStyle(
-                                          color: _darkRed,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                            const SizedBox(height: 8),
+                            InteractiveAnimalBrowser(
+                              selectedAnimalCode: _selectedAnimalCode,
+                              selectedRegionKey: _selectedAnimalRegionKey,
+                              onAnimalChanged: _selectAnimal,
+                              onRegionSelected: _selectAnimalRegion,
+                              maxWidth: 700,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'CUT',
+                              style: TextStyle(
+                                color: Color(0xFF777777),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _buildAnimalCutStrip(),
+                            if (cutSelected) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                'SUB-CUT',
+                                style: TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: narrow ? 240 : 430,
-                                maxHeight: narrow ? 500 : 560,
+                              const SizedBox(height: 4),
+                              _buildAnimalSubcutStrip(),
+                            ],
+                            if (subcutSelected) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                usesGradeStage
+                                    ? 'AUS-MEAT CATEGORY'
+                                    : 'SPECIFICATION',
+                                style: const TextStyle(
+                                  color: Color(0xFF777777),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                              child: filtered.isEmpty
-                                  ? Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 40,
-                                        ),
-                                        child: Text(
-                                          _selectedAnimalRegionKey == null
-                                              ? 'No $_selectedAnimalName stock matches your search.'
-                                              : 'No stock is currently listed in this region.',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF666666),
+                              const SizedBox(height: 4),
+                              _buildFinalSpecificationStrip(),
+                            ],
+                          ],
+                        ),
+                      );
+
+                      final panelTitle = !cutSelected
+                          ? 'Choose a Main Cut'
+                          : !subcutSelected
+                          ? 'Choose Sub-cut'
+                          : !finalSpecificationSelected
+                          ? (usesGradeStage
+                                ? 'Choose AUS-MEAT Category'
+                                : 'Choose Specification')
+                          : 'Matching Stock';
+
+                      final panelSubtitle = !cutSelected
+                          ? 'Select a cut directly from the animal diagram.'
+                          : !subcutSelected
+                          ? 'Choose the exact sub-cut for ${_selectedCutLabel(_selectedAnimalRegionKey!)}.'
+                          : !finalSpecificationSelected
+                          ? (usesGradeStage
+                                ? 'Choose the commercial AUS-MEAT Category.'
+                                : 'Choose the product specification for this sub-cut.')
+                          : 'Choose the matching product and pricing for the sale.';
+
+                      final inventoryPanel = Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x07000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                14,
+                                16,
+                                10,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    panelTitle,
+                                    style: const TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    panelSubtitle,
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: !cutSelected
+                                      ? 'Search cuts or stock...'
+                                      : !subcutSelected
+                                      ? 'Search sub-cuts...'
+                                      : !finalSpecificationSelected
+                                      ? (usesGradeStage
+                                            ? 'Search AUS-MEAT categories...'
+                                            : 'Search specifications...')
+                                      : 'Search matching stock...',
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    size: 20,
+                                  ),
+                                  suffixIcon: _searchController.text.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          onPressed: _searchController.clear,
+                                          icon: const Icon(
+                                            Icons.close,
+                                            size: 18,
                                           ),
+                                        ),
+                                  isDense: true,
+                                  filled: true,
+                                  fillColor: const Color(0xFFFBFBF9),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(9),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDADAD6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            SizedBox(
+                              height: narrow ? 460 : 560,
+                              child: !cutSelected
+                                  ? const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(28),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.touch_app_outlined,
+                                              size: 48,
+                                              color: Color(0xFFAAAAAA),
+                                            ),
+                                            SizedBox(height: 12),
+                                            Text(
+                                              'Click a main cut on the animal',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     )
-                                  : Scrollbar(
-                                      thumbVisibility: true,
-                                      child: ListView.builder(
-                                        primary: false,
-                                        padding: EdgeInsets.zero,
-                                        itemCount: filtered.length,
-                                        itemBuilder: (context, index) {
-                                          return _buildProductCard(
-                                            filtered[index],
-                                          );
-                                        },
-                                      ),
-                                    ),
+                                  : !subcutSelected
+                                  ? subcutStage()
+                                  : !finalSpecificationSelected
+                                  ? (usesGradeStage
+                                        ? gradeStage()
+                                        : commercialSpecificationStage())
+                                  : stockStage(),
                             ),
                           ],
                         ),

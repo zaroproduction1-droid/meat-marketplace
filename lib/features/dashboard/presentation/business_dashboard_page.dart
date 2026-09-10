@@ -82,11 +82,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         throw Exception('No signed-in user was found.');
       }
 
-      final profile = await client
+      final profileRows = await client
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
-          .single();
+          .limit(1);
+
+      final isAdmin = profileRows.isNotEmpty &&
+          (profileRows.first['is_admin'] as bool? ?? false);
 
       final memberships = await client
           .from('business_memberships')
@@ -356,7 +359,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       setState(() {
         _businessName = businessName;
         _businessType = businessType;
-        _isAdmin = profile['is_admin'] as bool? ?? false;
+        _isAdmin = isAdmin;
         _newSupplierOrderCount = newSupplierOrderCount;
         _butcherOrders = butcherOrders;
         _butcherAccounts = butcherAccounts;
@@ -935,42 +938,30 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                                 _supplierInventoryMetric(
                                                   Icons.today_outlined,
                                                   "Today's Runs",
-                                                  _supplierTodayDeliveryRuns
-                                                      .toString(),
+                                                  _supplierTodayDeliveryRuns.toString(),
                                                 ),
                                                 _supplierInventoryMetric(
                                                   Icons.route_outlined,
                                                   'Active Runs',
-                                                  _supplierActiveDeliveryRuns
-                                                      .toString(),
+                                                  _supplierActiveDeliveryRuns.toString(),
                                                 ),
                                                 _supplierInventoryMetric(
                                                   Icons.local_shipping_outlined,
                                                   'Out for Delivery',
-                                                  _supplierOutForDeliveryStops
-                                                      .toString(),
-                                                  warning:
-                                                      _supplierOutForDeliveryStops >
-                                                      0,
+                                                  _supplierOutForDeliveryStops.toString(),
+                                                  warning: _supplierOutForDeliveryStops > 0,
                                                 ),
                                               ];
 
                                               if (constraints.maxWidth >= 760) {
                                                 return Row(
                                                   children: [
-                                                    for (
-                                                      var i = 0;
-                                                      i < metrics.length;
-                                                      i++
-                                                    ) ...[
-                                                      Expanded(
-                                                        child: metrics[i],
-                                                      ),
-                                                      if (i !=
-                                                          metrics.length - 1)
-                                                        const SizedBox(
-                                                          width: 12,
-                                                        ),
+                                                    for (var i = 0;
+                                                        i < metrics.length;
+                                                        i++) ...[
+                                                      Expanded(child: metrics[i]),
+                                                      if (i != metrics.length - 1)
+                                                        const SizedBox(width: 12),
                                                     ],
                                                   ],
                                                 );
@@ -978,16 +969,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
                                               return Column(
                                                 children: [
-                                                  for (
-                                                    var i = 0;
-                                                    i < metrics.length;
-                                                    i++
-                                                  ) ...[
+                                                  for (var i = 0;
+                                                      i < metrics.length;
+                                                      i++) ...[
                                                     metrics[i],
                                                     if (i != metrics.length - 1)
-                                                      const SizedBox(
-                                                        height: 10,
-                                                      ),
+                                                      const SizedBox(height: 10),
                                                   ],
                                                 ],
                                               );
@@ -2508,10 +2495,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   int get _supplierActiveProductCount => _supplierProducts.length;
 
+
   int get _supplierActiveDeliveryRuns {
     return _supplierDeliveryRuns.where((run) {
       final status = run['status']?.toString();
-      return status == 'ready' || status == 'loaded' || status == 'in_progress';
+      return status == 'ready' ||
+          status == 'loaded' ||
+          status == 'in_progress';
     }).length;
   }
 
