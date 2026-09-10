@@ -37,6 +37,7 @@ class BeefCatalogue extends AnimalCatalogue {
     'plate': 'Plate',
     'skirt': 'Skirt',
     'shin-shank': 'Shin / Shank',
+    'cheek': 'Cheek',
     'ox-tail': 'Ox Tail',
     'misc-offal-other': 'Miscellaneous / Offal',
   };
@@ -57,7 +58,8 @@ class BeefCatalogue extends AnimalCatalogue {
     'plate': 'PLATE',
     'skirt': 'SKIRT',
     'shin-shank': 'SHANK',
-    'ox-tail': 'MISC',
+    'cheek': 'CHEEK',
+    'ox-tail': 'TAIL',
     'misc-offal-other': 'MISC',
   };
 
@@ -78,17 +80,6 @@ class BeefCatalogue extends AnimalCatalogue {
 
     final section = _nestedMap(product['meat_sections']);
     final sectionCode = section?['code']?.toString().trim().toUpperCase();
-
-    if (regionKey == 'ox-tail') {
-      final spec = _nestedMap(product['meat_specifications']);
-      final specText = [
-        spec?['name'],
-        product['product_name'],
-      ].whereType<Object>().map((e) => e.toString().toLowerCase()).join(' ');
-
-      return sectionCode == 'MISC' &&
-          RegExp(r'\box[\s-]?tail\b|\boxtail\b|\btail\b').hasMatch(specText);
-    }
 
     return sectionCode == expectedCode;
   }

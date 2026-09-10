@@ -36,14 +36,11 @@ class _EditProductPageState extends State<EditProductPage> {
   late final TextEditingController _supplierSpecificationController;
 
   bool _isLoadingPage = true;
-  bool _isLoadingCatalogue = false;
-  bool _isLoadingVariants = false;
   bool _isSaving = false;
 
   bool _catchWeight = false;
   bool _active = true;
 
-  bool _usesCanonicalCatalogue = false;
   bool _usesSpecGradeCatalogue = false;
 
   String? get _selectedAnimalCode {
@@ -92,10 +89,6 @@ class _EditProductPageState extends State<EditProductPage> {
   List<Map<String, dynamic>> _specifications = [];
   List<Map<String, dynamic>> _grades = [];
 
-  String? _selectedSpeciesId;
-  String? _selectedMeatProductId;
-  String? _selectedProductVariantId;
-
   String _temperatureState = 'chilled';
   String _priceBasis = 'kilogram';
   String _quantityUnit = 'kilogram';
@@ -104,10 +97,6 @@ class _EditProductPageState extends State<EditProductPage> {
   String _pieceWeightUnit = 'kg';
   String _cartonWeightUnit = 'kg';
   String _halalStatus = 'not_specified';
-
-  List<Map<String, dynamic>> _species = [];
-  List<Map<String, dynamic>> _catalogueProducts = [];
-  List<Map<String, dynamic>> _productVariants = [];
 
   bool _isLoadingPricing = true;
   bool _isSavingPrice = false;
@@ -271,11 +260,6 @@ class _EditProductPageState extends State<EditProductPage> {
     _selectedSectionId = product['meat_section_id']?.toString();
     _selectedSpecificationId = product['meat_specification_id']?.toString();
     _selectedGradeId = product['meat_grade_id']?.toString();
-
-    _usesCanonicalCatalogue =
-        !_usesSpecGradeCatalogue && product['product_variant_id'] != null;
-
-    _selectedProductVariantId = product['product_variant_id']?.toString();
   }
 
   Future<void> _loadInitialData() async {
@@ -299,147 +283,15 @@ class _EditProductPageState extends State<EditProductPage> {
         return;
       }
 
-      final speciesResponse = await Supabase.instance.client
-          .from('species')
-          .select('''
-            id,
-            name,
-            slug,
-            display_order
-          ''')
-          .eq('active', true)
-          .order('display_order')
-          .order('name');
-
-      final species = List<Map<String, dynamic>>.from(speciesResponse);
-
-      if (!_usesCanonicalCatalogue || _selectedProductVariantId == null) {
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _species = species;
-          _isLoadingPage = false;
-        });
-
-        return;
-      }
-
-      final variantResponse = await Supabase.instance.client
-          .from('product_variants')
-          .select('''
-            id,
-            meat_product_id,
-            variant_name,
-            temperature_state
-          ''')
-          .eq('id', _selectedProductVariantId!)
-          .single();
-
-      final meatProductId = variantResponse['meat_product_id']?.toString();
-
-      if (meatProductId == null) {
-        throw Exception('The linked catalogue product could not be found.');
-      }
-
-      final pathResponse = await Supabase.instance.client
-          .from('meat_product_catalogue_paths')
-          .select('''
-            id,
-            species_id,
-            species_name,
-            parent_product_id,
-            name,
-            slug,
-            product_level,
-            depth,
-            catalogue_path
-          ''')
-          .eq('id', meatProductId)
-          .single();
-
-      final speciesId = pathResponse['species_id']?.toString();
-
-      if (speciesId == null) {
-        throw Exception('The catalogue species could not be identified.');
-      }
-
-      final catalogueResponse = await Supabase.instance.client
-          .from('meat_product_catalogue_paths')
-          .select('''
-            id,
-            species_id,
-            species_name,
-            parent_product_id,
-            name,
-            slug,
-            product_level,
-            depth,
-            catalogue_path
-          ''')
-          .eq('species_id', speciesId)
-          .eq('active', true)
-          .order('catalogue_path');
-
-      final variantsResponse = await Supabase.instance.client
-          .from('product_variants')
-          .select('''
-            id,
-            variant_name,
-            temperature_state,
-            bone_state,
-            trim_specification,
-            fat_specification,
-            weight_min,
-            weight_max,
-            weight_unit,
-            pack_size,
-            pack_unit,
-            grade,
-            breed,
-            halal_status,
-            country_of_origin,
-            specification_notes
-          ''')
-          .eq('meat_product_id', meatProductId)
-          .eq('active', true)
-          .order('variant_name');
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _species = species;
-        _selectedSpeciesId = speciesId;
-        _selectedMeatProductId = meatProductId;
-
-        _catalogueProducts = List<Map<String, dynamic>>.from(catalogueResponse);
-
-        _productVariants = List<Map<String, dynamic>>.from(variantsResponse);
-
-        _isLoadingPage = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoadingPage = false);
     } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingPage = false;
-      });
-
+      if (!mounted) return;
+      setState(() => _isLoadingPage = false);
       _showMessage(error.message);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingPage = false;
-      });
-
+      if (!mounted) return;
+      setState(() => _isLoadingPage = false);
       _showMessage(error.toString());
     }
   }
@@ -782,256 +634,6 @@ class _EditProductPageState extends State<EditProductPage> {
     }
   }
 
-  Future<void> _loadCatalogueProducts(String speciesId) async {
-    setState(() {
-      _selectedSpeciesId = speciesId;
-
-      _selectedMeatProductId = null;
-      _selectedProductVariantId = null;
-
-      _catalogueProducts = [];
-      _productVariants = [];
-
-      _isLoadingCatalogue = true;
-      _isLoadingVariants = false;
-    });
-
-    try {
-      final response = await Supabase.instance.client
-          .from('meat_product_catalogue_paths')
-          .select('''
-            id,
-            species_id,
-            species_name,
-            parent_product_id,
-            name,
-            slug,
-            product_level,
-            depth,
-            catalogue_path
-          ''')
-          .eq('species_id', speciesId)
-          .eq('active', true)
-          .order('catalogue_path');
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _catalogueProducts = List<Map<String, dynamic>>.from(response);
-
-        _isLoadingCatalogue = false;
-      });
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingCatalogue = false;
-      });
-
-      _showMessage(error.message);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingCatalogue = false;
-      });
-
-      _showMessage('Unable to load catalogue products: $error');
-    }
-  }
-
-  Future<void> _loadProductVariants(String meatProductId) async {
-    setState(() {
-      _selectedMeatProductId = meatProductId;
-
-      _selectedProductVariantId = null;
-      _productVariants = [];
-
-      _isLoadingVariants = true;
-    });
-
-    try {
-      final response = await Supabase.instance.client
-          .from('product_variants')
-          .select('''
-            id,
-            variant_name,
-            temperature_state,
-            bone_state,
-            trim_specification,
-            fat_specification,
-            weight_min,
-            weight_max,
-            weight_unit,
-            pack_size,
-            pack_unit,
-            grade,
-            breed,
-            halal_status,
-            country_of_origin,
-            specification_notes
-          ''')
-          .eq('meat_product_id', meatProductId)
-          .eq('active', true)
-          .order('variant_name');
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _productVariants = List<Map<String, dynamic>>.from(response);
-
-        _isLoadingVariants = false;
-      });
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingVariants = false;
-      });
-
-      _showMessage(error.message);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingVariants = false;
-      });
-
-      _showMessage('Unable to load product variants: $error');
-    }
-  }
-
-  void _selectVariant(String? variantId) {
-    if (variantId == null) {
-      return;
-    }
-
-    final variant = _productVariants.firstWhere(
-      (item) => item['id']?.toString() == variantId,
-    );
-
-    final variantName = variant['variant_name']?.toString();
-
-    final temperature = variant['temperature_state']?.toString();
-
-    final origin = variant['country_of_origin']?.toString();
-
-    final trimSpecification = variant['trim_specification']?.toString();
-
-    final fatSpecification = variant['fat_specification']?.toString();
-
-    final grade = variant['grade']?.toString();
-
-    final breed = variant['breed']?.toString();
-
-    final halalStatus = variant['halal_status']?.toString();
-
-    final weightMin = variant['weight_min'];
-    final weightMax = variant['weight_max'];
-
-    final weightUnit = variant['weight_unit']?.toString();
-
-    setState(() {
-      _selectedProductVariantId = variantId;
-
-      if (variantName != null && variantName.trim().isNotEmpty) {
-        _productNameController.text = variantName;
-      }
-
-      if (temperature != null &&
-          ['fresh', 'chilled', 'frozen'].contains(temperature)) {
-        _temperatureState = temperature;
-      }
-
-      if (origin != null &&
-          origin.trim().isNotEmpty &&
-          _originCountryController.text.trim().isEmpty) {
-        _originCountryController.text = origin;
-      }
-
-      if (trimSpecification != null &&
-          trimSpecification.trim().isNotEmpty &&
-          _trimSpecificationController.text.trim().isEmpty) {
-        _trimSpecificationController.text = trimSpecification;
-      }
-
-      if (fatSpecification != null &&
-          fatSpecification.trim().isNotEmpty &&
-          _fatSpecificationController.text.trim().isEmpty) {
-        _fatSpecificationController.text = fatSpecification;
-      }
-
-      if (grade != null &&
-          grade.trim().isNotEmpty &&
-          _gradeController.text.trim().isEmpty) {
-        _gradeController.text = grade;
-      }
-
-      if (breed != null &&
-          breed.trim().isNotEmpty &&
-          _breedProgramController.text.trim().isEmpty) {
-        _breedProgramController.text = breed;
-      }
-
-      if (halalStatus != null &&
-          ['halal', 'not_halal', 'not_specified'].contains(halalStatus) &&
-          _halalStatus == 'not_specified') {
-        _halalStatus = halalStatus;
-      }
-
-      if (weightMin != null && _pieceWeightMinController.text.trim().isEmpty) {
-        _pieceWeightMinController.text = weightMin.toString();
-      }
-
-      if (weightMax != null && _pieceWeightMaxController.text.trim().isEmpty) {
-        _pieceWeightMaxController.text = weightMax.toString();
-      }
-
-      if (weightUnit != null &&
-          ['kg', 'g'].contains(weightUnit.toLowerCase())) {
-        _pieceWeightUnit = weightUnit.toLowerCase();
-      }
-    });
-  }
-
-  String _catalogueProductLabel(Map<String, dynamic> product) {
-    final path = product['catalogue_path']?.toString();
-
-    if (path != null && path.trim().isNotEmpty) {
-      return path;
-    }
-
-    return product['name']?.toString() ?? 'Unnamed catalogue product';
-  }
-
-  String? _selectedCataloguePath() {
-    final selectedId = _selectedMeatProductId;
-
-    if (selectedId == null) {
-      return null;
-    }
-
-    for (final product in _catalogueProducts) {
-      if (product['id']?.toString() == selectedId) {
-        return _catalogueProductLabel(product);
-      }
-    }
-
-    return null;
-  }
-
   String? _requiredValidator(String? value, String fieldName) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter $fieldName.';
@@ -1141,23 +743,6 @@ class _EditProductPageState extends State<EditProductPage> {
       }
     }
 
-    if (_usesCanonicalCatalogue) {
-      if (_selectedSpeciesId == null) {
-        _showMessage('Please select a species.');
-        return;
-      }
-
-      if (_selectedMeatProductId == null) {
-        _showMessage('Please select a catalogue product or cut.');
-        return;
-      }
-
-      if (_selectedProductVariantId == null) {
-        _showMessage('Please select a product variant.');
-        return;
-      }
-    }
-
     setState(() {
       _isSaving = true;
     });
@@ -1251,14 +836,6 @@ class _EditProductPageState extends State<EditProductPage> {
         updateData['weight_type'] = 'catch_weight';
         updateData['catch_weight'] = true;
         updateData['quantity_unit'] = 'carton';
-      }
-
-      if (_usesCanonicalCatalogue) {
-        updateData['product_variant_id'] = _selectedProductVariantId;
-
-        updateData['animal_type_id'] = null;
-
-        updateData['cut_id'] = null;
       }
 
       await Supabase.instance.client
@@ -2437,38 +2014,6 @@ class _EditProductPageState extends State<EditProductPage> {
     return trimmed;
   }
 
-  String _variantLabel(Map<String, dynamic> variant) {
-    final variantName = variant['variant_name']?.toString();
-
-    if (variantName != null && variantName.trim().isNotEmpty) {
-      return variantName;
-    }
-
-    final parts = <String>[];
-
-    final temperature = variant['temperature_state']?.toString();
-
-    final boneState = variant['bone_state']?.toString();
-
-    if (temperature != null && temperature.isNotEmpty) {
-      parts.add(temperature[0].toUpperCase() + temperature.substring(1));
-    }
-
-    if (boneState == 'bone_in') {
-      parts.add('Bone-in');
-    }
-
-    if (boneState == 'boneless') {
-      parts.add('Boneless');
-    }
-
-    if (parts.isEmpty) {
-      return 'Unnamed variant';
-    }
-
-    return parts.join(' • ');
-  }
-
   Widget _sectionTitle(String title, {String? subtitle}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2510,8 +2055,6 @@ class _EditProductPageState extends State<EditProductPage> {
   @override
   Widget build(BuildContext context) {
     const darkRed = Color(0xFF741C1C);
-
-    final selectedCataloguePath = _selectedCataloguePath();
 
     return DefaultTabController(
       length: 2,
@@ -2576,9 +2119,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                         ? (_usesGradeStage
                                               ? 'This product uses CutLink specification + $_gradeStageLabel pricing.'
                                               : 'This product uses CutLink animal-specific specification pricing.')
-                                        : _usesCanonicalCatalogue
-                                        ? 'This product is linked to the previous recursive marketplace catalogue.'
-                                        : 'This is a legacy product. Supplier listing information can still be edited.',
+                                        : 'This is a legacy product. Supplier listing information can still be edited until it is reclassified into the current CutLink catalogue.',
                                     style: const TextStyle(
                                       color: Color(0xFF5E5E5E),
                                       height: 1.4,
@@ -2829,189 +2370,6 @@ class _EditProductPageState extends State<EditProductPage> {
                                     ),
 
                                     const SizedBox(height: 32),
-                                    const Divider(),
-                                  ],
-
-                                  if (_usesCanonicalCatalogue) ...[
-                                    const SizedBox(height: 30),
-
-                                    _sectionTitle(
-                                      'Meat catalogue',
-                                      subtitle:
-                                          'The complete catalogue path is loaded automatically, regardless of how many parent levels the product has.',
-                                    ),
-
-                                    const SizedBox(height: 20),
-
-                                    DropdownButtonFormField<String>(
-                                      key: ValueKey(
-                                        'species-$_selectedSpeciesId',
-                                      ),
-                                      initialValue: _selectedSpeciesId,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Species',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      items: _species.map((species) {
-                                        return DropdownMenuItem<String>(
-                                          value: species['id'] as String,
-                                          child: Text(
-                                            species['name'] as String,
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          _loadCatalogueProducts(value);
-                                        }
-                                      },
-                                    ),
-
-                                    const SizedBox(height: 18),
-
-                                    DropdownButtonFormField<String>(
-                                      key: ValueKey(
-                                        'catalogue-$_selectedSpeciesId-$_selectedMeatProductId',
-                                      ),
-                                      initialValue: _selectedMeatProductId,
-                                      isExpanded: true,
-                                      decoration: InputDecoration(
-                                        labelText: 'Catalogue product / cut',
-                                        hintText: _isLoadingCatalogue
-                                            ? 'Loading catalogue...'
-                                            : 'Select a product or cut',
-                                        border: const OutlineInputBorder(),
-                                        suffixIcon: _isLoadingCatalogue
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child: SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      items: _catalogueProducts.map((product) {
-                                        return DropdownMenuItem<String>(
-                                          value: product['id'] as String,
-                                          child: Text(
-                                            _catalogueProductLabel(product),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged:
-                                          _selectedSpeciesId == null ||
-                                              _isLoadingCatalogue
-                                          ? null
-                                          : (value) {
-                                              if (value != null) {
-                                                _loadProductVariants(value);
-                                              }
-                                            },
-                                    ),
-
-                                    if (selectedCataloguePath != null) ...[
-                                      const SizedBox(height: 10),
-                                      Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF8F4F4),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFFE5D6D6),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Icon(
-                                              Icons.account_tree_outlined,
-                                              size: 20,
-                                              color: darkRed,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Text(
-                                                selectedCataloguePath,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  height: 1.4,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-
-                                    const SizedBox(height: 18),
-
-                                    DropdownButtonFormField<String>(
-                                      key: ValueKey(
-                                        'variant-$_selectedMeatProductId-$_selectedProductVariantId',
-                                      ),
-                                      initialValue: _selectedProductVariantId,
-                                      isExpanded: true,
-                                      decoration: InputDecoration(
-                                        labelText:
-                                            'Product variant / specification',
-                                        hintText: _isLoadingVariants
-                                            ? 'Loading variants...'
-                                            : 'Select a variant',
-                                        border: const OutlineInputBorder(),
-                                        suffixIcon: _isLoadingVariants
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child: SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      items: _productVariants.map((variant) {
-                                        return DropdownMenuItem<String>(
-                                          value: variant['id'] as String,
-                                          child: Text(
-                                            _variantLabel(variant),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged:
-                                          _selectedMeatProductId == null ||
-                                              _isLoadingVariants
-                                          ? null
-                                          : _selectVariant,
-                                    ),
-
-                                    if (_selectedMeatProductId != null &&
-                                        !_isLoadingVariants &&
-                                        _productVariants.isEmpty) ...[
-                                      const SizedBox(height: 10),
-                                      const Text(
-                                        'This catalogue product does not currently have an active variant.',
-                                        style: TextStyle(
-                                          color: Color(0xFF9A6700),
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ],
-
-                                    const SizedBox(height: 32),
-
                                     const Divider(),
                                   ],
 

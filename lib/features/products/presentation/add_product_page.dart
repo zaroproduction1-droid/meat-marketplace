@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
+import '../../../shared/widgets/interactive_animal_browser.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({
@@ -136,6 +137,14 @@ class _AddProductPageState extends State<AddProductPage> {
           .from('meat_animals')
           .select('id, code, name, display_order')
           .eq('is_active', true)
+          .inFilter('code', const [
+            CutLinkAnimals.beef,
+            CutLinkAnimals.veal,
+            CutLinkAnimals.lamb,
+            CutLinkAnimals.mutton,
+            CutLinkAnimals.goat,
+            CutLinkAnimals.chicken,
+          ])
           .order('display_order');
 
       if (!mounted) return;

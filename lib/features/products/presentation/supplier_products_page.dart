@@ -43,6 +43,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _sections = [];
+  List<Map<String, dynamic>> _catalogueSpecifications = [];
 
   @override
   void initState() {
@@ -173,6 +174,33 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         ];
       }
 
+      List<Map<String, dynamic>> catalogueSpecifications = [];
+
+      if (sections.isNotEmpty) {
+        final sectionIds = sections
+            .map((section) => section['id']?.toString())
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toList();
+
+        if (sectionIds.isNotEmpty) {
+          final specificationResponse = await client
+              .from('meat_specifications')
+              .select(
+                'id, animal_id, section_id, name, slug, display_order, '
+                'specification_type, approval_status',
+              )
+              .inFilter('section_id', sectionIds)
+              .eq('is_active', true)
+              .order('display_order')
+              .order('name');
+
+          catalogueSpecifications = List<Map<String, dynamic>>.from(
+            specificationResponse,
+          );
+        }
+      }
+
       final productResponse = await client
           .from('products')
           .select('''
@@ -242,6 +270,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _products = List<Map<String, dynamic>>.from(productResponse);
         _sections = sections;
+        _catalogueSpecifications = catalogueSpecifications;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -766,7 +795,29 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   List<Map<String, dynamic>> get _availableSpecifications {
     final byId = <String, Map<String, dynamic>>{};
+    final selectedSectionId = _selectedSectionId;
 
+    if (selectedSectionId != null) {
+      for (final specification in _catalogueSpecifications) {
+        if (specification['section_id']?.toString() != selectedSectionId) {
+          continue;
+        }
+
+        // Supplier-custom rows are supplier-owned. Keep the shared browse list
+        // canonical; the supplier's own custom rows are added below from stock.
+        if (specification['specification_type']?.toString() ==
+            'supplier_custom') {
+          continue;
+        }
+
+        final id = specification['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        byId[id] = specification;
+      }
+    }
+
+    // Include the supplier's own stocked specifications as well, including
+    // supplier-custom specifications that may not belong in the shared list.
     for (final product in _selectedAnimalProducts) {
       if (!_matchesSelectedCut(product)) {
         continue;
@@ -780,11 +831,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     final rows = byId.values.toList();
-    rows.sort(
-      (a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo(
+    rows.sort((a, b) {
+      final aOrder = int.tryParse(a['display_order']?.toString() ?? '') ?? 9999;
+      final bOrder = int.tryParse(b['display_order']?.toString() ?? '') ?? 9999;
+      if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+
+      return (a['name']?.toString() ?? '').toLowerCase().compareTo(
         (b['name']?.toString() ?? '').toLowerCase(),
-      ),
-    );
+      );
+    });
     return rows;
   }
 

@@ -48,8 +48,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   String? _addingProductId;
   final Map<String, int> _cartQuantities = <String, int>{};
 
-  final Map<String, Map<String, dynamic>> _cataloguePathsByProductId = {};
-
   @override
   void initState() {
     super.initState();
@@ -366,9 +364,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
             quantity_unit,
             availability_status,
             supplier_business_id,
-            product_variant_id,
-            animal_type_id,
-            cut_id,
             meat_animal_id,
             meat_section_id,
             meat_specification_id,
@@ -407,8 +402,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               trading_name
             ),
 
-            animal_types(name),
-            cuts(name),
 
             meat_animals(
               id,
@@ -444,13 +437,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
               is_active
             ),
 
-            product_variants(
-              id,
-              meat_product_id,
-              variant_name,
-              temperature_state,
-              bone_state
-            ),
 
             product_prices(
               amount,
@@ -491,46 +477,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       final products = List<Map<String, dynamic>>.from(response);
 
-      final meatProductIds = <String>{};
-
-      for (final product in products) {
-        final variant = _variant(product);
-        final meatProductId = variant?['meat_product_id']?.toString();
-
-        if (meatProductId != null && meatProductId.trim().isNotEmpty) {
-          meatProductIds.add(meatProductId);
-        }
-      }
-
-      final cataloguePathsByProductId = <String, Map<String, dynamic>>{};
-
-      if (meatProductIds.isNotEmpty) {
-        final pathResponse = await Supabase.instance.client
-            .from('meat_product_catalogue_paths')
-            .select('''
-              id,
-              species_id,
-              species_name,
-              parent_product_id,
-              name,
-              slug,
-              product_level,
-              depth,
-              path_names,
-              catalogue_path
-            ''')
-            .inFilter('id', meatProductIds.toList());
-
-        for (final rawPath in pathResponse) {
-          final path = Map<String, dynamic>.from(rawPath);
-          final id = path['id']?.toString();
-
-          if (id != null) {
-            cataloguePathsByProductId[id] = path;
-          }
-        }
-      }
-
       if (!mounted) {
         return;
       }
@@ -546,9 +492,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         _catalogueSpecifications = List<Map<String, dynamic>>.from(
           catalogueSpecificationResponse,
         );
-        _cataloguePathsByProductId
-          ..clear()
-          ..addAll(cataloguePathsByProductId);
         _isLoading = false;
       });
 
@@ -574,130 +517,33 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     }
   }
 
-  Map<String, dynamic>? _variant(Map<String, dynamic> product) {
-    final raw = product['product_variants'];
-
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-
-    return null;
-  }
-
-  Map<String, dynamic>? _cataloguePathRecord(Map<String, dynamic> product) {
-    final variant = _variant(product);
-    final meatProductId = variant?['meat_product_id']?.toString();
-
-    if (meatProductId == null || meatProductId.trim().isEmpty) {
-      return null;
-    }
-
-    return _cataloguePathsByProductId[meatProductId];
-  }
-
   List<String> _canonicalCatalogueNames(Map<String, dynamic> product) {
     final names = <String>[];
 
-    final variant = _variant(product);
-    final pathRecord = _cataloguePathRecord(product);
+    final animal = _nestedMap(product['meat_animals']);
+    final section = _nestedMap(product['meat_sections']);
+    final specification = _nestedMap(product['meat_specifications']);
+    final grade = _nestedMap(product['meat_grades']);
 
-    if (variant == null || pathRecord == null) {
-      return names;
-    }
-
-    final speciesName = pathRecord['species_name']?.toString();
-
-    if (speciesName != null && speciesName.trim().isNotEmpty) {
-      names.add(speciesName);
-    }
-
-    final rawPathNames = pathRecord['path_names'];
-
-    if (rawPathNames is List) {
-      for (final value in rawPathNames) {
-        final name = value?.toString();
-
-        if (name != null && name.trim().isNotEmpty) {
-          names.add(name);
-        }
+    for (final value in [
+      animal?['name'],
+      section?['name'],
+      specification?['name'],
+      grade?['code'],
+      grade?['name'],
+    ]) {
+      final text = value?.toString().trim();
+      if (text != null && text.isNotEmpty && !names.contains(text)) {
+        names.add(text);
       }
-    } else {
-      final cataloguePath = pathRecord['catalogue_path']?.toString();
-
-      if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
-        final pathParts = cataloguePath.split('→');
-
-        for (final rawPart in pathParts) {
-          final part = rawPart.trim();
-
-          if (part.isNotEmpty) {
-            names.add(part);
-          }
-        }
-      }
-    }
-
-    final variantName = variant['variant_name']?.toString();
-
-    if (variantName != null && variantName.trim().isNotEmpty) {
-      names.add(variantName);
     }
 
     return names;
   }
 
   String _cataloguePath(Map<String, dynamic> product) {
-    final variant = _variant(product);
-    final pathRecord = _cataloguePathRecord(product);
-
-    if (variant != null && pathRecord != null) {
-      final parts = <String>[];
-
-      final speciesName = pathRecord['species_name']?.toString();
-      final cataloguePath = pathRecord['catalogue_path']?.toString();
-      final variantName = variant['variant_name']?.toString();
-
-      if (speciesName != null && speciesName.trim().isNotEmpty) {
-        parts.add(speciesName);
-      }
-
-      if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
-        parts.add(cataloguePath);
-      }
-
-      if (variantName != null && variantName.trim().isNotEmpty) {
-        parts.add(variantName);
-      }
-
-      if (parts.isNotEmpty) {
-        return parts.join(' → ');
-      }
-    }
-
-    final rawAnimalType = product['animal_types'];
-    final rawCut = product['cuts'];
-
-    String? animalName;
-    String? cutName;
-
-    if (rawAnimalType is Map) {
-      animalName = rawAnimalType['name']?.toString();
-    }
-
-    if (rawCut is Map) {
-      cutName = rawCut['name']?.toString();
-    }
-
-    final legacyNames = <String>[
-      if (animalName != null && animalName.trim().isNotEmpty) animalName,
-      if (cutName != null && cutName.trim().isNotEmpty) cutName,
-    ];
-
-    if (legacyNames.isNotEmpty) {
-      return legacyNames.join(' → ');
-    }
-
-    return 'Catalogue not linked';
+    final parts = _canonicalCatalogueNames(product);
+    return parts.isEmpty ? 'Catalogue not linked' : parts.join(' → ');
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
@@ -1387,11 +1233,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           });
       }
     });
-  }
-
-  // ignore: unused_element
-  bool _usesCanonicalCatalogue(Map<String, dynamic> product) {
-    return product['product_variant_id'] != null;
   }
 
   Map<String, dynamic>? _findVisiblePrice(Map<String, dynamic> product) {
