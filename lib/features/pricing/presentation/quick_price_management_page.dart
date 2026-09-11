@@ -334,8 +334,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     final byId = <String, Map<String, dynamic>>{};
 
     for (final product in _selectedAnimalProducts) {
-      if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+      if (_selectedSectionId != null && !_matchesSelectedCut(product)) {
         continue;
       }
 
@@ -358,8 +357,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
     final search = _searchController.text.trim().toLowerCase();
 
     final result = _selectedAnimalProducts.where((product) {
-      if (_selectedSectionId != null &&
-          !_matchesSelectedCut(product)) {
+      if (_selectedSectionId != null && !_matchesSelectedCut(product)) {
         return false;
       }
 
@@ -693,22 +691,19 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
       }
 
       final now = DateTime.now().toIso8601String();
-      await Supabase.instance.client.from('product_prices').upsert(
-        [
-          for (final change in changes)
-            {
-              'price_list_id': change.priceListId,
-              'product_id': change.product['id'].toString(),
-              'amount': double.parse(change.amountText),
-              'price_basis': change.priceBasis,
-              'minimum_quantity': change.minimumQuantity,
-              'minimum_quantity_unit': change.minimumQuantityUnit,
-              'active': true,
-              'updated_at': now,
-            },
-        ],
-        onConflict: 'price_list_id,product_id',
-      );
+      await Supabase.instance.client.from('product_prices').upsert([
+        for (final change in changes)
+          {
+            'price_list_id': change.priceListId,
+            'product_id': change.product['id'].toString(),
+            'amount': double.parse(change.amountText),
+            'price_basis': change.priceBasis,
+            'minimum_quantity': change.minimumQuantity,
+            'minimum_quantity_unit': change.minimumQuantityUnit,
+            'active': true,
+            'updated_at': now,
+          },
+      ], onConflict: 'price_list_id,product_id');
 
       if (!mounted) return;
       final count = changes.length;
@@ -753,7 +748,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
       text: pending?.amountText ?? existingPrice?['amount']?.toString() ?? '',
     );
     final minimumController = TextEditingController(
-      text: pending?.minimumQuantity?.toString() ??
+      text:
+          pending?.minimumQuantity?.toString() ??
           existingPrice?['minimum_quantity']?.toString() ??
           '',
     );
@@ -1579,9 +1575,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: changed
-                ? const Color(0xFFE6A04B)
-                : const Color(0xFFE3E3DF),
+            color: changed ? const Color(0xFFE6A04B) : const Color(0xFFE3E3DF),
           ),
         ),
       ),

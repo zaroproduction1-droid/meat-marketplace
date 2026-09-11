@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../admin/presentation/pending_businesses_page.dart';
+import 'business_analytics_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../marketplace/presentation/butcher_vip_suppliers_page.dart';
@@ -44,6 +45,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   int _newSupplierOrderCount = 0;
 
   String? _errorMessage;
+  String? _businessId;
   String? _businessName;
   String? _businessType;
 
@@ -88,7 +90,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           .eq('id', user.id)
           .limit(1);
 
-      final isAdmin = profileRows.isNotEmpty &&
+      final isAdmin =
+          profileRows.isNotEmpty &&
           (profileRows.first['is_admin'] as bool? ?? false);
 
       final memberships = await client
@@ -357,6 +360,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       if (!mounted) return;
 
       setState(() {
+        _businessId = businessId;
         _businessName = businessName;
         _businessType = businessType;
         _isAdmin = isAdmin;
@@ -408,6 +412,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (page is SubmittedOrdersPage) return 'orders';
     if (page is ButcherAccountsPage) return 'accounts';
     if (page is ButcherSettingsPage) return 'settings';
+    if (page is BusinessAnalyticsPage) return 'analytics';
 
     if (page is SupplierSalesPage) return 'sales';
     if (page is SupplierUnifiedOrdersPage) return 'invoices';
@@ -456,6 +461,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       color: _deepNavy,
       clipBehavior: Clip.hardEdge,
       child: child,
+    );
+  }
+
+  void _openAnalytics() {
+    final businessId = _businessId;
+    final businessType = _businessType;
+    if (businessId == null || businessType == null) return;
+
+    _openPage(
+      BusinessAnalyticsPage(
+        businessId: businessId,
+        businessType: businessType,
+        businessName: _businessName ?? 'Business',
+      ),
+      workspaceKey: 'analytics',
     );
   }
 
@@ -938,30 +958,42 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                                 _supplierInventoryMetric(
                                                   Icons.today_outlined,
                                                   "Today's Runs",
-                                                  _supplierTodayDeliveryRuns.toString(),
+                                                  _supplierTodayDeliveryRuns
+                                                      .toString(),
                                                 ),
                                                 _supplierInventoryMetric(
                                                   Icons.route_outlined,
                                                   'Active Runs',
-                                                  _supplierActiveDeliveryRuns.toString(),
+                                                  _supplierActiveDeliveryRuns
+                                                      .toString(),
                                                 ),
                                                 _supplierInventoryMetric(
                                                   Icons.local_shipping_outlined,
                                                   'Out for Delivery',
-                                                  _supplierOutForDeliveryStops.toString(),
-                                                  warning: _supplierOutForDeliveryStops > 0,
+                                                  _supplierOutForDeliveryStops
+                                                      .toString(),
+                                                  warning:
+                                                      _supplierOutForDeliveryStops >
+                                                      0,
                                                 ),
                                               ];
 
                                               if (constraints.maxWidth >= 760) {
                                                 return Row(
                                                   children: [
-                                                    for (var i = 0;
-                                                        i < metrics.length;
-                                                        i++) ...[
-                                                      Expanded(child: metrics[i]),
-                                                      if (i != metrics.length - 1)
-                                                        const SizedBox(width: 12),
+                                                    for (
+                                                      var i = 0;
+                                                      i < metrics.length;
+                                                      i++
+                                                    ) ...[
+                                                      Expanded(
+                                                        child: metrics[i],
+                                                      ),
+                                                      if (i !=
+                                                          metrics.length - 1)
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
                                                     ],
                                                   ],
                                                 );
@@ -969,12 +1001,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
                                               return Column(
                                                 children: [
-                                                  for (var i = 0;
-                                                      i < metrics.length;
-                                                      i++) ...[
+                                                  for (
+                                                    var i = 0;
+                                                    i < metrics.length;
+                                                    i++
+                                                  ) ...[
                                                     metrics[i],
                                                     if (i != metrics.length - 1)
-                                                      const SizedBox(height: 10),
+                                                      const SizedBox(
+                                                        height: 10,
+                                                      ),
                                                   ],
                                                 ],
                                               );
@@ -1541,6 +1577,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
     return _sectionCard(
       title: 'Purchasing Overview',
+      actionText: 'View analytics',
+      onAction: _openAnalytics,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2022,7 +2060,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.bar_chart_outlined,
                     'Analytics',
                     selected: _workspaceKey == 'analytics',
-                    onTap: () => _openDashboard(workspaceKey: 'analytics'),
+                    onTap: _openAnalytics,
                   ),
                   _sideItem(
                     Icons.notifications_none_rounded,
@@ -2495,13 +2533,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   int get _supplierActiveProductCount => _supplierProducts.length;
 
-
   int get _supplierActiveDeliveryRuns {
     return _supplierDeliveryRuns.where((run) {
       final status = run['status']?.toString();
-      return status == 'ready' ||
-          status == 'loaded' ||
-          status == 'in_progress';
+      return status == 'ready' || status == 'loaded' || status == 'in_progress';
     }).length;
   }
 
@@ -3317,6 +3352,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
     return _sectionCard(
       title: 'Sales Overview',
+      actionText: 'View analytics',
+      onAction: _openAnalytics,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -3543,7 +3580,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.bar_chart_outlined,
                     'Analytics',
                     selected: _workspaceKey == 'analytics',
-                    onTap: () => _openDashboard(workspaceKey: 'analytics'),
+                    onTap: _openAnalytics,
                   ),
                   _sideItem(
                     Icons.notifications_none_rounded,

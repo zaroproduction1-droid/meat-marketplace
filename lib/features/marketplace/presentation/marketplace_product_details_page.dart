@@ -21,7 +21,6 @@ class _MarketplaceProductDetailsPageState
 
   bool _isCheckingRelationship = true;
   bool _isSubmittingRequest = false;
-  bool _isLoadingCatalogue = true;
   bool _isAddingToOrder = false;
 
   double _orderQuantityPreview = 1;
@@ -29,89 +28,16 @@ class _MarketplaceProductDetailsPageState
   String? _relationshipStatus;
   String? _butcherBusinessId;
 
-  Map<String, dynamic>? _cataloguePathRecord;
-
   @override
   void initState() {
     super.initState();
     _loadRelationshipStatus();
-    _loadCataloguePath();
   }
 
   @override
   void dispose() {
     _quantityController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadCataloguePath() async {
-    if (!_usesCanonicalCatalogue()) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoadingCatalogue = false;
-      });
-      return;
-    }
-
-    try {
-      final variant = _variant();
-      final meatProductId = variant?['meat_product_id']?.toString();
-
-      if (meatProductId == null || meatProductId.trim().isEmpty) {
-        if (!mounted) return;
-
-        setState(() {
-          _cataloguePathRecord = null;
-          _isLoadingCatalogue = false;
-        });
-        return;
-      }
-
-      final response = await Supabase.instance.client
-          .from('meat_product_catalogue_paths')
-          .select('''
-            id,
-            species_id,
-            species_name,
-            parent_product_id,
-            name,
-            slug,
-            product_level,
-            depth,
-            path_names,
-            catalogue_path
-          ''')
-          .eq('id', meatProductId)
-          .single();
-
-      if (!mounted) return;
-
-      setState(() {
-        _cataloguePathRecord = Map<String, dynamic>.from(response);
-        _isLoadingCatalogue = false;
-      });
-    } on PostgrestException catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _cataloguePathRecord = null;
-        _isLoadingCatalogue = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Catalogue could not be loaded: ${error.message}'),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _cataloguePathRecord = null;
-        _isLoadingCatalogue = false;
-      });
-    }
   }
 
   Future<void> _loadRelationshipStatus() async {
@@ -221,146 +147,61 @@ class _MarketplaceProductDetailsPageState
     }
   }
 
-  Map<String, dynamic>? _variant() {
-    final raw = widget.product['product_variants'];
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-    return null;
-  }
-
   bool _usesCanonicalCatalogue() {
-    return widget.product['product_variant_id'] != null;
+    return widget.product['meat_specification_id'] != null;
   }
 
   String _speciesName() {
-    final name = _cataloguePathRecord?['species_name']?.toString();
-
-    if (name != null && name.trim().isNotEmpty) {
-      return name;
-    }
-
-    final rawAnimalType = widget.product['animal_types'];
-
-    if (rawAnimalType is Map) {
-      return rawAnimalType['name']?.toString() ?? 'Not linked';
-    }
-
-    return 'Not linked';
+    final value = _newAnimalName();
+    return value.isEmpty ? 'Not linked' : value;
   }
 
   List<String> _catalogueProductPathNames() {
-    final names = <String>[];
-    final rawPathNames = _cataloguePathRecord?['path_names'];
-
-    if (rawPathNames is List) {
-      for (final rawName in rawPathNames) {
-        final name = rawName?.toString();
-        if (name != null && name.trim().isNotEmpty) {
-          names.add(name.trim());
-        }
-      }
-      return names;
-    }
-
-    final cataloguePath = _cataloguePathRecord?['catalogue_path']?.toString();
-
-    if (cataloguePath != null && cataloguePath.trim().isNotEmpty) {
-      for (final rawPart in cataloguePath.split('→')) {
-        final part = rawPart.trim();
-        if (part.isNotEmpty) names.add(part);
-      }
-    }
-
-    return names;
+    return <String>[
+      _newSectionName(),
+      _newSpecificationName(),
+    ].where((value) => value.trim().isNotEmpty).toList();
   }
 
   String _catalogueProductPath() {
-    final path = _cataloguePathRecord?['catalogue_path']?.toString();
-
-    if (path != null && path.trim().isNotEmpty) {
-      return path;
-    }
-
     final names = _catalogueProductPathNames();
-    if (names.isNotEmpty) {
-      return names.join(' → ');
-    }
-
-    return 'Not linked';
+    return names.isEmpty ? 'Not linked' : names.join(' → ');
   }
 
   String _currentCatalogueProductName() {
-    final name = _cataloguePathRecord?['name']?.toString();
-
-    if (name != null && name.trim().isNotEmpty) {
-      return name;
-    }
-
-    final names = _catalogueProductPathNames();
-    if (names.isNotEmpty) {
-      return names.last;
-    }
-
-    final rawCut = widget.product['cuts'];
-    if (rawCut is Map) {
-      return rawCut['name']?.toString() ?? 'Not linked';
-    }
-
-    return 'Not linked';
+    final value = _newSpecificationName();
+    return value.trim().isEmpty ? 'Not linked' : value;
   }
 
   String _variantName() {
-    final variant = _variant();
-    final name = variant?['variant_name']?.toString();
+    final code = _newGradeCode();
+    final name = _newGradeName();
 
-    if (name != null && name.trim().isNotEmpty) {
-      return name;
+    if (code == 'N/A' && name.isEmpty) {
+      return 'Not linked';
     }
 
-    return 'Not linked';
+    if (name.isEmpty || name == code) {
+      return code;
+    }
+
+    return '$code - $name';
   }
 
   String _fullCataloguePath() {
-    if (_usesCanonicalCatalogue()) {
-      final parts = <String>[];
+    final parts = <String>[
+      _newAnimalName(),
+      _newSectionName(),
+      _newSpecificationName(),
+    ];
 
-      final species = _speciesName();
-      final cataloguePath = _catalogueProductPath();
-      final variant = _variantName();
-
-      if (species != 'Not linked') parts.add(species);
-      if (cataloguePath != 'Not linked') parts.add(cataloguePath);
-      if (variant != 'Not linked') parts.add(variant);
-
-      if (parts.isNotEmpty) {
-        return parts.join(' → ');
-      }
+    final grade = _variantName();
+    if (grade != 'Not linked') {
+      parts.add(grade);
     }
 
-    final legacyParts = <String>[];
-    final rawAnimalType = widget.product['animal_types'];
-    final rawCut = widget.product['cuts'];
-
-    if (rawAnimalType is Map) {
-      final animalName = rawAnimalType['name']?.toString();
-      if (animalName != null && animalName.trim().isNotEmpty) {
-        legacyParts.add(animalName);
-      }
-    }
-
-    if (rawCut is Map) {
-      final cutName = rawCut['name']?.toString();
-      if (cutName != null && cutName.trim().isNotEmpty) {
-        legacyParts.add(cutName);
-      }
-    }
-
-    if (legacyParts.isNotEmpty) {
-      return legacyParts.join(' → ');
-    }
-
-    return 'Catalogue not linked';
+    final visible = parts.where((value) => value.trim().isNotEmpty).toList();
+    return visible.isEmpty ? 'Catalogue not linked' : visible.join(' → ');
   }
 
   String _supplierName() {
@@ -1375,20 +1216,14 @@ class _MarketplaceProductDetailsPageState
                       ),
                       const SizedBox(height: 22),
 
-                      if (_isLoadingCatalogue && usesCanonicalCatalogue)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 18),
-                          child: LinearProgressIndicator(),
-                        )
-                      else
-                        Text(
-                          _fullCataloguePath(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF5E5E5E),
-                            height: 1.5,
-                          ),
+                      Text(
+                        _fullCataloguePath(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF5E5E5E),
+                          height: 1.5,
                         ),
+                      ),
 
                       const SizedBox(height: 18),
 
@@ -1473,16 +1308,16 @@ class _MarketplaceProductDetailsPageState
                             ),
                           ),
                           if (usesCanonicalCatalogue) ...[
-                            _DetailRow(label: 'Species', value: _speciesName()),
+                            _DetailRow(label: 'Animal', value: _speciesName()),
                             _DetailRow(
-                              label: 'Catalogue path',
+                              label: 'Cut path',
                               value: _catalogueProductPath(),
                             ),
                             _DetailRow(
-                              label: 'Current product / cut',
+                              label: 'Specification',
                               value: _currentCatalogueProductName(),
                             ),
-                            _DetailRow(label: 'Variant', value: _variantName()),
+                            _DetailRow(label: 'Grade', value: _variantName()),
                           ],
                         ],
                       ),

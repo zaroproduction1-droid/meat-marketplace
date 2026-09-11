@@ -438,41 +438,45 @@ class _HowItWorksSection extends StatelessWidget {
           'One marketplace designed around supplier approval, accurate product information and simple ordering.',
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final crossAxisCount = constraints.maxWidth < 700 ? 1 : 3;
+          const spacing = 22.0;
+          final useSingleColumn = constraints.maxWidth < 900;
+          final cardWidth = useSingleColumn
+              ? constraints.maxWidth
+              : (constraints.maxWidth - (spacing * 2)) / 3;
 
-          return GridView.count(
-            crossAxisCount: crossAxisCount,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 22,
-            mainAxisSpacing: 22,
-            childAspectRatio: crossAxisCount == 1 ? 2.6 : 1.15,
-            children: const [
-              _InformationCard(
-                number: '1',
-                icon: Icons.verified_user_outlined,
-                title: 'Businesses register',
-                description:
-                    'Suppliers and butchers submit their business details '
-                    'for marketplace approval.',
-              ),
-              _InformationCard(
-                number: '2',
-                icon: Icons.manage_search_outlined,
-                title: 'Products are discovered',
-                description:
-                    'Butchers search and compare structured products from '
-                    'multiple approved suppliers.',
-              ),
-              _InformationCard(
-                number: '3',
-                icon: Icons.receipt_long_outlined,
-                title: 'Orders are confirmed',
-                description:
-                    'Suppliers review order requests, confirm quantities '
-                    'and manage any substitutions.',
-              ),
-            ],
+          const cards = [
+            _InformationCard(
+              number: '1',
+              icon: Icons.verified_user_outlined,
+              title: 'Businesses register',
+              description:
+                  'Suppliers and butchers submit their business details '
+                  'for marketplace approval.',
+            ),
+            _InformationCard(
+              number: '2',
+              icon: Icons.manage_search_outlined,
+              title: 'Products are discovered',
+              description:
+                  'Butchers search and compare structured products from '
+                  'multiple approved suppliers.',
+            ),
+            _InformationCard(
+              number: '3',
+              icon: Icons.receipt_long_outlined,
+              title: 'Orders are confirmed',
+              description:
+                  'Suppliers review order requests, confirm quantities '
+                  'and manage any substitutions.',
+            ),
+          ];
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: cards
+                .map((card) => SizedBox(width: cardWidth, child: card))
+                .toList(),
           );
         },
       ),

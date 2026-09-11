@@ -827,9 +827,6 @@ class _EditProductPageState extends State<EditProductPage> {
         updateData['meat_section_id'] = _selectedSectionId;
         updateData['meat_specification_id'] = _selectedSpecificationId;
         updateData['meat_grade_id'] = _usesGradeStage ? _selectedGradeId : null;
-        updateData['product_variant_id'] = null;
-        updateData['animal_type_id'] = null;
-        updateData['cut_id'] = null;
 
         updateData['price_basis'] = 'kilogram';
         updateData['order_unit'] = 'carton';
