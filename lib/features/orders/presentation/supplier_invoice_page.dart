@@ -1,13 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/invoice_pdf_service.dart';
-import 'supplier_work_order_page.dart';
+import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
 class SupplierInvoicePage extends StatefulWidget {
   const SupplierInvoicePage({
@@ -42,10 +40,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   List<Map<String, dynamic>> _items = [];
   bool _didAutoOpenPdf = false;
   late int _workspaceTabIndex;
-  final _previewTransformController = TransformationController();
-  final _previewViewportKey = GlobalKey();
-  double _previewZoom = 1;
-  bool _isPreviewDragging = false;
 
   final _notesController = TextEditingController();
 
@@ -59,7 +53,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   @override
   void dispose() {
     _notesController.dispose();
-    _previewTransformController.dispose();
     super.dispose();
   }
 
@@ -1228,211 +1221,49 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   }
 
   Widget _buildPreviewTab() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_errorMessage != null || _invoice == null) return _buildBody();
-    final orderId = _invoice?['order_id']?.toString();
+    final invoiceNumber =
+        _invoice?['invoice_number']?.toString() ?? 'CutLink-Invoice';
+
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
-          ),
+          color: Colors.white,
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               const Expanded(
                 child: Text(
                   'Invoice PDF',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
               ),
-              _zoomControls(),
-              if (orderId != null && orderId.isNotEmpty) ...[
-                const SizedBox(width: 7),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => SupplierWorkOrderPage(
-                        orderId: orderId,
-                        initialTabIndex: 1,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.assignment_outlined, size: 17),
-                  label: const Text('View Picking Slip'),
+              const Text(
+                'Scroll wheel to zoom',
+                style: TextStyle(
+                  color: Color(0xFF6D7177),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _downloadInvoice,
+                icon: const Icon(Icons.download_outlined, size: 17),
+                label: const Text('Download'),
+              ),
             ],
           ),
         ),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final availableHeight = constraints.maxHeight > 24
-                  ? constraints.maxHeight - 24
-                  : constraints.maxHeight;
-              final availableWidth = constraints.maxWidth > 24
-                  ? constraints.maxWidth - 24
-                  : constraints.maxWidth;
-              final fitWidth =
-                  availableHeight *
-                  PdfPageFormat.a4.width /
-                  PdfPageFormat.a4.height;
-              final maxWidth = fitWidth < availableWidth
-                  ? fitWidth
-                  : availableWidth;
-              return ClipRect(
-                key: _previewViewportKey,
-                child: MouseRegion(
-                  cursor: _previewZoom > 1
-                      ? (_isPreviewDragging
-                            ? SystemMouseCursors.grabbing
-                            : SystemMouseCursors.grab)
-                      : MouseCursor.defer,
-                  child: Listener(
-                    onPointerSignal: _handlePreviewPointerSignal,
-                    child: InteractiveViewer(
-                      transformationController: _previewTransformController,
-                      minScale: 0.75,
-                      maxScale: 3,
-                      panEnabled: _previewZoom > 1,
-                      onInteractionStart: (_) {
-                        if (_previewZoom > 1) {
-                          setState(() => _isPreviewDragging = true);
-                        }
-                      },
-                      onInteractionUpdate: (_) => _syncPreviewZoom(),
-                      onInteractionEnd: (_) {
-                        _syncPreviewZoom();
-                        if (_isPreviewDragging) {
-                          setState(() => _isPreviewDragging = false);
-                        }
-                      },
-                      child: PdfPreview(
-                        build: (_) => _buildInvoicePdf(),
-                        pdfFileName:
-                            '${_invoice?['invoice_number'] ?? 'CutLink-Invoice'}.pdf',
-                        maxPageWidth: maxWidth,
-                        canChangeOrientation: false,
-                        canChangePageFormat: false,
-                        canDebug: false,
-                        allowPrinting: false,
-                        allowSharing: false,
-                        useActions: false,
-                        initialPageFormat: PdfPageFormat.a4,
-                        dpi: 220,
-                        padding: const EdgeInsets.all(12),
-                        scrollViewDecoration: const BoxDecoration(
-                          color: Color(0xFFE9EBEE),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+          child: ZoomablePdfPreview(
+            documentKey:
+                'invoice-${_invoice?['id'] ?? widget.invoiceId ?? widget.orderId}-$invoiceNumber',
+            buildPdf: _buildInvoicePdf,
+            dpi: 240,
           ),
         ),
       ],
     );
-  }
-
-  Widget _zoomControls() {
-    return Container(
-      height: 36,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F6),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFFE0E2E5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: _previewZoom <= 0.75
-                ? null
-                : () => _setPreviewZoom(_previewZoom - 0.1),
-            tooltip: 'Zoom out',
-            icon: const Icon(Icons.zoom_out, size: 18),
-            visualDensity: VisualDensity.compact,
-          ),
-          Tooltip(
-            message: 'Reset and centre preview',
-            child: TextButton.icon(
-              onPressed: _resetPreviewZoom,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4F555B),
-                minimumSize: const Size(72, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-              ),
-              icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
-              label: Text(
-                '${(_previewZoom * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: _previewZoom >= 3
-                ? null
-                : () => _setPreviewZoom(_previewZoom + 0.1),
-            tooltip: 'Zoom in',
-            icon: const Icon(Icons.zoom_in, size: 18),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handlePreviewPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent) return;
-    _setPreviewZoom(
-      _previewZoom + (event.scrollDelta.dy < 0 ? 0.1 : -0.1),
-      focalPoint: event.localPosition,
-    );
-  }
-
-  void _setPreviewZoom(double value, {Offset? focalPoint}) {
-    final zoom = value.clamp(0.75, 3.0);
-    if (zoom == _previewZoom) return;
-
-    final focal = focalPoint ?? _previewCentre();
-    final factor = zoom / _previewZoom;
-    final adjustment = Matrix4.identity()
-      ..translateByDouble(focal.dx, focal.dy, 0, 1)
-      ..scaleByDouble(factor, factor, 1, 1)
-      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
-      ..multiply(_previewTransformController.value);
-    _previewTransformController.value = adjustment;
-    setState(() => _previewZoom = zoom);
-  }
-
-  void _syncPreviewZoom() {
-    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
-      0.75,
-      3.0,
-    );
-    if ((zoom - _previewZoom).abs() > 0.001 && mounted) {
-      setState(() => _previewZoom = zoom);
-    }
-  }
-
-  Offset _previewCentre() {
-    final renderObject = _previewViewportKey.currentContext?.findRenderObject();
-    if (renderObject is RenderBox) {
-      return renderObject.size.center(Offset.zero);
-    }
-    return Offset.zero;
-  }
-
-  void _resetPreviewZoom() {
-    _previewTransformController.value = Matrix4.identity();
-    setState(() => _previewZoom = 1);
   }
 
   Future<void> _downloadInvoice() async {

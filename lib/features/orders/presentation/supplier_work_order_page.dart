@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -8,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supplier_invoice_page.dart';
 import 'supplier_sales_page.dart';
+import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
 class SupplierWorkOrderPage extends StatefulWidget {
   const SupplierWorkOrderPage({
@@ -36,10 +36,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   String? _selectedDeliveryDriverId;
   String? _invoiceId;
   late int _workspaceTabIndex;
-  final _previewTransformController = TransformationController();
-  final _previewViewportKey = GlobalKey();
-  double _previewZoom = 1;
-  bool _isPreviewDragging = false;
 
   final _instructionsController = TextEditingController();
   final _pickedByController = TextEditingController();
@@ -57,7 +53,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     _instructionsController.dispose();
     _pickedByController.dispose();
     _checkedByController.dispose();
-    _previewTransformController.dispose();
     super.dispose();
   }
 
@@ -127,6 +122,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               id,
               customer_name,
               legal_name,
+              abn,
+              contact_name,
+              email,
+              phone,
               account_reference,
               delivery_address_line_1,
               delivery_address_line_2,
@@ -136,7 +135,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
             businesses!orders_butcher_business_id_fkey(
               legal_name,
-              trading_name
+              trading_name,
+              abn,
+              business_email,
+              business_phone,
+              address_line_1,
+              address_line_2,
+              suburb,
+              state,
+              postcode
             ),
             order_items(
               id,
@@ -286,29 +293,75 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return 'Customer';
   }
 
-  String _deliveryAddress() {
-    final raw = _order?['supplier_customer_accounts'];
+  Map<String, dynamic> _customerAccount() {
+    final accountRaw = _order?['supplier_customer_accounts'];
+    final businessRaw = _order?['businesses'];
+    final account = accountRaw is Map
+        ? Map<String, dynamic>.from(accountRaw)
+        : <String, dynamic>{};
+    final business = businessRaw is Map
+        ? Map<String, dynamic>.from(businessRaw)
+        : <String, dynamic>{};
 
-    if (raw is! Map) {
-      return 'Not recorded';
+    String? firstNonEmpty(List<dynamic> values) {
+      for (final value in values) {
+        final text = value?.toString().trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+      return null;
     }
 
-    final account = Map<String, dynamic>.from(raw);
+    return {
+      'customer_name': firstNonEmpty([
+        account['customer_name'],
+        business['trading_name'],
+        business['legal_name'],
+      ]),
+      'legal_name': firstNonEmpty([
+        account['legal_name'],
+        business['legal_name'],
+      ]),
+      'abn': firstNonEmpty([account['abn'], business['abn']]),
+      'contact_name': firstNonEmpty([account['contact_name']]),
+      'email': firstNonEmpty([account['email'], business['business_email']]),
+      'phone': firstNonEmpty([account['phone'], business['business_phone']]),
+      'delivery_address_line_1': firstNonEmpty([
+        account['delivery_address_line_1'],
+        business['address_line_1'],
+      ]),
+      'delivery_address_line_2': firstNonEmpty([
+        account['delivery_address_line_2'],
+        business['address_line_2'],
+      ]),
+      'delivery_suburb': firstNonEmpty([
+        account['delivery_suburb'],
+        business['suburb'],
+      ]),
+      'delivery_state': firstNonEmpty([
+        account['delivery_state'],
+        business['state'],
+      ]),
+      'delivery_postcode': firstNonEmpty([
+        account['delivery_postcode'],
+        business['postcode'],
+      ]),
+    };
+  }
 
+  String _customerDetail(String key) {
+    final value = _customerAccount()[key]?.toString().trim() ?? '';
+    return value;
+  }
+
+  String _deliveryAddress() {
+    final account = _customerAccount();
     final parts = <String>[
-      if ((account['delivery_address_line_1']?.toString().trim() ?? '')
-          .isNotEmpty)
-        account['delivery_address_line_1'].toString().trim(),
-      if ((account['delivery_address_line_2']?.toString().trim() ?? '')
-          .isNotEmpty)
-        account['delivery_address_line_2'].toString().trim(),
-      if ((account['delivery_suburb']?.toString().trim() ?? '').isNotEmpty)
-        account['delivery_suburb'].toString().trim(),
-      if ((account['delivery_state']?.toString().trim() ?? '').isNotEmpty)
-        account['delivery_state'].toString().trim(),
-      if ((account['delivery_postcode']?.toString().trim() ?? '').isNotEmpty)
-        account['delivery_postcode'].toString().trim(),
-    ];
+      account['delivery_address_line_1']?.toString().trim() ?? '',
+      account['delivery_address_line_2']?.toString().trim() ?? '',
+      account['delivery_suburb']?.toString().trim() ?? '',
+      account['delivery_state']?.toString().trim() ?? '',
+      account['delivery_postcode']?.toString().trim() ?? '',
+    ].where((part) => part.isNotEmpty).toList();
 
     return parts.isEmpty ? 'Not recorded' : parts.join(', ');
   }
@@ -470,6 +523,101 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Delivery driver assigned.')),
       );
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _killWorkOrder() async {
+    if (_isSaving || _invoiceId != null) return;
+
+    final marketplace = _order?['order_source']?.toString() == 'marketplace';
+    final reasonController = TextEditingController();
+    var reasonMissing = false;
+
+    final reason = await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Kill Order?'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  marketplace
+                      ? 'This marketplace order will be cancelled and the butcher will be notified. Reserved stock will be restored.'
+                      : 'This removes the warehouse work order, cancels the underlying order and restores any stock reserved for it. This cannot be undone.',
+                ),
+                if (marketplace) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      labelText: 'Cancellation reason',
+                      hintText:
+                          'Tell the butcher why this order cannot be fulfilled.',
+                      errorText: reasonMissing
+                          ? 'A cancellation reason is required.'
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Keep Order'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade800,
+              ),
+              onPressed: () {
+                final value = reasonController.text.trim();
+                if (marketplace && value.isEmpty) {
+                  setDialogState(() => reasonMissing = true);
+                  return;
+                }
+                Navigator.of(dialogContext).pop(value);
+              },
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Kill Order'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    reasonController.dispose();
+    if (reason == null) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'kill_supplier_work_order',
+        params: {
+          'target_order_id': widget.orderId,
+          'p_reason': reason.trim().isEmpty ? null : reason.trim(),
+        },
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1121,6 +1269,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 labelValue('Customer', _customerName()),
+                if (_customerDetail('legal_name').isNotEmpty)
+                  labelValue('Legal name', _customerDetail('legal_name')),
+                if (_customerDetail('abn').isNotEmpty)
+                  labelValue('ABN', _customerDetail('abn')),
+                if (_customerDetail('contact_name').isNotEmpty)
+                  labelValue('Contact', _customerDetail('contact_name')),
+                if (_customerDetail('phone').isNotEmpty)
+                  labelValue('Phone', _customerDetail('phone')),
+                if (_customerDetail('email').isNotEmpty)
+                  labelValue('Email', _customerDetail('email')),
                 labelValue('Fulfilment', _fulfilmentMethodLabel()),
                 labelValue('Requested date', _requestedFulfilmentDateLabel()),
                 labelValue('Order placed', _orderCreatedDateTimeLabel()),
@@ -1399,6 +1557,20 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           ],
         ),
         actions: [
+          if (_invoiceId == null &&
+              _workOrder?['status']?.toString() != 'completed')
+            OutlinedButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _killWorkOrder,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade800,
+                side: BorderSide(color: Colors.red.shade200),
+              ),
+              icon: const Icon(Icons.delete_forever_outlined, size: 17),
+              label: const Text('Kill Order'),
+            ),
+          if (_invoiceId == null &&
+              _workOrder?['status']?.toString() != 'completed')
+            const SizedBox(width: 7),
           if (_invoiceId == null)
             TextButton.icon(
               onPressed: _isLoading || _isSaving ? null : _reopenForCuts,
@@ -1485,212 +1657,48 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Widget _buildPreviewTab() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_errorMessage != null || _workOrder == null || _order == null) {
-      return _buildBody();
-    }
+    final workOrderNumber =
+        _workOrder?['work_order_number']?.toString() ?? 'CutLink-Work-Order';
+
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
-          ),
+          color: Colors.white,
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               const Expanded(
                 child: Text(
-                  'Picking Slip / Work Order',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                  'Work Order PDF',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
               ),
-              _zoomControls(),
-              if (_invoiceId != null) ...[
-                const SizedBox(width: 7),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => SupplierInvoicePage(
-                        invoiceId: _invoiceId,
-                        initialTabIndex: 1,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.receipt_long_outlined, size: 17),
-                  label: const Text('View Invoice PDF'),
+              const Text(
+                'Scroll wheel to zoom',
+                style: TextStyle(
+                  color: Color(0xFF6D7177),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _downloadPickSlip,
+                icon: const Icon(Icons.download_outlined, size: 17),
+                label: const Text('Download'),
+              ),
             ],
           ),
         ),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final availableHeight = constraints.maxHeight > 24
-                  ? constraints.maxHeight - 24
-                  : constraints.maxHeight;
-              final availableWidth = constraints.maxWidth > 24
-                  ? constraints.maxWidth - 24
-                  : constraints.maxWidth;
-              final fitWidth =
-                  availableHeight *
-                  PdfPageFormat.a4.width /
-                  PdfPageFormat.a4.height;
-              final maxWidth = fitWidth < availableWidth
-                  ? fitWidth
-                  : availableWidth;
-              return ClipRect(
-                key: _previewViewportKey,
-                child: MouseRegion(
-                  cursor: _previewZoom > 1
-                      ? (_isPreviewDragging
-                            ? SystemMouseCursors.grabbing
-                            : SystemMouseCursors.grab)
-                      : MouseCursor.defer,
-                  child: Listener(
-                    onPointerSignal: _handlePreviewPointerSignal,
-                    child: InteractiveViewer(
-                      transformationController: _previewTransformController,
-                      minScale: 0.75,
-                      maxScale: 3,
-                      panEnabled: _previewZoom > 1,
-                      onInteractionStart: (_) {
-                        if (_previewZoom > 1) {
-                          setState(() => _isPreviewDragging = true);
-                        }
-                      },
-                      onInteractionUpdate: (_) => _syncPreviewZoom(),
-                      onInteractionEnd: (_) {
-                        _syncPreviewZoom();
-                        if (_isPreviewDragging) {
-                          setState(() => _isPreviewDragging = false);
-                        }
-                      },
-                      child: PdfPreview(
-                        build: (_) => _buildPickSlipPdf(),
-                        pdfFileName:
-                            '${_workOrder?['work_order_number'] ?? 'CutLink-Work-Order'}.pdf',
-                        maxPageWidth: maxWidth,
-                        canChangeOrientation: false,
-                        canChangePageFormat: false,
-                        canDebug: false,
-                        allowPrinting: false,
-                        allowSharing: false,
-                        useActions: false,
-                        initialPageFormat: PdfPageFormat.a4,
-                        dpi: 220,
-                        padding: const EdgeInsets.all(12),
-                        scrollViewDecoration: const BoxDecoration(
-                          color: Color(0xFFE9EBEE),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+          child: ZoomablePdfPreview(
+            documentKey: 'work-order-${widget.orderId}-$workOrderNumber',
+            buildPdf: _buildPickSlipPdf,
+            dpi: 240,
           ),
         ),
       ],
     );
-  }
-
-  Widget _zoomControls() {
-    return Container(
-      height: 36,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F6),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFFE0E2E5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: _previewZoom <= 0.75
-                ? null
-                : () => _setPreviewZoom(_previewZoom - 0.1),
-            tooltip: 'Zoom out',
-            icon: const Icon(Icons.zoom_out, size: 18),
-            visualDensity: VisualDensity.compact,
-          ),
-          Tooltip(
-            message: 'Reset and centre preview',
-            child: TextButton.icon(
-              onPressed: _resetPreviewZoom,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4F555B),
-                minimumSize: const Size(72, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-              ),
-              icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
-              label: Text(
-                '${(_previewZoom * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: _previewZoom >= 3
-                ? null
-                : () => _setPreviewZoom(_previewZoom + 0.1),
-            tooltip: 'Zoom in',
-            icon: const Icon(Icons.zoom_in, size: 18),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handlePreviewPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent) return;
-    _setPreviewZoom(
-      _previewZoom + (event.scrollDelta.dy < 0 ? 0.1 : -0.1),
-      focalPoint: event.localPosition,
-    );
-  }
-
-  void _setPreviewZoom(double value, {Offset? focalPoint}) {
-    final zoom = value.clamp(0.75, 3.0);
-    if (zoom == _previewZoom) return;
-
-    final focal = focalPoint ?? _previewCentre();
-    final factor = zoom / _previewZoom;
-    final adjustment = Matrix4.identity()
-      ..translateByDouble(focal.dx, focal.dy, 0, 1)
-      ..scaleByDouble(factor, factor, 1, 1)
-      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
-      ..multiply(_previewTransformController.value);
-    _previewTransformController.value = adjustment;
-    setState(() => _previewZoom = zoom);
-  }
-
-  void _syncPreviewZoom() {
-    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
-      0.75,
-      3.0,
-    );
-    if ((zoom - _previewZoom).abs() > 0.001 && mounted) {
-      setState(() => _previewZoom = zoom);
-    }
-  }
-
-  Offset _previewCentre() {
-    final renderObject = _previewViewportKey.currentContext?.findRenderObject();
-    if (renderObject is RenderBox) {
-      return renderObject.size.center(Offset.zero);
-    }
-    return Offset.zero;
-  }
-
-  void _resetPreviewZoom() {
-    _previewTransformController.value = Matrix4.identity();
-    setState(() => _previewZoom = 1);
   }
 
   Future<void> _downloadPickSlip() async {
@@ -1919,6 +1927,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
             const SizedBox(height: 11),
             _compactInfoLine('Business', _customerName()),
+            if (_customerDetail('legal_name').isNotEmpty)
+              _compactInfoLine('Legal name', _customerDetail('legal_name')),
+            if (_customerDetail('abn').isNotEmpty)
+              _compactInfoLine('ABN', _customerDetail('abn')),
+            if (_customerDetail('contact_name').isNotEmpty)
+              _compactInfoLine('Contact', _customerDetail('contact_name')),
+            if (_customerDetail('phone').isNotEmpty)
+              _compactInfoLine('Phone', _customerDetail('phone')),
+            if (_customerDetail('email').isNotEmpty)
+              _compactInfoLine('Email', _customerDetail('email')),
             _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
             if (!pickup) _compactInfoLine('Driver', _assignedDriverName()),
             if (!pickup) _compactInfoLine('Address', _deliveryAddress()),

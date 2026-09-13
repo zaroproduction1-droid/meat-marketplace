@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -5,16 +7,20 @@ import 'marketplace_product_details_page.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
+import '../../../shared/widgets/cutlink_notice.dart';
 
 class MarketplaceProductsPage extends StatefulWidget {
-  const MarketplaceProductsPage({super.key});
+  const MarketplaceProductsPage({super.key, this.onBack});
+
+  final VoidCallback? onBack;
 
   @override
   State<MarketplaceProductsPage> createState() =>
       _MarketplaceProductsPageState();
 }
 
-class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
+class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _supplierSearchController =
       TextEditingController();
@@ -47,10 +53,21 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   String? _butcherBusinessId;
   String? _addingProductId;
   final Map<String, int> _cartQuantities = <String, int>{};
+  late final AnimationController _cartBounceController;
+  late final Animation<double> _cartBounceScale;
+  Timer? _cartBounceTimer;
+  int _cartItemCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _cartBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
+    _cartBounceScale = Tween<double>(begin: 1, end: 1.08).animate(
+      CurvedAnimation(parent: _cartBounceController, curve: Curves.easeInOut),
+    );
     _searchController.addListener(_applySearch);
     _supplierSearchController.addListener(_applySearch);
     _loadButcherBusinessId();
@@ -67,6 +84,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     _subcategoryScrollController.dispose();
     _gradeScrollController.dispose();
     _finalSpecificationScrollController.dispose();
+    _cartBounceTimer?.cancel();
+    _cartBounceController.dispose();
     super.dispose();
   }
 
@@ -88,6 +107,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
       setState(() {
         _butcherBusinessId = membership['business_id']?.toString();
       });
+
+      await _loadCartItemCount();
     } catch (_) {
       // The add-to-cart action will show a clear message if this is unavailable.
     }
@@ -177,10 +198,68 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     });
   }
 
+  Future<void> _loadCartItemCount() async {
+    final butcherBusinessId = _butcherBusinessId;
+    if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
+      return;
+    }
+
+    try {
+      final drafts = await Supabase.instance.client
+          .from('orders')
+          .select('id, order_items(id)')
+          .eq('butcher_business_id', butcherBusinessId)
+          .eq('status', 'draft');
+
+      var count = 0;
+      for (final raw in drafts) {
+        final items = raw['order_items'];
+        if (items is List) {
+          count += items.length;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _cartItemCount = count);
+      _syncCartBounce();
+    } on PostgrestException {
+      // Cart badge is supplementary; product browsing must still work if it fails.
+    }
+  }
+
+  void _syncCartBounce() {
+    _cartBounceTimer?.cancel();
+    _cartBounceController.stop();
+    _cartBounceController.value = 0;
+
+    if (_cartItemCount <= 0) {
+      return;
+    }
+
+    Future<void> bounce() async {
+      if (!mounted ||
+          _cartItemCount <= 0 ||
+          _cartBounceController.isAnimating) {
+        return;
+      }
+      await _cartBounceController.forward(from: 0);
+      if (!mounted) return;
+      await _cartBounceController.reverse();
+    }
+
+    bounce();
+    _cartBounceTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      bounce();
+    });
+  }
+
   Future<void> _openCart() async {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
+    if (mounted) {
+      await _loadCartItemCount();
+    }
   }
 
   Future<void> _addProductToCart(
@@ -194,10 +273,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
     final butcherBusinessId = _butcherBusinessId;
     if (butcherBusinessId == null || butcherBusinessId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Your butcher business could not be identified.'),
-        ),
+      CutLinkNotice.show(
+        context,
+        message: 'Your butcher business could not be identified.',
+        title: 'Cart unavailable',
+        error: true,
       );
       return;
     }
@@ -209,25 +289,32 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
         : double.tryParse(rawPrice?.toString() ?? '');
 
     if (visiblePrice == null || unitPrice == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This supplier offer does not have a visible price.'),
-        ),
+      CutLinkNotice.show(
+        context,
+        message: 'This supplier offer does not have a visible price.',
+        title: 'Price unavailable',
+        error: true,
       );
       return;
     }
 
     if (product['availability_status']?.toString() == 'out_of_stock') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This item is currently out of stock.')),
+      CutLinkNotice.show(
+        context,
+        message: 'This item is currently out of stock.',
+        title: 'Out of stock',
+        error: true,
       );
       return;
     }
 
     final supplierBusinessId = product['supplier_business_id']?.toString();
     if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Supplier information is missing.')),
+      CutLinkNotice.show(
+        context,
+        message: 'Supplier information is missing.',
+        title: 'Supplier unavailable',
+        error: true,
       );
       return;
     }
@@ -311,21 +398,22 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            orderNumber == null || orderNumber.trim().isEmpty
-                ? '${_specificationName(product)} added to cart.'
-                : '${_specificationName(product)} added to $orderNumber.',
-          ),
-          action: SnackBarAction(label: 'OK', onPressed: () {}),
-        ),
+      CutLinkNotice.show(
+        context,
+        title: 'Added to cart',
+        message: orderNumber == null || orderNumber.trim().isEmpty
+            ? '${_specificationName(product)} added to cart.'
+            : '${_specificationName(product)} added to $orderNumber.',
       );
+      await _loadCartItemCount();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        CutLinkNotice.show(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+          message: error.message,
+          title: 'Could not update cart',
+          error: true,
+        );
       }
     } finally {
       if (mounted) {
@@ -774,6 +862,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }
 
   String? get _selectedCatalogueSectionId {
+    final directSectionId = _selectedSectionId;
+    if (directSectionId != null && directSectionId.isNotEmpty) {
+      return directSectionId;
+    }
+
     final regionKey = _selectedAnimalRegionKey;
     if (regionKey == null) return null;
 
@@ -987,15 +1080,52 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     _applySearch();
   }
 
+  String? _regionForSection(Map<String, dynamic> section) {
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    if (catalogue == null) return null;
+
+    final sectionCode = _normaliseCatalogueKey(section['code']);
+    final sectionName = _normaliseCatalogueKey(section['name']);
+    final sectionSlug = _normaliseCatalogueKey(section['slug']);
+    final sectionHotspot = _normaliseCatalogueKey(section['hotspot_key']);
+
+    for (final regionKey in catalogue.regionKeys) {
+      final regionCode = _normaliseCatalogueKey(
+        catalogue.sectionCodeForRegion(regionKey),
+      );
+      final regionName = _normaliseCatalogueKey(
+        catalogue.regionLabel(regionKey),
+      );
+      final region = _normaliseCatalogueKey(regionKey);
+
+      if ((sectionCode.isNotEmpty && regionCode == sectionCode) ||
+          sectionHotspot == region ||
+          sectionSlug == region ||
+          sectionName == regionName) {
+        return regionKey;
+      }
+    }
+
+    return null;
+  }
+
   void _selectSection(Map<String, dynamic> section) {
+    final regionKey = _regionForSection(section);
+
     setState(() {
-      _selectedAnimalRegionKey = null;
+      _selectedAnimalRegionKey = regionKey;
       _selectedSectionId = section['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_subcategoryScrollController.hasClients) {
+        _subcategoryScrollController.jumpTo(0);
+      }
     });
 
     _applySearch();
@@ -1786,25 +1916,36 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        selected: selected,
-        showCheckmark: false,
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
-        selectedColor: const Color(0xFF741C1C),
-        backgroundColor: Colors.white,
-        side: BorderSide(
-          color: selected ? const Color(0xFF741C1C) : const Color(0xFFD9D9D5),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            constraints: const BoxConstraints(minHeight: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFF741C1C) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF741C1C)
+                    : const Color(0xFFD9D9D5),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : const Color(0xFF444444),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
         ),
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : const Color(0xFF444444),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-        ),
-        label: Text(label),
-        onSelected: (_) => onTap(),
       ),
     );
   }
@@ -2060,6 +2201,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
+        automaticallyImplyLeading: widget.onBack == null,
+        leading: widget.onBack == null
+            ? null
+            : IconButton(
+                onPressed: widget.onBack,
+                tooltip: 'Back to dashboard',
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
@@ -2076,20 +2225,67 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage> {
           ],
         ),
         actions: [
-          FilledButton.icon(
-            onPressed: _openCart,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF741C1C),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          ScaleTransition(
+            scale: _cartBounceScale,
+            child: FilledButton(
+              onPressed: _openCart,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-            label: const Text(
-              'Cart',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.shopping_cart_outlined, size: 19),
+                      if (_cartItemCount > 0)
+                        Positioned(
+                          right: -9,
+                          top: -9,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFF741C1C),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              _cartItemCount > 99 ? '99+' : '$_cartItemCount',
+                              style: const TextStyle(
+                                color: Color(0xFF741C1C),
+                                fontSize: 9.5,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Cart',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 6),

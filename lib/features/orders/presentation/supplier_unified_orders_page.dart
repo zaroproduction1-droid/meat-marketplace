@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/formatters/order_reference.dart';
+
 import 'supplier_invoice_page.dart';
 import 'supplier_marketplace_order_detail_page.dart';
 import 'supplier_orders_page.dart';
@@ -1458,7 +1460,7 @@ class _UnifiedDocument {
         ? order['quote_number']?.toString() ??
               order['order_number']?.toString() ??
               'Quote'
-        : order['order_number']?.toString() ?? 'Order';
+        : 'Order ${cutLinkOrderReference(order['order_number'])}';
     return _UnifiedDocument(
       id: order['id'].toString(),
       orderId: order['id'].toString(),

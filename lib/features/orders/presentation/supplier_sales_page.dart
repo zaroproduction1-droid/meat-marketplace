@@ -801,12 +801,23 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   void _selectAnimalRegion(String regionKey) {
+    final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
+    if (catalogue == null || !catalogue.regionKeys.contains(regionKey)) {
+      return;
+    }
+
     setState(() {
       _selectedAnimalRegionKey = regionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
       _searchController.clear();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_subcategoryScrollController.hasClients) {
+        _subcategoryScrollController.jumpTo(0);
+      }
     });
   }
 
@@ -2877,23 +2888,34 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        selected: selected,
-        showCheckmark: false,
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 5),
-        selectedColor: _darkRed,
-        backgroundColor: Colors.white,
-        side: BorderSide(color: selected ? _darkRed : const Color(0xFFD9D9D5)),
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : const Color(0xFF444444),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            constraints: const BoxConstraints(minHeight: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected ? _darkRed : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? _darkRed : const Color(0xFFD9D9D5),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : const Color(0xFF444444),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
         ),
-        label: Text(label),
-        onSelected: (_) => onTap(),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/formatters/order_reference.dart';
+
 import 'supplier_invoice_page.dart';
 import 'supplier_marketplace_order_detail_page.dart';
 import 'supplier_work_order_page.dart';
@@ -1550,7 +1552,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                     ),
                                   ),
                                   Text(
-                                    '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                    'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                     style: const TextStyle(
                                       color: Color(0xFF666666),
                                       fontSize: 10.5,
@@ -2105,6 +2107,79 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
   }
 
+  Future<String?> _chooseDeliveryDriver() async {
+    final supplierId = _supplierBusinessId;
+    if (supplierId == null || supplierId.isEmpty) return null;
+
+    final rows = await Supabase.instance.client
+        .from('supplier_delivery_drivers')
+        .select('id, display_name, phone')
+        .eq('supplier_business_id', supplierId)
+        .eq('active', true)
+        .order('display_name');
+
+    final drivers = List<Map<String, dynamic>>.from(rows as List);
+    if (!mounted) return null;
+
+    if (drivers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No active delivery drivers are available. Add a driver in Delivery first.',
+          ),
+        ),
+      );
+      return null;
+    }
+
+    String? selected = drivers.first['id']?.toString();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Choose delivery driver'),
+          content: SizedBox(
+            width: 440,
+            child: DropdownButtonFormField<String>(
+              initialValue: selected,
+              decoration: const InputDecoration(
+                labelText: 'Driver',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final driver in drivers)
+                  DropdownMenuItem<String>(
+                    value: driver['id']?.toString(),
+                    child: Text(
+                      [
+                        driver['display_name']?.toString() ?? 'Driver',
+                        if ((driver['phone']?.toString().trim() ?? '')
+                            .isNotEmpty)
+                          driver['phone'].toString().trim(),
+                      ].join(' • '),
+                    ),
+                  ),
+              ],
+              onChanged: (value) => setDialogState(() => selected = value),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selected == null
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(selected),
+              child: const Text('Assign Driver'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _markOutForDelivery(Map<String, dynamic> order) async {
     final orderId = order['id']?.toString();
     if (orderId == null || orderId.isEmpty || _updatingOrderId == orderId) {
@@ -2115,16 +2190,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
     try {
       if (order['assigned_delivery_driver_id'] == null) {
-        if (!mounted) return;
+        final driverId = await _chooseDeliveryDriver();
+        if (driverId == null) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Assign a delivery driver from the Work Order before marking this order Out for Delivery.',
-            ),
-          ),
+        await Supabase.instance.client.rpc(
+          'assign_order_delivery_driver',
+          params: {'target_order_id': orderId, 'p_driver_id': driverId},
         );
-        return;
+        order['assigned_delivery_driver_id'] = driverId;
       }
 
       await Supabase.instance.client.rpc(
@@ -2266,7 +2339,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
   }
 
-  Future<void> _openInvoice(Map<String, dynamic> order) async {
+  Future<void> _openInvoice(
+    Map<String, dynamic> order, {
+    bool openPdf = true,
+  }) async {
     final invoice = _invoiceForOrder(order);
     final invoiceId = invoice?['id']?.toString();
 
@@ -2286,7 +2362,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) =>
-            SupplierInvoicePage(invoiceId: invoiceId, openPdfOnLoad: true),
+            SupplierInvoicePage(invoiceId: invoiceId, openPdfOnLoad: openPdf),
       ),
     );
 
@@ -2401,7 +2477,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                  'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -2493,7 +2569,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '${order['order_number'] ?? 'Order'} • ${_customerName(order)}',
+                                    'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                     style: const TextStyle(
                                       color: Color(0xFF741C1C),
                                       fontSize: 10.5,
@@ -3231,7 +3307,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         icon = Icons.notifications_none;
         iconBackground = const Color(0xFFEAF1FB);
         iconForeground = const Color(0xFF315A8C);
-        leadingLabel = order['order_number']?.toString() ?? 'New Order';
+        leadingLabel = 'Order ${cutLinkOrderReference(order['order_number'])}';
         dateLabel = 'Received';
         dateValue = _formatDate(order['submitted_at']);
         onTap = () => _openNewMarketplaceOrder(order);
@@ -3247,7 +3323,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             'Invoice';
         dateLabel = 'Invoiced';
         dateValue = _formatDate(invoice?['invoice_date']);
-        onTap = null;
+        onTap = () => _openInvoice(order, openPdf: false);
         break;
 
       case 'dispatched_ready':
@@ -3288,7 +3364,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         icon = Icons.receipt_long_outlined;
         iconBackground = const Color(0xFFF0F0F0);
         iconForeground = const Color(0xFF555555);
-        leadingLabel = order['order_number']?.toString() ?? 'Order';
+        leadingLabel = 'Order ${cutLinkOrderReference(order['order_number'])}';
         dateLabel = 'Updated';
         dateValue = _formatDate(order['updated_at']);
     }
@@ -3683,7 +3759,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    order['order_number']?.toString() ?? 'Order',
+                    'Order ${cutLinkOrderReference(order['order_number'])}',
                     style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,

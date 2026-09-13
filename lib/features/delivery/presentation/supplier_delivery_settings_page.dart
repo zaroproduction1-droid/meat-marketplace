@@ -19,7 +19,6 @@ class _SupplierDeliverySettingsPageState
 
   bool _isLoading = true;
   bool _isSaving = false;
-  bool _pickupAvailable = false;
   bool _settingsActive = true;
 
   String? _supplierBusinessId;
@@ -62,21 +61,9 @@ class _SupplierDeliverySettingsPageState
     }
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-
-      if (user == null) {
-        throw Exception('No signed-in user was found.');
-      }
-
-      final membership = await Supabase.instance.client
-          .from('business_memberships')
-          .select('business_id')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
-
-      final supplierBusinessId = membership['business_id']?.toString();
+      final supplierBusinessId = (await Supabase.instance.client.rpc(
+        'current_supplier_business_id',
+      ))?.toString();
 
       if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
         throw Exception('Your supplier business could not be identified.');
@@ -159,7 +146,6 @@ class _SupplierDeliverySettingsPageState
 
         _notesController.text = settings?['delivery_notes']?.toString() ?? '';
 
-        _pickupAvailable = settings?['pickup_available'] == true;
         _settingsActive = settings?['active'] != false;
 
         _cutoffTime = _parseDatabaseTime(
@@ -1293,7 +1279,7 @@ class _SupplierDeliverySettingsPageState
           _sectionCard(
             title: 'General Delivery Rules',
             subtitle:
-                'Manage your delivery minimum, lead time, cutoff, pickup availability and customer-facing notes.',
+                'Manage your delivery minimum, lead time, cut-off and customer-facing notes.',
             child: Column(
               children: [
                 TextField(
@@ -1333,11 +1319,31 @@ class _SupplierDeliverySettingsPageState
                     ),
                   ),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _pickupAvailable,
-                  title: const Text('Pickup available'),
-                  onChanged: (v) => setState(() => _pickupAvailable = v),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.store_mall_directory_outlined,
+                        color: _darkRed,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Pickup is always available to CutLink buyers. If a specific marketplace order cannot be fulfilled for pickup, cancel that order and provide the buyer with a reason.',
+                          style: TextStyle(height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -1595,7 +1601,7 @@ class _SupplierDeliverySettingsPageState
         'minimum_order_amount': minimumOrder,
         'default_lead_time_days': leadTime,
         'order_cutoff_time': _databaseTime(_cutoffTime),
-        'pickup_available': _pickupAvailable,
+        'pickup_available': true,
         'delivery_notes': _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),

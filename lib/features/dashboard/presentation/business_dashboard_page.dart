@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/formatters/order_reference.dart';
+
 import '../../admin/presentation/pending_businesses_page.dart';
 import 'business_analytics_page.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
@@ -10,6 +12,7 @@ import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../marketplace/presentation/butcher_vip_suppliers_page.dart';
 import '../../marketplace/presentation/marketplace_products_page.dart';
 import '../../orders/presentation/butcher_accounts_page.dart';
+import '../../orders/presentation/draft_orders_page.dart';
 import '../../orders/presentation/butcher_settings_page.dart';
 import '../../orders/presentation/submitted_orders_page.dart';
 import '../../orders/presentation/supplier_inventory_page.dart';
@@ -43,6 +46,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String _workspaceKey = 'dashboard';
 
   int _newSupplierOrderCount = 0;
+  int _butcherCartItemCount = 0;
 
   String? _errorMessage;
   String? _businessId;
@@ -58,6 +62,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   List<Map<String, dynamic>> _supplierProducts = [];
   List<Map<String, dynamic>> _supplierDeliveryRuns = [];
   int _pendingVipApplications = 0;
+
+  List<_DashboardTilePreference> _dashboardPreferences = [];
 
   @override
   void initState() {
@@ -152,6 +158,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       var newSupplierOrderCount = 0;
       var butcherOrders = <Map<String, dynamic>>[];
       var butcherAccounts = <Map<String, dynamic>>[];
+      var butcherCartItemCount = 0;
 
       var supplierOrders = <Map<String, dynamic>>[];
       var supplierAccounts = <Map<String, dynamic>>[];
@@ -173,6 +180,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               fulfilment_method,
               requested_fulfilment_date,
               requested_fulfilment_time,
+              ready_for_pickup_at,
               total_amount,
               submitted_at,
               created_at,
@@ -315,6 +323,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               status,
               order_type,
               order_source,
+              fulfilment_method,
+              requested_fulfilment_date,
+              requested_fulfilment_time,
               subtotal,
               gst_amount,
               total_amount,
@@ -347,6 +358,18 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
         butcherOrders = List<Map<String, dynamic>>.from(orderResponse as List);
 
+        final cartRows = await client
+            .from('orders')
+            .select('id, order_items(id)')
+            .eq('butcher_business_id', businessId)
+            .eq('status', 'draft');
+        for (final raw in cartRows) {
+          final items = raw['order_items'];
+          if (items is List) {
+            butcherCartItemCount += items.length;
+          }
+        }
+
         final accountResponse = await client.rpc(
           'list_butcher_supplier_account_summaries',
           params: {'due_soon_days': 7},
@@ -357,16 +380,40 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         );
       }
 
+      List<_DashboardTilePreference> loadedDashboardPreferences = [];
+      try {
+        final preferenceRows = await client
+            .from('user_dashboard_preferences')
+            .select('layout')
+            .eq('user_id', user.id)
+            .eq('business_id', businessId)
+            .limit(1);
+        if (preferenceRows.isNotEmpty) {
+          loadedDashboardPreferences = _dashboardPreferencesFromJson(
+            preferenceRows.first['layout'],
+          );
+        }
+      } on PostgrestException {
+        // Dashboard preferences are optional; defaults remain available.
+      }
+
+      loadedDashboardPreferences = _normaliseDashboardPreferences(
+        businessType ?? '',
+        loadedDashboardPreferences,
+      );
+
       if (!mounted) return;
 
       setState(() {
         _businessId = businessId;
         _businessName = businessName;
         _businessType = businessType;
+        _dashboardPreferences = loadedDashboardPreferences;
         _isAdmin = isAdmin;
         _newSupplierOrderCount = newSupplierOrderCount;
         _butcherOrders = butcherOrders;
         _butcherAccounts = butcherAccounts;
+        _butcherCartItemCount = butcherCartItemCount;
         _supplierOrders = supplierOrders;
         _supplierAccounts = supplierAccounts;
         _supplierInvoices = supplierInvoices;
@@ -443,6 +490,15 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     });
   }
 
+  Future<void> _openButcherCart() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const DraftOrdersPage()));
+
+    if (!mounted) return;
+    await _loadDashboard();
+  }
+
   void _toggleSidebar() {
     setState(() {
       _sidebarCollapsed = !_sidebarCollapsed;
@@ -512,21 +568,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     }
 
     return '${negative ? '-' : ''}\$${buffer.toString()}.$decimals';
-  }
-
-  String _shortMoney(dynamic value) {
-    final amount = _asDouble(value);
-
-    if (amount.abs() >= 1000000) {
-      return '\$${(amount / 1000000).toStringAsFixed(1)}m';
-    }
-
-    if (amount.abs() >= 1000) {
-      final decimals = amount.abs() >= 10000 ? 0 : 1;
-      return '\$${(amount / 1000).toStringAsFixed(decimals)}k';
-    }
-
-    return _money(amount);
   }
 
   String _date(dynamic raw) {
@@ -686,77 +727,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return output;
   }
 
-  List<_MonthlySpend> get _sixMonthSpend {
-    final now = DateTime.now();
-    final months = <_MonthlySpend>[];
-
-    for (var offset = 5; offset >= 0; offset--) {
-      final monthDate = DateTime(now.year, now.month - offset, 1);
-      var total = 0.0;
-
-      for (final order in _butcherOrders) {
-        final date = _orderDate(order);
-
-        if (date != null &&
-            date.year == monthDate.year &&
-            date.month == monthDate.month &&
-            _countSpend(order)) {
-          total += _asDouble(order['total_amount']);
-        }
-      }
-
-      months.add(_MonthlySpend(month: monthDate, amount: total));
-    }
-
-    return months;
-  }
-
-  String get _topSupplierThisMonth {
-    final now = DateTime.now();
-    final totals = <String, double>{};
-
-    for (final order in _butcherOrders) {
-      final date = _orderDate(order);
-      if (date == null ||
-          date.year != now.year ||
-          date.month != now.month ||
-          !_countSpend(order)) {
-        continue;
-      }
-
-      final supplier = _supplierName(order);
-      totals[supplier] =
-          (totals[supplier] ?? 0) + _asDouble(order['total_amount']);
-    }
-
-    if (totals.isEmpty) return '—';
-
-    return totals.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
-  }
-
-  String get _mostPurchasedProduct {
-    final counts = <String, double>{};
-
-    for (final order in _butcherOrders) {
-      final items = order['order_items'];
-      if (items is! List) continue;
-
-      for (final raw in items) {
-        if (raw is! Map) continue;
-        final item = Map<String, dynamic>.from(raw);
-        final name = item['product_name_snapshot']?.toString().trim();
-
-        if (name == null || name.isEmpty) continue;
-
-        counts[name] = (counts[name] ?? 0) + _asDouble(item['quantity']);
-      }
-    }
-
-    if (counts.isEmpty) return '—';
-
-    return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
-  }
-
   String _orderStatusLabel(String? value) {
     return switch (value) {
       'submitted' => 'Submitted',
@@ -889,172 +859,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        Text(
-                                          '${_greeting()}, ${_businessName ?? 'Butcher'}',
-                                          style: const TextStyle(
-                                            fontSize: 25,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        const Text(
-                                          'Here’s what’s happening with your purchasing today.',
-                                          style: TextStyle(
-                                            color: Color(0xFF6A6E75),
-                                            fontSize: 13.5,
-                                          ),
+                                        _dashboardHeading(
+                                          title:
+                                              '${_greeting()}, ${_businessName ?? 'Butcher'}',
+                                          subtitle:
+                                              'Here’s what’s happening with your purchasing today.',
                                         ),
                                         const SizedBox(height: 18),
                                         _summaryGrid(),
                                         const SizedBox(height: 16),
-                                        LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            if (constraints.maxWidth < 1050) {
-                                              return Column(
-                                                children: [
-                                                  _attentionCard(),
-                                                  const SizedBox(height: 14),
-                                                  _recentOrdersCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierAccountsCard(),
-                                                ],
-                                              );
-                                            }
-
-                                            return Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 9,
-                                                  child: _attentionCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 13,
-                                                  child: _recentOrdersCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 11,
-                                                  child:
-                                                      _supplierAccountsCard(),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _sectionCard(
-                                          title: 'Delivery Operations',
-                                          actionText: 'Open Delivery',
-                                          onAction: () => _openPage(
-                                            const SupplierDeliverySettingsPage(),
-                                          ),
-                                          child: LayoutBuilder(
-                                            builder: (context, constraints) {
-                                              final metrics = <Widget>[
-                                                _supplierInventoryMetric(
-                                                  Icons.today_outlined,
-                                                  "Today's Runs",
-                                                  _supplierTodayDeliveryRuns
-                                                      .toString(),
-                                                ),
-                                                _supplierInventoryMetric(
-                                                  Icons.route_outlined,
-                                                  'Active Runs',
-                                                  _supplierActiveDeliveryRuns
-                                                      .toString(),
-                                                ),
-                                                _supplierInventoryMetric(
-                                                  Icons.local_shipping_outlined,
-                                                  'Out for Delivery',
-                                                  _supplierOutForDeliveryStops
-                                                      .toString(),
-                                                  warning:
-                                                      _supplierOutForDeliveryStops >
-                                                      0,
-                                                ),
-                                              ];
-
-                                              if (constraints.maxWidth >= 760) {
-                                                return Row(
-                                                  children: [
-                                                    for (
-                                                      var i = 0;
-                                                      i < metrics.length;
-                                                      i++
-                                                    ) ...[
-                                                      Expanded(
-                                                        child: metrics[i],
-                                                      ),
-                                                      if (i !=
-                                                          metrics.length - 1)
-                                                        const SizedBox(
-                                                          width: 12,
-                                                        ),
-                                                    ],
-                                                  ],
-                                                );
-                                              }
-
-                                              return Column(
-                                                children: [
-                                                  for (
-                                                    var i = 0;
-                                                    i < metrics.length;
-                                                    i++
-                                                  ) ...[
-                                                    metrics[i],
-                                                    if (i != metrics.length - 1)
-                                                      const SizedBox(
-                                                        height: 10,
-                                                      ),
-                                                  ],
-                                                ],
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            if (constraints.maxWidth < 1100) {
-                                              return Column(
-                                                children: [
-                                                  _quickReorderCard(),
-                                                  const SizedBox(height: 14),
-                                                  _purchasingOverviewCard(),
-                                                  const SizedBox(height: 14),
-                                                  _quickActionsCard(),
-                                                ],
-                                              );
-                                            }
-
-                                            return Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 12,
-                                                  child: _quickReorderCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 11,
-                                                  child:
-                                                      _purchasingOverviewCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 7,
-                                                  child: _quickActionsCard(),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
+                                        _buildCustomDashboardGrid(),
                                       ],
                                     ),
                                   ),
@@ -1070,6 +884,582 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         ],
       ),
     );
+  }
+
+  Widget _dashboardHeading({required String title, required String subtitle}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final controls = OutlinedButton.icon(
+          onPressed: _showDashboardCustomiser,
+          icon: const Icon(Icons.dashboard_customize_outlined, size: 17),
+          label: const Text('Customise dashboard'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF33383E),
+            side: const BorderSide(color: Color(0xFFDADDE1)),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        if (constraints.maxWidth < 760) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Color(0xFF6A6E75),
+                  fontSize: 13.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              controls,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF6A6E75),
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            controls,
+          ],
+        );
+      },
+    );
+  }
+
+  List<_DashboardTilePreference> _defaultDashboardPreferences(String type) {
+    final ids = type == 'supplier'
+        ? const <String>[
+            'supplier_attention',
+            'supplier_orders',
+            'supplier_work_orders',
+            'supplier_accounts',
+            'supplier_inventory',
+            'supplier_sales',
+            'supplier_quick_actions',
+          ]
+        : const <String>[
+            'butcher_attention',
+            'butcher_recent_orders',
+            'butcher_supplier_accounts',
+            'butcher_delivery',
+            'butcher_quick_reorder',
+            'butcher_purchasing',
+            'butcher_quick_actions',
+          ];
+
+    return [
+      for (final id in ids)
+        _DashboardTilePreference(
+          id: id,
+          visible: true,
+          wide: id == 'butcher_purchasing' || id == 'supplier_sales',
+        ),
+    ];
+  }
+
+  List<_DashboardTilePreference> _dashboardPreferencesFromJson(dynamic raw) {
+    if (raw is! List) return [];
+    final result = <_DashboardTilePreference>[];
+    for (final item in raw) {
+      if (item is Map) {
+        final map = Map<String, dynamic>.from(item);
+        final id = map['id']?.toString().trim() ?? '';
+        if (id.isEmpty) continue;
+        result.add(
+          _DashboardTilePreference(
+            id: id,
+            visible: map['visible'] != false,
+            wide: map['wide'] == true,
+          ),
+        );
+      }
+    }
+    return result;
+  }
+
+  List<_DashboardTilePreference> _normaliseDashboardPreferences(
+    String type,
+    List<_DashboardTilePreference> current,
+  ) {
+    final defaults = _defaultDashboardPreferences(type);
+    final allowed = defaults.map((item) => item.id).toSet();
+    final result = <_DashboardTilePreference>[];
+
+    for (final item in current) {
+      if (allowed.contains(item.id) &&
+          !result.any((existing) => existing.id == item.id)) {
+        result.add(item.copy());
+      }
+    }
+
+    for (final item in defaults) {
+      if (!result.any((existing) => existing.id == item.id)) {
+        result.add(item.copy());
+      }
+    }
+
+    return result;
+  }
+
+  String _dashboardTileTitle(String id) {
+    switch (id) {
+      case 'supplier_attention':
+      case 'butcher_attention':
+        return 'Needs Attention';
+      case 'supplier_orders':
+        return 'Recent Orders';
+      case 'supplier_work_orders':
+        return 'Work Orders';
+      case 'supplier_accounts':
+        return 'Accounts Overview';
+      case 'supplier_inventory':
+        return 'Inventory Snapshot';
+      case 'supplier_sales':
+        return 'Sales Overview';
+      case 'supplier_quick_actions':
+      case 'butcher_quick_actions':
+        return 'Quick Actions';
+      case 'butcher_recent_orders':
+        return 'Recent Orders';
+      case 'butcher_supplier_accounts':
+        return 'Supplier Accounts';
+      case 'butcher_delivery':
+        return 'Delivery Operations';
+      case 'butcher_quick_reorder':
+        return 'Quick Reorder';
+      case 'butcher_purchasing':
+        return 'Purchasing Overview';
+      default:
+        return 'Dashboard Card';
+    }
+  }
+
+  Widget _dashboardTileWidget(String id) {
+    switch (id) {
+      case 'supplier_attention':
+        return _supplierAttentionCard();
+      case 'supplier_orders':
+        return _supplierOrdersCard();
+      case 'supplier_work_orders':
+        return _supplierWorkOrdersCard();
+      case 'supplier_accounts':
+        return _supplierAccountsOverviewCard();
+      case 'supplier_inventory':
+        return _supplierInventorySnapshotCard();
+      case 'supplier_sales':
+        return _supplierSalesOverviewCard();
+      case 'supplier_quick_actions':
+        return _supplierQuickActionsCard();
+      case 'butcher_attention':
+        return _attentionCard();
+      case 'butcher_recent_orders':
+        return _recentOrdersCard();
+      case 'butcher_supplier_accounts':
+        return _supplierAccountsCard();
+      case 'butcher_delivery':
+        return _butcherDeliveryOperationsCard();
+      case 'butcher_quick_reorder':
+        return _quickReorderCard();
+      case 'butcher_purchasing':
+        return _purchasingOverviewCard();
+      case 'butcher_quick_actions':
+        return _quickActionsCard();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _butcherDeliveryOperationsCard() {
+    final activeOrders = _butcherOrders.where((order) {
+      final status = order['status']?.toString();
+      return status != 'completed' &&
+          status != 'cancelled' &&
+          status != 'declined';
+    }).toList();
+
+    final deliveryOrders = activeOrders.where((order) {
+      return order['fulfilment_method']?.toString() != 'pickup';
+    }).length;
+
+    final pickupOrders = activeOrders.where((order) {
+      return order['fulfilment_method']?.toString() == 'pickup';
+    }).length;
+
+    final scheduledOrders = activeOrders.where((order) {
+      final date = order['requested_fulfilment_date']?.toString().trim();
+      return date != null && date.isNotEmpty;
+    }).length;
+
+    return _sectionCard(
+      title: 'Fulfilment Overview',
+      actionText: 'Open Orders',
+      onAction: () => _openPage(const SubmittedOrdersPage()),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final metrics = <Widget>[
+            _supplierInventoryMetric(
+              Icons.local_shipping_outlined,
+              'Delivery Orders',
+              deliveryOrders.toString(),
+            ),
+            _supplierInventoryMetric(
+              Icons.storefront_outlined,
+              'Pickup Orders',
+              pickupOrders.toString(),
+            ),
+            _supplierInventoryMetric(
+              Icons.event_available_outlined,
+              'Scheduled',
+              scheduledOrders.toString(),
+            ),
+          ];
+
+          if (constraints.maxWidth >= 760) {
+            return Row(
+              children: [
+                for (var i = 0; i < metrics.length; i++) ...[
+                  Expanded(child: metrics[i]),
+                  if (i != metrics.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              for (var i = 0; i < metrics.length; i++) ...[
+                metrics[i],
+                if (i != metrics.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCustomDashboardGrid() {
+    final visible = _dashboardPreferences
+        .where((item) => item.visible)
+        .toList();
+    if (visible.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        decoration: _cardDecoration(),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.dashboard_customize_outlined,
+              size: 34,
+              color: _darkRed,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Your dashboard is empty',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Choose which cards you want to see.',
+              style: TextStyle(color: Color(0xFF6A6E75)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _showDashboardCustomiser,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add dashboard cards'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 900) {
+          return Column(
+            children: [
+              for (var i = 0; i < visible.length; i++) ...[
+                _dashboardTileWidget(visible[i].id),
+                if (i != visible.length - 1) const SizedBox(height: 14),
+              ],
+            ],
+          );
+        }
+
+        final rows = <Widget>[];
+        var index = 0;
+        while (index < visible.length) {
+          final first = visible[index];
+          if (first.wide) {
+            rows.add(_dashboardTileWidget(first.id));
+            index += 1;
+          } else {
+            _DashboardTilePreference? second;
+            if (index + 1 < visible.length && !visible[index + 1].wide) {
+              second = visible[index + 1];
+            }
+
+            rows.add(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _dashboardTileWidget(first.id)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: second == null
+                        ? const SizedBox.shrink()
+                        : _dashboardTileWidget(second.id),
+                  ),
+                ],
+              ),
+            );
+            index += second == null ? 1 : 2;
+          }
+
+          if (index < visible.length) {
+            rows.add(const SizedBox(height: 14));
+          }
+        }
+
+        return Column(children: rows);
+      },
+    );
+  }
+
+  Future<void> _saveDashboardPreferences() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final businessId = _businessId;
+    if (user == null || businessId == null) return;
+
+    try {
+      await Supabase.instance.client.from('user_dashboard_preferences').upsert({
+        'user_id': user.id,
+        'business_id': businessId,
+        'layout': [for (final item in _dashboardPreferences) item.toJson()],
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'user_id,business_id');
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Dashboard layout could not be saved: ${error.message}',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showDashboardCustomiser() async {
+    final local = [for (final item in _dashboardPreferences) item.copy()];
+    final result = await showDialog<List<_DashboardTilePreference>>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.dashboard_customize_outlined, color: _darkRed),
+                  SizedBox(width: 10),
+                  Text('Customise dashboard'),
+                ],
+              ),
+              content: SizedBox(
+                width: 660,
+                height: 520,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Drag cards to change their order. Hide cards you do not need, or make important cards full width.',
+                      style: TextStyle(color: Color(0xFF666A70), height: 1.4),
+                    ),
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: ReorderableListView.builder(
+                        buildDefaultDragHandles: false,
+                        itemCount: local.length,
+                        onReorderItem: (oldIndex, newIndex) {
+                          setDialogState(() {
+                            final item = local.removeAt(oldIndex);
+                            local.insert(newIndex, item);
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          final item = local[index];
+                          return Container(
+                            key: ValueKey(item.id),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAFAFA),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFE2E4E7),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.drag_indicator_rounded,
+                                      color: Color(0xFF888D93),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _dashboardTileTitle(item.id),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                PopupMenuButton<bool>(
+                                  tooltip: 'Card size',
+                                  initialValue: item.wide,
+                                  onSelected: (wide) {
+                                    setDialogState(() => item.wide = wide);
+                                  },
+                                  itemBuilder: (context) => const [
+                                    PopupMenuItem(
+                                      value: false,
+                                      child: Text('Normal width'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: true,
+                                      child: Text('Full width'),
+                                    ),
+                                  ],
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFD9DCE0),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          item.wide
+                                              ? Icons.aspect_ratio_rounded
+                                              : Icons.crop_square_rounded,
+                                          size: 15,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          item.wide ? 'Wide' : 'Normal',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Switch.adaptive(
+                                  value: item.visible,
+                                  activeTrackColor: _darkRed,
+                                  onChanged: (value) {
+                                    setDialogState(() => item.visible = value);
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    final defaults = _defaultDashboardPreferences(
+                      _businessType ?? '',
+                    );
+                    setDialogState(() {
+                      local
+                        ..clear()
+                        ..addAll([for (final item in defaults) item.copy()]);
+                    });
+                  },
+                  child: const Text('Reset Default'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(local),
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  child: const Text('Save Layout'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      _dashboardPreferences = [for (final item in result) item.copy()];
+    });
+    await _saveDashboardPreferences();
   }
 
   Widget _summaryGrid() {
@@ -1359,7 +1749,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       child: Row(
                         children: [
                           _tableCell(
-                            order['order_number']?.toString() ?? 'Order',
+                            'Order ${cutLinkOrderReference(order['order_number'])}',
                             flex: 2,
                             strong: true,
                           ),
@@ -1464,7 +1854,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Quick Reorder',
       actionText: 'Browse Products',
-      onAction: () => _openPage(const MarketplaceProductsPage()),
+      onAction: () =>
+          _openPage(MarketplaceProductsPage(onBack: () => _openDashboard())),
       child: items.isEmpty
           ? _emptyState(
               Icons.refresh_rounded,
@@ -1553,7 +1944,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _openPage(const MarketplaceProductsPage()),
+              onPressed: () => _openPage(
+                MarketplaceProductsPage(onBack: () => _openDashboard()),
+              ),
               icon: const Icon(Icons.shopping_cart_outlined, size: 16),
               label: const Text('Reorder'),
               style: OutlinedButton.styleFrom(
@@ -1569,154 +1962,19 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _purchasingOverviewCard() {
-    final months = _sixMonthSpend;
-    final maxValue = months.fold<double>(
-      0,
-      (maxValue, item) => math.max(maxValue, item.amount),
-    );
+    final businessId = _businessId;
+    if (businessId == null) {
+      return const SizedBox.shrink();
+    }
 
     return _sectionCard(
       title: 'Purchasing Overview',
       actionText: 'View analytics',
       onAction: _openAnalytics,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Last 6 months',
-            style: TextStyle(
-              color: Color(0xFF73777E),
-              fontSize: 10.8,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 180,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < months.length; i++) ...[
-                  Expanded(child: _monthBar(months[i], maxValue)),
-                  if (i != months.length - 1) const SizedBox(width: 8),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Divider(height: 1),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _miniMetric(
-                  Icons.emoji_events_outlined,
-                  'Top Supplier',
-                  _topSupplierThisMonth,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _miniMetric(
-                  Icons.shopping_bag_outlined,
-                  'Most Purchased',
-                  _mostPurchasedProduct,
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: BusinessAnalyticsOverviewPanel(
+        businessId: businessId,
+        businessType: 'butcher',
       ),
-    );
-  }
-
-  Widget _monthBar(_MonthlySpend item, double maxValue) {
-    final ratio = maxValue <= 0 ? 0.05 : item.amount / maxValue;
-    const months = <String>[
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          item.amount <= 0 ? '—' : _shortMoney(item.amount),
-          maxLines: 1,
-          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 5),
-        Expanded(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              heightFactor: math.max(0.04, ratio),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _darkRed,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          months[item.month.month - 1],
-          style: const TextStyle(color: Color(0xFF6E7278), fontSize: 10.5),
-        ),
-      ],
-    );
-  }
-
-  Widget _miniMetric(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF7ECEE),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Icon(icon, color: _darkRed, size: 18),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(color: Color(0xFF73777E), fontSize: 10),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1729,7 +1987,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.storefront_outlined,
             'Browse Products',
-            () => _openPage(const MarketplaceProductsPage()),
+            () => _openPage(
+              MarketplaceProductsPage(onBack: () => _openDashboard()),
+            ),
           ),
           const SizedBox(height: 9),
           _quickAction(
@@ -2018,15 +2278,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.shopping_bag_outlined,
                     'Browse Products',
                     selected: _workspaceKey == 'browse',
-                    onTap: () => _openPage(const MarketplaceProductsPage()),
-                  ),
-                  _sideItem(
-                    Icons.scale_outlined,
-                    'Compare',
-                    selected: _workspaceKey == 'compare',
                     onTap: () => _openPage(
-                      const MarketplaceProductsPage(),
-                      workspaceKey: 'compare',
+                      MarketplaceProductsPage(onBack: () => _openDashboard()),
                     ),
                   ),
                   _sideItem(
@@ -2287,16 +2540,59 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ),
           if (cartVisible) ...[
             const SizedBox(width: 6),
-            OutlinedButton.icon(
-              onPressed: () => _openPage(const MarketplaceProductsPage()),
-              icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-              label: const Text('My Cart'),
+            OutlinedButton(
+              onPressed: _openButcherCart,
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF1F252B),
                 side: const BorderSide(color: Color(0xFFE0E2E5)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.shopping_cart_outlined, size: 18),
+                      if (_butcherCartItemCount > 0)
+                        Positioned(
+                          right: -9,
+                          top: -9,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _darkRed,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              _butcherCartItemCount > 99
+                                  ? '99+'
+                                  : '$_butcherCartItemCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 9),
+                  const Text('My Cart'),
+                ],
               ),
             ),
           ],
@@ -2453,6 +2749,18 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return const <Map<String, dynamic>>[];
   }
 
+  Map<String, dynamic>? _invoiceForSupplierOrder(Map<String, dynamic> order) {
+    final raw = order['invoices'];
+
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+
+    return null;
+  }
+
   int get _supplierOrdersToProcess {
     const activeStatuses = <String>{
       'submitted',
@@ -2514,6 +2822,40 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
+  int get _supplierOrdersNeedingAttentionCount {
+    var newOrders = 0;
+    var workOrders = 0;
+    var invoices = 0;
+
+    for (final order in _supplierOrders) {
+      final status = order['status']?.toString();
+      final source = order['order_source']?.toString();
+      final workOrderRows = _workOrdersForSupplierOrder(order);
+      final workOrder = workOrderRows.isEmpty ? null : workOrderRows.first;
+      final invoice = _invoiceForSupplierOrder(order);
+
+      if (source == 'marketplace' && status == 'submitted') {
+        newOrders++;
+      }
+
+      if (workOrder != null &&
+          workOrder['status']?.toString() != 'completed' &&
+          invoice == null &&
+          (status == 'accepted' || status == 'processing')) {
+        workOrders++;
+      }
+
+      if (invoice != null &&
+          status != 'completed' &&
+          status != 'dispatched' &&
+          order['ready_for_pickup_at'] == null) {
+        invoices++;
+      }
+    }
+
+    return newOrders + workOrders + invoices;
+  }
+
   int get _supplierOverdueAccountCount {
     return _supplierAccounts.where((account) {
       return _asDouble(account['overdue_amount']) > 0;
@@ -2550,17 +2892,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       }).length;
     }
     return count;
-  }
-
-  int get _supplierTodayDeliveryRuns {
-    final now = DateTime.now();
-    final today =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-    return _supplierDeliveryRuns.where((run) {
-      return run['delivery_date']?.toString() == today &&
-          run['status']?.toString() != 'cancelled';
-    }).length;
   }
 
   List<Map<String, dynamic>> get _supplierRecentOrders {
@@ -2604,60 +2935,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     }
 
     return rows.take(5).toList();
-  }
-
-  List<_MonthlySpend> get _supplierSixMonthSales {
-    final now = DateTime.now();
-    final months = <_MonthlySpend>[];
-
-    for (var offset = 5; offset >= 0; offset--) {
-      final monthDate = DateTime(now.year, now.month - offset, 1);
-      var total = 0.0;
-
-      for (final order in _supplierOrders) {
-        final rawDate = order['submitted_at'] ?? order['created_at'];
-        final date = DateTime.tryParse(rawDate?.toString() ?? '')?.toLocal();
-
-        if (date == null ||
-            date.year != monthDate.year ||
-            date.month != monthDate.month) {
-          continue;
-        }
-
-        final status = order['status']?.toString();
-
-        if (status == 'cancelled' || status == 'declined') {
-          continue;
-        }
-
-        total += _asDouble(order['total_amount']);
-      }
-
-      months.add(_MonthlySpend(month: monthDate, amount: total));
-    }
-
-    return months;
-  }
-
-  String get _supplierTopCustomer {
-    final totals = <String, double>{};
-
-    for (final order in _supplierOrders) {
-      final status = order['status']?.toString();
-
-      if (status == 'cancelled' || status == 'declined') {
-        continue;
-      }
-
-      final customer = _supplierCustomerName(order);
-
-      totals[customer] =
-          (totals[customer] ?? 0) + _asDouble(order['total_amount']);
-    }
-
-    if (totals.isEmpty) return '—';
-
-    return totals.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
   }
 
   String _supplierOrderSourceLabel(Map<String, dynamic> order) {
@@ -2709,111 +2986,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        Text(
-                                          '${_greeting()}, ${_businessName ?? 'Supplier'}',
-                                          style: const TextStyle(
-                                            fontSize: 25,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        const Text(
-                                          'Here’s what’s happening across your sales and fulfilment today.',
-                                          style: TextStyle(
-                                            color: Color(0xFF6A6E75),
-                                            fontSize: 13.5,
-                                          ),
+                                        _dashboardHeading(
+                                          title:
+                                              '${_greeting()}, ${_businessName ?? 'Supplier'}',
+                                          subtitle:
+                                              'Here’s what’s happening across your sales and fulfilment today.',
                                         ),
                                         const SizedBox(height: 18),
                                         _supplierSummaryGrid(),
                                         const SizedBox(height: 16),
-                                        LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            if (constraints.maxWidth < 1050) {
-                                              return Column(
-                                                children: [
-                                                  _supplierAttentionCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierOrdersCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierWorkOrdersCard(),
-                                                ],
-                                              );
-                                            }
-
-                                            return Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 9,
-                                                  child:
-                                                      _supplierAttentionCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 13,
-                                                  child: _supplierOrdersCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 11,
-                                                  child:
-                                                      _supplierWorkOrdersCard(),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(height: 16),
-                                        LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            if (constraints.maxWidth < 1100) {
-                                              return Column(
-                                                children: [
-                                                  _supplierAccountsOverviewCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierInventorySnapshotCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierSalesOverviewCard(),
-                                                  const SizedBox(height: 14),
-                                                  _supplierQuickActionsCard(),
-                                                ],
-                                              );
-                                            }
-
-                                            return Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 10,
-                                                  child:
-                                                      _supplierAccountsOverviewCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 8,
-                                                  child:
-                                                      _supplierInventorySnapshotCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 10,
-                                                  child:
-                                                      _supplierSalesOverviewCard(),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 7,
-                                                  child:
-                                                      _supplierQuickActionsCard(),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
+                                        _buildCustomDashboardGrid(),
                                       ],
                                     ),
                                   ),
@@ -2938,8 +3120,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_supplierOverdueAccountCount account${_supplierOverdueAccountCount == 1 ? '' : 's'} have overdue balances',
           action: 'View Accounts',
-          onTap: () =>
-              _openPage(const SupplierCustomerRequestsPage(embedded: true)),
+          onTap: () => _openPage(const SupplierCustomerRequestsPage()),
         ),
       );
     }
@@ -2982,8 +3163,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           message:
               '$_pendingVipApplications VIP or credit application${_pendingVipApplications == 1 ? '' : 's'} waiting for review',
           action: 'Review',
-          onTap: () =>
-              _openPage(const SupplierCustomerRequestsPage(embedded: true)),
+          onTap: () => _openPage(const SupplierCustomerRequestsPage()),
         ),
       );
     }
@@ -3051,7 +3231,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       child: Row(
                         children: [
                           _tableCell(
-                            order['order_number']?.toString() ?? 'Order',
+                            'Order ${cutLinkOrderReference(order['order_number'])}',
                             flex: 2,
                             strong: true,
                           ),
@@ -3164,8 +3344,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return _sectionCard(
       title: 'Accounts Overview',
       actionText: 'View All Accounts',
-      onAction: () =>
-          _openPage(const SupplierCustomerRequestsPage(embedded: true)),
+      onAction: () => _openPage(const SupplierCustomerRequestsPage()),
       child: _supplierTopAccounts.isEmpty
           ? _emptyState(
               Icons.account_balance_wallet_outlined,
@@ -3184,9 +3363,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 for (final account in _supplierTopAccounts)
                   InkWell(
-                    onTap: () => _openPage(
-                      const SupplierCustomerRequestsPage(embedded: true),
-                    ),
+                    onTap: () =>
+                        _openPage(const SupplierCustomerRequestsPage()),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: const BoxDecoration(
@@ -3342,125 +3520,19 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _supplierSalesOverviewCard() {
-    final months = _supplierSixMonthSales;
-    final maxValue = months.fold<double>(
-      0,
-      (maxValue, item) => math.max(maxValue, item.amount),
-    );
-
-    final total = months.fold<double>(0, (sum, item) => sum + item.amount);
+    final businessId = _businessId;
+    if (businessId == null) {
+      return const SizedBox.shrink();
+    }
 
     return _sectionCard(
       title: 'Sales Overview',
       actionText: 'View analytics',
       onAction: _openAnalytics,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _supplierHeadlineMetric('Total Sales', _money(total)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _supplierHeadlineMetric(
-                  'Top Customer',
-                  _supplierTopCustomer,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 160,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < months.length; i++) ...[
-                  Expanded(child: _supplierMonthBar(months[i], maxValue)),
-                  if (i != months.length - 1) const SizedBox(width: 8),
-                ],
-              ],
-            ),
-          ),
-        ],
+      child: BusinessAnalyticsOverviewPanel(
+        businessId: businessId,
+        businessType: 'supplier',
       ),
-    );
-  }
-
-  Widget _supplierHeadlineMetric(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF73777E),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-        ),
-      ],
-    );
-  }
-
-  Widget _supplierMonthBar(_MonthlySpend item, double maxValue) {
-    final ratio = maxValue <= 0 ? 0.05 : item.amount / maxValue;
-
-    const months = <String>[
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          item.amount <= 0 ? '—' : _shortMoney(item.amount),
-          maxLines: 1,
-          style: const TextStyle(fontSize: 9.3, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 5),
-        Expanded(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              heightFactor: math.max(0.04, ratio),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _darkRed,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          months[item.month.month - 1],
-          style: const TextStyle(color: Color(0xFF6E7278), fontSize: 10),
-        ),
-      ],
     );
   }
 
@@ -3497,7 +3569,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _quickAction(
             Icons.people_alt_outlined,
             'Customers & Accounts',
-            () => _openPage(const SupplierCustomerRequestsPage(embedded: true)),
+            () => _openPage(const SupplierCustomerRequestsPage()),
           ),
           const SizedBox(height: 9),
           _quickAction(
@@ -3565,9 +3637,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     Icons.people_alt_outlined,
                     'Customers & Accounts',
                     selected: _workspaceKey == 'customers',
-                    onTap: () => _openPage(
-                      const SupplierCustomerRequestsPage(embedded: true),
-                    ),
+                    onTap: () =>
+                        _openPage(const SupplierCustomerRequestsPage()),
                   ),
                   _sideItem(
                     Icons.local_shipping_outlined,
@@ -3706,6 +3777,60 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
             tooltip: 'Notifications',
             icon: const Icon(Icons.notifications_none_rounded),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () =>
+                _openPage(const SupplierOrdersPage(), workspaceKey: 'orders'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF1F252B),
+              side: const BorderSide(color: Color(0xFFE0E2E5)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.receipt_long_outlined, size: 18),
+                    if (_supplierOrdersNeedingAttentionCount > 0)
+                      Positioned(
+                        right: -9,
+                        top: -9,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _darkRed,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: Text(
+                            _supplierOrdersNeedingAttentionCount > 99
+                                ? '99+'
+                                : '$_supplierOrdersNeedingAttentionCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 9),
+                const Text('Orders'),
+              ],
+            ),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
@@ -3869,9 +3994,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         title: 'Customers & Accounts',
                         description:
                             'Manage members, external customers and account terms.',
-                        onTap: () => _openPage(
-                          const SupplierCustomerRequestsPage(embedded: true),
-                        ),
+                        onTap: () =>
+                            _openPage(const SupplierCustomerRequestsPage()),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
@@ -3942,13 +4066,6 @@ class _QuickReorderItem {
   final double unitPrice;
   final String? priceBasis;
   final DateTime? lastOrdered;
-}
-
-class _MonthlySpend {
-  const _MonthlySpend({required this.month, required this.amount});
-
-  final DateTime month;
-  final double amount;
 }
 
 class _AttentionItem {
@@ -4110,4 +4227,22 @@ class _LegacyDashboardCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DashboardTilePreference {
+  _DashboardTilePreference({
+    required this.id,
+    required this.visible,
+    required this.wide,
+  });
+
+  final String id;
+  bool visible;
+  bool wide;
+
+  _DashboardTilePreference copy() {
+    return _DashboardTilePreference(id: id, visible: visible, wide: wide);
+  }
+
+  Map<String, dynamic> toJson() => {'id': id, 'visible': visible, 'wide': wide};
 }

@@ -35,7 +35,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   static const Color _danger = Color(0xFFB3261E);
 
   int _days = 30;
-  DateTime? _customDate;
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
   bool _loading = true;
   bool _exportingPdf = false;
   String? _error;
@@ -131,8 +132,13 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   }
 
   String get _periodLabel {
-    if (_customDate != null) {
-      return _dateLabel(_customDate!);
+    final start = _customStartDate;
+    final end = _customEndDate;
+    if (start != null && end != null) {
+      if (_dateIso(start) == _dateIso(end)) {
+        return _dateLabel(start);
+      }
+      return '${_dateLabel(start)} – ${_dateLabel(end)}';
     }
     if (_days == 1) {
       return 'Today';
@@ -143,8 +149,25 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return 'Last $_days days';
   }
 
+  String get _dateRangeChipLabel {
+    final start = _customStartDate;
+    final end = _customEndDate;
+    if (start == null || end == null) {
+      return 'Date range';
+    }
+    return 'From ${_dateLabel(start)} → To ${_dateLabel(end)}';
+  }
+
   String get _comparisonCaption {
-    if (_customDate != null || _days == 1) {
+    final start = _customStartDate;
+    final end = _customEndDate;
+    if (start != null && end != null) {
+      final periodDays = end.difference(start).inDays + 1;
+      return periodDays == 1
+          ? 'Compared with the previous day'
+          : 'Compared with the previous $periodDays days';
+    }
+    if (_days == 1) {
       return 'Compared with the previous day';
     }
     if (_days == 365) {
@@ -163,8 +186,10 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       final params = <String, dynamic>{
         'p_business_id': widget.businessId,
         'p_days': _days,
-        'p_start_date': _customDate == null ? null : _dateIso(_customDate!),
-        'p_end_date': _customDate == null ? null : _dateIso(_customDate!),
+        'p_start_date': _customStartDate == null
+            ? null
+            : _dateIso(_customStartDate!),
+        'p_end_date': _customEndDate == null ? null : _dateIso(_customEndDate!),
       };
 
       final response = await Supabase.instance.client.rpc(
@@ -202,29 +227,44 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   }
 
   void _changeDays(int days) {
-    if (_days == days && _customDate == null) {
+    if (_days == days && _customStartDate == null && _customEndDate == null) {
       return;
     }
     setState(() {
       _days = days;
-      _customDate = null;
+      _customStartDate = null;
+      _customEndDate = null;
     });
     _load();
   }
 
-  Future<void> _pickExactDate() async {
-    final picked = await showDatePicker(
+  Future<void> _pickDateRange() async {
+    final currentStart = _customStartDate;
+    final currentEnd = _customEndDate;
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: _customDate ?? _today,
       firstDate: DateTime(2020),
       lastDate: _today,
-      helpText: 'Choose analytics date',
+      initialDateRange: currentStart != null && currentEnd != null
+          ? DateTimeRange(start: currentStart, end: currentEnd)
+          : null,
+      helpText: 'Choose analytics date range',
+      saveText: 'Apply',
     );
     if (picked == null || !mounted) {
       return;
     }
     setState(() {
-      _customDate = DateTime(picked.year, picked.month, picked.day);
+      _customStartDate = DateTime(
+        picked.start.year,
+        picked.start.month,
+        picked.start.day,
+      );
+      _customEndDate = DateTime(
+        picked.end.year,
+        picked.end.month,
+        picked.end.day,
+      );
     });
     _load();
   }
@@ -245,10 +285,14 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
           .replaceAll(RegExp(r'_+'), '_')
           .replaceAll(RegExp(r'^_|_$'), '');
+      final safePeriod = _periodLabel
+          .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
+          .replaceAll(RegExp(r'_+'), '_')
+          .replaceAll(RegExp(r'^_|_$'), '');
       await Printing.sharePdf(
         bytes: bytes,
         filename:
-            'CutLink_${safeName.isEmpty ? 'Business' : safeName}_Analytics_${_periodLabel.replaceAll(' ', '_')}.pdf',
+            'CutLink_${safeName.isEmpty ? 'Business' : safeName}_Analytics_${safePeriod.isEmpty ? 'Period' : safePeriod}.pdf',
       );
     } finally {
       if (mounted) {
@@ -352,18 +396,27 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         for (final entry in options.entries)
           ChoiceChip(
             label: Text(entry.value),
-            selected: _customDate == null && _days == entry.key,
+            selected:
+                _customStartDate == null &&
+                _customEndDate == null &&
+                _days == entry.key,
             onSelected: (_) => _changeDays(entry.key),
             showCheckmark: false,
             side: BorderSide(
-              color: _customDate == null && _days == entry.key
+              color:
+                  _customStartDate == null &&
+                      _customEndDate == null &&
+                      _days == entry.key
                   ? _darkRed
                   : _border,
             ),
             selectedColor: const Color(0xFFF5EAEA),
             backgroundColor: Colors.white,
             labelStyle: TextStyle(
-              color: _customDate == null && _days == entry.key
+              color:
+                  _customStartDate == null &&
+                      _customEndDate == null &&
+                      _days == entry.key
                   ? _darkRed
                   : _muted,
               fontSize: 11,
@@ -372,17 +425,21 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 5),
           ),
         ActionChip(
-          avatar: const Icon(Icons.calendar_month_outlined, size: 16),
-          label: Text(
-            _customDate == null ? 'Exact date' : _dateLabel(_customDate!),
+          avatar: const Icon(Icons.date_range_outlined, size: 16),
+          label: Text(_dateRangeChipLabel),
+          onPressed: _pickDateRange,
+          side: BorderSide(
+            color: _customStartDate != null && _customEndDate != null
+                ? _darkRed
+                : _border,
           ),
-          onPressed: _pickExactDate,
-          side: BorderSide(color: _customDate != null ? _darkRed : _border),
-          backgroundColor: _customDate != null
+          backgroundColor: _customStartDate != null && _customEndDate != null
               ? const Color(0xFFF5EAEA)
               : Colors.white,
           labelStyle: TextStyle(
-            color: _customDate != null ? _darkRed : _muted,
+            color: _customStartDate != null && _customEndDate != null
+                ? _darkRed
+                : _muted,
             fontSize: 11,
             fontWeight: FontWeight.w900,
           ),
@@ -1576,6 +1633,341 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(child: body),
+    );
+  }
+}
+
+class BusinessAnalyticsOverviewPanel extends StatefulWidget {
+  const BusinessAnalyticsOverviewPanel({
+    super.key,
+    required this.businessId,
+    required this.businessType,
+  });
+
+  final String businessId;
+  final String businessType;
+
+  @override
+  State<BusinessAnalyticsOverviewPanel> createState() =>
+      _BusinessAnalyticsOverviewPanelState();
+}
+
+class _BusinessAnalyticsOverviewPanelState
+    extends State<BusinessAnalyticsOverviewPanel> {
+  static const Color _darkRed = Color(0xFF8B1E2D);
+  static const Color _border = Color(0xFFE3E5E8);
+  static const Color _muted = Color(0xFF6A6E75);
+
+  int _days = 30;
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic> _analytics = const {};
+
+  bool get _isSupplier => widget.businessType == 'supplier';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant BusinessAnalyticsOverviewPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.businessId != widget.businessId ||
+        oldWidget.businessType != widget.businessType) {
+      _load();
+    }
+  }
+
+  double _number(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  int _integer(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _money(dynamic value) {
+    final amount = _number(value);
+    final raw = amount.toStringAsFixed(2);
+    final parts = raw.split('.');
+    final negative = parts.first.startsWith('-');
+    final whole = negative ? parts.first.substring(1) : parts.first;
+    final decimals = parts.last;
+    final buffer = StringBuffer();
+    for (var i = 0; i < whole.length; i++) {
+      final remaining = whole.length - i;
+      buffer.write(whole[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return '${negative ? '-' : ''}\$${buffer.toString()}.$decimals';
+  }
+
+  Map<String, dynamic> get _summary {
+    final raw = _analytics['summary'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+  }
+
+  List<Map<String, dynamic>> get _trend {
+    final raw = _analytics['trend'];
+    if (raw is! List) {
+      return const [];
+    }
+    return raw
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_business_analytics',
+        params: {
+          'p_business_id': widget.businessId,
+          'p_days': _days,
+          'p_start_date': null,
+          'p_end_date': null,
+        },
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _analytics = response is Map
+            ? Map<String, dynamic>.from(response)
+            : <String, dynamic>{};
+        _loading = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = error.message;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  void _changeDays(int days) {
+    if (_days == days) {
+      return;
+    }
+    setState(() => _days = days);
+    _load();
+  }
+
+  String get _periodLabel {
+    if (_days == 1) {
+      return 'Today';
+    }
+    if (_days == 365) {
+      return 'Last 1 year';
+    }
+    return 'Last $_days days';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const options = <int, String>{
+      1: 'Today',
+      7: '7D',
+      30: '30D',
+      90: '90D',
+      365: '1Y',
+    };
+
+    if (_loading && _analytics.isEmpty) {
+      return const SizedBox(
+        height: 240,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null && _analytics.isEmpty) {
+      return SizedBox(
+        height: 240,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFB3261E),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final summary = _summary;
+    final value = _number(
+      _isSupplier ? summary['order_value'] : summary['purchase_value'],
+    );
+    final orders = _integer(summary['order_count']);
+    final trend = _trend;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final entry in options.entries)
+                    ChoiceChip(
+                      label: Text(entry.value),
+                      selected: _days == entry.key,
+                      onSelected: (_) => _changeDays(entry.key),
+                      showCheckmark: false,
+                      side: BorderSide(
+                        color: _days == entry.key ? _darkRed : _border,
+                      ),
+                      selectedColor: const Color(0xFFF5EAEA),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: _days == entry.key ? _darkRed : _muted,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+            ),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _OverviewMetric(
+                label: _isSupplier ? 'Sales' : 'Purchases',
+                value: _money(value),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _OverviewMetric(label: 'Orders', value: '$orders'),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _OverviewMetric(
+                label: 'Average order',
+                value: _money(summary['average_order_value']),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          '$_periodLabel • Hover or tap the graph for the exact daily value',
+          style: const TextStyle(
+            color: _muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 190,
+          child: trend.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No activity in this period',
+                    style: TextStyle(
+                      color: _muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : _TrendChart(data: trend, darkRed: _darkRed),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewMetric extends StatelessWidget {
+  const _OverviewMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE7E9EC)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF6A6E75),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF081625),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

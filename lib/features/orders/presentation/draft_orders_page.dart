@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/cutlink_notice.dart';
+import '../../../shared/formatters/order_reference.dart';
+
 class DraftOrdersPage extends StatefulWidget {
   const DraftOrdersPage({super.key});
 
@@ -98,6 +101,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             total_amount,
             pricing_status,
             minimum_order_status,
+            fulfilment_method,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
             created_at,
             updated_at,
 
@@ -383,9 +389,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        title: 'Something went wrong',
+        message: error.message,
+        error: true,
+      );
     }
   }
 
@@ -453,9 +462,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        title: 'Something went wrong',
+        message: error.message,
+        error: true,
+      );
     }
   }
 
@@ -554,9 +566,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        title: 'Something went wrong',
+        message: error.message,
+        error: true,
+      );
     }
   }
 
@@ -592,6 +607,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   double _amountRemainingForMinimum(Map<String, dynamic> order) {
+    if (_isPickup(order)) {
+      return 0;
+    }
+
     if (_orderHasCatchWeightItems(order)) {
       return 0;
     }
@@ -609,6 +628,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   bool _meetsMinimumOrder(Map<String, dynamic> order) {
+    if (_isPickup(order)) {
+      return true;
+    }
+
     if (_orderHasCatchWeightItems(order)) {
       return true;
     }
@@ -659,6 +682,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   Widget _buildMinimumOrderNotice(Map<String, dynamic> order) {
+    if (_isPickup(order)) {
+      return const SizedBox.shrink();
+    }
+
     final minimum = _minimumOrder(order);
 
     if (minimum == null) {
@@ -737,75 +764,87 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         order['delivery_lead_time_days_snapshot'] != null ||
         _deliveryFee(order) > 0;
 
-    if (!hasSnapshot) {
-      return const SizedBox.shrink();
-    }
+    if (!hasSnapshot) return const SizedBox.shrink();
 
     final fee = _deliveryFee(order);
+    final address =
+        [
+              order['delivery_address_label_snapshot'],
+              order['delivery_address_line_1_snapshot'],
+              order['delivery_address_line_2_snapshot'],
+              order['delivery_suburb_snapshot'],
+              order['delivery_state_snapshot'],
+              order['delivery_address_postcode_snapshot'],
+            ]
+            .map((value) => value?.toString().trim() ?? '')
+            .where((value) => value.isNotEmpty)
+            .join(', ');
+
+    Widget chip(IconData icon, String text) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: _darkRed),
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Delivery',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            'Delivery details',
+            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 10),
-          if ((order['delivery_address_line_1_snapshot']?.toString().trim() ??
-                  '')
-              .isNotEmpty) ...[
+          if (address.isNotEmpty) ...[
+            const SizedBox(height: 6),
             Text(
-              [
-                    order['delivery_address_label_snapshot'],
-                    order['delivery_address_line_1_snapshot'],
-                    order['delivery_address_line_2_snapshot'],
-                    order['delivery_suburb_snapshot'],
-                    order['delivery_state_snapshot'],
-                    order['delivery_address_postcode_snapshot'],
-                  ]
-                  .map((value) => value?.toString().trim() ?? '')
-                  .where((value) => value.isNotEmpty)
-                  .join(', '),
+              address,
               style: const TextStyle(
-                color: Color(0xFF333333),
-                fontWeight: FontWeight.w700,
+                color: Color(0xFF55585D),
+                fontSize: 11.5,
                 height: 1.35,
               ),
             ),
-            const SizedBox(height: 8),
           ],
-          Text(
-            'Zone: ${_deliveryZoneLabel(order)}',
-            style: const TextStyle(color: Color(0xFF555555)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Lead time: ${_leadTimeLabel(order)}',
-            style: const TextStyle(color: Color(0xFF555555)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Cut-off: ${_cutoffLabel(order)}',
-            style: const TextStyle(color: Color(0xFF555555)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Pickup: ${order['pickup_available_snapshot'] == true ? 'Available' : 'Not available'}',
-            style: const TextStyle(color: Color(0xFF555555)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            fee == 0 ? 'Delivery fee: Free' : 'Delivery fee: ${_money(fee)}',
-            style: const TextStyle(
-              color: Color(0xFF555555),
-              fontWeight: FontWeight.w700,
-            ),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              chip(Icons.map_outlined, _deliveryZoneLabel(order)),
+              chip(Icons.timelapse_outlined, _leadTimeLabel(order)),
+              chip(Icons.schedule_outlined, 'Cut-off ${_cutoffLabel(order)}'),
+              chip(
+                Icons.local_shipping_outlined,
+                fee == 0 ? 'Free delivery' : _money(fee),
+              ),
+            ],
           ),
           _buildMinimumOrderNotice(order),
         ],
@@ -849,6 +888,148 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     return Map<String, dynamic>.from(rows.first);
   }
 
+  bool _isPickup(Map<String, dynamic> order) =>
+      order['fulfilment_method']?.toString() == 'pickup';
+
+  Future<void> _setFulfilmentMethod(
+    Map<String, dynamic> order,
+    String method,
+  ) async {
+    try {
+      if (method == 'pickup') {
+        await Supabase.instance.client
+            .from('orders')
+            .update({'fulfilment_method': 'pickup', 'delivery_fee': 0})
+            .eq('id', order['id'])
+            .eq('butcher_business_id', _butcherBusinessId!)
+            .eq('status', 'draft');
+
+        await Supabase.instance.client.rpc(
+          'recalculate_order_totals',
+          params: {'target_order_id': order['id']},
+        );
+      } else {
+        await Supabase.instance.client
+            .from('orders')
+            .update({'fulfilment_method': 'delivery'})
+            .eq('id', order['id'])
+            .eq('butcher_business_id', _butcherBusinessId!)
+            .eq('status', 'draft');
+
+        await Supabase.instance.client.rpc(
+          'refresh_draft_order_delivery_terms',
+          params: {'target_order_id': order['id']},
+        );
+      }
+
+      if (!mounted) return;
+      await _loadDraftOrders();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Fulfilment option not saved',
+        message: error.message,
+        error: true,
+      );
+    }
+  }
+
+  Widget _buildFulfilmentMethodCard(Map<String, dynamic> order) {
+    final pickup = _isPickup(order);
+
+    Widget option({
+      required String method,
+      required IconData icon,
+      required String title,
+      required String subtitle,
+      required bool enabled,
+    }) {
+      final selected = pickup ? method == 'pickup' : method == 'delivery';
+      return Expanded(
+        child: InkWell(
+          onTap: enabled ? () => _setFulfilmentMethod(order, method) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFFFFF3F3) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? _darkRed : const Color(0xFFE1E3E6),
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 19,
+                      color: selected ? _darkRed : const Color(0xFF5B6168),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: enabled
+                              ? const Color(0xFF20242A)
+                              : const Color(0xFF9A9EA4),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      size: 18,
+                      color: selected ? _darkRed : const Color(0xFFB0B3B8),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF73777D),
+                    fontSize: 10.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        option(
+          method: 'delivery',
+          icon: Icons.local_shipping_outlined,
+          title: 'Delivery',
+          subtitle: 'Deliver to your saved business address',
+          enabled: true,
+        ),
+        const SizedBox(width: 10),
+        option(
+          method: 'pickup',
+          icon: Icons.store_mall_directory_outlined,
+          title: 'Pickup',
+          subtitle: 'Collect directly from ${_supplierName(order)}',
+          enabled: true,
+        ),
+      ],
+    );
+  }
+
   Map<String, dynamic> _deliverySnapshotPayload(
     Map<String, dynamic> order,
     Map<String, dynamic> address,
@@ -877,16 +1058,288 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     };
   }
 
+  DateTime? _requestedDate(Map<String, dynamic> order) {
+    final raw = order['requested_fulfilment_date']?.toString().trim();
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  TimeOfDay? _requestedTime(Map<String, dynamic> order) {
+    final raw = order['requested_fulfilment_time']?.toString().trim();
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _dateLabel(DateTime? date) {
+    if (date == null) return 'Choose requested date';
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _timeLabel(BuildContext context, Map<String, dynamic> order) {
+    final time = _requestedTime(order);
+    if (time == null) return '12:00 PM default';
+    return time.format(context);
+  }
+
+  Future<void> _pickRequestedDate(Map<String, dynamic> order) async {
+    final now = DateTime.now();
+    final current = _requestedDate(order);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate:
+          current != null &&
+              !current.isBefore(DateTime(now.year, now.month, now.day))
+          ? current
+          : DateTime(now.year, now.month, now.day),
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null || !mounted) return;
+
+    final value = picked.toIso8601String().split('T').first;
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .update({'requested_fulfilment_date': value})
+          .eq('id', order['id'])
+          .eq('butcher_business_id', _butcherBusinessId!)
+          .eq('status', 'draft');
+      if (!mounted) return;
+      setState(() => order['requested_fulfilment_date'] = value);
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Date not saved',
+        message: error.message,
+        error: true,
+      );
+    }
+  }
+
+  Future<void> _pickRequestedTime(Map<String, dynamic> order) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime:
+          _requestedTime(order) ?? const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (picked == null || !mounted) return;
+
+    final value =
+        '${picked.hour.toString().padLeft(2, '0')}:'
+        '${picked.minute.toString().padLeft(2, '0')}';
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .update({'requested_fulfilment_time': value})
+          .eq('id', order['id'])
+          .eq('butcher_business_id', _butcherBusinessId!)
+          .eq('status', 'draft');
+      if (!mounted) return;
+      setState(() => order['requested_fulfilment_time'] = value);
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Time not saved',
+        message: error.message,
+        error: true,
+      );
+    }
+  }
+
+  Future<void> _resetRequestedTime(Map<String, dynamic> order) async {
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .update({'requested_fulfilment_time': null})
+          .eq('id', order['id'])
+          .eq('butcher_business_id', _butcherBusinessId!)
+          .eq('status', 'draft');
+      if (!mounted) return;
+      setState(() => order['requested_fulfilment_time'] = null);
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Time not reset',
+        message: error.message,
+        error: true,
+      );
+    }
+  }
+
+  Future<void> _cancelSupplierDraft(Map<String, dynamic> order) async {
+    final supplier = _supplierName(order);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove supplier order?'),
+        content: Text(
+          'Remove the entire draft order for $supplier from your cart? '
+          'All products in this supplier order will be removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep Order'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            child: const Text('Remove Order'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .delete()
+          .eq('id', order['id'])
+          .eq('butcher_business_id', _butcherBusinessId!)
+          .eq('status', 'draft');
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Order removed',
+        message: '$supplier was removed from your cart.',
+      );
+      await _loadDraftOrders();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      CutLinkNotice.show(
+        context,
+        title: 'Could not remove order',
+        message: error.message,
+        error: true,
+      );
+    }
+  }
+
+  Widget _buildRequestedScheduleCard(Map<String, dynamic> order) {
+    final date = _requestedDate(order);
+    final pickup = _isPickup(order);
+    final fulfilmentLabel = pickup ? 'pickup' : 'delivery';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFBFA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 720;
+          final dateButton = OutlinedButton.icon(
+            onPressed: () => _pickRequestedDate(order),
+            icon: const Icon(Icons.calendar_month_outlined, size: 18),
+            label: Text(
+              date == null
+                  ? '${pickup ? 'Pickup' : 'Delivery'} date required'
+                  : _dateLabel(date),
+            ),
+          );
+          final timeButton = OutlinedButton.icon(
+            onPressed: () => _pickRequestedTime(order),
+            icon: const Icon(Icons.schedule_outlined, size: 18),
+            label: Text(_timeLabel(context, order)),
+          );
+          final resetTime = _requestedTime(order) == null
+              ? const SizedBox.shrink()
+              : TextButton(
+                  onPressed: () => _resetRequestedTime(order),
+                  child: const Text('Use 12:00 PM default'),
+                );
+
+          final controls = <Widget>[
+            if (compact) dateButton else Expanded(child: dateButton),
+            const SizedBox(width: 10, height: 10),
+            if (compact) timeButton else Expanded(child: timeButton),
+            if (_requestedTime(order) != null) ...[
+              const SizedBox(width: 6, height: 6),
+              resetTime,
+            ],
+          ];
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    pickup
+                        ? Icons.store_mall_directory_outlined
+                        : Icons.local_shipping_outlined,
+                    color: _darkRed,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Requested ${pickup ? 'pickup' : 'delivery'}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose the requested $fulfilmentLabel day. Time is optional and defaults to 12:00 PM if left blank.',
+                style: const TextStyle(
+                  color: Color(0xFF666A70),
+                  fontSize: 11.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (compact)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: controls,
+                )
+              else
+                Row(children: controls),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _submitOrder(Map<String, dynamic> order) async {
     final items = _items(order);
+    final pickup = _isPickup(order);
+    final fulfilmentLabel = pickup ? 'pickup' : 'delivery';
 
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Add at least one product before submitting the order.',
-          ),
-        ),
+      CutLinkNotice.show(
+        context,
+        title: 'Cart is empty',
+        message: 'Add at least one product before submitting the order.',
+        error: true,
       );
       return;
     }
@@ -895,28 +1348,46 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       final remaining = _amountRemainingForMinimum(order);
       final minimum = _minimumOrder(order);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      CutLinkNotice.show(
+        context,
+        title: 'Minimum order not met',
+        message:
             'Minimum order value for delivery is ${_money(minimum)}. '
             'Add another ${_money(remaining)} before submitting.',
-          ),
-        ),
+        error: true,
       );
       return;
     }
+
+    final requestedDate = _requestedDate(order);
+    if (requestedDate == null) {
+      CutLinkNotice.show(
+        context,
+        title: 'Requested date required',
+        message:
+            'Choose the requested $fulfilmentLabel day before submitting this order.',
+        error: true,
+      );
+      return;
+    }
+
+    final requestedTime =
+        _requestedTime(order) ?? const TimeOfDay(hour: 12, minute: 0);
+    final requestedTimeValue =
+        '${requestedTime.hour.toString().padLeft(2, '0')}:'
+        '${requestedTime.minute.toString().padLeft(2, '0')}';
+    final orderReference = cutLinkOrderReference(order['order_number']);
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Submit order?'),
+          title: Text('Submit $orderReference?'),
           content: Text(
             _orderHasCatchWeightItems(order)
-                ? 'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
-                      'Catch-weight product totals remain pending until the supplier '
-                      'records the actual supplied kilograms.'
-                : 'Submit ${order['order_number'] ?? 'this order'} to ${_supplierName(order)}? '
+                ? 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
+                      'Catch-weight product totals remain pending until the supplier records the actual supplied kilograms.'
+                : 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
                       'Once submitted, the order items can no longer be changed.',
           ),
           actions: [
@@ -940,115 +1411,147 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       },
     );
 
-    if (confirmed != true) {
-      return;
-    }
+    if (confirmed != true) return;
 
     try {
-      final deliveryAddress = await _resolveDefaultDeliveryAddress();
+      final payload = <String, dynamic>{
+        'fulfilment_method': pickup ? 'pickup' : 'delivery',
+        'requested_fulfilment_date': requestedDate
+            .toIso8601String()
+            .split('T')
+            .first,
+        'requested_fulfilment_time': requestedTimeValue,
+        'status': 'submitted',
+      };
 
-      if (deliveryAddress == null) {
-        if (!mounted) {
+      if (pickup) {
+        payload['delivery_fee'] = 0;
+      } else {
+        final deliveryAddress = await _resolveDefaultDeliveryAddress();
+
+        if (deliveryAddress == null) {
+          if (!mounted) return;
+          CutLinkNotice.show(
+            context,
+            title: 'Delivery address required',
+            message:
+                'Add an active delivery address in Settings before submitting this order.',
+            error: true,
+          );
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Add an active delivery address in Settings before submitting this order.',
-            ),
-          ),
-        );
-        return;
-      }
+        final addressLine1 =
+            deliveryAddress['address_line_1']?.toString().trim() ?? '';
+        final postcode = deliveryAddress['postcode']?.toString().trim() ?? '';
 
-      final addressLine1 =
-          deliveryAddress['address_line_1']?.toString().trim() ?? '';
-      final postcode = deliveryAddress['postcode']?.toString().trim() ?? '';
-
-      if (addressLine1.isEmpty || postcode.isEmpty) {
-        if (!mounted) {
+        if (addressLine1.isEmpty || postcode.isEmpty) {
+          if (!mounted) return;
+          CutLinkNotice.show(
+            context,
+            title: 'Delivery address incomplete',
+            message:
+                'Your delivery address must include an address line and postcode before submitting.',
+            error: true,
+          );
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Your delivery address must include an address line and postcode before submitting.',
-            ),
-          ),
-        );
-        return;
+        payload.addAll(_deliverySnapshotPayload(order, deliveryAddress));
       }
 
       await Supabase.instance.client
           .from('orders')
-          .update({
-            ..._deliverySnapshotPayload(order, deliveryAddress),
-            'status': 'submitted',
-          })
+          .update(payload)
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${order['order_number'] ?? 'Order'} was submitted to ${_supplierName(order)}.',
-          ),
-        ),
+      CutLinkNotice.show(
+        context,
+        title: 'Order submitted',
+        message:
+            '$orderReference was submitted to ${_supplierName(order)} for $fulfilmentLabel.',
       );
 
       await _loadDraftOrders();
     } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
+      if (!mounted) return;
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        title: 'Something went wrong',
+        message: error.message,
+        error: true,
+      );
     }
   }
 
   Widget _buildCartOverview() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your cart',
-            style: TextStyle(
-              fontSize: 30,
-              height: 1.1,
-              fontWeight: FontWeight.w900,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactDesktop = constraints.maxWidth >= 760;
+
+        final heading = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your cart',
+              style: TextStyle(
+                fontSize: 19,
+                height: 1.05,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Your products are separated into an order for each supplier.',
-            style: TextStyle(
-              color: Color(0xFF666A70),
-              fontSize: 13,
-              height: 1.4,
+            const SizedBox(height: 3),
+            Text(
+              '${_orders.length} supplier order${_orders.length == 1 ? '' : 's'}',
+              style: const TextStyle(
+                color: Color(0xFF6A6E75),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
+          ],
+        );
+
+        if (compactDesktop) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(2, 2, 2, 6),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+            ),
+            child: Row(
+              children: [
+                SizedBox(width: 150, child: heading),
+                const SizedBox(width: 18),
+                Expanded(child: _buildSupplierOrderSelector()),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(2, 2, 2, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              heading,
+              const SizedBox(height: 7),
+              _buildSupplierOrderSelector(),
+              const Divider(height: 1),
+            ],
           ),
-          const SizedBox(height: 10),
-          _buildSupplierOrderSelector(),
-          const Divider(height: 1),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildSupplierOrderSelector() {
     return SizedBox(
-      height: 58,
+      height: 42,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _orders.length,
@@ -1091,7 +1594,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         '$itemCount product line${itemCount == 1 ? '' : 's'}',
                         style: const TextStyle(
@@ -1102,6 +1605,22 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     ],
                   ),
                   const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Remove this supplier order',
+                    child: InkWell(
+                      onTap: () => _cancelSupplierDraft(order),
+                      borderRadius: BorderRadius.circular(20),
+                      child: const Padding(
+                        padding: EdgeInsets.all(5),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 17,
+                          color: Color(0xFF9B2C2C),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
                   Icon(
                     selected ? Icons.expand_less : Icons.expand_more,
                     size: 19,
@@ -1154,6 +1673,327 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         ),
       ),
       body: _buildBody(),
+    );
+  }
+
+  Widget _buildOrderProductsPane(Map<String, dynamic> order) {
+    final items = _items(order);
+    final reference = cutLinkOrderReference(order['order_number']);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _supplierName(order),
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Order $reference  •  ${items.length} product line${items.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Color(0xFF666A70),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Tooltip(
+                message: 'Remove this supplier order',
+                child: IconButton(
+                  onPressed: () => _cancelSupplierDraft(order),
+                  icon: const Icon(Icons.close_rounded),
+                  color: _darkRed,
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFF3F3),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Text(
+                'Products',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+              ),
+              const Spacer(),
+              Text(
+                '${items.length} line${items.length == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  color: Color(0xFF666A70),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Text(
+                'This draft order has no products.',
+                style: TextStyle(color: Color(0xFF666666)),
+              ),
+            )
+          else
+            for (final item in items)
+              _OrderItemCard(
+                item: item,
+                formatNumber: _formatNumber,
+                money: _money,
+                unitLabel: _unitLabel,
+                priceBasisLabel: _priceBasisLabel,
+                onEdit: () => _editQuantity(order, item),
+                onRemove: () => _removeItem(order, item),
+              ),
+          _buildMinimumOrderNotice(order),
+          if (_orderHasCatchWeightItems(order)) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8EA),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE7D7AF)),
+              ),
+              child: Text(
+                _draftPricingStatusText(order),
+                style: const TextStyle(
+                  color: Color(0xFF6D5722),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckoutPane(Map<String, dynamic> order) {
+    final items = _items(order);
+    final pickup = _isPickup(order);
+    final reference = cutLinkOrderReference(order['order_number']);
+
+    Widget summary() {
+      if (_orderHasCatchWeightItems(order)) {
+        return Column(
+          children: [
+            const _TotalRow(
+              label: 'Products',
+              value: 'Pending final weight',
+              bold: true,
+            ),
+            _TotalRow(
+              label: pickup ? 'Pickup' : 'Delivery',
+              value: pickup
+                  ? 'Free'
+                  : _deliveryFee(order) == 0
+                  ? 'Free'
+                  : _money(_deliveryFee(order)),
+            ),
+            const Divider(),
+            const _TotalRow(
+              label: 'Final order total',
+              value: 'Pending supplier weight',
+              bold: true,
+            ),
+          ],
+        );
+      }
+
+      return Column(
+        children: [
+          _TotalRow(
+            label: 'Products (inc GST)',
+            value: _money(order['subtotal']),
+          ),
+          _TotalRow(
+            label: pickup ? 'Pickup' : 'Delivery (inc GST)',
+            value: pickup
+                ? 'Free'
+                : _deliveryFee(order) == 0
+                ? 'Free'
+                : _money(_deliveryFee(order)),
+          ),
+          const Divider(),
+          _TotalRow(
+            label: 'Total inc GST',
+            value: _money(order['total_amount']),
+            bold: true,
+          ),
+          const SizedBox(height: 6),
+          _TotalRow(label: 'Total ex GST', value: _money(_exGstAmount(order))),
+          _TotalRow(label: 'GST included', value: _money(order['gst_amount'])),
+        ],
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Checkout • $reference',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choose how and when you want this order fulfilled.',
+            style: TextStyle(
+              color: Color(0xFF6A6E75),
+              fontSize: 11.5,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildFulfilmentMethodCard(order),
+          const SizedBox(height: 12),
+          _buildRequestedScheduleCard(order),
+          const SizedBox(height: 12),
+          if (pickup)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F8FA),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E5E8)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.store_mall_directory_outlined,
+                    size: 20,
+                    color: _darkRed,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'Pickup from ${_supplierName(order)}. The supplier will receive your requested pickup date and time.',
+                      style: const TextStyle(
+                        color: Color(0xFF555A60),
+                        fontSize: 11.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            _buildDeliverySnapshotCard(order),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBFBFA),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE3E5E8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Order details',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _editOrderDetails(order),
+                      icon: const Icon(Icons.edit_outlined, size: 15),
+                      label: const Text('Edit'),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Reference: ${order['customer_reference'] == null || order['customer_reference'].toString().trim().isEmpty ? 'Not provided' : order['customer_reference']}',
+                  style: const TextStyle(
+                    color: Color(0xFF60646A),
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Notes: ${order['delivery_notes'] == null || order['delivery_notes'].toString().trim().isEmpty ? 'Not provided' : order['delivery_notes']}',
+                  style: const TextStyle(
+                    color: Color(0xFF60646A),
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Order summary',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          summary(),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: items.isEmpty || !_meetsMinimumOrder(order)
+                ? null
+                : () => _submitOrder(order),
+            style: FilledButton.styleFrom(
+              backgroundColor: _darkRed,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.send_outlined),
+            label: Text('Submit $reference'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1226,345 +2066,80 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadDraftOrders,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
-            itemCount: _openOrderId == null ? 1 : 2,
-            separatorBuilder: (context, index) {
-              return const SizedBox(height: 18);
-            },
-            itemBuilder: (context, index) {
-              if (index == 0) return _buildCartOverview();
+    final order = _openOrderId == null
+        ? null
+        : _orders.cast<Map<String, dynamic>?>().firstWhere(
+            (row) => row?['id']?.toString() == _openOrderId,
+            orElse: () => null,
+          );
 
-              final order = _orders.firstWhere(
-                (order) => order['id']?.toString() == _openOrderId,
-              );
-              final items = _items(order);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= 1050 && order != null;
 
-              return Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Color(0xFFE3E5E8)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 650;
-
-                          final header = Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _supplierName(order),
-                                      style: const TextStyle(
-                                        fontSize: 21,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '${order['order_number']?.toString() ?? 'Draft order'} • ${items.length} product line${items.length == 1 ? '' : 's'}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF666A70),
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-
-                          final status = const Text(
-                            'DRAFT',
-                            style: TextStyle(
-                              color: _darkRed,
-                              fontSize: 10.5,
-                              letterSpacing: 1.1,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          );
-
-                          if (narrow) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                header,
-                                const SizedBox(height: 12),
-                                status,
-                              ],
-                            );
-                          }
-
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: header),
-                              status,
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-                      const Divider(),
-                      const SizedBox(height: 10),
-                      Row(
+        if (desktop) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1380),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildCartOverview(),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Products',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: _loadDraftOrders,
+                              child: ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: [_buildOrderProductsPane(order)],
+                              ),
                             ),
                           ),
-                          const Spacer(),
-                          Text(
-                            '${items.length} line${items.length == 1 ? '' : 's'}',
-                            style: const TextStyle(
-                              color: Color(0xFF666A70),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                          const SizedBox(width: 18),
+                          SizedBox(
+                            width: 390,
+                            child: SingleChildScrollView(
+                              child: _buildCheckoutPane(order),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-
-                      if (items.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 18),
-                          child: Text(
-                            'This draft order has no products.',
-                            style: TextStyle(color: Color(0xFF666666)),
-                          ),
-                        )
-                      else
-                        for (final item in items)
-                          _OrderItemCard(
-                            item: item,
-                            formatNumber: _formatNumber,
-                            money: _money,
-                            unitLabel: _unitLabel,
-                            priceBasisLabel: _priceBasisLabel,
-                            onEdit: () => _editQuantity(order, item),
-                            onRemove: () => _removeItem(order, item),
-                          ),
-
-                      const SizedBox(height: 8),
-
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Color(0xFFE3E5E8)),
-                            bottom: BorderSide(color: Color(0xFFE3E5E8)),
-                          ),
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final narrow = constraints.maxWidth < 650;
-
-                            final details = Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Order details',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                Text(
-                                  'Reference: ${order['customer_reference'] == null || order['customer_reference'].toString().trim().isEmpty ? 'Not provided' : order['customer_reference']}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF555555),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                Text(
-                                  'Delivery notes: ${order['delivery_notes'] == null || order['delivery_notes'].toString().trim().isEmpty ? 'Not provided' : order['delivery_notes']}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF555555),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            );
-
-                            final button = OutlinedButton.icon(
-                              onPressed: () => _editOrderDetails(order),
-                              icon: const Icon(Icons.edit_note_outlined),
-                              label: const Text('Edit Details'),
-                            );
-
-                            if (narrow) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  details,
-                                  const SizedBox(height: 14),
-                                  button,
-                                ],
-                              );
-                            }
-
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: details),
-                                const SizedBox(width: 18),
-                                button,
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-
-                      _buildDeliverySnapshotCard(order),
-
-                      const SizedBox(height: 18),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      if (_orderHasCatchWeightItems(order)) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            _draftPricingStatusText(order),
-                            style: const TextStyle(
-                              color: Color(0xFF555555),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: 340,
-                          child: Text(
-                            'Order summary',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 340),
-                          child: _orderHasCatchWeightItems(order)
-                              ? Column(
-                                  children: [
-                                    const _TotalRow(
-                                      label: 'Products',
-                                      value: 'Pending final weight',
-                                      bold: true,
-                                    ),
-                                    _TotalRow(
-                                      label: 'Delivery',
-                                      value: _deliveryFee(order) == 0
-                                          ? 'Free'
-                                          : _money(_deliveryFee(order)),
-                                    ),
-                                    const Divider(),
-                                    const _TotalRow(
-                                      label: 'Final order total',
-                                      value: 'Pending supplier weight',
-                                      bold: true,
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    _TotalRow(
-                                      label: 'Products (inc GST)',
-                                      value: _money(order['subtotal']),
-                                    ),
-                                    _TotalRow(
-                                      label: 'Delivery (inc GST)',
-                                      value: _deliveryFee(order) == 0
-                                          ? 'Free'
-                                          : _money(_deliveryFee(order)),
-                                    ),
-                                    const Divider(),
-                                    _TotalRow(
-                                      label: 'Total inc GST',
-                                      value: _money(order['total_amount']),
-                                      bold: true,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _TotalRow(
-                                      label: 'Total ex GST',
-                                      value: _money(_exGstAmount(order)),
-                                    ),
-                                    _TotalRow(
-                                      label: 'GST included',
-                                      value: _money(order['gst_amount']),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.icon(
-                          onPressed: items.isEmpty || !_meetsMinimumOrder(order)
-                              ? null
-                              : () => _submitOrder(order),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 17,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          icon: const Icon(Icons.send_outlined),
-                          label: const Text('Submit Order'),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            },
+              ),
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _loadDraftOrders,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                children: [
+                  _buildCartOverview(),
+                  if (order != null) ...[
+                    const SizedBox(height: 16),
+                    _buildOrderProductsPane(order),
+                    const SizedBox(height: 14),
+                    _buildCheckoutPane(order),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -1602,7 +2177,7 @@ class _OrderItemCard extends StatelessWidget {
         item['price_basis']?.toString() == 'kilogram';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
       ),

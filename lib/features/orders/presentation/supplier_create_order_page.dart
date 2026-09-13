@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/widgets/cutlink_notice.dart';
+
 class SupplierCreateOrderPage extends StatefulWidget {
   const SupplierCreateOrderPage({super.key});
 
@@ -29,7 +31,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   int _paymentTermsDays = 0;
   String _fulfilmentMethod = 'pickup';
   DateTime? _requestedDate = DateTime.now();
-  TimeOfDay? _requestedTime = const TimeOfDay(hour: 12, minute: 0);
+  TimeOfDay? _requestedTime;
 
   @override
   void initState() {
@@ -524,17 +526,22 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
       _selectCustomer(customer);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_customerName(customer)} added.')),
+      CutLinkNotice.show(
+        context,
+        title: 'Customer added',
+        message: '${_customerName(customer)} added.',
       );
     } on PostgrestException catch (error) {
       if (!mounted) return;
 
       setState(() => _isSavingCustomer = false);
 
-      ScaffoldMessenger.of(
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        title: 'Could not save',
+        message: error.message,
+        error: true,
+      );
     }
   }
 
@@ -556,7 +563,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _requestedTime ?? TimeOfDay.now(),
+      initialTime: _requestedTime ?? const TimeOfDay(hour: 12, minute: 0),
     );
 
     if (picked == null || !mounted) return;
@@ -600,18 +607,22 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     final customer = _selectedCustomer;
 
     if (customer == null) {
-      ScaffoldMessenger.of(
+      CutLinkNotice.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Select a customer first.')));
+        title: 'Customer required',
+        message: 'Select a customer first.',
+        error: true,
+      );
       return;
     }
 
     if (_paymentMethod == 'account') {
       if (!_customerHasAccount(customer)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This customer is not approved for an account.'),
-          ),
+        CutLinkNotice.show(
+          context,
+          title: 'Account unavailable',
+          message: 'This customer is not approved for an account.',
+          error: true,
         );
         return;
       }
@@ -620,44 +631,29 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     }
 
     if (_requestedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _fulfilmentMethod == 'pickup'
-                ? 'Choose the pickup date.'
-                : 'Choose the delivery date.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    if (_requestedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _fulfilmentMethod == 'pickup'
-                ? 'Choose the pickup time.'
-                : 'Choose the delivery time.',
-          ),
-        ),
+      CutLinkNotice.show(
+        context,
+        title: 'Date required',
+        message: _fulfilmentMethod == 'pickup'
+            ? 'Choose the pickup date.'
+            : 'Choose the delivery date.',
+        error: true,
       );
       return;
     }
 
     if (_fulfilmentMethod == 'delivery' &&
         _deliveryAddress(customer) == 'No delivery address saved') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'This customer needs a delivery address before using delivery.',
-          ),
-        ),
+      CutLinkNotice.show(
+        context,
+        title: 'Delivery address required',
+        message: 'This customer needs a delivery address before using delivery.',
+        error: true,
       );
       return;
     }
 
-    final time = _requestedTime!;
+    final time = _requestedTime ?? const TimeOfDay(hour: 12, minute: 0);
     final timeString =
         '${time.hour.toString().padLeft(2, '0')}:'
         '${time.minute.toString().padLeft(2, '0')}';
@@ -1040,9 +1036,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 icon: const Icon(Icons.schedule_outlined),
                 label: Text(
                   _requestedTime == null
-                      ? (_fulfilmentMethod == 'pickup'
-                            ? 'Pickup time'
-                            : 'Delivery time')
+                      ? 'Time optional • defaults to 12:00 PM'
                       : _requestedTime!.format(context),
                 ),
                 style: OutlinedButton.styleFrom(

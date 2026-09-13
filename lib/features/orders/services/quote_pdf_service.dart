@@ -126,6 +126,9 @@ class CutLinkQuotePdf {
               pw.SizedBox(width: 14),
               pw.Expanded(
                 child: _party('Quote for', customerName, <dynamic>[
+                  customer['legal_name'],
+                  if ((customer['abn']?.toString().trim() ?? '').isNotEmpty)
+                    'ABN ${customer['abn']}',
                   customer['contact_name'],
                   customer['email'],
                   customer['phone'],

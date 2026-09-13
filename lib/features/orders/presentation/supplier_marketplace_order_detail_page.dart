@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/formatters/order_reference.dart';
+
 import 'supplier_work_order_page.dart';
 
 class SupplierMarketplaceOrderDetailPage extends StatefulWidget {
@@ -238,7 +240,8 @@ class _SupplierMarketplaceOrderDetailPageState
     if (_saving || _order?['status']?.toString() != 'submitted') return;
 
     DateTime? confirmedDate = _parseRequestedDate();
-    TimeOfDay? confirmedTime = _parseRequestedTime();
+    TimeOfDay? confirmedTime =
+        _parseRequestedTime() ?? const TimeOfDay(hour: 12, minute: 0);
 
     final schedule = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -269,7 +272,7 @@ class _SupplierMarketplaceOrderDetailPageState
             Future<void> pickTime() async {
               final picked = await showTimePicker(
                 context: dialogContext,
-                initialTime: confirmedTime ?? TimeOfDay.now(),
+                initialTime: confirmedTime ?? const TimeOfDay(hour: 12, minute: 0),
               );
 
               if (picked != null) {
@@ -637,8 +640,7 @@ class _SupplierMarketplaceOrderDetailPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          order['order_number']?.toString() ??
-                              'Marketplace Order',
+                          'Order ${cutLinkOrderReference(order['order_number'])}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
@@ -709,7 +711,7 @@ class _SupplierMarketplaceOrderDetailPageState
                   child: _info(
                     'REQUESTED TIME',
                     order['requested_fulfilment_time']?.toString() ??
-                        'Not specified',
+                        '12:00 PM (default)',
                     Icons.schedule_outlined,
                   ),
                 ),

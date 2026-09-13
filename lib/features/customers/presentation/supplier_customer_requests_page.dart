@@ -5,9 +5,7 @@ import 'supplier_customer_account_page.dart';
 import 'supplier_vip_applications_page.dart';
 
 class SupplierCustomerRequestsPage extends StatefulWidget {
-  const SupplierCustomerRequestsPage({super.key, this.embedded = false});
-
-  final bool embedded;
+  const SupplierCustomerRequestsPage({super.key});
 
   @override
   State<SupplierCustomerRequestsPage> createState() =>
@@ -57,78 +55,74 @@ class _SupplierCustomerRequestsPageState
         throw Exception('No signed-in user was found.');
       }
 
-      final membership = await client
+      final memberships = await client
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1)
-          .single();
+          .eq('status', 'active');
 
-      final supplierBusinessId = membership['business_id'] as String;
+      final businessIds = <String>[
+        for (final raw in memberships)
+          if (raw['business_id'] != null) raw['business_id'].toString(),
+      ];
 
-      final relationshipResponse = await client
-          .from('supplier_customer_relationships')
-          .select('''
-            id,
-            butcher_business_id,
-            status,
-            account_reference,
-            credit_terms,
-            payment_method,
-            payment_terms_days,
-            credit_limit,
-            issue_reporting_window_hours,
-            created_at,
-            approved_at
-          ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .order('created_at', ascending: false);
-
-      final relationshipRows = List<Map<String, dynamic>>.from(
-        relationshipResponse,
-      );
-
-      final butcherIds = relationshipRows
-          .map((row) => row['butcher_business_id']?.toString())
-          .whereType<String>()
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      final businessById = <String, Map<String, dynamic>>{};
-
-      if (butcherIds.isNotEmpty) {
-        final businessResponse = await client
-            .from('businesses')
-            .select('''
-              id,
-              legal_name,
-              trading_name,
-              abn,
-              business_email,
-              business_phone,
-              address_line_1,
-              address_line_2,
-              suburb,
-              state,
-              postcode
-            ''')
-            .inFilter('id', butcherIds);
-
-        for (final raw in List<Map<String, dynamic>>.from(businessResponse)) {
-          final id = raw['id']?.toString();
-          if (id != null) {
-            businessById[id] = raw;
-          }
-        }
+      if (businessIds.isEmpty) {
+        throw Exception('No active business membership was found.');
       }
 
-      for (final relationship in relationshipRows) {
-        final butcherId = relationship['butcher_business_id']?.toString();
-        if (butcherId != null) {
-          relationship['businesses'] = businessById[butcherId];
-        }
+      final supplierBusinesses = await client
+          .from('businesses')
+          .select('id, business_type, active, verification_status')
+          .inFilter('id', businessIds)
+          .eq('business_type', 'supplier')
+          .eq('active', true)
+          .eq('verification_status', 'approved');
+
+      if (supplierBusinesses.isEmpty) {
+        throw Exception('No active approved supplier business was found.');
+      }
+
+      final supplierBusinessId = supplierBusinesses.first['id']?.toString();
+
+      if (supplierBusinessId == null || supplierBusinessId.isEmpty) {
+        throw Exception('Your supplier business could not be identified.');
+      }
+
+      final directoryResponse = await client.rpc(
+        'list_cutlink_butchers_for_supplier',
+      );
+
+      final relationshipRows = <Map<String, dynamic>>[];
+
+      for (final raw in List<Map<String, dynamic>>.from(
+        directoryResponse as List,
+      )) {
+        relationshipRows.add({
+          'id': raw['relationship_id'],
+          'butcher_business_id': raw['butcher_business_id'],
+          'status': raw['relationship_status'],
+          'account_reference': raw['account_reference'],
+          'credit_terms': raw['credit_terms'],
+          'payment_method': raw['payment_method'],
+          'payment_terms_days': raw['payment_terms_days'],
+          'credit_limit': raw['credit_limit'],
+          'issue_reporting_window_hours': raw['issue_reporting_window_hours'],
+          'created_at': raw['relationship_created_at'],
+          'approved_at': raw['approved_at'],
+          'businesses': {
+            'id': raw['butcher_business_id'],
+            'legal_name': raw['butcher_legal_name'],
+            'trading_name': raw['butcher_trading_name'],
+            'abn': raw['butcher_abn'],
+            'business_email': raw['butcher_email'],
+            'business_phone': raw['butcher_phone'],
+            'address_line_1': raw['butcher_address_line_1'],
+            'address_line_2': raw['butcher_address_line_2'],
+            'suburb': raw['butcher_suburb'],
+            'state': raw['butcher_state'],
+            'postcode': raw['butcher_postcode'],
+          },
+        });
       }
 
       final accountResponse = await client
@@ -985,7 +979,7 @@ class _SupplierCustomerRequestsPageState
       'approved' => 'Approved',
       'declined' => 'Declined',
       'suspended' => 'Suspended',
-      _ => 'Unknown',
+      _ => 'CutLink Member',
     };
   }
 
@@ -995,7 +989,7 @@ class _SupplierCustomerRequestsPageState
       'declined' => Colors.red,
       'suspended' => Colors.red,
       'requested' => Colors.orange,
-      _ => Colors.grey,
+      _ => _darkRed,
     };
   }
 
@@ -1005,7 +999,7 @@ class _SupplierCustomerRequestsPageState
       'declined' => Icons.cancel_outlined,
       'suspended' => Icons.block,
       'requested' => Icons.schedule,
-      _ => Icons.help_outline,
+      _ => Icons.verified_outlined,
     };
   }
 
@@ -1079,7 +1073,7 @@ class _SupplierCustomerRequestsPageState
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: hasPending ? const Color(0xFFFFF8EB) : const Color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(14),
@@ -1090,18 +1084,18 @@ class _SupplierCustomerRequestsPageState
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: _darkRed.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.workspace_premium_outlined,
               color: _darkRed,
             ),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1112,7 +1106,7 @@ class _SupplierCustomerRequestsPageState
                       child: Text(
                         'VIP Applications',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -1140,25 +1134,24 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ],
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 5),
                 Text(
                   hasPending
                       ? 'You have VIP or credit applications waiting for review.'
                       : 'Review VIP pricing and credit applications from CutLink butchers.',
                   style: const TextStyle(
                     color: Color(0xFF666666),
-                    fontSize: 11.5,
-                    height: 1.3,
+                    height: 1.35,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           FilledButton.icon(
             onPressed: _openVipApplications,
             style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.open_in_new, size: 17),
+            icon: const Icon(Icons.open_in_new),
             label: Text(hasPending ? 'Review Now' : 'Open'),
           ),
         ],
@@ -1168,7 +1161,7 @@ class _SupplierCustomerRequestsPageState
 
   Widget _buildCustomerSearchBar() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -1184,8 +1177,8 @@ class _SupplierCustomerRequestsPageState
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: const Color(0xFFF4E5E5),
@@ -1193,7 +1186,7 @@ class _SupplierCustomerRequestsPageState
             ),
             child: const Icon(Icons.search, color: _darkRed, size: 20),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _customerSearchController,
@@ -1204,18 +1197,16 @@ class _SupplierCustomerRequestsPageState
                     'Search CutLink members or external customers, then press Enter',
                 filled: true,
                 fillColor: const Color(0xFFFAFAFB),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(11),
                   borderSide: const BorderSide(color: _darkRed, width: 1.2),
                 ),
                 suffixIcon: _appliedCustomerSearch.isEmpty
@@ -1234,7 +1225,7 @@ class _SupplierCustomerRequestsPageState
                 _applyCustomerSearch(_customerSearchController.text),
             style: FilledButton.styleFrom(
               backgroundColor: _darkRed,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             ),
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Search'),
@@ -1244,90 +1235,8 @@ class _SupplierCustomerRequestsPageState
     );
   }
 
-  Widget _workspaceHeader() {
-    return Container(
-      height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(
-              Icons.people_alt_outlined,
-              color: _darkRed,
-              size: 19,
-            ),
-          ),
-          const SizedBox(width: 11),
-          const Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Customers & Accounts',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                ),
-                SizedBox(height: 1),
-                Text(
-                  'Manage customer relationships, pricing tiers, account terms and balances',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Color(0xFF74787E),
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
-            style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
-              visualDensity: VisualDensity.compact,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.person_add_alt_1, size: 17),
-            label: const Text('Add External Customer'),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: _isLoading ? null : _loadPage,
-            tooltip: 'Refresh customers and accounts',
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (widget.embedded) {
-      return ColoredBox(
-        color: const Color(0xFFF7F8FA),
-        child: Column(
-          children: [
-            _workspaceHeader(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -1431,7 +1340,7 @@ class _SupplierCustomerRequestsPageState
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, index) => _buildRelationshipCard(rows[index]),
@@ -1454,7 +1363,7 @@ class _SupplierCustomerRequestsPageState
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, index) => _buildAccountCard(rows[index]),
@@ -1483,7 +1392,7 @@ class _SupplierCustomerRequestsPageState
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
                   child: Row(
                     children: [
                       Expanded(
@@ -1493,7 +1402,7 @@ class _SupplierCustomerRequestsPageState
                             Text(
                               title,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -1523,12 +1432,12 @@ class _SupplierCustomerRequestsPageState
 
         if (!desktop) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             children: [
               vip,
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildCustomerSearchBar(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 420,
                 child: panel(
@@ -1565,13 +1474,13 @@ class _SupplierCustomerRequestsPageState
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1320),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               child: Column(
                 children: [
                   vip,
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _buildCustomerSearchBar(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: Row(
                       children: [
@@ -1625,16 +1534,16 @@ class _SupplierCustomerRequestsPageState
         borderRadius: BorderRadius.circular(14),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(28),
         child: Column(
           children: [
-            Icon(icon, size: 36, color: _darkRed),
-            const SizedBox(height: 9),
+            Icon(icon, size: 54, color: _darkRed),
+            const SizedBox(height: 14),
             Text(
               title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 7),
             Text(
               description,
               textAlign: TextAlign.center,
@@ -1658,14 +1567,14 @@ class _SupplierCustomerRequestsPageState
     final accountStatus = summary?['account_status']?.toString();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: account == null ? null : () => _openCustomerAccount(account),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: const Color(0xFFFDFDFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E5E1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1703,35 +1612,18 @@ class _SupplierCustomerRequestsPageState
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _statusColor(
-                                status,
-                              ).withValues(alpha: 0.09),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _statusIcon(status),
-                                  size: 12,
-                                  color: _statusColor(status),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _formatStatus(status),
-                                  style: TextStyle(
-                                    color: _statusColor(status),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
+                          Icon(
+                            _statusIcon(status),
+                            size: 13,
+                            color: _statusColor(status),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatStatus(status),
+                            style: TextStyle(
+                              color: _statusColor(status),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           if (account != null) ...[
@@ -1755,41 +1647,42 @@ class _SupplierCustomerRequestsPageState
                 ),
                 if (account != null)
                   const Icon(Icons.chevron_right, color: _darkRed),
-                PopupMenuButton<String>(
-                  tooltip: 'Member actions',
-                  onSelected: (value) {
-                    if (value == 'edit' && account != null) {
-                      _editCustomerAccount(account);
-                    } else if (value == 'suspend') {
-                      _updateStatus(
-                        relationship: relationship,
-                        status: 'suspended',
-                      );
-                    } else if (value == 'approve') {
-                      _updateStatus(
-                        relationship: relationship,
-                        status: 'approved',
-                      );
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    if (account != null)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Edit Account Settings'),
-                      ),
-                    if (status == 'approved')
-                      const PopupMenuItem(
-                        value: 'suspend',
-                        child: Text('Suspend Access'),
-                      ),
-                    if (status == 'suspended' || status == 'declined')
-                      const PopupMenuItem(
-                        value: 'approve',
-                        child: Text('Approve Access'),
-                      ),
-                  ],
-                ),
+                if (relationship['id'] != null || account != null)
+                  PopupMenuButton<String>(
+                    tooltip: 'Member actions',
+                    onSelected: (value) {
+                      if (value == 'edit' && account != null) {
+                        _editCustomerAccount(account);
+                      } else if (value == 'suspend') {
+                        _updateStatus(
+                          relationship: relationship,
+                          status: 'suspended',
+                        );
+                      } else if (value == 'approve') {
+                        _updateStatus(
+                          relationship: relationship,
+                          status: 'approved',
+                        );
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      if (account != null)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Edit Account Settings'),
+                        ),
+                      if (status == 'approved')
+                        const PopupMenuItem(
+                          value: 'suspend',
+                          child: Text('Suspend Access'),
+                        ),
+                      if (status == 'suspended' || status == 'declined')
+                        const PopupMenuItem(
+                          value: 'approve',
+                          child: Text('Approve Access'),
+                        ),
+                    ],
+                  ),
               ],
             ),
             if (summary != null) ...[
@@ -1928,14 +1821,14 @@ class _SupplierCustomerRequestsPageState
     final accountStatus = summary?['account_status']?.toString();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: () => _openCustomerAccount(account),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: const Color(0xFFFDFDFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E5E1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
