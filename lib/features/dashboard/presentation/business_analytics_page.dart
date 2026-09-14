@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -41,13 +42,109 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   bool _exportingPdf = false;
   String? _error;
   Map<String, dynamic> _analytics = const {};
+  RealtimeChannel? _realtimeChannel;
+  Timer? _realtimeRefreshTimer;
 
   bool get _isSupplier => widget.businessType == 'supplier';
 
   @override
   void initState() {
     super.initState();
+    _subscribeRealtime();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant BusinessAnalyticsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.businessId != widget.businessId ||
+        oldWidget.businessType != widget.businessType) {
+      _realtimeRefreshTimer?.cancel();
+      final channel = _realtimeChannel;
+      if (channel != null) {
+        Supabase.instance.client.removeChannel(channel);
+      }
+      _realtimeChannel = null;
+      _subscribeRealtime();
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _realtimeRefreshTimer?.cancel();
+    final channel = _realtimeChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeRealtime() {
+    void scheduleRefresh(PostgresChangePayload _) {
+      _realtimeRefreshTimer?.cancel();
+      _realtimeRefreshTimer = Timer(const Duration(milliseconds: 900), () {
+        if (mounted) {
+          _load(showLoading: false);
+        }
+      });
+    }
+
+    final businessColumn = _isSupplier
+        ? 'supplier_business_id'
+        : 'butcher_business_id';
+    var channel = Supabase.instance.client
+        .channel('cutlink-analytics-${widget.businessId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: widget.businessId,
+          ),
+          callback: scheduleRefresh,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'invoices',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: widget.businessId,
+          ),
+          callback: scheduleRefresh,
+        );
+
+    if (_isSupplier) {
+      channel = channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'warehouse_work_orders',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: widget.businessId,
+            ),
+            callback: scheduleRefresh,
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'products',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: widget.businessId,
+            ),
+            callback: scheduleRefresh,
+          );
+    }
+
+    _realtimeChannel = channel.subscribe();
   }
 
   double _number(dynamic value) {
@@ -176,11 +273,13 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return 'Compared with the previous $_days days';
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final params = <String, dynamic>{
@@ -1662,12 +1761,15 @@ class _BusinessAnalyticsOverviewPanelState
   bool _loading = true;
   String? _error;
   Map<String, dynamic> _analytics = const {};
+  RealtimeChannel? _realtimeChannel;
+  Timer? _realtimeRefreshTimer;
 
   bool get _isSupplier => widget.businessType == 'supplier';
 
   @override
   void initState() {
     super.initState();
+    _subscribeRealtime();
     _load();
   }
 
@@ -1676,8 +1778,92 @@ class _BusinessAnalyticsOverviewPanelState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.businessId != widget.businessId ||
         oldWidget.businessType != widget.businessType) {
+      _realtimeRefreshTimer?.cancel();
+      final channel = _realtimeChannel;
+      if (channel != null) {
+        Supabase.instance.client.removeChannel(channel);
+      }
+      _realtimeChannel = null;
+      _subscribeRealtime();
       _load();
     }
+  }
+
+  @override
+  void dispose() {
+    _realtimeRefreshTimer?.cancel();
+    final channel = _realtimeChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeRealtime() {
+    void scheduleRefresh(PostgresChangePayload _) {
+      _realtimeRefreshTimer?.cancel();
+      _realtimeRefreshTimer = Timer(const Duration(milliseconds: 900), () {
+        if (mounted) {
+          _load(showLoading: false);
+        }
+      });
+    }
+
+    final businessColumn = _isSupplier
+        ? 'supplier_business_id'
+        : 'butcher_business_id';
+    var channel = Supabase.instance.client
+        .channel('cutlink-analytics-overview-${widget.businessId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: widget.businessId,
+          ),
+          callback: scheduleRefresh,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'invoices',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: widget.businessId,
+          ),
+          callback: scheduleRefresh,
+        );
+
+    if (_isSupplier) {
+      channel = channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'warehouse_work_orders',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: widget.businessId,
+            ),
+            callback: scheduleRefresh,
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'products',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: widget.businessId,
+            ),
+            callback: scheduleRefresh,
+          );
+    }
+
+    _realtimeChannel = channel.subscribe();
   }
 
   double _number(dynamic value) {
@@ -1728,11 +1914,13 @@ class _BusinessAnalyticsOverviewPanelState
         .toList();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final response = await Supabase.instance.client.rpc(

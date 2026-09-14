@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -65,6 +66,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   List<_DashboardTilePreference> _dashboardPreferences = [];
 
+  RealtimeChannel? _realtimeChannel;
+  Timer? _realtimeRefreshTimer;
+  String? _realtimeBusinessId;
+  String? _realtimeBusinessType;
+
   @override
   void initState() {
     super.initState();
@@ -73,14 +79,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   void dispose() {
+    _realtimeRefreshTimer?.cancel();
+    final channel = _realtimeChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
     super.dispose();
   }
 
-  Future<void> _loadDashboard() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _loadDashboard({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final client = Supabase.instance.client;
@@ -422,6 +435,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _pendingVipApplications = pendingVipApplications;
         _isLoading = false;
       });
+
+      _ensureRealtimeSubscription(businessId, businessType ?? '');
     } on PostgrestException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -435,6 +450,88 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _isLoading = false;
       });
     }
+  }
+
+  void _ensureRealtimeSubscription(String businessId, String businessType) {
+    if (_realtimeBusinessId == businessId &&
+        _realtimeBusinessType == businessType &&
+        _realtimeChannel != null) {
+      return;
+    }
+
+    _realtimeRefreshTimer?.cancel();
+    final oldChannel = _realtimeChannel;
+    if (oldChannel != null) {
+      Supabase.instance.client.removeChannel(oldChannel);
+    }
+
+    _realtimeBusinessId = businessId;
+    _realtimeBusinessType = businessType;
+
+    void scheduleRefresh(PostgresChangePayload _) {
+      _realtimeRefreshTimer?.cancel();
+      _realtimeRefreshTimer = Timer(const Duration(milliseconds: 900), () {
+        if (mounted) {
+          _loadDashboard(showLoading: false);
+        }
+      });
+    }
+
+    final businessColumn = businessType == 'butcher'
+        ? 'butcher_business_id'
+        : 'supplier_business_id';
+    var channel = Supabase.instance.client
+        .channel('cutlink-dashboard-$businessId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: businessId,
+          ),
+          callback: scheduleRefresh,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'invoices',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: businessColumn,
+            value: businessId,
+          ),
+          callback: scheduleRefresh,
+        );
+
+    if (businessType == 'supplier') {
+      channel = channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'warehouse_work_orders',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: businessId,
+            ),
+            callback: scheduleRefresh,
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'products',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'supplier_business_id',
+              value: businessId,
+            ),
+            callback: scheduleRefresh,
+          );
+    }
+
+    _realtimeChannel = channel.subscribe();
   }
 
   Future<void> _signOut() async {
@@ -2501,19 +2598,25 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Widget _sidebarBadge(int count, {required bool selected}) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      width: 22,
+      height: 22,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? _deepNavy : _darkRed,
-        borderRadius: BorderRadius.circular(99),
+        shape: BoxShape.circle,
       ),
-      child: Text(
-        count > 99 ? '99+' : count.toString(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Text(
+            count > 99 ? '99+' : count.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
     );
