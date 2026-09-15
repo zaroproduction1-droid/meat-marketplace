@@ -1,10 +1,18 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupplierSettingsPage extends StatelessWidget {
-  const SupplierSettingsPage({super.key, this.embedded = false});
+  const SupplierSettingsPage({
+    super.key,
+    this.embedded = false,
+    this.onBrandingChanged,
+  });
 
   final bool embedded;
+  final VoidCallback? onBrandingChanged;
 
   static const _darkRed = Color(0xFF741C1C);
   static const _canvas = Color(0xFFF7F8FA);
@@ -84,12 +92,13 @@ class SupplierSettingsPage extends StatelessWidget {
                     icon: Icons.receipt_long_outlined,
                     title: 'Invoice Configuration',
                     subtitle:
-                        'ABN, licence number, invoice contact details, invoice address and banking details.',
+                        'Company logo, ABN, invoice contact details, address and banking details.',
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) =>
-                              const SupplierInvoiceConfigurationPage(),
+                          builder: (_) => SupplierInvoiceConfigurationPage(
+                            onBrandingChanged: onBrandingChanged,
+                          ),
                         ),
                       );
                     },
@@ -607,7 +616,9 @@ class _SupplierProfileSettingsPageState
 }
 
 class SupplierInvoiceConfigurationPage extends StatefulWidget {
-  const SupplierInvoiceConfigurationPage({super.key});
+  const SupplierInvoiceConfigurationPage({super.key, this.onBrandingChanged});
+
+  final VoidCallback? onBrandingChanged;
 
   @override
   State<SupplierInvoiceConfigurationPage> createState() =>
@@ -620,6 +631,9 @@ class _SupplierInvoiceConfigurationPageState
   bool _saving = false;
   String? _error;
   String? _businessId;
+  String? _logoPath;
+  Uint8List? _logoBytes;
+  bool _uploadingLogo = false;
 
   final _abn = TextEditingController();
   final _licence = TextEditingController();
@@ -668,11 +682,19 @@ class _SupplierInvoiceConfigurationPageState
   Future<void> _load() async {
     try {
       final id = await _SupplierSettingsData.resolveSupplierBusinessId();
-      final profile = await Supabase.instance.client
+      final client = Supabase.instance.client;
+      final profile = await client
           .from('supplier_invoice_profiles')
           .select()
           .eq('supplier_business_id', id)
           .maybeSingle();
+      final business = await client
+          .from('businesses')
+          .select('logo_path')
+          .eq('id', id)
+          .single();
+
+      final logoPath = business['logo_path']?.toString().trim() ?? '';
 
       if (profile != null) {
         _abn.text = profile['abn']?.toString() ?? '';
@@ -694,6 +716,7 @@ class _SupplierInvoiceConfigurationPageState
       if (!mounted) return;
       setState(() {
         _businessId = id;
+        _logoPath = logoPath.isEmpty ? null : logoPath;
         _loading = false;
       });
     } catch (error) {
@@ -703,6 +726,238 @@ class _SupplierInvoiceConfigurationPageState
         _loading = false;
       });
     }
+  }
+
+  String? _logoPublicUrl() {
+    final path = _logoPath;
+    if (path == null || path.isEmpty) return null;
+    return Supabase.instance.client.storage
+        .from('business-branding')
+        .getPublicUrl(path);
+  }
+
+  Future<void> _pickLogo() async {
+    final businessId = _businessId;
+    if (businessId == null || _uploadingLogo) return;
+
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg'],
+    );
+    if (result.isEmpty) return;
+
+    final file = result.first;
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 5 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logo must be 5 MB or smaller.')),
+        );
+      }
+      return;
+    }
+
+    final extension = file.name.contains('.')
+        ? file.name.split('.').last.toLowerCase()
+        : 'png';
+    final normalisedExtension = extension == 'jpeg' ? 'jpg' : extension;
+    if (!const {'png', 'jpg'}.contains(normalisedExtension)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Use a PNG or JPG company logo.')),
+        );
+      }
+      return;
+    }
+
+    final newPath = '$businessId/logo.$normalisedExtension';
+    final oldPath = _logoPath;
+    final contentType = normalisedExtension == 'png'
+        ? 'image/png'
+        : 'image/jpeg';
+
+    setState(() => _uploadingLogo = true);
+    try {
+      final client = Supabase.instance.client;
+      await client.storage
+          .from('business-branding')
+          .uploadBinary(
+            newPath,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+
+      await client.rpc(
+        'set_my_business_logo',
+        params: {'p_business_id': businessId, 'p_logo_path': newPath},
+      );
+
+      if (oldPath != null && oldPath.isNotEmpty && oldPath != newPath) {
+        try {
+          await client.storage.from('business-branding').remove([oldPath]);
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _logoPath = newPath;
+        _logoBytes = bytes;
+      });
+      widget.onBrandingChanged?.call();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Company logo updated.')));
+    } on StorageException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingLogo = false);
+    }
+  }
+
+  Future<void> _removeLogo() async {
+    final businessId = _businessId;
+    final path = _logoPath;
+    if (businessId == null || path == null || _uploadingLogo) return;
+
+    setState(() => _uploadingLogo = true);
+    try {
+      final client = Supabase.instance.client;
+      await client.rpc(
+        'set_my_business_logo',
+        params: {'p_business_id': businessId, 'p_logo_path': null},
+      );
+      try {
+        await client.storage.from('business-branding').remove([path]);
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _logoPath = null;
+        _logoBytes = null;
+      });
+      widget.onBrandingChanged?.call();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Company logo removed.')));
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingLogo = false);
+    }
+  }
+
+  Widget _brandingPanel() {
+    final logoUrl = _logoPublicUrl();
+    final hasLogo = _logoBytes != null || logoUrl != null;
+
+    Widget preview;
+    if (_logoBytes != null) {
+      preview = Image.memory(_logoBytes!, fit: BoxFit.contain);
+    } else if (logoUrl != null) {
+      preview = Image.network(
+        logoUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const Icon(
+          Icons.business_outlined,
+          size: 38,
+          color: Color(0xFF777777),
+        ),
+      );
+    } else {
+      preview = const Icon(
+        Icons.business_outlined,
+        size: 38,
+        color: Color(0xFF777777),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 150,
+            height: 82,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDADDE0)),
+            ),
+            child: preview,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Company Logo',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Used automatically on your CutLink supplier identity, quotes and invoices. PNG or JPG, up to 5 MB.',
+                  style: TextStyle(
+                    color: Color(0xFF666A70),
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _uploadingLogo ? null : _pickLogo,
+                      icon: _uploadingLogo
+                          ? const SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.upload_outlined, size: 17),
+                      label: Text(hasLogo ? 'Change Logo' : 'Upload Logo'),
+                    ),
+                    if (hasLogo)
+                      OutlinedButton.icon(
+                        onPressed: _uploadingLogo ? null : _removeLogo,
+                        icon: const Icon(Icons.delete_outline, size: 17),
+                        label: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -764,6 +1019,9 @@ class _SupplierInvoiceConfigurationPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _SectionHeading('Company Branding'),
+          _brandingPanel(),
+          const Divider(height: 30),
           const _SectionHeading('Supplier Invoice Details'),
           _field(_abn, 'ABN'),
           _field(_licence, 'Licence Number'),

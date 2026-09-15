@@ -1,11 +1,12 @@
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/quote_pdf_service.dart';
-import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
 class SupplierQuotePage extends StatefulWidget {
   const SupplierQuotePage({super.key, required this.orderId});
@@ -23,8 +24,14 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   int _tab = 0;
   Map<String, dynamic>? _quote;
   Map<String, dynamic> _supplier = {};
+  Map<String, dynamic> _supplierProfile = {};
   Map<String, dynamic> _customer = {};
+  Uint8List? _supplierLogoBytes;
   List<Map<String, dynamic>> _items = [];
+  final _previewTransformController = TransformationController();
+  final _previewViewportKey = GlobalKey();
+  double _previewZoom = 1;
+  bool _isPreviewDragging = false;
 
   @override
   void initState() {
@@ -32,57 +39,14 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _previewTransformController.dispose();
+    super.dispose();
+  }
+
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
-
-  Map<String, dynamic> _customerDetails(Map<String, dynamic> quote) {
-    final account = _map(quote['supplier_customer_accounts']);
-    final butcher = _map(quote['businesses']);
-
-    String? firstNonEmpty(List<dynamic> values) {
-      for (final value in values) {
-        final text = value?.toString().trim() ?? '';
-        if (text.isNotEmpty) return text;
-      }
-      return null;
-    }
-
-    return {
-      'customer_name': firstNonEmpty([
-        account['customer_name'],
-        butcher['trading_name'],
-        butcher['legal_name'],
-      ]),
-      'legal_name': firstNonEmpty([
-        account['legal_name'],
-        butcher['legal_name'],
-      ]),
-      'abn': firstNonEmpty([account['abn'], butcher['abn']]),
-      'contact_name': firstNonEmpty([account['contact_name']]),
-      'email': firstNonEmpty([account['email'], butcher['business_email']]),
-      'phone': firstNonEmpty([account['phone'], butcher['business_phone']]),
-      'delivery_address_line_1': firstNonEmpty([
-        account['delivery_address_line_1'],
-        butcher['address_line_1'],
-      ]),
-      'delivery_address_line_2': firstNonEmpty([
-        account['delivery_address_line_2'],
-        butcher['address_line_2'],
-      ]),
-      'delivery_suburb': firstNonEmpty([
-        account['delivery_suburb'],
-        butcher['suburb'],
-      ]),
-      'delivery_state': firstNonEmpty([
-        account['delivery_state'],
-        butcher['state'],
-      ]),
-      'delivery_postcode': firstNonEmpty([
-        account['delivery_postcode'],
-        butcher['postcode'],
-      ]),
-    };
-  }
 
   Future<void> _load() async {
     setState(() {
@@ -99,15 +63,13 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         delivery_notes, internal_notes, payment_method_snapshot,
         payment_terms_days_snapshot, fulfilment_method,
         requested_fulfilment_date, requested_fulfilment_time, delivery_fee,
-        supplier_business_id, butcher_business_id, created_at, updated_at,
+        supplier_business_id, created_at, updated_at,
         supplier_customer_accounts(
           customer_name, legal_name, contact_name, email, phone, abn,
+          billing_address_line_1, billing_address_line_2,
+          billing_suburb, billing_state, billing_postcode,
           delivery_address_line_1, delivery_address_line_2,
           delivery_suburb, delivery_state, delivery_postcode
-        ),
-        businesses!orders_butcher_business_id_fkey(
-          trading_name, legal_name, abn, business_email, business_phone,
-          address_line_1, address_line_2, suburb, state, postcode
         ),
         order_items(
           id, product_name_snapshot, sku_snapshot, quantity, quantity_unit,
@@ -123,16 +85,39 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       final supplierRaw = await client
           .from('businesses')
           .select('''
-        trading_name, legal_name, business_email, business_phone,
-        address_line_1, address_line_2, suburb, state, postcode
+        trading_name, legal_name, abn, business_email, business_phone,
+        address_line_1, address_line_2, suburb, state, postcode, logo_path
       ''')
           .eq('id', quote['supplier_business_id'])
           .single();
+
+      final supplierProfileRaw = await client
+          .from('supplier_invoice_profiles')
+          .select()
+          .eq('supplier_business_id', quote['supplier_business_id'])
+          .maybeSingle();
+
+      Uint8List? logoBytes;
+      final logoPath = supplierRaw['logo_path']?.toString().trim() ?? '';
+      if (logoPath.isNotEmpty) {
+        try {
+          logoBytes = await client.storage
+              .from('business-branding')
+              .download(logoPath);
+        } catch (_) {
+          logoBytes = null;
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _quote = quote;
         _supplier = Map<String, dynamic>.from(supplierRaw);
-        _customer = _customerDetails(quote);
+        _supplierProfile = supplierProfileRaw == null
+            ? <String, dynamic>{}
+            : Map<String, dynamic>.from(supplierProfileRaw);
+        _supplierLogoBytes = logoBytes;
+        _customer = _map(quote['supplier_customer_accounts']);
         _items = (quote['order_items'] as List? ?? const [])
             .whereType<Map>()
             .map((item) => Map<String, dynamic>.from(item))
@@ -174,8 +159,10 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   Future<Uint8List> _pdf() => CutLinkQuotePdf.build(
     quote: _quote!,
     supplier: _supplier,
+    supplierProfile: _supplierProfile,
     customer: _customer,
     items: _items,
+    supplierLogoBytes: _supplierLogoBytes,
   );
 
   Future<void> _print() async {
@@ -287,28 +274,6 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           ),
         ),
         const SizedBox(height: 16),
-        _infoPanel('Customer details', [
-          ['Business', _customer['customer_name']],
-          ['Legal name', _customer['legal_name']],
-          ['ABN', _customer['abn']],
-          ['Contact', _customer['contact_name']],
-          ['Phone', _customer['phone']],
-          ['Email', _customer['email']],
-          [
-            'Address',
-            [
-                  _customer['delivery_address_line_1'],
-                  _customer['delivery_address_line_2'],
-                  _customer['delivery_suburb'],
-                  _customer['delivery_state'],
-                  _customer['delivery_postcode'],
-                ]
-                .map((value) => value?.toString().trim() ?? '')
-                .where((value) => value.isNotEmpty)
-                .join(', '),
-          ],
-        ]),
-        const SizedBox(height: 16),
         _infoPanel('Quote information', [
           ['Customer reference', quote['customer_reference']],
           ['Payment', quote['payment_method_snapshot']],
@@ -396,34 +361,170 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       Container(
         color: Colors.white,
         padding: const EdgeInsets.all(12),
-        child: const Row(
+        child: Row(
           children: [
-            Expanded(
+            const Expanded(
               child: Text(
                 'Quote PDF',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
             ),
-            Text(
-              'Scroll wheel to zoom',
-              style: TextStyle(
-                color: Color(0xFF6D7177),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            _zoomControls(),
           ],
         ),
       ),
       Expanded(
-        child: ZoomablePdfPreview(
-          documentKey: 'quote-${widget.orderId}-$_number',
-          buildPdf: _pdf,
-          dpi: 240,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableHeight = constraints.maxHeight > 24
+                ? constraints.maxHeight - 24
+                : constraints.maxHeight;
+            final availableWidth = constraints.maxWidth > 24
+                ? constraints.maxWidth - 24
+                : constraints.maxWidth;
+            final fitWidth =
+                availableHeight *
+                PdfPageFormat.a4.width /
+                PdfPageFormat.a4.height;
+            final maxWidth = fitWidth < availableWidth
+                ? fitWidth
+                : availableWidth;
+            return ClipRect(
+              key: _previewViewportKey,
+              child: MouseRegion(
+                cursor: _previewZoom > 1
+                    ? (_isPreviewDragging
+                          ? SystemMouseCursors.grabbing
+                          : SystemMouseCursors.grab)
+                    : MouseCursor.defer,
+                child: Listener(
+                  onPointerSignal: _handlePreviewPointerSignal,
+                  child: InteractiveViewer(
+                    transformationController: _previewTransformController,
+                    minScale: 0.75,
+                    maxScale: 3,
+                    panEnabled: _previewZoom > 1,
+                    onInteractionStart: (_) {
+                      if (_previewZoom > 1) {
+                        setState(() => _isPreviewDragging = true);
+                      }
+                    },
+                    onInteractionUpdate: (_) => _syncPreviewZoom(),
+                    onInteractionEnd: (_) {
+                      _syncPreviewZoom();
+                      if (_isPreviewDragging) {
+                        setState(() => _isPreviewDragging = false);
+                      }
+                    },
+                    child: PdfPreview(
+                      build: (_) => _pdf(),
+                      pdfFileName: '$_number.pdf',
+                      maxPageWidth: maxWidth,
+                      canChangeOrientation: false,
+                      canChangePageFormat: false,
+                      allowPrinting: false,
+                      allowSharing: false,
+                      loadingWidget: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     ],
   );
+
+  Widget _zoomControls() => Container(
+    height: 36,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF4F5F6),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: const Color(0xFFE0E2E5)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: _previewZoom <= .75
+              ? null
+              : () => _setPreviewZoom(_previewZoom - .1),
+          tooltip: 'Zoom out',
+          icon: const Icon(Icons.zoom_out, size: 18),
+          visualDensity: VisualDensity.compact,
+        ),
+        Tooltip(
+          message: 'Reset and centre preview',
+          child: TextButton.icon(
+            onPressed: _resetPreviewZoom,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF4F555B),
+              minimumSize: const Size(72, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+            ),
+            icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
+            label: Text(
+              '${(_previewZoom * 100).round()}%',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: _previewZoom >= 3
+              ? null
+              : () => _setPreviewZoom(_previewZoom + .1),
+          tooltip: 'Zoom in',
+          icon: const Icon(Icons.zoom_in, size: 18),
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    ),
+  );
+
+  void _handlePreviewPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    _setPreviewZoom(
+      _previewZoom + (event.scrollDelta.dy < 0 ? .1 : -.1),
+      focalPoint: event.localPosition,
+    );
+  }
+
+  void _setPreviewZoom(double value, {Offset? focalPoint}) {
+    final zoom = value.clamp(.75, 3.0);
+    if (zoom == _previewZoom) return;
+    final focal = focalPoint ?? _previewCentre();
+    final factor = zoom / _previewZoom;
+    final adjustment = Matrix4.identity()
+      ..translateByDouble(focal.dx, focal.dy, 0, 1)
+      ..scaleByDouble(factor, factor, 1, 1)
+      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
+      ..multiply(_previewTransformController.value);
+    _previewTransformController.value = adjustment;
+    setState(() => _previewZoom = zoom);
+  }
+
+  void _syncPreviewZoom() {
+    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
+      .75,
+      3.0,
+    );
+    if ((zoom - _previewZoom).abs() > .001 && mounted) {
+      setState(() => _previewZoom = zoom);
+    }
+  }
+
+  Offset _previewCentre() {
+    final object = _previewViewportKey.currentContext?.findRenderObject();
+    return object is RenderBox ? object.size.center(Offset.zero) : Offset.zero;
+  }
+
+  void _resetPreviewZoom() {
+    _previewTransformController.value = Matrix4.identity();
+    setState(() => _previewZoom = 1);
+  }
 
   Widget _history() {
     final quote = _quote!;

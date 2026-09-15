@@ -29,7 +29,6 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
   static const _tabs = <String>[
     'all',
     'draft',
-    'ready',
     'issued',
     'part_paid',
     'paid',
@@ -209,8 +208,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
   String _statusLabel(String? status) {
     return switch (status) {
       'draft' => 'Draft',
-      'ready' => 'Ready',
-      'issued' => 'Issued',
+      'ready' => 'Created',
+      'issued' => 'Created',
       'part_paid' => 'Part Paid',
       'paid' => 'Paid',
       'void' => 'Void',
@@ -343,173 +342,6 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     return invoice['sent_to_butcher_at'] != null;
   }
 
-  Future<void> _showIssueInfo() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline, color: _darkRed),
-            SizedBox(width: 8),
-            Expanded(child: Text('What does Issue Invoice mean?')),
-          ],
-        ),
-        content: const Text(
-          'Issuing an invoice finalises it as an official accounts receivable. '
-          'The final total and GST become the customer balance CutLink tracks as outstanding.\n\n'
-          'If the customer is a linked CutLink Member, the invoice can then be sent to their CutLink account so they can view it, submit payment and track the balance.',
-        ),
-        actions: [
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<bool> _confirmCreditLimitForInvoice(
-    Map<String, dynamic> invoice,
-  ) async {
-    if (invoice['payment_method_snapshot']?.toString() != 'account') {
-      return true;
-    }
-
-    final accountId = invoice['supplier_customer_account_id']?.toString();
-
-    if (accountId == null || accountId.isEmpty) {
-      return true;
-    }
-
-    final proposedAmount = _asDouble(invoice['total_amount']);
-
-    final raw = await Supabase.instance.client.rpc(
-      'check_supplier_customer_credit_limit',
-      params: {
-        'target_supplier_customer_account_id': accountId,
-        'proposed_amount': proposedAmount,
-      },
-    );
-
-    final rows = raw is List ? raw : const [];
-    if (rows.isEmpty || rows.first is! Map) return true;
-
-    final check = Map<String, dynamic>.from(rows.first as Map);
-    if (check['over_limit'] != true) return true;
-    if (!mounted) return false;
-
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Credit Limit Warning'),
-        content: Text(
-          'Credit limit: ${_money(check['credit_limit'])}\n'
-          'Current exposure: ${_money(check['current_credit_exposure'])}\n'
-          'This invoice: ${_money(proposedAmount)}\n'
-          'Projected exposure: ${_money(check['projected_credit_exposure'])}\n'
-          'Over limit by: ${_money(check['over_limit_by'])}\n\n'
-          'Would you like to issue the invoice anyway?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Go Back'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Issue Anyway'),
-          ),
-        ],
-      ),
-    );
-
-    return proceed == true;
-  }
-
-  Future<void> _issueInvoiceFromList(Map<String, dynamic> invoice) async {
-    final id = invoice['id']?.toString();
-    if (id == null || id.isEmpty || _busyInvoiceIds.contains(id)) {
-      return;
-    }
-
-    final status = invoice['status']?.toString() ?? 'draft';
-
-    if (status != 'ready') {
-      await _openInvoice(invoice);
-      return;
-    }
-
-    if (invoice['tax_status']?.toString() != 'configured' ||
-        invoice['total_amount'] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Open the invoice and complete the final invoice details before issuing.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    try {
-      final creditApproved = await _confirmCreditLimitForInvoice(invoice);
-
-      if (!creditApproved || !mounted) return;
-
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Issue Invoice?'),
-          content: Text(
-            'Issue ${invoice['invoice_number'] ?? 'this invoice'}?\n\n'
-            'It will become an official outstanding receivable.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Issue Invoice'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true || !mounted) return;
-
-      setState(() => _busyInvoiceIds.add(id));
-
-      await Supabase.instance.client.rpc(
-        'issue_invoice',
-        params: {'target_invoice_id': id},
-      );
-
-      await _loadInvoices();
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Invoice issued.')));
-      }
-    } on PostgrestException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busyInvoiceIds.remove(id));
-      }
-    }
-  }
-
   Future<void> _sendInvoiceFromList(Map<String, dynamic> invoice) async {
     final id = invoice['id']?.toString();
     if (id == null || id.isEmpty || _busyInvoiceIds.contains(id)) {
@@ -559,14 +391,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     final hasButcher = _hasButcherAccount(invoice);
 
     if (!issued) {
-      return FilledButton.icon(
-        onPressed: busy ? null : () => _issueInvoiceFromList(invoice),
-        style: FilledButton.styleFrom(
-          backgroundColor: _darkRed,
-          visualDensity: VisualDensity.compact,
-        ),
-        icon: const Icon(Icons.verified_outlined, size: 17),
-        label: Text(status == 'ready' ? 'Issue Invoice' : 'Open & Issue'),
+      return OutlinedButton.icon(
+        onPressed: busy ? null : () => _openInvoice(invoice),
+        style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        icon: const Icon(Icons.open_in_new, size: 17),
+        label: const Text('Open Invoice'),
       );
     }
 
@@ -734,22 +563,6 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                             ),
                             const SizedBox(width: 8),
                             _statusChip(status),
-                            const SizedBox(width: 4),
-                            Tooltip(
-                              message: 'What does Issue Invoice mean?',
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(999),
-                                onTap: _showIssueInfo,
-                                child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(
-                                    Icons.info_outline,
-                                    size: 17,
-                                    color: Color(0xFF777777),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 2),
@@ -918,7 +731,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Prepare, issue, send and track customer invoices and receivables.',
+                              'Create, send and track customer invoices and receivables.',
                               style: TextStyle(
                                 color: Color(0xFF666A70),
                                 fontSize: 12,
@@ -985,8 +798,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   tabs: [
                     Tab(text: 'All (${_countForStatus('all')})'),
                     Tab(text: 'Draft (${_countForStatus('draft')})'),
-                    Tab(text: 'Ready (${_countForStatus('ready')})'),
-                    Tab(text: 'Issued (${_countForStatus('issued')})'),
+                    Tab(text: 'Created (${_countForStatus('issued')})'),
                     Tab(text: 'Part Paid (${_countForStatus('part_paid')})'),
                     Tab(text: 'Paid (${_countForStatus('paid')})'),
                     Tab(text: 'Void (${_countForStatus('void')})'),
@@ -1076,7 +888,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 ),
                 SizedBox(height: 1),
                 Text(
-                  'Prepare, issue, send and track customer invoices and receivables',
+                  'Create, send and track customer invoices and receivables',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

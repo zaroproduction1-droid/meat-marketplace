@@ -629,10 +629,89 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
   }
 
+  double get _finalInvoiceAmount {
+    var productsTotal = 0.0;
+    for (final item in _items) {
+      final raw = item['final_line_amount'];
+      final amount = raw is num ? raw.toDouble() : double.tryParse('$raw') ?? 0;
+      productsTotal += amount;
+    }
+
+    final deliveryRaw = _order?['delivery_fee'];
+    final deliveryFee = deliveryRaw is num
+        ? deliveryRaw.toDouble()
+        : double.tryParse('$deliveryRaw') ?? 0;
+
+    return productsTotal + deliveryFee;
+  }
+
+  Future<bool> _confirmCreditLimitBeforeInvoiceCreation() async {
+    if (_order?['payment_method_snapshot']?.toString() != 'account') {
+      return true;
+    }
+
+    final accountId = _order?['supplier_customer_account_id']?.toString();
+    if (accountId == null || accountId.isEmpty) {
+      return true;
+    }
+
+    final raw = await Supabase.instance.client.rpc(
+      'check_supplier_customer_credit_limit',
+      params: {
+        'target_supplier_customer_account_id': accountId,
+        'proposed_amount': _finalInvoiceAmount,
+      },
+    );
+
+    final rows = raw is List ? raw : const [];
+    if (rows.isEmpty || rows.first is! Map) return true;
+
+    final check = Map<String, dynamic>.from(rows.first as Map);
+    if (check['over_limit'] != true) return true;
+    if (!mounted) return false;
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Credit Limit Warning'),
+        content: Text(
+          'Credit limit: ${_money(check['credit_limit'])}\n'
+          'Current exposure: ${_money(check['current_credit_exposure'])}\n'
+          'This invoice: ${_money(_finalInvoiceAmount)}\n'
+          'Projected exposure: ${_money(check['projected_credit_exposure'])}\n'
+          'Over limit by: ${_money(check['over_limit_by'])}\n\n'
+          'Creating this invoice will make it official immediately. Continue anyway?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Go Back'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Create Anyway'),
+          ),
+        ],
+      ),
+    );
+
+    return proceed == true;
+  }
+
+  Future<void> _startPickingAndOpenPreview() async {
+    await _saveWorkOrderDetails(status: 'picking');
+    if (!mounted || _workOrder?['status']?.toString() != 'picking') return;
+    setState(() => _workspaceTabIndex = 1);
+  }
+
   Future<void> _createInvoiceFromFinishedWorkOrder() async {
     if (!_allLinesFinalised || _isSaving) {
       return;
     }
+
+    final creditApproved = await _confirmCreditLimitBeforeInvoiceCreation();
+    if (!creditApproved || !mounted) return;
 
     final workOrderId = _workOrder?['id']?.toString();
 
@@ -2131,8 +2210,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             '${_items.where((item) => item['fulfilment_status']?.toString() == 'finalised').length}/${_items.length}',
             Icons.checklist_outlined,
           ),
-          if (_order?['pricing_status']?.toString() == 'pending_weight')
-            _headerMetric('TOTAL', 'Pending weight', Icons.scale_outlined),
+          _headerMetric(
+            _allLinesFinalised ? 'FINAL TOTAL' : 'RUNNING TOTAL',
+            _money(_finalInvoiceAmount),
+            Icons.payments_outlined,
+          ),
         ],
       ),
     );
@@ -2224,6 +2306,43 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     color: Color(0xFF777777),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F8FA),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: const Color(0xFFE5E7EA)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calculate_outlined, size: 18, color: _darkRed),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _allLinesFinalised
+                        ? 'Final invoice total before invoice creation'
+                        : 'Running total - updates as actual weights are finalised',
+                    style: const TextStyle(
+                      color: Color(0xFF60646A),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _money(_finalInvoiceAmount),
+                  style: const TextStyle(
+                    color: _darkRed,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -2371,9 +2490,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             const SizedBox(height: 9),
             if (status == 'created' || status == 'printed')
               FilledButton.icon(
-                onPressed: _isSaving
-                    ? null
-                    : () => _saveWorkOrderDetails(status: 'picking'),
+                onPressed: _isSaving ? null : _startPickingAndOpenPreview,
                 style: FilledButton.styleFrom(
                   backgroundColor: _darkRed,
                   padding: const EdgeInsets.symmetric(vertical: 13),

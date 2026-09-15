@@ -53,6 +53,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String? _businessId;
   String? _businessName;
   String? _businessType;
+  String? _businessLogoUrl;
 
   List<Map<String, dynamic>> _butcherOrders = [];
   List<Map<String, dynamic>> _butcherAccounts = [];
@@ -136,7 +137,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             trading_name,
             business_type,
             verification_status,
-            active
+            active,
+            logo_path
           ''')
           .inFilter('id', businessIds)
           .eq('active', true);
@@ -167,6 +169,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           : (legalName != null && legalName.isNotEmpty)
           ? legalName
           : 'Business';
+      final logoPath = business['logo_path']?.toString().trim() ?? '';
+      final businessLogoUrl = logoPath.isEmpty
+          ? null
+          : client.storage.from('business-branding').getPublicUrl(logoPath);
 
       var newSupplierOrderCount = 0;
       var butcherOrders = <Map<String, dynamic>>[];
@@ -421,6 +427,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _businessId = businessId;
         _businessName = businessName;
         _businessType = businessType;
+        _businessLogoUrl = businessLogoUrl;
         _dashboardPreferences = loadedDashboardPreferences;
         _isAdmin = isAdmin;
         _newSupplierOrderCount = newSupplierOrderCount;
@@ -638,7 +645,87 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       return;
     }
 
-    _openPage(const SupplierSettingsPage(embedded: true));
+    _openPage(
+      SupplierSettingsPage(
+        embedded: true,
+        onBrandingChanged: () {
+          _refreshBusinessBranding();
+        },
+      ),
+    );
+  }
+
+  Future<void> _refreshBusinessBranding() async {
+    final businessId = _businessId;
+    if (businessId == null) return;
+
+    try {
+      final client = Supabase.instance.client;
+      final business = await client
+          .from('businesses')
+          .select('trading_name, legal_name, logo_path')
+          .eq('id', businessId)
+          .single();
+      if (!mounted) return;
+
+      final tradingName = business['trading_name']?.toString().trim() ?? '';
+      final legalName = business['legal_name']?.toString().trim() ?? '';
+      final logoPath = business['logo_path']?.toString().trim() ?? '';
+      final logoUrl = logoPath.isEmpty
+          ? null
+          : client.storage.from('business-branding').getPublicUrl(logoPath);
+
+      setState(() {
+        _businessName = tradingName.isNotEmpty
+            ? tradingName
+            : legalName.isNotEmpty
+            ? legalName
+            : _businessName;
+        _businessLogoUrl = logoUrl;
+      });
+    } catch (_) {
+      // Branding refresh is cosmetic; keep the existing dashboard state.
+    }
+  }
+
+  Widget _businessLogoBadge({required double size, required String fallback}) {
+    final logoUrl = _businessLogoUrl;
+
+    Widget fallbackWidget() => Center(
+      child: Text(
+        (_businessName?.isNotEmpty ?? false)
+            ? _businessName![0].toUpperCase()
+            : fallback,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: size <= 30 ? 11 : 13,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+
+    return Container(
+      width: size,
+      height: size,
+      padding: logoUrl == null ? EdgeInsets.zero : const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: logoUrl == null ? _darkRed : Colors.white,
+        borderRadius: BorderRadius.circular(size * 0.28),
+        border: logoUrl == null
+            ? null
+            : Border.all(color: const Color(0xFFD9DDE1)),
+      ),
+      child: logoUrl == null
+          ? fallbackWidget()
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(size * 0.20),
+              child: Image.network(
+                logoUrl,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => fallbackWidget(),
+              ),
+            ),
+    );
   }
 
   double _asDouble(dynamic value) {
@@ -2461,19 +2548,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                               padding: const EdgeInsets.all(8),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: _darkRed,
-                                    child: Text(
-                                      (_businessName?.isNotEmpty ?? false)
-                                          ? _businessName![0].toUpperCase()
-                                          : 'B',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
+                                  _businessLogoBadge(size: 36, fallback: 'B'),
                                   const SizedBox(width: 9),
                                   Expanded(
                                     child: Column(
@@ -2716,20 +2791,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 15,
-                      backgroundColor: _darkRed,
-                      child: Text(
-                        (_businessName?.isNotEmpty ?? false)
-                            ? _businessName![0].toUpperCase()
-                            : 'B',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
+                    _businessLogoBadge(size: 30, fallback: 'B'),
                     const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3806,19 +3868,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                               padding: const EdgeInsets.all(8),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: _darkRed,
-                                    child: Text(
-                                      (_businessName?.isNotEmpty ?? false)
-                                          ? _businessName![0].toUpperCase()
-                                          : 'S',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
+                                  _businessLogoBadge(size: 36, fallback: 'S'),
                                   const SizedBox(width: 9),
                                   Expanded(
                                     child: Column(
@@ -3964,20 +4014,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 15,
-                      backgroundColor: _darkRed,
-                      child: Text(
-                        (_businessName?.isNotEmpty ?? false)
-                            ? _businessName![0].toUpperCase()
-                            : 'S',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
+                    _businessLogoBadge(size: 30, fallback: 'S'),
                     const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

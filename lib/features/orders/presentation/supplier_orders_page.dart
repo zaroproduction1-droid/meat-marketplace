@@ -3340,7 +3340,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         dateValue = _formatDate(
           pickup ? order['ready_for_pickup_at'] : order['dispatched_at'],
         );
-        onTap = null;
+        onTap = () => _openInvoice(order, openPdf: false);
         break;
 
       case 'completed':
@@ -3357,7 +3357,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ? (order['picked_up_at'] ?? order['completed_at'])
               : (order['delivered_at'] ?? order['completed_at']),
         );
-        onTap = null;
+        onTap = () => _openInvoice(order, openPdf: false);
         break;
 
       default:
