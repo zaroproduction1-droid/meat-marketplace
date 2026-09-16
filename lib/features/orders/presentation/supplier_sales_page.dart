@@ -76,22 +76,130 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return;
     }
 
-    // Keep constructor compatibility with the Work Order reopen route.
-    // The existing Work Order page passes this ID when returning to Sales.
-    // The live-order edit/reservation workflow is intentionally not changed
-    // here because stock for an existing warehouse work order may already
-    // have been reserved. Changing those lines requires a controlled
-    // stock-release/re-reservation backend flow rather than a client-only edit.
     final workOrderOrderId = widget.initialWorkOrderOrderId?.trim();
 
     if (workOrderOrderId != null && workOrderOrderId.isNotEmpty) {
+      await _loadWorkOrderAdditionsIntoWorkspace(workOrderOrderId);
+    }
+  }
+
+  Future<void> _loadWorkOrderAdditionsIntoWorkspace(String orderId) async {
+    try {
+      final raw = await Supabase.instance.client
+          .from('orders')
+          .select('''
+            id,
+            order_number,
+            customer_contact_name_snapshot,
+            supplier_customer_account_id,
+            payment_method_snapshot,
+            payment_terms_days_snapshot,
+            fulfilment_method,
+            requested_fulfilment_date,
+            requested_fulfilment_time,
+            delivery_notes,
+            internal_notes,
+            source_reference,
+            customer_reference,
+            delivery_fee,
+            order_source,
+            supplier_customer_accounts(*),
+            order_items(
+              id,
+              product_id,
+              product_name_snapshot,
+              sku_snapshot,
+              quantity,
+              quantity_unit,
+              unit_price,
+              price_basis,
+              catch_weight_snapshot,
+              notes,
+              invoice_excluded
+            )
+          ''')
+          .eq('id', orderId)
+          .single();
+
+      if (!mounted) return;
+
+      final order = Map<String, dynamic>.from(raw);
+      final account = _nestedMap(order['supplier_customer_accounts']);
+      final existingItems = _nestedList(
+        order['order_items'],
+      ).where((item) => item['invoice_excluded'] != true).toList();
+      if (account == null) {
+        throw Exception('The work order customer could not be loaded.');
+      }
+
+      setState(() {
+        _parkCurrentSale();
+        _activeSale = {
+          'work_order_order_id': order['id'],
+          'order_number': order['order_number'],
+          'supplier_customer_account_id':
+              order['supplier_customer_account_id'] ?? account['id'],
+          'customer': account,
+          'customer_contact_name_snapshot':
+              order['customer_contact_name_snapshot'],
+          'customer_name':
+              account['customer_name']?.toString().trim().isNotEmpty == true
+              ? account['customer_name'].toString().trim()
+              : 'Customer',
+          'payment_method':
+              order['payment_method_snapshot']?.toString() ?? 'cod',
+          'payment_terms_days':
+              (order['payment_terms_days_snapshot'] as num?)?.toInt() ?? 0,
+          'fulfilment_method':
+              order['fulfilment_method']?.toString() ?? 'pickup',
+          'requested_fulfilment_date': order['requested_fulfilment_date']
+              ?.toString(),
+          'requested_fulfilment_time': order['requested_fulfilment_time']
+              ?.toString(),
+          'delivery_notes': order['delivery_notes']?.toString() ?? '',
+          'internal_notes': order['internal_notes']?.toString() ?? '',
+          'source_reference': order['source_reference']?.toString(),
+          'customer_reference': order['customer_reference']?.toString(),
+          'delivery_fee': (order['delivery_fee'] as num?)?.toDouble() ?? 0,
+          'order_source': order['order_source']?.toString() ?? 'manual',
+        };
+        _activeSaleLines
+          ..clear()
+          ..addAll(
+            existingItems.map(
+              (item) => {
+                'existing_order_item_id': item['id'],
+                'product_id': item['product_id'],
+                'product_name':
+                    item['product_name_snapshot']?.toString() ?? 'Product',
+                'sku': item['sku_snapshot']?.toString(),
+                'quantity': item['quantity'],
+                'quantity_unit': item['quantity_unit']?.toString() ?? 'unit',
+                'unit_price': item['unit_price'],
+                'price_basis': item['price_basis']?.toString() ?? 'unit',
+                'catch_weight_snapshot': item['catch_weight_snapshot'] == true,
+                'notes': item['notes']?.toString() ?? '',
+              },
+            ),
+          );
+        _activeSaleMinimized = false;
+        _selectedAnimalRegionKey = null;
+        _searchController.clear();
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Work order reopened in Sales. Existing warehouse stock reservations remain protected.',
+            'Add products to ${order['order_number'] ?? 'this work order'}.',
           ),
         ),
       );
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -1130,7 +1238,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   int _activeSaleLineIndex(String productId) {
     return _activeSaleLines.indexWhere(
-      (line) => line['product_id']?.toString() == productId,
+      (line) =>
+          line['product_id']?.toString() == productId &&
+          (_activeSale?['work_order_order_id'] == null ||
+              line['existing_order_item_id'] == null),
     );
   }
 
@@ -1671,6 +1782,16 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               for (var index = 0; index < _activeSaleLines.length; index++)
                 ListTile(
                   dense: true,
+                  leading:
+                      _activeSaleLines[index]['existing_order_item_id'] != null
+                      ? const Tooltip(
+                          message: 'Already on this work order',
+                          child: Icon(Icons.check_circle, color: Colors.green),
+                        )
+                      : const Tooltip(
+                          message: 'New product',
+                          child: Icon(Icons.add_circle, color: _darkRed),
+                        ),
                   title: Text(
                     _activeSaleLines[index]['product_name']?.toString() ??
                         'Product',
@@ -1682,40 +1803,45 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ' • ${_money(_activeSaleLines[index]['unit_price'])}'
                     ' / ${_saleBasisLabel(_activeSaleLines[index]['price_basis']?.toString() ?? 'unit')}',
                   ),
-                  trailing: Wrap(
-                    spacing: 4,
-                    children: [
-                      IconButton(
-                        tooltip: 'Edit line',
-                        onPressed: () {
-                          final productId =
-                              _activeSaleLines[index]['product_id']?.toString();
+                  trailing:
+                      _activeSaleLines[index]['existing_order_item_id'] != null
+                      ? const Chip(label: Text('Existing'))
+                      : Wrap(
+                          spacing: 4,
+                          children: [
+                            IconButton(
+                              tooltip: 'Edit line',
+                              onPressed: () {
+                                final productId =
+                                    _activeSaleLines[index]['product_id']
+                                        ?.toString();
 
-                          if (productId == null) return;
+                                if (productId == null) return;
 
-                          final product = _products
-                              .where(
-                                (row) => row['id']?.toString() == productId,
-                              )
-                              .cast<Map<String, dynamic>?>()
-                              .firstWhere(
-                                (row) => row != null,
-                                orElse: () => null,
-                              );
+                                final product = _products
+                                    .where(
+                                      (row) =>
+                                          row['id']?.toString() == productId,
+                                    )
+                                    .cast<Map<String, dynamic>?>()
+                                    .firstWhere(
+                                      (row) => row != null,
+                                      orElse: () => null,
+                                    );
 
-                          if (product != null) {
-                            _addProductToActiveSale(product);
-                          }
-                        },
-                        icon: const Icon(Icons.edit_outlined),
-                      ),
-                      IconButton(
-                        tooltip: 'Remove line',
-                        onPressed: () => _removeSaleLine(index),
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                    ],
-                  ),
+                                if (product != null) {
+                                  _addProductToActiveSale(product);
+                                }
+                              },
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                            IconButton(
+                              tooltip: 'Remove line',
+                              onPressed: () => _removeSaleLine(index),
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
                 ),
             const Divider(height: 1),
             Padding(
@@ -1739,12 +1865,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
-                    onPressed: _activeSaleLines.isEmpty
+                    onPressed:
+                        _activeSale?['work_order_order_id'] != null &&
+                            _activeSaleRpcItems().isEmpty
                         ? null
                         : _reviewActiveSale,
                     style: FilledButton.styleFrom(backgroundColor: _darkRed),
                     icon: const Icon(Icons.receipt_long_outlined),
-                    label: const Text('Review Sale'),
+                    label: Text(
+                      _activeSale?['work_order_order_id'] != null
+                          ? 'Review Work Order'
+                          : 'Review Sale',
+                    ),
                   ),
                 ],
               ),
@@ -1757,6 +1889,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   List<Map<String, dynamic>> _activeSaleRpcItems() {
     return _activeSaleLines
+        .where(
+          (line) =>
+              _activeSale?['work_order_order_id'] == null ||
+              line['existing_order_item_id'] == null,
+        )
         .map(
           (line) => {
             'product_id': line['product_id'],
@@ -2122,7 +2259,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   Future<void> _createWorkOrderFromActiveSale() async {
     final sale = _activeSale;
 
-    if (sale == null || _activeSaleLines.isEmpty) {
+    if (sale == null || _activeSaleRpcItems().isEmpty) {
       return;
     }
 
@@ -2138,6 +2275,32 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
 
     try {
+      final existingWorkOrderOrderId = sale['work_order_order_id']?.toString();
+      if (existingWorkOrderOrderId != null &&
+          existingWorkOrderOrderId.isNotEmpty) {
+        final newItems = _activeSaleRpcItems();
+        final addedRaw = await Supabase.instance.client.rpc(
+          'add_supplier_work_order_items',
+          params: {
+            'target_order_id': existingWorkOrderOrderId,
+            'p_items': newItems,
+          },
+        );
+
+        if (!mounted) return;
+
+        final added = (addedRaw as num?)?.toInt() ?? newItems.length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$added product${added == 1 ? '' : 's'} added to the work order.',
+            ),
+          ),
+        );
+        Navigator.of(context).pop(true);
+        return;
+      }
+
       final existingQuoteId = sale['quote_order_id']?.toString();
       late String orderId;
 
@@ -2268,6 +2431,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         final time = sale['requested_fulfilment_time']?.toString() ?? 'Not set';
 
         final isQuote = sale['quote_order_id'] != null;
+        final isWorkOrderAddition = sale['work_order_order_id'] != null;
         final quoteNumber = sale['quote_number']?.toString();
         final revision = (sale['quote_revision'] as num?)?.toInt() ?? 0;
         final documentLabel = isQuote
@@ -2338,12 +2502,25 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
         Widget summaryPanel() {
           return panel(
-            title: isQuote ? 'Quote Summary' : 'Sale Summary',
+            title: isQuote
+                ? 'Quote Summary'
+                : isWorkOrderAddition
+                ? 'Work Order Addition'
+                : 'Sale Summary',
             icon: isQuote
                 ? Icons.description_outlined
                 : Icons.point_of_sale_outlined,
             children: [
-              _reviewInfo(isQuote ? 'Quote' : 'Document', documentLabel),
+              _reviewInfo(
+                isQuote
+                    ? 'Quote'
+                    : isWorkOrderAddition
+                    ? 'Work order'
+                    : 'Document',
+                isWorkOrderAddition
+                    ? sale['order_number']?.toString() ?? 'Work order'
+                    : documentLabel,
+              ),
               _reviewInfo('Payment', payment),
               _reviewInfo('Fulfilment', fulfilment),
               _reviewInfo('Requested date', date),
@@ -2464,7 +2641,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             icon: const Icon(Icons.assignment_outlined),
-            label: const Text('Create Work Order'),
+            label: Text(
+              isWorkOrderAddition ? 'Add to Work Order' : 'Create Work Order',
+            ),
           );
 
           return Container(
@@ -2506,8 +2685,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ),
                 ),
                 const Spacer(),
-                quoteButton,
-                const SizedBox(height: 9),
+                if (!isWorkOrderAddition) ...[
+                  quoteButton,
+                  const SizedBox(height: 9),
+                ],
                 workOrderButton,
               ],
             ),
@@ -2527,6 +2708,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               title: Text(
                 isQuote
                     ? 'Quote • $documentLabel'
+                    : isWorkOrderAddition
+                    ? 'Add to Work Order • ${sale['order_number'] ?? ''}'
                     : 'Review Sale • $_activeSaleCustomerName',
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
@@ -2626,13 +2809,17 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
 
     if (choice == 'work_order') {
+      final addingToWorkOrder = sale['work_order_order_id'] != null;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Create Work Order?'),
+          title: Text(
+            addingToWorkOrder ? 'Add Products?' : 'Create Work Order?',
+          ),
           content: Text(
-            'Confirm this sale for $_activeSaleCustomerName and send it to '
-            'the warehouse for picking and weighing? Agreed rates will be locked.',
+            addingToWorkOrder
+                ? 'Add the new products to ${sale['order_number'] ?? 'this work order'}? Existing products and order details will remain unchanged.'
+                : 'Confirm this sale for $_activeSaleCustomerName and send it to the warehouse for picking and weighing? Agreed rates will be locked.',
           ),
           actions: [
             TextButton(
@@ -2642,7 +2829,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              child: const Text('Create Work Order'),
+              child: Text(
+                addingToWorkOrder ? 'Add Products' : 'Create Work Order',
+              ),
             ),
           ],
         ),

@@ -111,6 +111,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             supplier_customer_account_id,
             status,
             customer_name_snapshot,
+            customer_contact_name_snapshot,
             customer_reference_snapshot,
             payment_method_snapshot,
             payment_terms_days_snapshot,
@@ -129,6 +130,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             voided_at,
             sent_to_butcher_at,
             amount_paid,
+            credit_applied,
+            outstanding_amount,
             last_payment_at,
             customer_payment_claim_status,
             customer_payment_claimed_at,
@@ -166,7 +169,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             updated_at,
             orders(
               order_number,
+              status,
               fulfilment_method,
+              ready_for_pickup_at,
+              picked_up_at,
               delivery_contact_name_snapshot,
               delivery_contact_phone_snapshot,
               delivery_address_line_1_snapshot,
@@ -204,8 +210,13 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               actual_weight_unit,
               locked_unit_price,
               price_basis,
+              gross_line_amount,
+              discount_type,
+              discount_value,
+              discount_amount,
               line_amount,
-              notes_snapshot
+              notes_snapshot,
+              public_comment
             )
           ''')
           .eq('id', invoice['id'])
@@ -226,6 +237,32 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           : <Map<String, dynamic>>[];
 
       final enrichedItems = await _enrichInvoiceItems(baseItems);
+
+      final privateComments = <String, String>{};
+      final lineIds = enrichedItems
+          .map((item) => item['id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      if (lineIds.isNotEmpty) {
+        final privateRows = await client
+            .from('supplier_document_line_private_notes')
+            .select('line_id, private_comment')
+            .eq('document_kind', 'invoice')
+            .eq('document_id', loaded['id'])
+            .inFilter('line_id', lineIds);
+
+        for (final rawNote in privateRows) {
+          final lineId = rawNote['line_id']?.toString();
+          final comment = rawNote['private_comment']?.toString() ?? '';
+          if (lineId != null &&
+              lineId.isNotEmpty &&
+              comment.trim().isNotEmpty) {
+            privateComments[lineId] = comment;
+          }
+        }
+      }
 
       Uint8List? logoBytes;
       final logoPath =
@@ -1000,7 +1037,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             documentKey:
                 'invoice-${_invoice?['id'] ?? widget.invoiceId ?? widget.orderId}-$invoiceNumber',
             buildPdf: _buildInvoicePdf,
-            dpi: 240,
+            dpi: 420,
           ),
         ),
       ],
@@ -1337,6 +1374,14 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             sectionTitle('Customer', icon: Icons.business_outlined),
             fact('Business', clean(_invoice?['customer_name_snapshot'])),
             if (clean(
+              _invoice?['customer_contact_name_snapshot'],
+              fallback: '',
+            ).isNotEmpty)
+              fact(
+                'Contact',
+                clean(_invoice?['customer_contact_name_snapshot']),
+              ),
+            if (clean(
               _invoice?['customer_abn_snapshot'],
               fallback: '',
             ).isNotEmpty)
@@ -1423,7 +1468,6 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     'Invoice Items',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                   ),
-                  const Spacer(),
                   Text(
                     '${_items.length} line${_items.length == 1 ? '' : 's'}',
                     style: const TextStyle(
@@ -1458,6 +1502,13 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
 
     Widget totalsActionsPanel() {
+      final totalDiscount = _items.fold<double>(
+        0,
+        (sum, item) => sum + _asDouble(item['discount_amount']),
+      );
+      final productsBeforeDiscount =
+          _asDouble(_invoice?['products_subtotal']) + totalDiscount;
+
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1478,9 +1529,20 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             children: [
               sectionTitle('Totals', icon: Icons.calculate_outlined),
               _TotalRow(
-                label: 'Products inc GST',
-                value: _money(_invoice?['products_subtotal']),
+                label: totalDiscount > 0
+                    ? 'Products before discount'
+                    : 'Products inc GST',
+                value: _money(
+                  totalDiscount > 0
+                      ? productsBeforeDiscount
+                      : _invoice?['products_subtotal'],
+                ),
               ),
+              if (totalDiscount > 0)
+                _TotalRow(
+                  label: 'Discount',
+                  value: '-${_money(totalDiscount)}',
+                ),
               _TotalRow(
                 label: 'Delivery inc GST',
                 value: _asDouble(_invoice?['delivery_fee']) == 0
@@ -1943,7 +2005,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item['product_name_snapshot']?.toString() ?? 'Product',
+                gradeLabel.isEmpty
+                    ? (item['product_name_snapshot']?.toString() ?? 'Product')
+                    : '${item['product_name_snapshot']?.toString() ?? 'Product'} - $gradeLabel',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1971,11 +2035,31 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   spacing: 5,
                   runSpacing: 5,
                   children: [
-                    if (gradeLabel.isNotEmpty) pill('Grade: $gradeLabel'),
                     if (specificationLabel.isNotEmpty) pill(specificationLabel),
                     if (section.isNotEmpty) pill(section),
                     if (animal.isNotEmpty) pill(animal),
                   ],
+                ),
+              ],
+              if (_asDouble(item['discount_amount']) > 0) ...[
+                const SizedBox(height: 7),
+                Text(
+                  'Discount: ${_money(item['discount_amount'])}',
+                  style: const TextStyle(
+                    color: _darkRed,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              if ((item['public_comment']?.toString().trim() ?? '')
+                  .isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Text(
+                  'Public: ${item['public_comment']}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10.5),
                 ),
               ],
             ],

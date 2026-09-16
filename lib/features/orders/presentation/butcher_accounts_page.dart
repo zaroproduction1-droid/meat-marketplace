@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
@@ -2330,11 +2332,13 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
   late Map<String, dynamic> _invoice;
   bool _busy = false;
   Map<String, dynamic>? _pendingPaymentSubmission;
+  Uint8List? _supplierLogoBytes;
 
   @override
   void initState() {
     super.initState();
     _invoice = Map<String, dynamic>.from(widget.initialInvoice);
+    _reloadInvoice();
   }
 
   double _asDouble(dynamic value) {
@@ -2470,6 +2474,19 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
       }
     }
 
+    Uint8List? supplierLogoBytes;
+    final logoPath =
+        data['supplier_logo_path_snapshot']?.toString().trim() ?? '';
+    if (logoPath.isNotEmpty) {
+      try {
+        supplierLogoBytes = await Supabase.instance.client.storage
+            .from('business-branding')
+            .download(logoPath);
+      } catch (_) {
+        supplierLogoBytes = null;
+      }
+    }
+
     if (!mounted) {
       return;
     }
@@ -2477,6 +2494,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     setState(() {
       _invoice = Map<String, dynamic>.from(data);
       _pendingPaymentSubmission = pendingSubmission;
+      _supplierLogoBytes = supplierLogoBytes;
     });
 
     await widget.onChanged();
@@ -2624,7 +2642,11 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
     await Printing.layoutPdf(
       name: '${_invoice['invoice_number']?.toString() ?? 'invoice'}.pdf',
-      onLayout: (_) => CutLinkInvoicePdf.build(invoice: _invoice, items: items),
+      onLayout: (_) => CutLinkInvoicePdf.build(
+        invoice: _invoice,
+        items: items,
+        supplierLogoBytes: _supplierLogoBytes,
+      ),
     );
   }
 
@@ -2733,6 +2755,17 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         ),
         child: ListView(
           children: [
+            if (_supplierLogoBytes != null) ...[
+              SizedBox(
+                height: 72,
+                child: Image.memory(
+                  _supplierLogoBytes!,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Text(
               widget.supplierName,
               style: const TextStyle(

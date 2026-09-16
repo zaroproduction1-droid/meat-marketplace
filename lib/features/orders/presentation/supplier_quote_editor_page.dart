@@ -323,7 +323,6 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
     }
 
     final businessNameController = TextEditingController();
-    final legalNameController = TextEditingController();
     final abnController = TextEditingController();
     final contactNameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -366,15 +365,15 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         controller: businessNameController,
                         autofocus: true,
                         decoration: const InputDecoration(
-                          labelText: 'Business / restaurant name *',
+                          labelText: 'Business name *',
                           border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: legalNameController,
+                        controller: contactNameController,
                         decoration: const InputDecoration(
-                          labelText: 'Legal name (optional)',
+                          labelText: 'Contact name',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -383,14 +382,6 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         controller: abnController,
                         decoration: const InputDecoration(
                           labelText: 'ABN (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: contactNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact person',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -548,7 +539,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
 
                     Navigator.of(dialogContext).pop({
                       'customer_name': businessName,
-                      'legal_name': _nullable(legalNameController.text),
+                      'legal_name': businessName,
                       'abn': _nullable(abnController.text),
                       'contact_name': _nullable(contactNameController.text),
                       'phone': _nullable(phoneController.text),
@@ -579,7 +570,6 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
     );
 
     businessNameController.dispose();
-    legalNameController.dispose();
     abnController.dispose();
     contactNameController.dispose();
     phoneController.dispose();

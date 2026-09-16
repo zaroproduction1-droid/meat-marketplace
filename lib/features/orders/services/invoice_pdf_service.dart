@@ -11,7 +11,6 @@ class CutLinkInvoicePdf {
   static final _soft = PdfColor.fromHex('#F5F6F7');
   static final _border = PdfColor.fromHex('#D7DADD');
   static final _muted = PdfColor.fromHex('#687078');
-  static final _green = PdfColor.fromHex('#2E7D32');
 
   static double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
@@ -71,21 +70,6 @@ class CutLinkInvoicePdf {
     if (method.toLowerCase() == 'cod') return 'COD';
     if (method.toLowerCase() == 'prepaid') return 'Prepaid';
     return method;
-  }
-
-  static String _statusLabel(dynamic value) {
-    switch (value?.toString()) {
-      case 'issued':
-        return 'ISSUED';
-      case 'part_paid':
-        return 'PART PAID';
-      case 'paid':
-        return 'PAID';
-      case 'void':
-        return 'VOID';
-      default:
-        return 'INVOICE';
-    }
   }
 
   static pw.Widget _logo(Uint8List? logoBytes, String supplierName) {
@@ -204,25 +188,38 @@ class CutLinkInvoicePdf {
 
   static String _itemDescription(Map<String, dynamic> item) {
     final product = _clean(item['product_name_snapshot'], fallback: 'Product');
-    final details = <String>[product];
-
     final gradeCode = _clean(item['grade_code'], fallback: '');
     final gradeName = _clean(item['grade_name'], fallback: '');
+    final gradeLabel = [
+      if (gradeCode.isNotEmpty) gradeCode,
+      if (gradeName.isNotEmpty && gradeName != gradeCode) gradeName,
+    ].join(' - ');
+    final details = <String>[
+      gradeLabel.isEmpty ? product : '$product - $gradeLabel',
+    ];
     final specification = _clean(item['specification_name'], fallback: '');
     final hamCode = _clean(item['ham_code'], fallback: '');
     final sku = _clean(item['sku_snapshot'], fallback: '');
 
     if (specification.isNotEmpty) details.add(specification);
-    if (gradeCode.isNotEmpty || gradeName.isNotEmpty) {
-      details.add(
-        [
-          if (gradeCode.isNotEmpty) gradeCode,
-          if (gradeName.isNotEmpty && gradeName != gradeCode) gradeName,
-        ].join(' - '),
-      );
-    }
     if (hamCode.isNotEmpty) details.add('HAM $hamCode');
     if (sku.isNotEmpty) details.add('SKU: $sku');
+
+    final discountAmount = _asDouble(item['discount_amount']);
+    if (discountAmount > 0) {
+      if (_clean(item['discount_type'], fallback: '') == 'percent') {
+        details.add(
+          'Discount: ${_asDouble(item['discount_value']).toStringAsFixed(2)}% (-${_money(discountAmount)})',
+        );
+      } else {
+        details.add('Discount: -${_money(discountAmount)}');
+      }
+    }
+
+    final publicComment = _clean(item['public_comment'], fallback: '');
+    if (publicComment.isNotEmpty) {
+      details.add('Note: $publicComment');
+    }
 
     return details.join('\n');
   }
@@ -292,14 +289,19 @@ class CutLinkInvoicePdf {
           order['delivery_postcode_snapshot'],
     );
 
+    final totalDiscount = items.fold<double>(
+      0,
+      (sum, item) => sum + _asDouble(item['discount_amount']),
+    );
+    final productsBeforeDiscount =
+        _asDouble(invoice['products_subtotal']) + totalDiscount;
+
     final total = _asDouble(invoice['total_amount']);
     final paid = _asDouble(invoice['amount_paid']);
     final outstanding = _asDouble(invoice['outstanding_amount']) > 0
         ? _asDouble(invoice['outstanding_amount'])
         : (total - paid).clamp(0, double.infinity).toDouble();
 
-    final invoiceStatus = _statusLabel(invoice['status']);
-    final isPaid = invoice['status']?.toString() == 'paid';
     final fulfilment = order['fulfilment_method']?.toString().toLowerCase();
 
     document.addPage(
@@ -426,25 +428,6 @@ class CutLinkInvoicePdf {
                         'Licence: ${_clean(invoice['supplier_licence_number_snapshot'])}',
                         style: const pw.TextStyle(fontSize: 8.5),
                       ),
-                    pw.SizedBox(height: 7),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: pw.BoxDecoration(
-                        color: isPaid ? _green : _brand,
-                        borderRadius: pw.BorderRadius.circular(12),
-                      ),
-                      child: pw.Text(
-                        invoiceStatus,
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 7.5,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -459,6 +442,11 @@ class CutLinkInvoicePdf {
                   label: 'Bill To',
                   name: customerName,
                   lines: [
+                    if (_clean(
+                      invoice['customer_contact_name_snapshot'],
+                      fallback: '',
+                    ).isNotEmpty)
+                      'Contact: ${_clean(invoice['customer_contact_name_snapshot'], fallback: '')}',
                     _clean(
                       invoice['customer_legal_name_snapshot'],
                       fallback: '',
@@ -519,13 +507,6 @@ class CutLinkInvoicePdf {
                   child: _infoCell(
                     'Fulfilment',
                     fulfilment == 'pickup' ? 'Pickup' : 'Delivery',
-                  ),
-                ),
-                pw.Container(width: .6, height: 42, color: _border),
-                pw.Expanded(
-                  child: _infoCell(
-                    'Order',
-                    _clean(order['order_number'] ?? invoice['order_id']),
                   ),
                 ),
               ],
@@ -723,7 +704,16 @@ class CutLinkInvoicePdf {
                 ),
                 child: pw.Column(
                   children: [
-                    _totalRow('Products inc GST', invoice['products_subtotal']),
+                    _totalRow(
+                      totalDiscount > 0
+                          ? 'Products before discount'
+                          : 'Products inc GST',
+                      totalDiscount > 0
+                          ? productsBeforeDiscount
+                          : invoice['products_subtotal'],
+                    ),
+                    if (totalDiscount > 0)
+                      _totalRow('Discount', -totalDiscount),
                     _totalRow('Delivery inc GST', invoice['delivery_fee']),
                     _totalRow('GST included', invoice['tax_amount']),
                     pw.Divider(color: _border),

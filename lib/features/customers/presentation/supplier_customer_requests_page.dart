@@ -565,9 +565,6 @@ class _SupplierCustomerRequestsPageState
     final customerNameController = TextEditingController(
       text: account?['customer_name']?.toString() ?? '',
     );
-    final legalNameController = TextEditingController(
-      text: account?['legal_name']?.toString() ?? '',
-    );
     final abnController = TextEditingController(
       text: account?['abn']?.toString() ?? '',
     );
@@ -634,15 +631,15 @@ class _SupplierCustomerRequestsPageState
                         controller: customerNameController,
                         autofocus: true,
                         decoration: const InputDecoration(
-                          labelText: 'Customer / trading name',
+                          labelText: 'Business name',
                           border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 14),
                       TextField(
-                        controller: legalNameController,
+                        controller: contactNameController,
                         decoration: const InputDecoration(
-                          labelText: 'Legal name (optional)',
+                          labelText: 'Contact name',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -651,14 +648,6 @@ class _SupplierCustomerRequestsPageState
                         controller: abnController,
                         decoration: const InputDecoration(
                           labelText: 'ABN (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: contactNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact name (optional)',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -913,7 +902,7 @@ class _SupplierCustomerRequestsPageState
 
                     Navigator.of(dialogContext).pop({
                       'customer_name': customerName,
-                      'legal_name': nullable(legalNameController.text),
+                      'legal_name': nullable(customerNameController.text),
                       'abn': nullable(abnController.text),
                       'contact_name': nullable(contactNameController.text),
                       'email': nullable(emailController.text),
@@ -955,7 +944,6 @@ class _SupplierCustomerRequestsPageState
     );
 
     customerNameController.dispose();
-    legalNameController.dispose();
     abnController.dispose();
     contactNameController.dispose();
     emailController.dispose();

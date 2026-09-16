@@ -238,7 +238,6 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     final businessNameController = TextEditingController(
       text: _customerSearchController.text.trim(),
     );
-    final legalNameController = TextEditingController();
     final identificationNumberController = TextEditingController();
     var identificationType = 'abn';
     final contactNameController = TextEditingController();
@@ -265,15 +264,15 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     controller: businessNameController,
                     autofocus: true,
                     decoration: const InputDecoration(
-                      labelText: 'Business / customer name',
+                      labelText: 'Business name',
                       border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    controller: legalNameController,
+                    controller: contactNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Legal name (optional)',
+                      labelText: 'Contact name',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -331,14 +330,6 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         ],
                       );
                     },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: contactNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Contact name (optional)',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -448,7 +439,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
                 Navigator.of(dialogContext).pop({
                   'customer_name': customerName,
-                  'legal_name': _nullable(legalNameController.text),
+                  'legal_name': customerName,
                   'abn': identificationType == 'abn'
                       ? _nullable(identificationNumberController.text)
                       : null,
@@ -473,7 +464,6 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     );
 
     businessNameController.dispose();
-    legalNameController.dispose();
     identificationNumberController.dispose();
     contactNameController.dispose();
     phoneController.dispose();
@@ -647,7 +637,8 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       CutLinkNotice.show(
         context,
         title: 'Delivery address required',
-        message: 'This customer needs a delivery address before using delivery.',
+        message:
+            'This customer needs a delivery address before using delivery.',
         error: true,
       );
       return;

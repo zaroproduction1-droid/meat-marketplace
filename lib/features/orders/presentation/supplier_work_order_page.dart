@@ -37,6 +37,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   String? _invoiceId;
   late int _workspaceTabIndex;
 
+  String? _selectedLineId;
+  String? _lineAction;
+  String? _selectedDiscountType;
+  Map<String, String> _privateComments = {};
+  final _lineEditorController = TextEditingController();
+
   final _instructionsController = TextEditingController();
   final _pickedByController = TextEditingController();
   final _checkedByController = TextEditingController();
@@ -50,6 +56,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   @override
   void dispose() {
+    _lineEditorController.dispose();
     _instructionsController.dispose();
     _pickedByController.dispose();
     _checkedByController.dispose();
@@ -103,6 +110,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             assigned_delivery_driver_id,
             status,
             customer_reference,
+            customer_contact_name_snapshot,
             delivery_notes,
             internal_notes,
             supplier_customer_account_id,
@@ -147,12 +155,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
             order_items(
               id,
+              product_id,
               product_name_snapshot,
               sku_snapshot,
               quantity,
               quantity_unit,
               unit_price,
               price_basis,
+              line_subtotal,
               notes,
               supplied_quantity,
               supplied_quantity_unit,
@@ -160,7 +170,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               actual_weight_unit,
               final_line_amount,
               fulfilment_status,
-              catch_weight_snapshot
+              catch_weight_snapshot,
+              discount_type,
+              discount_value,
+              discount_amount,
+              public_comment,
+              invoice_excluded
             )
           ''')
           .eq('id', widget.orderId)
@@ -171,6 +186,67 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       }
 
       final order = Map<String, dynamic>.from(orderResponse);
+
+      final rawItemsForGrades = order['order_items'];
+      if (rawItemsForGrades is List) {
+        final productIds = rawItemsForGrades
+            .whereType<Map>()
+            .map((item) => item['product_id']?.toString())
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
+        if (productIds.isNotEmpty) {
+          final productRows = await client
+              .from('products')
+              .select('id, meat_grades(code, name)')
+              .inFilter('id', productIds);
+          final gradeByProductId = <String, Map<String, dynamic>>{};
+          for (final rawProduct in productRows) {
+            final product = Map<String, dynamic>.from(rawProduct);
+            final id = product['id']?.toString();
+            final rawGrade = product['meat_grades'];
+            if (id != null && rawGrade is Map) {
+              gradeByProductId[id] = Map<String, dynamic>.from(rawGrade);
+            }
+          }
+          for (final rawItem in rawItemsForGrades.whereType<Map>()) {
+            final grade = gradeByProductId[rawItem['product_id']?.toString()];
+            rawItem['grade_code'] = grade?['code'];
+            rawItem['grade_name'] = grade?['name'];
+          }
+        }
+      }
+
+      final privateComments = <String, String>{};
+      final workOrderId = workOrder['id']?.toString();
+      final rawOrderItems = order['order_items'];
+      final lineIds = rawOrderItems is List
+          ? rawOrderItems
+                .whereType<Map>()
+                .where((item) => item['invoice_excluded'] != true)
+                .map((item) => item['id']?.toString())
+                .whereType<String>()
+                .where((id) => id.isNotEmpty)
+                .toList()
+          : <String>[];
+
+      if (workOrderId != null && workOrderId.isNotEmpty && lineIds.isNotEmpty) {
+        final privateRows = await client
+            .from('supplier_document_line_private_notes')
+            .select('line_id, private_comment')
+            .eq('document_kind', 'work_order')
+            .eq('document_id', workOrderId)
+            .inFilter('line_id', lineIds);
+
+        for (final rawNote in privateRows) {
+          final lineId = rawNote['line_id']?.toString();
+          final comment = rawNote['private_comment']?.toString().trim() ?? '';
+          if (lineId != null && lineId.isNotEmpty && comment.isNotEmpty) {
+            privateComments[lineId] = comment;
+          }
+        }
+      }
 
       var deliveryDrivers = <Map<String, dynamic>>[];
       final supplierBusinessId = order['supplier_business_id']?.toString();
@@ -201,6 +277,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         _deliveryDrivers = deliveryDrivers;
         _selectedDeliveryDriverId = order['assigned_delivery_driver_id']
             ?.toString();
+        _privateComments = privateComments;
+        if (_selectedLineId != null && !lineIds.contains(_selectedLineId)) {
+          _selectedLineId = null;
+          _lineAction = null;
+        }
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
@@ -231,7 +312,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Add more cuts?'),
         content: const Text(
-          'This reopens the order in the sales workspace so products, quantities and rates can be changed. The warehouse order can then be created again.',
+          'This opens the same order in Sales with its existing details and products. New products will be added to this work order.',
         ),
         actions: [
           TextButton(
@@ -246,12 +327,78 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await Navigator.of(context).pushReplacement(
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
             SupplierSalesPage(initialWorkOrderOrderId: widget.orderId),
       ),
     );
+    if (changed == true && mounted) {
+      await _loadPage();
+    }
+  }
+
+  Future<void> _editContactName() async {
+    if (_invoiceId != null || _isSaving) return;
+
+    final controller = TextEditingController(
+      text: _customerDetail('contact_name'),
+    );
+    final value = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Contact Name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Contact name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (text) => Navigator.pop(dialogContext, text.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+
+    if (value == null || !mounted) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'update_supplier_order_contact_name',
+        params: {
+          'target_order_id': widget.orderId,
+          'contact_name_value': value,
+        },
+      );
+      await _loadPage();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Contact name updated.')));
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   List<Map<String, dynamic>> get _items {
@@ -263,8 +410,21 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return raw
         .whereType<Map>()
+        .where((item) => item['invoice_excluded'] != true)
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
+  }
+
+  String _lineTitle(Map<String, dynamic> item) {
+    final product = item['product_name_snapshot']?.toString().trim();
+    final code = item['grade_code']?.toString().trim() ?? '';
+    final name = item['grade_name']?.toString().trim() ?? '';
+    final grade = [
+      if (code.isNotEmpty) code,
+      if (name.isNotEmpty && name != code) name,
+    ].join(' - ');
+    final base = product == null || product.isEmpty ? 'Product' : product;
+    return grade.isEmpty ? base : '$base - $grade';
   }
 
   String _customerName() {
@@ -322,7 +482,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         business['legal_name'],
       ]),
       'abn': firstNonEmpty([account['abn'], business['abn']]),
-      'contact_name': firstNonEmpty([account['contact_name']]),
+      'contact_name': firstNonEmpty([
+        _order?['customer_contact_name_snapshot'],
+        account['contact_name'],
+      ]),
       'email': firstNonEmpty([account['email'], business['business_email']]),
       'phone': firstNonEmpty([account['phone'], business['business_phone']]),
       'delivery_address_line_1': firstNonEmpty([
@@ -369,6 +532,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   bool _isCatchWeight(Map<String, dynamic> item) {
     return item['catch_weight_snapshot'] == true &&
         item['price_basis']?.toString() == 'kilogram';
+  }
+
+  void _message(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatNumber(dynamic value) {
@@ -629,12 +799,49 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
   }
 
+  double _lineGrossAmount(Map<String, dynamic> item) {
+    final raw = item['final_line_amount'] ?? item['line_subtotal'];
+    final parsed = raw is num ? raw.toDouble() : double.tryParse('$raw');
+    if (parsed != null) return parsed;
+
+    final quantityRaw = item['quantity'];
+    final priceRaw = item['unit_price'];
+    final quantity = quantityRaw is num
+        ? quantityRaw.toDouble()
+        : double.tryParse('$quantityRaw') ?? 0;
+    final price = priceRaw is num
+        ? priceRaw.toDouble()
+        : double.tryParse('$priceRaw') ?? 0;
+    return quantity * price;
+  }
+
+  double _lineDiscountAmount(Map<String, dynamic> item) {
+    final gross = _lineGrossAmount(item);
+    final type = item['discount_type']?.toString();
+    final rawValue = item['discount_value'];
+    final value = rawValue is num
+        ? rawValue.toDouble()
+        : double.tryParse('$rawValue') ?? 0;
+
+    if (type == 'percent') {
+      return (gross * value.clamp(0, 100) / 100).clamp(0, gross);
+    }
+    if (type == 'fixed') {
+      return value.clamp(0, gross);
+    }
+    return 0;
+  }
+
+  double _lineNetAmount(Map<String, dynamic> item) =>
+      (_lineGrossAmount(item) - _lineDiscountAmount(item)).clamp(
+        0,
+        double.infinity,
+      );
+
   double get _finalInvoiceAmount {
     var productsTotal = 0.0;
     for (final item in _items) {
-      final raw = item['final_line_amount'];
-      final amount = raw is num ? raw.toDouble() : double.tryParse('$raw') ?? 0;
-      productsTotal += amount;
+      productsTotal += _lineNetAmount(item);
     }
 
     final deliveryRaw = _order?['delivery_fee'];
@@ -643,6 +850,214 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         : double.tryParse('$deliveryRaw') ?? 0;
 
     return productsTotal + deliveryFee;
+  }
+
+  Map<String, dynamic>? get _selectedLine {
+    final id = _selectedLineId;
+    if (id == null) return null;
+    for (final item in _items) {
+      if (item['id']?.toString() == id) return item;
+    }
+    return null;
+  }
+
+  double get _currentDeliveryFee {
+    final raw = _order?['delivery_fee'];
+    return raw is num ? raw.toDouble() : double.tryParse('$raw') ?? 0;
+  }
+
+  void _selectLine(Map<String, dynamic> item) {
+    if (_isSaving) return;
+    setState(() {
+      _selectedLineId = item['id']?.toString();
+      _lineAction = null;
+      _lineEditorController.clear();
+    });
+  }
+
+  void _openLineAction(String action) {
+    final item = _selectedLine;
+    if (item == null) return;
+
+    if (action == 'pick') {
+      _editLineFulfilment(item);
+      return;
+    }
+    if (action == 'remove') {
+      _removeSelectedWorkOrderLine();
+      return;
+    }
+
+    if (_lineAction == action) {
+      setState(() {
+        _lineAction = null;
+        _selectedDiscountType = null;
+        _lineEditorController.clear();
+      });
+      return;
+    }
+
+    setState(() {
+      _lineAction = action;
+      if (action == 'discount') {
+        final type = item['discount_type']?.toString();
+        _selectedDiscountType = type == 'percent' || type == 'fixed'
+            ? type
+            : null;
+        final raw = item['discount_value'];
+        final value = raw is num
+            ? raw.toDouble()
+            : double.tryParse('$raw') ?? 0;
+        _lineEditorController.text = _selectedDiscountType == null
+            ? ''
+            : value.toStringAsFixed(2);
+      } else if (action == 'delivery') {
+        _lineEditorController.text = _currentDeliveryFee.toStringAsFixed(2);
+      } else if (action == 'private') {
+        _lineEditorController.text =
+            _privateComments[item['id']?.toString() ?? ''] ?? '';
+      } else if (action == 'public') {
+        _lineEditorController.text = item['public_comment']?.toString() ?? '';
+      }
+    });
+  }
+
+  Future<void> _saveSelectedLineAction() async {
+    final item = _selectedLine;
+    if (item == null || _lineAction == null || _isSaving) return;
+
+    var discountType = item['discount_type']?.toString();
+    if (discountType != 'percent' && discountType != 'fixed') {
+      discountType = null;
+    }
+    double? discountValue;
+    if (discountType != null) {
+      final raw = item['discount_value'];
+      discountValue = raw is num
+          ? raw.toDouble()
+          : double.tryParse('$raw') ?? 0;
+    }
+
+    var publicComment = item['public_comment']?.toString() ?? '';
+    var privateComment = _privateComments[item['id']?.toString() ?? ''] ?? '';
+    var deliveryFee = _currentDeliveryFee;
+
+    if (_lineAction == 'discount') {
+      discountType = _selectedDiscountType;
+      discountValue = discountType == null
+          ? null
+          : double.tryParse(_lineEditorController.text.trim());
+
+      if (discountType != null && discountValue == null) {
+        _message('Enter a valid discount.');
+        return;
+      }
+      if (discountType == 'percent' &&
+          (discountValue! < 0 || discountValue > 100)) {
+        _message('Percentage discount must be between 0 and 100%.');
+        return;
+      }
+      if (discountValue != null && discountValue < 0) {
+        _message('Discount cannot be negative.');
+        return;
+      }
+    } else if (_lineAction == 'delivery') {
+      final parsed = double.tryParse(_lineEditorController.text.trim());
+      if (parsed == null || parsed < 0) {
+        _message('Enter a valid delivery charge.');
+        return;
+      }
+      deliveryFee = parsed;
+    } else if (_lineAction == 'private') {
+      privateComment = _lineEditorController.text.trim();
+    } else if (_lineAction == 'public') {
+      publicComment = _lineEditorController.text.trim();
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'update_supplier_work_order_line',
+        params: {
+          'p_order_item_id': item['id'],
+          'p_discount_type': discountType,
+          'p_discount_value': discountValue,
+          'p_public_comment': publicComment,
+          'p_private_comment': privateComment,
+          'p_delivery_fee': deliveryFee,
+          'p_remove': false,
+        },
+      );
+      if (!mounted) return;
+      setState(() => _lineAction = null);
+      await _loadPage();
+    } on PostgrestException catch (error) {
+      if (mounted) _message(error.message);
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _removeSelectedWorkOrderLine() async {
+    final item = _selectedLine;
+    if (item == null || _isSaving) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove this item?'),
+        content: Text(
+          '${item['product_name_snapshot'] ?? 'This item'} will be removed from '
+          'the Work Order and the reserved stock will be restored. It will not '
+          'appear on the invoice.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove Item'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'update_supplier_work_order_line',
+        params: {
+          'p_order_item_id': item['id'],
+          'p_discount_type': item['discount_type'],
+          'p_discount_value': item['discount_value'],
+          'p_public_comment': item['public_comment'],
+          'p_private_comment':
+              _privateComments[item['id']?.toString() ?? ''] ?? '',
+          'p_delivery_fee': _currentDeliveryFee,
+          'p_remove': true,
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedLineId = null;
+        _lineAction = null;
+      });
+      await _loadPage();
+      if (mounted) _message('Item removed and reserved stock restored.');
+    } on PostgrestException catch (error) {
+      if (mounted) _message(error.message);
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Future<bool> _confirmCreditLimitBeforeInvoiceCreation() async {
@@ -983,8 +1398,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 }
               }
 
-              final productName =
-                  item['product_name_snapshot']?.toString() ?? 'Product';
+              final productName = _lineTitle(item);
 
               return Dialog(
                 insetPadding: const EdgeInsets.all(20),
@@ -1130,7 +1544,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                               border: const OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.all(11),
                             decoration: BoxDecoration(
@@ -1414,12 +1828,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     ),
                     _pdfCell(
                       [
-                        item['product_name_snapshot']?.toString() ?? 'Product',
+                        _lineTitle(item),
                         if ((item['sku_snapshot']?.toString().trim() ?? '')
                             .isNotEmpty)
                           'SKU: ${item['sku_snapshot']}',
                         if ((item['notes']?.toString().trim() ?? '').isNotEmpty)
                           'Notes: ${item['notes']}',
+                        if ((item['public_comment']?.toString().trim() ?? '')
+                            .isNotEmpty)
+                          'Public comment: ${item['public_comment']}',
                       ].join('\n'),
                     ),
                     _pdfCell(
@@ -1749,7 +2166,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               const Expanded(
                 child: Text(
                   'Work Order PDF',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                 ),
               ),
               const Text(
@@ -1773,7 +2190,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           child: ZoomablePdfPreview(
             documentKey: 'work-order-${widget.orderId}-$workOrderNumber',
             buildPdf: _buildPickSlipPdf,
-            dpi: 240,
+            dpi: 420,
           ),
         ),
       ],
@@ -1978,7 +2395,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     Widget customerPanel() {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: const Color(0xFFE3E5E8)),
@@ -1991,48 +2408,83 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
+        child: LayoutBuilder(
+          builder: (context, panelConstraints) {
+            final twoColumns = panelConstraints.maxWidth >= 540;
+            final gap = twoColumns ? 12.0 : 0.0;
+            final columnWidth = twoColumns
+                ? (panelConstraints.maxWidth - gap) / 2
+                : panelConstraints.maxWidth;
+
+            Widget cell(String label, String value, {bool fullWidth = false}) {
+              return SizedBox(
+                width: fullWidth ? panelConstraints.maxWidth : columnWidth,
+                child: _compactInfoLine(label, value),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.business_outlined, color: _darkRed, size: 19),
-                SizedBox(width: 8),
-                Text(
-                  'Customer',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.business_outlined,
+                      color: _darkRed,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Customer',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_invoiceId == null)
+                      IconButton(
+                        tooltip: 'Edit contact name',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _isSaving ? null : _editContactName,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: gap,
+                  runSpacing: 2,
+                  children: [
+                    cell('Business', _customerName()),
+                    if (_customerDetail('contact_name').isNotEmpty)
+                      cell('Contact', _customerDetail('contact_name')),
+                    if (_customerDetail('phone').isNotEmpty)
+                      cell('Phone', _customerDetail('phone')),
+                    if (_customerDetail('email').isNotEmpty)
+                      cell('Email', _customerDetail('email')),
+                    cell('Fulfilment', _fulfilmentMethodLabel()),
+                    if (!pickup) cell('Driver', _assignedDriverName()),
+                    if ((_order?['customer_reference']?.toString().trim() ?? '')
+                        .isNotEmpty)
+                      cell(
+                        'Reference',
+                        _order!['customer_reference'].toString(),
+                      ),
+                    if (!pickup)
+                      cell('Address', _deliveryAddress(), fullWidth: true),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: 11),
-            _compactInfoLine('Business', _customerName()),
-            if (_customerDetail('legal_name').isNotEmpty)
-              _compactInfoLine('Legal name', _customerDetail('legal_name')),
-            if (_customerDetail('abn').isNotEmpty)
-              _compactInfoLine('ABN', _customerDetail('abn')),
-            if (_customerDetail('contact_name').isNotEmpty)
-              _compactInfoLine('Contact', _customerDetail('contact_name')),
-            if (_customerDetail('phone').isNotEmpty)
-              _compactInfoLine('Phone', _customerDetail('phone')),
-            if (_customerDetail('email').isNotEmpty)
-              _compactInfoLine('Email', _customerDetail('email')),
-            _compactInfoLine('Fulfilment', _fulfilmentMethodLabel()),
-            if (!pickup) _compactInfoLine('Driver', _assignedDriverName()),
-            if (!pickup) _compactInfoLine('Address', _deliveryAddress()),
-            if ((_order?['customer_reference']?.toString().trim() ?? '')
-                .isNotEmpty)
-              _compactInfoLine(
-                'Reference',
-                _order!['customer_reference'].toString(),
-              ),
-          ],
+            );
+          },
         ),
       );
     }
 
     Widget workOrderSummaryPanel() {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: const Color(0xFFE3E5E8)),
@@ -2045,29 +2497,60 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
+        child: LayoutBuilder(
+          builder: (context, panelConstraints) {
+            final twoColumns = panelConstraints.maxWidth >= 500;
+            final gap = twoColumns ? 12.0 : 0.0;
+            final columnWidth = twoColumns
+                ? (panelConstraints.maxWidth - gap) / 2
+                : panelConstraints.maxWidth;
+
+            Widget cell(String label, String value, {bool fullWidth = false}) {
+              return SizedBox(
+                width: fullWidth ? panelConstraints.maxWidth : columnWidth,
+                child: _compactInfoLine(label, value),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.assignment_outlined, color: _darkRed, size: 19),
-                SizedBox(width: 8),
-                Text(
-                  'Work Order Summary',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                const Row(
+                  children: [
+                    Icon(Icons.assignment_outlined, color: _darkRed, size: 19),
+                    SizedBox(width: 8),
+                    Text(
+                      'Work Order Summary',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: gap,
+                  runSpacing: 2,
+                  children: [
+                    cell(
+                      'Work Order',
+                      _workOrder?['work_order_number']?.toString() ??
+                          'Work Order',
+                    ),
+                    cell('Status', _workOrderStatusLabel(status)),
+                    cell('Requested', _requestedFulfilmentDateLabel()),
+                    cell('Confirmed', _confirmedFulfilmentLabel()),
+                    cell(
+                      'Placed',
+                      _orderCreatedDateTimeLabel(),
+                      fullWidth: true,
+                    ),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: 11),
-            _compactInfoLine(
-              'Work Order',
-              _workOrder?['work_order_number']?.toString() ?? 'Work Order',
-            ),
-            _compactInfoLine('Status', _workOrderStatusLabel(status)),
-            _compactInfoLine('Requested', _requestedFulfilmentDateLabel()),
-            _compactInfoLine('Confirmed', _confirmedFulfilmentLabel()),
-            _compactInfoLine('Placed', _orderCreatedDateTimeLabel()),
-          ],
+            );
+          },
         ),
       );
     }
@@ -2080,16 +2563,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         if (!desktop) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 34),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 22),
             children: [
               _buildCompactWorkOrderHeader(status),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               customerPanel(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               workOrderSummaryPanel(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               pickPanel,
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               warehousePanel,
             ],
           );
@@ -2097,13 +2580,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1320),
+            constraints: const BoxConstraints(maxWidth: 1480),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 children: [
                   _buildCompactWorkOrderHeader(status),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2112,14 +2595,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       Expanded(child: workOrderSummaryPanel()),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(child: pickPanel),
                         const SizedBox(width: 12),
-                        SizedBox(width: 350, child: warehousePanel),
+                        SizedBox(width: 300, child: warehousePanel),
                       ],
                     ),
                   ),
@@ -2266,13 +2749,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Widget _buildPickWorkspace({required bool boundedHeight}) {
     final list = ListView.separated(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       itemCount: _items.length,
       shrinkWrap: !boundedHeight,
       physics: boundedHeight
           ? const ClampingScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      separatorBuilder: (_, _) => const SizedBox(height: 7),
+      separatorBuilder: (_, _) => const SizedBox(height: 5),
       itemBuilder: (_, index) => _buildItemCard(_items[index]),
     );
 
@@ -2286,7 +2769,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
             child: Row(
               children: [
                 const Icon(
@@ -2350,8 +2833,273 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           ),
           const Divider(height: 1),
           if (boundedHeight) Expanded(child: list) else list,
+          if (_selectedLine != null) ...[
+            const Divider(height: 1),
+            _buildWorkOrderLineDock(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildWorkOrderLineDock() {
+    final item = _selectedLine;
+    if (item == null) return const SizedBox.shrink();
+
+    Widget actionButton({
+      required String label,
+      required IconData icon,
+      required String action,
+      bool danger = false,
+    }) {
+      final active = _lineAction == action;
+      return TextButton.icon(
+        onPressed: _isSaving ? null : () => _openLineAction(action),
+        style: TextButton.styleFrom(
+          foregroundColor: danger
+              ? Colors.red.shade700
+              : active
+              ? Colors.white
+              : _darkRed,
+          backgroundColor: active ? _darkRed : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          visualDensity: VisualDensity.compact,
+        ),
+        icon: Icon(icon, size: 17),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+        ),
+      );
+    }
+
+    return Container(
+      color: const Color(0xFFFAFAF8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle_outline, size: 17, color: _darkRed),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  item['product_name_snapshot']?.toString() ?? 'Selected item',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _isSaving
+                    ? null
+                    : () => setState(() {
+                        _selectedLineId = null;
+                        _lineAction = null;
+                      }),
+                child: const Text('Clear'),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              actionButton(
+                label: _isCatchWeight(item) ? 'Weight' : 'Pick Qty',
+                icon: Icons.scale_outlined,
+                action: 'pick',
+              ),
+              actionButton(
+                label: 'Discount',
+                icon: Icons.percent,
+                action: 'discount',
+              ),
+              actionButton(
+                label: 'Delivery',
+                icon: Icons.local_shipping_outlined,
+                action: 'delivery',
+              ),
+              actionButton(
+                label: 'Private Comment',
+                icon: Icons.lock_outline,
+                action: 'private',
+              ),
+              actionButton(
+                label: 'Public Comment',
+                icon: Icons.chat_bubble_outline,
+                action: 'public',
+              ),
+              actionButton(
+                label: 'Remove Item',
+                icon: Icons.delete_outline,
+                action: 'remove',
+                danger: true,
+              ),
+            ],
+          ),
+          if (_lineAction != null &&
+              _lineAction != 'pick' &&
+              _lineAction != 'remove') ...[
+            const SizedBox(height: 7),
+            _buildWorkOrderLineInlineEditor(item),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkOrderLineInlineEditor(Map<String, dynamic> item) {
+    final action = _lineAction;
+    if (action == null) return const SizedBox.shrink();
+
+    Widget saveButton() => FilledButton.icon(
+      onPressed: _isSaving ? null : _saveSelectedLineAction,
+      style: FilledButton.styleFrom(
+        backgroundColor: _darkRed,
+        visualDensity: VisualDensity.compact,
+      ),
+      icon: _isSaving
+          ? const SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.save_outlined, size: 16),
+      label: const Text('Save'),
+    );
+
+    if (action == 'discount') {
+      Widget typeField() => DropdownButtonFormField<String?>(
+        initialValue: _selectedDiscountType,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Discount',
+          isDense: true,
+          border: OutlineInputBorder(),
+        ),
+        items: const [
+          DropdownMenuItem<String?>(value: null, child: Text('No discount')),
+          DropdownMenuItem<String?>(
+            value: 'percent',
+            child: Text('Percentage (%)'),
+          ),
+          DropdownMenuItem<String?>(
+            value: 'fixed',
+            child: Text(r'Fixed amount ($)'),
+          ),
+        ],
+        onChanged: _isSaving
+            ? null
+            : (value) => setState(() {
+                _selectedDiscountType = value;
+                if (value == null) _lineEditorController.clear();
+              }),
+      );
+
+      Widget amountField() => TextField(
+        controller: _lineEditorController,
+        enabled: !_isSaving,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          isDense: true,
+          border: const OutlineInputBorder(),
+          labelText: _selectedDiscountType == 'percent'
+              ? 'Percentage'
+              : 'Amount',
+          suffixText: _selectedDiscountType == 'percent' ? '%' : null,
+          prefixText: _selectedDiscountType == 'fixed' ? r'$' : null,
+        ),
+      );
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 520) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                typeField(),
+                if (_selectedDiscountType != null) ...[
+                  const SizedBox(height: 8),
+                  amountField(),
+                ],
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: saveButton()),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              SizedBox(width: 190, child: typeField()),
+              if (_selectedDiscountType != null) ...[
+                const SizedBox(width: 8),
+                Expanded(child: amountField()),
+              ] else
+                const Spacer(),
+              const SizedBox(width: 8),
+              saveButton(),
+            ],
+          );
+        },
+      );
+    }
+
+    if (action == 'delivery') {
+      return Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _lineEditorController,
+              enabled: !_isSaving,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Delivery charge for this order',
+                prefixText: r'$',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          saveButton(),
+        ],
+      );
+    }
+
+    final isPrivate = action == 'private';
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _lineEditorController,
+            enabled: !_isSaving,
+            minLines: 1,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: isPrivate
+                  ? 'Private supplier comment'
+                  : 'Public comment',
+              helperText: isPrivate
+                  ? 'Supplier only. Never prints or shows to the customer.'
+                  : 'Flows through to the invoice and customer PDF.',
+              isDense: true,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        saveButton(),
+      ],
     );
   }
 
@@ -2366,8 +3114,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -2381,7 +3129,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 11),
+            const SizedBox(height: 7),
             if (!pickup) ...[
               DropdownButtonFormField<String>(
                 initialValue:
@@ -2444,8 +3192,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             if (!canEnterWeights) const SizedBox(height: 10),
             TextField(
               controller: _instructionsController,
-              minLines: 2,
-              maxLines: 3,
+              minLines: 1,
+              maxLines: 2,
               enabled: !_isSaving,
               decoration: const InputDecoration(
                 labelText: 'Warehouse instructions',
@@ -2453,7 +3201,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
@@ -2487,7 +3235,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               icon: const Icon(Icons.save_outlined, size: 18),
               label: const Text('Save Details'),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 6),
             if (status == 'created' || status == 'printed')
               FilledButton.icon(
                 onPressed: _isSaving ? null : _startPickingAndOpenPreview,
@@ -2499,31 +3247,6 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 label: const Text('Start Picking'),
               ),
             if (status == 'picking') ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 9),
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F8FA),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.scale_outlined, size: 18, color: _darkRed),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Click a line in Pick & Weigh to enter the total actual kilograms from the scale.',
-                        style: TextStyle(
-                          color: Color(0xFF555555),
-                          fontSize: 11.5,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               FilledButton.icon(
                 onPressed: !_allLinesFinalised || _isSaving
                     ? null
@@ -2596,7 +3319,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     if (value.trim().isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2629,114 +3352,167 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   Widget _buildItemCard(Map<String, dynamic> item) {
     final catchWeight = _isCatchWeight(item);
     final finalised = item['fulfilment_status']?.toString() == 'finalised';
-    final productName = item['product_name_snapshot']?.toString() ?? 'Product';
+    final productName = _lineTitle(item);
+    final publicComment = item['public_comment']?.toString().trim() ?? '';
+
+    final selected = item['id']?.toString() == _selectedLineId;
 
     return Material(
-      color: finalised ? const Color(0xFFF7FBF7) : Colors.white,
+      color: selected
+          ? const Color(0xFFF7EDED)
+          : finalised
+          ? const Color(0xFFF7FBF7)
+          : Colors.white,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap:
-            _isSaving ||
-                (_workOrder?['status']?.toString() != 'picking' &&
-                    _workOrder?['status']?.toString() != 'picked' &&
-                    _workOrder?['status']?.toString() != 'completed')
-            ? null
-            : () => _editLineFulfilment(item),
+        onTap: _isSaving ? null : () => _selectLine(item),
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             border: Border.all(
-              color: finalised
+              color: selected
+                  ? _darkRed
+                  : finalised
                   ? const Color(0xFFB8D8BE)
                   : const Color(0xFFE2E2DE),
+              width: selected ? 1.5 : 1,
             ),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(
-                finalised ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: 20,
-                color: finalised
-                    ? const Color(0xFF2E7D32)
-                    : const Color(0xFF999999),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      productName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+              Row(
+                children: [
+                  Icon(
+                    finalised
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                    color: finalised
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFF999999),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if ((item['sku_snapshot']?.toString().trim() ?? '')
+                            .isNotEmpty)
+                          Text(
+                            'SKU ${item['sku_snapshot']}',
+                            style: const TextStyle(
+                              color: Color(0xFF777777),
+                              fontSize: 10.5,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: _lineMetric(
+                      'ORDERED',
+                      '${_formatNumber(item['quantity'])} '
+                          '${_unitLabel(item['quantity_unit']?.toString())}',
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: _lineMetric(
+                      'SUPPLIED',
+                      item['supplied_quantity'] == null
+                          ? 'Pending'
+                          : '${_formatNumber(item['supplied_quantity'])} '
+                                '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
+                    ),
+                  ),
+                  if (catchWeight)
+                    Expanded(
+                      flex: 2,
+                      child: _lineMetric(
+                        'ACTUAL KG',
+                        item['actual_weight'] == null
+                            ? 'Pending'
+                            : '${_formatNumber(item['actual_weight'])} kg',
                       ),
                     ),
-                    if ((item['sku_snapshot']?.toString().trim() ?? '')
-                        .isNotEmpty)
-                      Text(
-                        'SKU ${item['sku_snapshot']}',
+                  Expanded(
+                    flex: 2,
+                    child: _lineMetric(
+                      'FINAL',
+                      item['final_line_amount'] == null
+                          ? (catchWeight ? 'Pending' : '—')
+                          : _money(_lineNetAmount(item)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (_lineDiscountAmount(item) > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Text(
+                        '-${_money(_lineDiscountAmount(item))}',
                         style: const TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 10.5,
+                          color: _darkRed,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                  Icon(
+                    selected ? Icons.check_circle : Icons.more_horiz,
+                    size: 19,
+                    color: _darkRed,
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: _lineMetric(
-                  'ORDERED',
-                  '${_formatNumber(item['quantity'])} '
-                      '${_unitLabel(item['quantity_unit']?.toString())}',
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: _lineMetric(
-                  'SUPPLIED',
-                  item['supplied_quantity'] == null
-                      ? 'Pending'
-                      : '${_formatNumber(item['supplied_quantity'])} '
-                            '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
-                ),
-              ),
-              if (catchWeight)
-                Expanded(
-                  flex: 2,
-                  child: _lineMetric(
-                    'ACTUAL KG',
-                    item['actual_weight'] == null
-                        ? 'Pending'
-                        : '${_formatNumber(item['actual_weight'])} kg',
+              if (publicComment.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F3F3),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.chat_bubble_outline,
+                        size: 14,
+                        color: _darkRed,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          publicComment,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              Expanded(
-                flex: 2,
-                child: _lineMetric(
-                  'FINAL',
-                  item['final_line_amount'] == null
-                      ? (catchWeight ? 'Pending' : '—')
-                      : _money(item['final_line_amount']),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                finalised
-                    ? Icons.edit_outlined
-                    : (_workOrder?['status']?.toString() == 'picking'
-                          ? Icons.scale_outlined
-                          : Icons.lock_outline),
-                size: 19,
-                color: _darkRed,
-              ),
+              ],
             ],
           ),
         ),

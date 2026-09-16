@@ -3772,14 +3772,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         _openPage(const SupplierSalesPage(embedded: true)),
                   ),
                   _sideItem(
-                    Icons.receipt_long_outlined,
-                    'Invoices',
-                    selected: _workspaceKey == 'invoices',
-                    onTap: () => _openPage(
-                      const SupplierUnifiedOrdersPage(embedded: true),
-                    ),
-                  ),
-                  _sideItem(
                     Icons.inventory_2_outlined,
                     'Inventory',
                     selected: _workspaceKey == 'inventory',
@@ -3799,6 +3791,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     ),
                   ),
                   _sideItem(
+                    Icons.receipt_long_outlined,
+                    'Invoices',
+                    selected: _workspaceKey == 'invoices',
+                    onTap: () => _openPage(
+                      const SupplierUnifiedOrdersPage(embedded: true),
+                    ),
+                  ),
+                  _sideItem(
                     Icons.people_alt_outlined,
                     'Customers & Accounts',
                     selected: _workspaceKey == 'customers',
@@ -3806,17 +3806,17 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         _openPage(const SupplierCustomerRequestsPage()),
                   ),
                   _sideItem(
+                    Icons.bar_chart_outlined,
+                    'Analytics',
+                    selected: _workspaceKey == 'analytics',
+                    onTap: _openAnalytics,
+                  ),
+                  _sideItem(
                     Icons.local_shipping_outlined,
                     'Delivery',
                     selected: _workspaceKey == 'delivery',
                     onTap: () =>
                         _openPage(const SupplierDeliverySettingsPage()),
-                  ),
-                  _sideItem(
-                    Icons.bar_chart_outlined,
-                    'Analytics',
-                    selected: _workspaceKey == 'analytics',
-                    onTap: _openAnalytics,
                   ),
                   _sideItem(
                     Icons.notifications_none_rounded,

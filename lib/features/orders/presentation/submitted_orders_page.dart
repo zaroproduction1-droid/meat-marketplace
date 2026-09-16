@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'butcher_accounts_page.dart';
+
 class SubmittedOrdersPage extends StatefulWidget {
   const SubmittedOrdersPage({super.key});
 
@@ -33,6 +35,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       label: 'Preparing',
       key: 'preparing',
       icon: Icons.inventory_2_outlined,
+    ),
+    _ButcherOrderTab(
+      label: 'Invoiced',
+      key: 'invoiced',
+      icon: Icons.receipt_long_outlined,
     ),
     _ButcherOrderTab(
       label: 'Fulfilment',
@@ -421,6 +428,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       return _buyerLifecycleLabel(order);
     }
 
+    if (_sentInvoiceForOrder(order) == null) {
+      return _buyerLifecycleLabel(order);
+    }
+
     final stop = _currentDeliveryStop(order);
     final stopStatus = stop?['stop_status']?.toString();
     final orderStatus = order['status']?.toString();
@@ -801,20 +812,30 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'preparing':
         return _orders.where((order) {
           final status = order['status']?.toString();
-          final hasInvoice = _invoiceForOrder(order) != null;
+          final hasSentInvoice = _sentInvoiceForOrder(order) != null;
 
-          return status == 'accepted' ||
-              (status == 'processing' && !hasInvoice);
+          return (status == 'accepted' && !hasSentInvoice) ||
+              (status == 'processing' && !hasSentInvoice);
+        }).toList();
+
+      case 'invoiced':
+        return _orders.where((order) {
+          final status = order['status']?.toString();
+          final hasSentInvoice = _sentInvoiceForOrder(order) != null;
+
+          return hasSentInvoice &&
+              (status == 'accepted' || status == 'processing') &&
+              !_isInFulfilment(order);
         }).toList();
 
       case 'fulfilment':
         return _orders.where((order) {
           final status = order['status']?.toString();
-          final hasInvoice = _invoiceForOrder(order) != null;
+          final hasSentInvoice = _sentInvoiceForOrder(order) != null;
 
-          return status == 'dispatched' ||
-              status == 'delivered' ||
-              (status == 'processing' && hasInvoice);
+          return hasSentInvoice &&
+              status != 'completed' &&
+              _isInFulfilment(order);
         }).toList();
 
       case 'completed':
@@ -1972,44 +1993,33 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   Widget _buildTimeline(Map<String, dynamic> order) {
     final status = order['status']?.toString();
-    final pickup = order['fulfilment_method']?.toString() == 'pickup';
-
-    const steps = <String>[
-      'submitted',
-      'accepted',
-      'processing',
-      'dispatched',
-      'delivered',
-      'completed',
-    ];
-
-    final currentIndex = steps.indexOf(status ?? '');
     final closed = status == 'cancelled' || status == 'declined';
+    final hasSentInvoice = _sentInvoiceForOrder(order) != null;
+    final inFulfilment = hasSentInvoice && _isInFulfilment(order);
 
-    String timelineLabel(String step) {
-      if (pickup) {
-        if (step == 'processing' && order['ready_for_pickup_at'] != null) {
-          return 'Ready for Pickup';
-        }
-        if (step == 'completed') {
-          return 'Picked Up / Complete';
-        }
-        if (step == 'dispatched' || step == 'delivered') {
-          return step == 'dispatched' ? 'Collection' : 'Collected';
-        }
-      } else {
-        if (step == 'processing' && _hasActiveDeliveryRun(order)) {
-          return 'Scheduled for Delivery';
-        }
-        if (step == 'dispatched') {
-          return 'Out for Delivery';
-        }
-        if (step == 'delivered') {
-          return 'Delivered';
-        }
-      }
-      return _statusLabel(step);
-    }
+    final currentStage = status == 'completed'
+        ? 'completed'
+        : status == 'submitted'
+        ? 'pending'
+        : inFulfilment
+        ? 'fulfilment'
+        : hasSentInvoice
+        ? 'invoiced'
+        : 'preparing';
+
+    final stages = <({String key, String label})>[
+      (key: 'pending', label: 'Waiting for Approval'),
+      (key: 'preparing', label: 'Preparing'),
+      (key: 'invoiced', label: 'Invoiced'),
+      (
+        key: 'fulfilment',
+        label: inFulfilment ? _deliveryTrackingLabel(order) : 'Fulfilment',
+      ),
+      (key: 'completed', label: 'Complete'),
+    ];
+    final currentIndex = stages.indexWhere(
+      (stage) => stage.key == currentStage,
+    );
 
     return Container(
       width: double.infinity,
@@ -2032,9 +2042,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             spacing: 10,
             runSpacing: 10,
             children: [
-              for (var index = 0; index < steps.length; index++)
+              for (var index = 0; index < stages.length; index++)
                 _TimelineChip(
-                  label: timelineLabel(steps[index]),
+                  label: stages[index].label,
                   complete: !closed && currentIndex >= index,
                   active: !closed && currentIndex == index,
                 ),
@@ -2564,14 +2574,150 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     return null;
   }
 
+  Map<String, dynamic>? _sentInvoiceForOrder(Map<String, dynamic> order) {
+    final invoice = _invoiceForOrder(order);
+    return invoice?['sent_to_butcher_at'] == null ? null : invoice;
+  }
+
+  bool _isInFulfilment(Map<String, dynamic> order) {
+    final status = order['status']?.toString();
+    if (status == 'dispatched' || status == 'delivered') return true;
+
+    if (order['fulfilment_method']?.toString() == 'pickup') {
+      return order['ready_for_pickup_at'] != null;
+    }
+
+    return _hasActiveDeliveryRun(order);
+  }
+
+  bool _canMarkReceived(Map<String, dynamic> order) {
+    if (_sentInvoiceForOrder(order) == null) return false;
+
+    final status = order['status']?.toString();
+    if (order['fulfilment_method']?.toString() == 'pickup') {
+      return status == 'processing' && order['ready_for_pickup_at'] != null;
+    }
+
+    return status == 'dispatched' || status == 'delivered';
+  }
+
+  Future<void> _openSentInvoice(
+    Map<String, dynamic> order,
+    Map<String, dynamic> invoice,
+  ) async {
+    final invoiceId = invoice['id']?.toString();
+    if (invoiceId == null ||
+        invoiceId.isEmpty ||
+        invoice['sent_to_butcher_at'] == null) {
+      return;
+    }
+
+    try {
+      final fullInvoice = await Supabase.instance.client
+          .from('invoices')
+          .select('*, orders(*), invoice_items(*)')
+          .eq('id', invoiceId)
+          .not('sent_to_butcher_at', 'is', null)
+          .single();
+
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ButcherInvoiceDetailPage(
+            invoiceId: invoiceId,
+            initialInvoice: Map<String, dynamic>.from(fullInvoice),
+            supplierName: _supplierName(order),
+            onChanged: _loadOrders,
+          ),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _markOrderReceived(Map<String, dynamic> order) async {
+    final orderId = order['id']?.toString();
+    if (orderId == null ||
+        orderId.isEmpty ||
+        !_canMarkReceived(order) ||
+        _updatingOrderId == orderId) {
+      return;
+    }
+
+    final pickup = order['fulfilment_method']?.toString() == 'pickup';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          pickup ? 'Confirm Order Collected?' : 'Confirm Order Received?',
+        ),
+        content: Text(
+          pickup
+              ? 'Confirm that you have collected this order. It will move to Complete for both you and the supplier.'
+              : 'Confirm that this order has been received. It will move to Complete for both you and the supplier.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Back'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+            ),
+            icon: const Icon(Icons.task_alt),
+            label: Text(pickup ? 'Mark Collected' : 'Mark Received'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    setState(() => _updatingOrderId = orderId);
+
+    try {
+      await Supabase.instance.client.rpc(
+        'butcher_confirm_order_received',
+        params: {'target_order_id': orderId},
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            pickup
+                ? 'Order marked as collected and complete.'
+                : 'Order marked as received and complete.',
+          ),
+        ),
+      );
+      Navigator.of(context).pop();
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingOrderId = null);
+    }
+  }
+
   String _buyerLifecycleLabel(Map<String, dynamic> order) {
     final status = order['status']?.toString();
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
-    final hasInvoice = _invoiceForOrder(order) != null;
+    final hasSentInvoice = _sentInvoiceForOrder(order) != null;
     final readyForPickup = order['ready_for_pickup_at'] != null;
 
     if (status == 'submitted') {
-      return 'Awaiting Supplier';
+      return 'Waiting for Supplier Approval';
     }
 
     if (status == 'accepted') {
@@ -2579,6 +2725,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
 
     if (status == 'processing') {
+      if (!hasSentInvoice) {
+        return 'Preparing';
+      }
+
       if (pickup && readyForPickup) {
         return 'Ready for Pickup';
       }
@@ -2597,11 +2747,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return 'Scheduled for Delivery';
       }
 
-      if (hasInvoice) {
-        return pickup ? 'Invoice Ready' : 'Preparing for Delivery';
-      }
-
-      return 'Preparing';
+      return 'Invoiced';
     }
 
     if (status == 'dispatched') {
@@ -3377,7 +3523,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final items = _items(order);
     final status = order['status']?.toString();
     final statusDate = _bestDate(order);
-    final invoice = _invoiceForOrder(order);
+    final invoice = _sentInvoiceForOrder(order);
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
 
     return MouseRegion(
@@ -3508,6 +3654,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       label: 'DELIVERY RUN',
                       value: _deliveryRunDate(order),
                     ),
+                  if (invoice != null)
+                    _CompactBuyerOrderFact(
+                      label: 'INVOICE',
+                      value: invoice['invoice_number']?.toString() ?? 'Sent',
+                    ),
                   if (statusDate.isNotEmpty)
                     _CompactBuyerOrderFact(label: 'UPDATED', value: statusDate),
                 ],
@@ -3610,6 +3761,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final status = order['status']?.toString();
     final orderId = order['id']?.toString();
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
+    final invoice = _sentInvoiceForOrder(order);
 
     Widget productsPanel() {
       return Container(
@@ -3756,6 +3908,17 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             if (!pickup) _buildDeliveryTracking(order),
             _buildCommercialDetails(order),
 
+            if (invoice != null) ...[
+              OutlinedButton.icon(
+                onPressed: () => _openSentInvoice(order, invoice),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: Text(
+                  'Open Invoice ${invoice['invoice_number'] ?? ''}'.trim(),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             if (status == 'declined' &&
                 order['order_source']?.toString() == 'marketplace') ...[
               Container(
@@ -3839,6 +4002,22 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               label: 'GST included',
               value: _money(order['gst_amount']),
             ),
+
+            if (_canMarkReceived(order)) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _updatingOrderId == orderId
+                    ? null
+                    : () => _markOrderReceived(order),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                ),
+                icon: const Icon(Icons.task_alt),
+                label: Text(
+                  pickup ? 'Mark Order Collected' : 'Mark Order Received',
+                ),
+              ),
+            ],
 
             if (status == 'submitted') ...[
               const SizedBox(height: 12),

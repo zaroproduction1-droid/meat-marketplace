@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/quote_pdf_service.dart';
+import 'supplier_work_order_page.dart';
+import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
 class SupplierQuotePage extends StatefulWidget {
   const SupplierQuotePage({super.key, required this.orderId});
@@ -28,10 +28,13 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   Map<String, dynamic> _customer = {};
   Uint8List? _supplierLogoBytes;
   List<Map<String, dynamic>> _items = [];
-  final _previewTransformController = TransformationController();
-  final _previewViewportKey = GlobalKey();
-  double _previewZoom = 1;
-  bool _isPreviewDragging = false;
+  Map<String, String> _privateComments = {};
+  String? _selectedLineId;
+  String? _lineAction;
+  String? _selectedDiscountType;
+  bool _savingLine = false;
+  bool _convertingToWorkOrder = false;
+  final _lineEditorController = TextEditingController();
 
   @override
   void initState() {
@@ -41,7 +44,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   @override
   void dispose() {
-    _previewTransformController.dispose();
+    _lineEditorController.dispose();
     super.dispose();
   }
 
@@ -60,6 +63,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           .select('''
         id, order_number, quote_number, quote_revision, quote_last_saved_at,
         status, order_source, source_reference, customer_reference,
+        customer_contact_name_snapshot,
         delivery_notes, internal_notes, payment_method_snapshot,
         payment_terms_days_snapshot, fulfilment_method,
         requested_fulfilment_date, requested_fulfilment_time, delivery_fee,
@@ -72,8 +76,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           delivery_suburb, delivery_state, delivery_postcode
         ),
         order_items(
-          id, product_name_snapshot, sku_snapshot, quantity, quantity_unit,
-          unit_price, price_basis, catch_weight_snapshot, notes
+          id, product_id, product_name_snapshot, sku_snapshot, quantity, quantity_unit,
+          unit_price, price_basis, line_subtotal, catch_weight_snapshot, notes,
+          discount_type, discount_value, discount_amount, public_comment
         )
       ''')
           .eq('id', widget.orderId)
@@ -109,6 +114,64 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         }
       }
 
+      final loadedItems = (quote['order_items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      final productIds = loadedItems
+          .map((item) => item['product_id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
+      if (productIds.isNotEmpty) {
+        final productRows = await client
+            .from('products')
+            .select('id, meat_grades(code, name)')
+            .inFilter('id', productIds);
+        final gradeByProductId = <String, Map<String, dynamic>>{};
+        for (final rawProduct in productRows) {
+          final product = Map<String, dynamic>.from(rawProduct);
+          final id = product['id']?.toString();
+          final rawGrade = product['meat_grades'];
+          if (id != null && rawGrade is Map) {
+            gradeByProductId[id] = Map<String, dynamic>.from(rawGrade);
+          }
+        }
+        for (final item in loadedItems) {
+          final grade = gradeByProductId[item['product_id']?.toString()];
+          item['grade_code'] = grade?['code'];
+          item['grade_name'] = grade?['name'];
+        }
+      }
+
+      final privateComments = <String, String>{};
+      final lineIds = loadedItems
+          .map((item) => item['id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      if (lineIds.isNotEmpty) {
+        final privateRows = await client
+            .from('supplier_document_line_private_notes')
+            .select('line_id, private_comment')
+            .eq('document_kind', 'quote')
+            .eq('document_id', widget.orderId)
+            .inFilter('line_id', lineIds);
+
+        for (final rawNote in privateRows) {
+          final lineId = rawNote['line_id']?.toString();
+          final comment = rawNote['private_comment']?.toString() ?? '';
+          if (lineId != null &&
+              lineId.isNotEmpty &&
+              comment.trim().isNotEmpty) {
+            privateComments[lineId] = comment;
+          }
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _quote = quote;
@@ -118,10 +181,20 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
             : Map<String, dynamic>.from(supplierProfileRaw);
         _supplierLogoBytes = logoBytes;
         _customer = _map(quote['supplier_customer_accounts']);
-        _items = (quote['order_items'] as List? ?? const [])
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
+        final contactSnapshot =
+            quote['customer_contact_name_snapshot']?.toString().trim() ?? '';
+        if (contactSnapshot.isNotEmpty) {
+          _customer['contact_name'] = contactSnapshot;
+        }
+        _items = loadedItems;
+        _privateComments = privateComments;
+        if (_selectedLineId != null &&
+            !loadedItems.any(
+              (item) => item['id']?.toString() == _selectedLineId,
+            )) {
+          _selectedLineId = null;
+          _lineAction = null;
+        }
         _loading = false;
       });
     } catch (error) {
@@ -141,6 +214,18 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         'Quote';
     final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
     return revision > 0 ? '$base R$revision' : base;
+  }
+
+  String _lineTitle(Map<String, dynamic> item) {
+    final product = item['product_name_snapshot']?.toString().trim();
+    final code = item['grade_code']?.toString().trim() ?? '';
+    final name = item['grade_name']?.toString().trim() ?? '';
+    final grade = [
+      if (code.isNotEmpty) code,
+      if (name.isNotEmpty && name != code) name,
+    ].join(' - ');
+    final base = product == null || product.isEmpty ? 'Product' : product;
+    return grade.isEmpty ? base : '$base - $grade';
   }
 
   String _date(dynamic value, {bool time = false}) {
@@ -189,6 +274,226 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     }
   }
 
+  Map<String, dynamic>? get _selectedLine {
+    final id = _selectedLineId;
+    if (id == null) return null;
+    for (final item in _items) {
+      if (item['id']?.toString() == id) return item;
+    }
+    return null;
+  }
+
+  double get _currentDeliveryFee => _asDouble(_quote?['delivery_fee']);
+
+  void _selectQuoteLine(Map<String, dynamic> item) {
+    setState(() {
+      _selectedLineId = item['id']?.toString();
+      _lineAction = null;
+      _lineEditorController.clear();
+    });
+  }
+
+  void _openQuoteLineAction(String action) {
+    final item = _selectedLine;
+    if (item == null) return;
+
+    if (action == 'remove') {
+      _removeSelectedQuoteLine();
+      return;
+    }
+
+    if (_lineAction == action) {
+      setState(() {
+        _lineAction = null;
+        _selectedDiscountType = null;
+        _lineEditorController.clear();
+      });
+      return;
+    }
+
+    setState(() {
+      _lineAction = action;
+      if (action == 'discount') {
+        final type = item['discount_type']?.toString();
+        _selectedDiscountType = type == 'percent' || type == 'fixed'
+            ? type
+            : null;
+        final value = _asDouble(item['discount_value']);
+        _lineEditorController.text = _selectedDiscountType == null
+            ? ''
+            : value.toStringAsFixed(2);
+      } else if (action == 'delivery') {
+        _lineEditorController.text = _currentDeliveryFee.toStringAsFixed(2);
+      } else if (action == 'private') {
+        _lineEditorController.text =
+            _privateComments[item['id']?.toString() ?? ''] ?? '';
+      } else if (action == 'public') {
+        _lineEditorController.text = item['public_comment']?.toString() ?? '';
+      }
+    });
+  }
+
+  Future<void> _saveSelectedQuoteLineAction() async {
+    final item = _selectedLine;
+    if (item == null || _lineAction == null || _savingLine) return;
+
+    var discountType = item['discount_type']?.toString();
+    if (discountType != 'percent' && discountType != 'fixed') {
+      discountType = null;
+    }
+    double? discountValue = discountType == null
+        ? null
+        : _asDouble(item['discount_value']);
+    var publicComment = item['public_comment']?.toString() ?? '';
+    var privateComment = _privateComments[item['id']?.toString() ?? ''] ?? '';
+    var deliveryFee = _currentDeliveryFee;
+
+    if (_lineAction == 'discount') {
+      discountType = _selectedDiscountType;
+      discountValue = discountType == null
+          ? null
+          : double.tryParse(_lineEditorController.text.trim());
+      if (discountType != null && discountValue == null) {
+        _message('Enter a valid discount.');
+        return;
+      }
+      if (discountType == 'percent' &&
+          (discountValue! < 0 || discountValue > 100)) {
+        _message('Percentage discount must be between 0 and 100%.');
+        return;
+      }
+      if (discountValue != null && discountValue < 0) {
+        _message('Discount cannot be negative.');
+        return;
+      }
+    } else if (_lineAction == 'delivery') {
+      final parsed = double.tryParse(_lineEditorController.text.trim());
+      if (parsed == null || parsed < 0) {
+        _message('Enter a valid delivery charge.');
+        return;
+      }
+      deliveryFee = parsed;
+    } else if (_lineAction == 'private') {
+      privateComment = _lineEditorController.text.trim();
+    } else if (_lineAction == 'public') {
+      publicComment = _lineEditorController.text.trim();
+    }
+
+    setState(() => _savingLine = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'update_supplier_quote_line',
+        params: {
+          'p_order_item_id': item['id'],
+          'p_discount_type': discountType,
+          'p_discount_value': discountValue,
+          'p_public_comment': publicComment,
+          'p_private_comment': privateComment,
+          'p_delivery_fee': deliveryFee,
+          'p_remove': false,
+        },
+      );
+      if (!mounted) return;
+      setState(() => _lineAction = null);
+      await _load();
+    } on PostgrestException catch (error) {
+      if (mounted) _message(error.message);
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    } finally {
+      if (mounted) setState(() => _savingLine = false);
+    }
+  }
+
+  Future<void> _removeSelectedQuoteLine() async {
+    final item = _selectedLine;
+    if (item == null || _savingLine) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove this quote item?'),
+        content: Text(
+          '${item['product_name_snapshot'] ?? 'This item'} will be removed from the quote.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove Item'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _savingLine = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'update_supplier_quote_line',
+        params: {
+          'p_order_item_id': item['id'],
+          'p_discount_type': item['discount_type'],
+          'p_discount_value': item['discount_value'],
+          'p_public_comment': item['public_comment'],
+          'p_private_comment':
+              _privateComments[item['id']?.toString() ?? ''] ?? '',
+          'p_delivery_fee': _currentDeliveryFee,
+          'p_remove': true,
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedLineId = null;
+        _lineAction = null;
+      });
+      await _load();
+    } on PostgrestException catch (error) {
+      if (mounted) _message(error.message);
+    } finally {
+      if (mounted) setState(() => _savingLine = false);
+    }
+  }
+
+  Future<void> _convertToWorkOrder() async {
+    if (_convertingToWorkOrder || _quote?['status']?.toString() != 'draft') {
+      return;
+    }
+
+    setState(() => _convertingToWorkOrder = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'convert_supplier_quote_to_sales_order',
+        params: {'target_order_id': widget.orderId},
+      );
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => SupplierWorkOrderPage(orderId: widget.orderId),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      if (mounted) _message(error.message);
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    } finally {
+      if (mounted) setState(() => _convertingToWorkOrder = false);
+    }
+  }
+
+  void _message(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Widget _tabs() => Container(
     height: 49,
     width: double.infinity,
@@ -231,62 +536,579 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   Widget _details() {
     final quote = _quote!;
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _summary(
-              'Customer',
-              _customer['customer_name'] ??
-                  _customer['legal_name'] ??
-                  'Customer',
+    final customerName =
+        _customer['customer_name']?.toString() ??
+        _customer['legal_name']?.toString() ??
+        'Customer';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: _panel(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                Widget metric(String label, String value, {int flex = 1}) {
+                  return Expanded(
+                    flex: flex,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              color: Color(0xFF777777),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: .35,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (constraints.maxWidth < 760) {
+                  return Wrap(
+                    runSpacing: 9,
+                    children: [
+                      SizedBox(
+                        width: 250,
+                        child: _summary('Customer', customerName),
+                      ),
+                      SizedBox(
+                        width: 180,
+                        child: _summary(
+                          'Fulfilment',
+                          quote['fulfilment_method'] ?? '—',
+                        ),
+                      ),
+                      SizedBox(
+                        width: 180,
+                        child: _summary(
+                          'Payment',
+                          quote['payment_method_snapshot'] ?? '—',
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    metric('CUSTOMER', customerName, flex: 2),
+                    const VerticalDivider(width: 1),
+                    metric(
+                      'PAYMENT',
+                      quote['payment_method_snapshot']?.toString() ?? '—',
+                    ),
+                    const VerticalDivider(width: 1),
+                    metric(
+                      'FULFILMENT',
+                      quote['fulfilment_method']?.toString() ?? '—',
+                    ),
+                    const VerticalDivider(width: 1),
+                    metric(
+                      'REQUESTED',
+                      _date(quote['requested_fulfilment_date']),
+                    ),
+                    const VerticalDivider(width: 1),
+                    metric('LINES', '${_items.length}'),
+                    const VerticalDivider(width: 1),
+                    metric('DELIVERY', _money(quote['delivery_fee'])),
+                  ],
+                );
+              },
             ),
-            _summary('Created', _date(quote['created_at'])),
-            _summary('Fulfilment', quote['fulfilment_method'] ?? '—'),
-            _summary('Lines', _items.length),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Container(
+              decoration: _panel(),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.list_alt_outlined,
+                          color: _darkRed,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 7),
+                        const Text(
+                          'Quote Items',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Select an item for actions',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                      itemCount: _items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 5),
+                      itemBuilder: (context, i) {
+                        final item = _items[i];
+                        final selected =
+                            item['id']?.toString() == _selectedLineId;
+                        final discount = _asDouble(item['discount_amount']);
+                        final publicComment =
+                            item['public_comment']?.toString().trim() ?? '';
+                        return Material(
+                          color: selected
+                              ? const Color(0xFFF7EDED)
+                              : const Color(0xFFFBFBF9),
+                          borderRadius: BorderRadius.circular(9),
+                          child: InkWell(
+                            onTap: () => _selectQuoteLine(item),
+                            borderRadius: BorderRadius.circular(9),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(
+                                  color: selected
+                                      ? _darkRed
+                                      : const Color(0xFFE4E4E0),
+                                  width: selected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        selected
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        size: 18,
+                                        color: selected
+                                            ? _darkRed
+                                            : const Color(0xFF999999),
+                                      ),
+                                      const SizedBox(width: 9),
+                                      Expanded(
+                                        flex: 4,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _lineTitle(item),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${item['quantity']} ${item['quantity_unit']} • '
+                                              '${_money(item['unit_price'])} / ${item['price_basis']}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Color(0xFF777777),
+                                                fontSize: 10.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (discount > 0)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 12,
+                                          ),
+                                          child: Text(
+                                            '-${_money(discount)}',
+                                            style: const TextStyle(
+                                              color: _darkRed,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                      SizedBox(
+                                        width: 110,
+                                        child: Text(
+                                          _money(
+                                            _asDouble(item['line_subtotal']) -
+                                                discount,
+                                          ),
+                                          textAlign: TextAlign.right,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (publicComment.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8F3F3),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                            Icons.chat_bubble_outline,
+                                            size: 14,
+                                            color: _darkRed,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              publicComment,
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                height: 1.3,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (_selectedLine != null) ...[
+                    const Divider(height: 1),
+                    _buildQuoteLineDock(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if ((quote['delivery_notes']?.toString().trim() ?? '').isNotEmpty ||
+              (quote['internal_notes']?.toString().trim() ?? '')
+                  .isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: _panel(),
+              child: Wrap(
+                spacing: 20,
+                runSpacing: 5,
+                children: [
+                  if ((quote['delivery_notes']?.toString().trim() ?? '')
+                      .isNotEmpty)
+                    Text(
+                      'Delivery: ${quote['delivery_notes']}',
+                      style: const TextStyle(fontSize: 10.5),
+                    ),
+                  if ((quote['internal_notes']?.toString().trim() ?? '')
+                      .isNotEmpty)
+                    Text(
+                      'Internal: ${quote['internal_notes']}',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF777777),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuoteLineDock() {
+    final item = _selectedLine;
+    if (item == null) return const SizedBox.shrink();
+
+    Widget actionButton({
+      required String label,
+      required IconData icon,
+      required String action,
+      bool danger = false,
+    }) {
+      final active = _lineAction == action;
+      return TextButton.icon(
+        onPressed: _savingLine ? null : () => _openQuoteLineAction(action),
+        style: TextButton.styleFrom(
+          foregroundColor: danger
+              ? Colors.red.shade700
+              : active
+              ? Colors.white
+              : _darkRed,
+          backgroundColor: active ? _darkRed : Colors.transparent,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         ),
-        const SizedBox(height: 18),
-        Container(
-          decoration: _panel(),
-          child: Column(
+        icon: Icon(icon, size: 17),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+        ),
+      );
+    }
+
+    return Container(
+      color: const Color(0xFFFAFAF8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              for (var i = 0; i < _items.length; i++) ...[
-                ListTile(
-                  title: Text(
-                    _items[i]['product_name_snapshot']?.toString() ?? 'Product',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text(
-                    '${_items[i]['quantity']} ${_items[i]['quantity_unit']} × ${_money(_items[i]['unit_price'])} / ${_items[i]['price_basis']}${_items[i]['catch_weight_snapshot'] == true ? ' • final amount pending weight' : ''}',
-                  ),
-                  trailing: Text(
-                    '${_money(_items[i]['unit_price'])} / ${_items[i]['price_basis']}',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+              Expanded(
+                child: Text(
+                  item['product_name_snapshot']?.toString() ?? 'Selected item',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                if (i < _items.length - 1) const Divider(height: 1),
-              ],
+              ),
+              TextButton(
+                onPressed: _savingLine
+                    ? null
+                    : () => setState(() {
+                        _selectedLineId = null;
+                        _lineAction = null;
+                      }),
+                child: const Text('Clear'),
+              ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        _infoPanel('Quote information', [
-          ['Customer reference', quote['customer_reference']],
-          ['Payment', quote['payment_method_snapshot']],
-          [
-            'Payment terms',
-            quote['payment_terms_days_snapshot'] == null
-                ? null
-                : '${quote['payment_terms_days_snapshot']} days',
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              actionButton(
+                label: 'Discount',
+                icon: Icons.percent,
+                action: 'discount',
+              ),
+              actionButton(
+                label: 'Delivery',
+                icon: Icons.local_shipping_outlined,
+                action: 'delivery',
+              ),
+              actionButton(
+                label: 'Private Comment',
+                icon: Icons.lock_outline,
+                action: 'private',
+              ),
+              actionButton(
+                label: 'Public Comment',
+                icon: Icons.chat_bubble_outline,
+                action: 'public',
+              ),
+              actionButton(
+                label: 'Remove Item',
+                icon: Icons.delete_outline,
+                action: 'remove',
+                danger: true,
+              ),
+            ],
+          ),
+          if (_lineAction != null && _lineAction != 'remove') ...[
+            const SizedBox(height: 7),
+            _buildQuoteLineInlineEditor(),
           ],
-          ['Requested date', _date(quote['requested_fulfilment_date'])],
-          ['Delivery notes', quote['delivery_notes']],
-          ['Internal notes', quote['internal_notes']],
-        ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuoteLineInlineEditor() {
+    Widget saveButton() => FilledButton.icon(
+      onPressed: _savingLine ? null : _saveSelectedQuoteLineAction,
+      style: FilledButton.styleFrom(
+        backgroundColor: _darkRed,
+        visualDensity: VisualDensity.compact,
+      ),
+      icon: _savingLine
+          ? const SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.save_outlined, size: 16),
+      label: const Text('Save'),
+    );
+
+    if (_lineAction == 'discount') {
+      Widget typeField() => DropdownButtonFormField<String?>(
+        initialValue: _selectedDiscountType,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Discount',
+          isDense: true,
+          border: OutlineInputBorder(),
+        ),
+        items: const [
+          DropdownMenuItem<String?>(value: null, child: Text('No discount')),
+          DropdownMenuItem<String?>(
+            value: 'percent',
+            child: Text('Percentage (%)'),
+          ),
+          DropdownMenuItem<String?>(
+            value: 'fixed',
+            child: Text(r'Fixed amount ($)'),
+          ),
+        ],
+        onChanged: _savingLine
+            ? null
+            : (value) => setState(() {
+                _selectedDiscountType = value;
+                if (value == null) _lineEditorController.clear();
+              }),
+      );
+
+      Widget amountField() => TextField(
+        controller: _lineEditorController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: _selectedDiscountType == 'percent'
+              ? 'Percentage'
+              : 'Amount',
+          suffixText: _selectedDiscountType == 'percent' ? '%' : null,
+          prefixText: _selectedDiscountType == 'fixed' ? r'$' : null,
+          isDense: true,
+          border: const OutlineInputBorder(),
+        ),
+      );
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 520) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                typeField(),
+                if (_selectedDiscountType != null) ...[
+                  const SizedBox(height: 8),
+                  amountField(),
+                ],
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: saveButton()),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              SizedBox(width: 190, child: typeField()),
+              if (_selectedDiscountType != null) ...[
+                const SizedBox(width: 8),
+                Expanded(child: amountField()),
+              ] else
+                const Spacer(),
+              const SizedBox(width: 8),
+              saveButton(),
+            ],
+          );
+        },
+      );
+    }
+
+    if (_lineAction == 'delivery') {
+      return Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _lineEditorController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Delivery charge for this quote',
+                prefixText: r'$',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          saveButton(),
+        ],
+      );
+    }
+
+    final private = _lineAction == 'private';
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _lineEditorController,
+            minLines: 1,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: private
+                  ? 'Private supplier comment'
+                  : 'Public comment',
+              helperText: private
+                  ? 'Supplier only. Never printed or shown to the customer.'
+                  : 'Printed beneath this item on the quote.',
+              isDense: true,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        saveButton(),
       ],
     );
   }
@@ -319,212 +1141,35 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       ],
     ),
   );
-  Widget _infoPanel(String title, List<List<dynamic>> rows) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: _panel(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 12),
-        for (final row in rows.where(
-          (row) => (row[1]?.toString().trim() ?? '').isNotEmpty,
-        ))
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    row[0].toString(),
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Expanded(child: Text(row[1].toString())),
-              ],
-            ),
-          ),
-      ],
-    ),
-  );
-
   Widget _preview() => Column(
     children: [
       Container(
         color: Colors.white,
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: const Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Quote PDF',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
             ),
-            _zoomControls(),
           ],
         ),
       ),
       Expanded(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final availableHeight = constraints.maxHeight > 24
-                ? constraints.maxHeight - 24
-                : constraints.maxHeight;
-            final availableWidth = constraints.maxWidth > 24
-                ? constraints.maxWidth - 24
-                : constraints.maxWidth;
-            final fitWidth =
-                availableHeight *
-                PdfPageFormat.a4.width /
-                PdfPageFormat.a4.height;
-            final maxWidth = fitWidth < availableWidth
-                ? fitWidth
-                : availableWidth;
-            return ClipRect(
-              key: _previewViewportKey,
-              child: MouseRegion(
-                cursor: _previewZoom > 1
-                    ? (_isPreviewDragging
-                          ? SystemMouseCursors.grabbing
-                          : SystemMouseCursors.grab)
-                    : MouseCursor.defer,
-                child: Listener(
-                  onPointerSignal: _handlePreviewPointerSignal,
-                  child: InteractiveViewer(
-                    transformationController: _previewTransformController,
-                    minScale: 0.75,
-                    maxScale: 3,
-                    panEnabled: _previewZoom > 1,
-                    onInteractionStart: (_) {
-                      if (_previewZoom > 1) {
-                        setState(() => _isPreviewDragging = true);
-                      }
-                    },
-                    onInteractionUpdate: (_) => _syncPreviewZoom(),
-                    onInteractionEnd: (_) {
-                      _syncPreviewZoom();
-                      if (_isPreviewDragging) {
-                        setState(() => _isPreviewDragging = false);
-                      }
-                    },
-                    child: PdfPreview(
-                      build: (_) => _pdf(),
-                      pdfFileName: '$_number.pdf',
-                      maxPageWidth: maxWidth,
-                      canChangeOrientation: false,
-                      canChangePageFormat: false,
-                      allowPrinting: false,
-                      allowSharing: false,
-                      loadingWidget: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
+        child: ZoomablePdfPreview(
+          documentKey:
+              'quote-${widget.orderId}-${_quote?['quote_revision']}-${_quote?['updated_at']}',
+          buildPdf: _pdf,
+          dpi: 480,
+          minScale: 0.55,
+          maxScale: 5,
+          maxPageWidth: 920,
         ),
       ),
     ],
   );
-
-  Widget _zoomControls() => Container(
-    height: 36,
-    decoration: BoxDecoration(
-      color: const Color(0xFFF4F5F6),
-      borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: const Color(0xFFE0E2E5)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          onPressed: _previewZoom <= .75
-              ? null
-              : () => _setPreviewZoom(_previewZoom - .1),
-          tooltip: 'Zoom out',
-          icon: const Icon(Icons.zoom_out, size: 18),
-          visualDensity: VisualDensity.compact,
-        ),
-        Tooltip(
-          message: 'Reset and centre preview',
-          child: TextButton.icon(
-            onPressed: _resetPreviewZoom,
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF4F555B),
-              minimumSize: const Size(72, 34),
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-            ),
-            icon: const Icon(Icons.center_focus_strong_outlined, size: 15),
-            label: Text(
-              '${(_previewZoom * 100).round()}%',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ),
-        IconButton(
-          onPressed: _previewZoom >= 3
-              ? null
-              : () => _setPreviewZoom(_previewZoom + .1),
-          tooltip: 'Zoom in',
-          icon: const Icon(Icons.zoom_in, size: 18),
-          visualDensity: VisualDensity.compact,
-        ),
-      ],
-    ),
-  );
-
-  void _handlePreviewPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent) return;
-    _setPreviewZoom(
-      _previewZoom + (event.scrollDelta.dy < 0 ? .1 : -.1),
-      focalPoint: event.localPosition,
-    );
-  }
-
-  void _setPreviewZoom(double value, {Offset? focalPoint}) {
-    final zoom = value.clamp(.75, 3.0);
-    if (zoom == _previewZoom) return;
-    final focal = focalPoint ?? _previewCentre();
-    final factor = zoom / _previewZoom;
-    final adjustment = Matrix4.identity()
-      ..translateByDouble(focal.dx, focal.dy, 0, 1)
-      ..scaleByDouble(factor, factor, 1, 1)
-      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
-      ..multiply(_previewTransformController.value);
-    _previewTransformController.value = adjustment;
-    setState(() => _previewZoom = zoom);
-  }
-
-  void _syncPreviewZoom() {
-    final zoom = _previewTransformController.value.getMaxScaleOnAxis().clamp(
-      .75,
-      3.0,
-    );
-    if ((zoom - _previewZoom).abs() > .001 && mounted) {
-      setState(() => _previewZoom = zoom);
-    }
-  }
-
-  Offset _previewCentre() {
-    final object = _previewViewportKey.currentContext?.findRenderObject();
-    return object is RenderBox ? object.size.center(Offset.zero) : Offset.zero;
-  }
-
-  void _resetPreviewZoom() {
-    _previewTransformController.value = Matrix4.identity();
-    setState(() => _previewZoom = 1);
-  }
 
   Widget _history() {
     final quote = _quote!;
@@ -596,6 +1241,30 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       actions: _loading || _error != null
           ? null
           : [
+              if (_quote?['status']?.toString() == 'draft') ...[
+                FilledButton.icon(
+                  onPressed: _convertingToWorkOrder
+                      ? null
+                      : _convertToWorkOrder,
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  icon: _convertingToWorkOrder
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.inventory_2_outlined, size: 17),
+                  label: Text(
+                    _convertingToWorkOrder
+                        ? 'Converting...'
+                        : 'Convert to Work Order',
+                  ),
+                ),
+                const SizedBox(width: 7),
+              ],
               OutlinedButton.icon(
                 onPressed: _download,
                 icon: const Icon(Icons.download_outlined, size: 17),

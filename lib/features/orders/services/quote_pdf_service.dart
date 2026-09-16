@@ -480,10 +480,34 @@ class CutLinkQuotePdf {
                   children: [
                     _tableCell(
                       [
-                        _clean(
-                          item['product_name_snapshot'],
-                          fallback: 'Product',
-                        ),
+                        [
+                          _clean(
+                            item['product_name_snapshot'],
+                            fallback: 'Product',
+                          ),
+                          if (_clean(
+                                item['grade_code'],
+                                fallback: '',
+                              ).isNotEmpty ||
+                              _clean(
+                                item['grade_name'],
+                                fallback: '',
+                              ).isNotEmpty)
+                            [
+                              if (_clean(
+                                item['grade_code'],
+                                fallback: '',
+                              ).isNotEmpty)
+                                _clean(item['grade_code'], fallback: ''),
+                              if (_clean(
+                                    item['grade_name'],
+                                    fallback: '',
+                                  ).isNotEmpty &&
+                                  _clean(item['grade_name'], fallback: '') !=
+                                      _clean(item['grade_code'], fallback: ''))
+                                _clean(item['grade_name'], fallback: ''),
+                            ].join(' - '),
+                        ].join(' - '),
                         if (_clean(
                           item['sku_snapshot'],
                           fallback: '',
@@ -491,6 +515,18 @@ class CutLinkQuotePdf {
                           'SKU: ${_clean(item['sku_snapshot'], fallback: '')}',
                         if (_clean(item['notes'], fallback: '').isNotEmpty)
                           _clean(item['notes'], fallback: ''),
+                        if (_clean(
+                          item['discount_type'],
+                          fallback: '',
+                        ).isNotEmpty)
+                          item['discount_type']?.toString() == 'percent'
+                              ? 'Discount: ${_number(item['discount_value']).toStringAsFixed(2)}%${_number(item['discount_amount']) > 0 ? ' (-${_money(item['discount_amount'])})' : ''}'
+                              : 'Discount: ${_money(item['discount_value'])}${_number(item['discount_amount']) > 0 ? ' (-${_money(item['discount_amount'])})' : ''}',
+                        if (_clean(
+                          item['public_comment'],
+                          fallback: '',
+                        ).isNotEmpty)
+                          'Note: ${_clean(item['public_comment'], fallback: '')}',
                       ].join('\n'),
                     ),
                     _tableCell(
