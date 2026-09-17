@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -32,6 +34,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   List<Map<String, dynamic>> _priceLists = [];
 
   bool _isLoading = true;
+  bool _loadingStock = false;
+  String? _stockError;
+  String? _stockScope;
+  int _stockLoadVersion = 0;
+  int _catalogueLoadVersion = 0;
   String? _errorMessage;
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
@@ -71,11 +78,197 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   void _refresh() {
     if (mounted) {
+      unawaited(_loadStock());
       setState(() {});
     }
   }
 
+  Future<void> _loadStock({bool force = false}) async {
+    if (_isLoading || !mounted) return;
+    final cutSelected =
+        _selectedSectionId != null || _selectedAnimalRegionKey != null;
+    final globalSearch =
+        _searchController.text.trim().isNotEmpty && !cutSelected;
+    final animalCode = _selectedAnimalCode;
+    final scope = globalSearch
+        ? 'search-all'
+        : cutSelected
+        ? '$_selectedAnimalCode:${_selectedSectionId ?? _selectedAnimalRegionKey}'
+        : 'browse';
+    if (!force && _stockScope == scope) return;
+    _stockScope = scope;
+    final version = ++_stockLoadVersion;
+    final animal = _sections.where(
+      (row) => row['animal_code'] == _selectedAnimalCode,
+    );
+    final animalId = animal.isEmpty
+        ? null
+        : animal.first['animal_id']?.toString();
+    final sectionId =
+        _selectedSectionId ??
+        (_selectedAnimalRegionKey == null
+            ? null
+            : _sectionForRegion(
+                animalCode,
+                _selectedAnimalRegionKey!,
+              )?['id']?.toString());
+    final supplierId = _supplierBusinessId;
+    if (supplierId == null) return;
+    _resetMatrixEditors();
+    setState(() {
+      _products = [];
+
+      _stockError = null;
+      _loadingStock = scope != 'browse';
+    });
+    if (scope == 'browse') return;
+    try {
+      if (Supabase.instance.client.auth.currentUser == null) {
+        throw StateError('Your session has ended. Please sign in again.');
+      }
+      if (!globalSearch && animalId == null) {
+        throw StateError(
+          'The selected animal could not be loaded. Please refresh.',
+        );
+      }
+      if (!globalSearch &&
+          animalCode == CutLinkAnimals.beef &&
+          sectionId == null) {
+        throw StateError(
+          'This cut could not be matched. Please refresh the catalogue.',
+        );
+      }
+      const pageSize = 100;
+      var offset = 0;
+      while (mounted && version == _stockLoadVersion) {
+        var query = Supabase.instance.client.from('products').select('''
+              id,
+              supplier_business_id,
+              sku,
+              product_name,
+              description,
+              brand,
+              temperature_state,
+              halal_status,
+              feeding_days,
+              bone_state,
+              rib_count,
+              production_claim,
+              hgp_free,
+              chicken_skin,
+              chicken_bone,
+              chicken_production_type,
+              chicken_preparation,
+              chicken_size_weight,
+              chicken_carton_size,
+              available_quantity,
+              quantity_unit,
+              availability_status,
+              active,
+              created_at,
+              meat_animal_id,
+              meat_section_id,
+              meat_specification_id,
+              meat_grade_id,
+              catch_weight,
+              weight_type,
+              price_basis,
+              order_unit,
+              meat_animals(id, code, name),
+              meat_sections(id, code, name, is_miscellaneous),
+              meat_specifications(id, name, specification_type),
+              meat_grades(id, code, name),
+              supplier_spec_grade_offers(
+                id,
+                specification_id,
+                grade_id,
+                standard_price_inc_gst,
+                minimum_order_quantity,
+                is_available,
+                is_active
+              ),
+              product_prices(
+                id,
+                price_list_id,
+                amount,
+                price_basis,
+                active,
+                price_lists(id, visibility, active)
+              )
+            ''');
+        query = query.eq('supplier_business_id', supplierId);
+        if (!globalSearch) {
+          query = query.eq('meat_animal_id', animalId!);
+          // Chicken and other animal diagrams may map one region to multiple
+          // sections. Their small catalogues retain those existing mappings.
+          if (animalCode == CutLinkAnimals.beef && sectionId != null) {
+            query = query.eq('meat_section_id', sectionId);
+          }
+        }
+        final page = await query
+            .order('id')
+            .range(offset, offset + pageSize - 1)
+            .timeout(const Duration(seconds: 20));
+        if (!mounted || version != _stockLoadVersion) return;
+        if (Supabase.instance.client.auth.currentUser == null) {
+          throw StateError('Your session has ended. Please sign in again.');
+        }
+        if (page.isEmpty) break;
+        setState(() {
+          _products.addAll(List<Map<String, dynamic>>.from(page));
+        });
+
+        offset += page.length;
+        if (page.length < pageSize) break;
+        await Future<void>.delayed(Duration.zero);
+      }
+    } catch (error) {
+      if (!mounted || version != _stockLoadVersion) return;
+      setState(() {
+        _stockError = error is TimeoutException
+            ? 'Loading took too long. Please retry.'
+            : 'Unable to load products: $error';
+      });
+    } finally {
+      if (mounted && version == _stockLoadVersion) {
+        setState(() => _loadingStock = false);
+      }
+    }
+  }
+
+  Widget _stockLoadingStatus() {
+    if (_stockError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Expanded(child: Text(_stockError!)),
+            TextButton(
+              onPressed: () => _loadStock(force: true),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (!_loadingStock) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const LinearProgressIndicator(),
+          const SizedBox(height: 4),
+          Text('Loading products… ${_products.length} loaded'),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadProducts() async {
+    final catalogueVersion = ++_catalogueLoadVersion;
+    ++_stockLoadVersion;
+    _stockScope = null;
     if (mounted) {
       setState(() {
         _isLoading = true;
@@ -95,7 +288,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           .from('business_memberships')
           .select('business_id')
           .eq('user_id', user.id)
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .timeout(const Duration(seconds: 20));
 
       final businessIds = <String>[
         for (final row in memberships)
@@ -110,7 +304,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           .from('businesses')
           .select('id, business_type, active')
           .inFilter('id', businessIds)
-          .eq('active', true);
+          .eq('active', true)
+          .timeout(const Duration(seconds: 20));
 
       String? supplierBusinessId;
 
@@ -130,7 +325,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           .select('id, supplier_business_id, name, visibility, active')
           .eq('supplier_business_id', supplierBusinessId)
           .eq('active', true)
-          .order('name');
+          .order('name')
+          .timeout(const Duration(seconds: 20));
 
       final animalResponse = await client
           .from('meat_animals')
@@ -144,7 +340,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             'GOAT',
             'CHICKEN',
           ])
-          .order('display_order');
+          .order('display_order')
+          .timeout(const Duration(seconds: 20));
 
       final animals = List<Map<String, dynamic>>.from(animalResponse);
       final animalCodeById = <String, String>{
@@ -163,7 +360,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
             )
             .inFilter('animal_id', animalCodeById.keys.toList())
             .eq('is_active', true)
-            .order('display_order');
+            .order('display_order')
+            .timeout(const Duration(seconds: 20));
 
         sections = [
           for (final raw in sectionResponse)
@@ -193,7 +391,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               .inFilter('section_id', sectionIds)
               .eq('is_active', true)
               .order('display_order')
-              .order('name');
+              .order('name')
+              .timeout(const Duration(seconds: 20));
 
           catalogueSpecifications = List<Map<String, dynamic>>.from(
             specificationResponse,
@@ -201,87 +400,28 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         }
       }
 
-      final productResponse = await client
-          .from('products')
-          .select('''
-            id,
-            supplier_business_id,
-            sku,
-            product_name,
-            description,
-            brand,
-            temperature_state,
-            halal_status,
-            feeding_days,
-            bone_state,
-            rib_count,
-            production_claim,
-            hgp_free,
-            chicken_skin,
-            chicken_bone,
-            chicken_production_type,
-            chicken_preparation,
-            chicken_size_weight,
-            chicken_carton_size,
-            available_quantity,
-            quantity_unit,
-            availability_status,
-            active,
-            created_at,
-            meat_animal_id,
-            meat_section_id,
-            meat_specification_id,
-            meat_grade_id,
-            catch_weight,
-            weight_type,
-            price_basis,
-            order_unit,
-            meat_animals(id, code, name),
-            meat_sections(id, code, name, is_miscellaneous),
-            meat_specifications(id, name, specification_type),
-            meat_grades(id, code, name),
-            supplier_spec_grade_offers(
-              id,
-              specification_id,
-              grade_id,
-              standard_price_inc_gst,
-              minimum_order_quantity,
-              is_available,
-              is_active
-            ),
-            product_prices(
-              id,
-              price_list_id,
-              amount,
-              price_basis,
-              active,
-              price_lists(id, visibility, active)
-            )
-          ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .order('created_at', ascending: false);
-
-      if (!mounted) return;
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
 
       _resetMatrixEditors();
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
-        _products = List<Map<String, dynamic>>.from(productResponse);
+        _products = [];
         _sections = sections;
         _catalogueSpecifications = catalogueSpecifications;
         _isLoading = false;
       });
+      await _loadStock(force: true);
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
 
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
 
       setState(() {
         _errorMessage = error.toString();
@@ -1103,7 +1243,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   List<Map<String, dynamic>> get _filteredProducts {
     final search = _searchController.text.trim().toLowerCase();
     final directSearch = search.isNotEmpty;
-    final cutScopedSearch = directSearch && _selectedSectionId != null;
+    final cutScopedSearch =
+        directSearch &&
+        (_selectedSectionId != null || _selectedAnimalRegionKey != null);
 
     return _products.where((product) {
       if (directSearch) {
@@ -1183,34 +1325,32 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   Map<String, dynamic>? _sectionForRegion(String animalCode, String regionKey) {
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
     if (catalogue == null) return null;
-
+    final sections = _sections.where(
+      (section) => section['animal_code'] == animalCode,
+    );
     final sectionCode = catalogue.sectionCodeForRegion(regionKey);
     if (sectionCode != null) {
-      for (final section in _sections) {
-        if (section['animal_code']?.toString() == animalCode &&
-            section['code']?.toString().trim().toUpperCase() ==
-                sectionCode.trim().toUpperCase()) {
+      for (final section in sections) {
+        if (section['code']?.toString().trim().toUpperCase() ==
+            sectionCode.trim().toUpperCase()) {
           return section;
         }
       }
     }
-
-    for (final product in _products) {
-      if (_productAnimalCode(product) != animalCode ||
-          !catalogue.productMatchesRegion(product, regionKey)) {
-        continue;
-      }
-
-      final sectionId = product['meat_section_id']?.toString();
-      if (sectionId == null || sectionId.isEmpty) continue;
-
-      for (final section in _sections) {
-        if (section['id']?.toString() == sectionId) {
+    // Resolve diagram aliases (for example Chicken neck/tail) from the
+    // catalogue too. Navigation must never depend on downloaded stock.
+    for (final section in sections) {
+      for (final specification in _catalogueSpecifications) {
+        if (specification['section_id'] != section['id']) continue;
+        if (catalogue.productMatchesRegion({
+          'meat_sections': section,
+          'meat_specifications': specification,
+          'product_name': specification['name'],
+        }, regionKey)) {
           return section;
         }
       }
     }
-
     return null;
   }
 
@@ -1231,6 +1371,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedGradeId = null;
       _searchController.clear();
     });
+    unawaited(_loadStock());
   }
 
   void _selectAnimalRegion(String regionKey) {
@@ -1248,6 +1389,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedGradeId = null;
       _searchController.clear();
     });
+    unawaited(_loadStock());
   }
 
   void _selectSection(Map<String, dynamic> section) {
@@ -1258,6 +1400,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedGradeId = null;
       _searchController.clear();
     });
+    unawaited(_loadStock());
   }
 
   String? get _selectedSectionName {
@@ -1586,6 +1729,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     Widget gradeStage() {
       final grades = _availableGrades;
 
+      if (grades.isEmpty && _loadingStock) {
+        return const Center(child: CircularProgressIndicator());
+      }
       if (grades.isEmpty) {
         return Center(
           child: Padding(
@@ -1594,7 +1740,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'No grades are linked to this subcategory yet.',
+                  'No stocked products are available for this subcategory yet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Color(0xFF777777),
@@ -1822,6 +1968,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               ),
             ),
             searchBar(),
+            _stockLoadingStatus(),
             Expanded(
               child: directSearch
                   ? stockStage()
@@ -2020,6 +2167,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               _chickenAttributeFilters.clear();
               _goatAttributeFilters.clear();
             });
+            unawaited(_loadStock());
           },
         ),
         for (final section in sections)

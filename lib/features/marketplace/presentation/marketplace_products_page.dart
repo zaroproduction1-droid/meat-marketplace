@@ -8,6 +8,8 @@ import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
 import '../../../shared/widgets/cutlink_notice.dart';
+import '../../../shared/widgets/catalogue_product_image.dart';
+import '../../../shared/animal_catalogues/catalogue_search.dart';
 
 class MarketplaceProductsPage extends StatefulWidget {
   const MarketplaceProductsPage({super.key, this.onBack});
@@ -32,6 +34,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       ScrollController();
 
   bool _isLoading = true;
+  bool _loadingStock = false;
+  String? _stockError;
+  String? _stockScope;
+  int _stockLoadVersion = 0;
+  int _catalogueLoadVersion = 0;
   String? _errorMessage;
 
   List<Map<String, dynamic>> _products = [];
@@ -48,6 +55,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String? _selectedCommercialSpecificationKey;
   String _sortMode = 'recommended';
   bool _availableOnly = false;
+  bool _halalOnly = false;
+  Timer? _searchDebounce;
   final Map<String, String> _chickenAttributeFilters = <String, String>{};
   final Map<String, String> _goatAttributeFilters = <String, String>{};
   String? _butcherBusinessId;
@@ -68,16 +77,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _cartBounceScale = Tween<double>(begin: 1, end: 1.08).animate(
       CurvedAnimation(parent: _cartBounceController, curve: Curves.easeInOut),
     );
-    _searchController.addListener(_applySearch);
-    _supplierSearchController.addListener(_applySearch);
+    _searchController.addListener(_onSearchChanged);
+    _supplierSearchController.addListener(_onSearchChanged);
     _loadButcherBusinessId();
     _loadProducts();
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_applySearch);
-    _supplierSearchController.removeListener(_applySearch);
+    _searchController.removeListener(_onSearchChanged);
+    _supplierSearchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _supplierSearchController.dispose();
     _cutScrollController.dispose();
@@ -85,6 +94,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _gradeScrollController.dispose();
     _finalSpecificationScrollController.dispose();
     _cartBounceTimer?.cancel();
+    _searchDebounce?.cancel();
     _cartBounceController.dispose();
     super.dispose();
   }
@@ -430,147 +440,272 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
   }
 
+  Future<void> _loadStock({bool force = false}) async {
+    if (_isLoading || !mounted) return;
+    final cutSelected =
+        _selectedSectionId != null || _selectedAnimalRegionKey != null;
+    final globalSearch =
+        (_searchController.text.trim().isNotEmpty || _halalOnly) &&
+        !cutSelected;
+    final animalCode = _selectedAnimalCode;
+    final baseScope = globalSearch
+        ? 'search-all'
+        : cutSelected
+        ? '$_selectedAnimalCode:${_selectedSectionId ?? _selectedAnimalRegionKey}'
+        : 'browse';
+    final halalOnly = _halalOnly;
+    final scope = '$baseScope:halal=$halalOnly';
+    if (!force && _stockScope == scope) return;
+    _stockScope = scope;
+    final version = ++_stockLoadVersion;
+    final animal = _catalogueAnimals.where(
+      (row) => row['code'] == _selectedAnimalCode,
+    );
+    final animalId = animal.isEmpty ? null : animal.first['id']?.toString();
+    final sectionId =
+        _selectedSectionId ??
+        (_selectedAnimalRegionKey == null
+            ? null
+            : _sectionForRegion(
+                animalCode,
+                _selectedAnimalRegionKey!,
+              )?['id']?.toString());
+
+    setState(() {
+      _products = [];
+      _filteredProducts = [];
+      _stockError = null;
+      _loadingStock = baseScope != 'browse';
+    });
+    if (baseScope == 'browse') return;
+    try {
+      if (Supabase.instance.client.auth.currentUser == null) {
+        throw StateError('Your session has ended. Please sign in again.');
+      }
+      if (!globalSearch && animalId == null) {
+        throw StateError(
+          'The selected animal could not be loaded. Please refresh.',
+        );
+      }
+      if (!globalSearch &&
+          animalCode == CutLinkAnimals.beef &&
+          sectionId == null) {
+        throw StateError(
+          'This cut could not be matched. Please refresh the catalogue.',
+        );
+      }
+      const pageSize = 100;
+      var offset = 0;
+      while (mounted && version == _stockLoadVersion) {
+        var query = Supabase.instance.client.from('products').select('''
+              id,
+              sku,
+              product_name,
+              description,
+              brand,
+              origin_country,
+              origin_state,
+              temperature_state,
+              available_quantity,
+              quantity_unit,
+              availability_status,
+              supplier_business_id,
+              meat_animal_id,
+              meat_section_id,
+              meat_specification_id,
+              meat_grade_id,
+              active,
+              catch_weight,
+
+              marbling_score,
+              grade,
+              breed_program,
+              feeding_days,
+              bone_state,
+              rib_count,
+              production_claim,
+              chicken_skin,
+              chicken_bone,
+              chicken_production_type,
+              chicken_preparation,
+              chicken_size_weight,
+              chicken_carton_size,
+              hgp_free,
+              piece_weight_min,
+              piece_weight_max,
+              piece_weight_unit,
+              carton_weight,
+              carton_weight_unit,
+              pieces_per_carton,
+              packaging_type,
+              trim_specification,
+              fat_specification,
+              halal_status,
+              supplier_specification,
+
+              businesses(
+                legal_name,
+                trading_name
+              ),
+
+              meat_animals(
+                id,
+                code,
+                name
+              ),
+              meat_sections(
+                id,
+                code,
+                name,
+                is_miscellaneous,
+                display_order
+              ),
+              meat_specifications(
+                id,
+                name,
+                specification_type,
+                alternate_names
+              ),
+              meat_grades(
+                id,
+                code,
+                name
+              ),
+
+              supplier_spec_grade_offers(
+                id,
+                product_id,
+                specification_id,
+                grade_id,
+                standard_price_inc_gst,
+                minimum_order_quantity,
+                is_available,
+                is_active
+              ),
+
+              product_prices(
+                amount,
+                price_basis,
+                minimum_quantity,
+                active,
+
+                price_lists(
+                  id,
+                  name,
+                  visibility,
+                  active
+                )
+              )
+            ''');
+        query = query.eq('active', true);
+        if (halalOnly) query = query.eq('halal_status', 'halal');
+        if (!globalSearch) {
+          query = query.eq('meat_animal_id', animalId!);
+          // Chicken and other animal diagrams may map one region to multiple
+          // sections. Their small catalogues retain those existing mappings.
+          if (animalCode == CutLinkAnimals.beef && sectionId != null) {
+            query = query.eq('meat_section_id', sectionId);
+          }
+        }
+        final page = await query
+            .order('id')
+            .range(offset, offset + pageSize - 1)
+            .timeout(const Duration(seconds: 20));
+        if (!mounted || version != _stockLoadVersion) return;
+        if (Supabase.instance.client.auth.currentUser == null) {
+          throw StateError('Your session has ended. Please sign in again.');
+        }
+        if (page.isEmpty) break;
+        setState(() {
+          _products.addAll(List<Map<String, dynamic>>.from(page));
+        });
+        _applySearch(loadStock: false);
+        offset += page.length;
+        if (page.length < pageSize) break;
+        await Future<void>.delayed(Duration.zero);
+      }
+    } catch (error) {
+      if (!mounted || version != _stockLoadVersion) return;
+      setState(() {
+        _stockError = error is TimeoutException
+            ? 'Loading took too long. Please retry.'
+            : 'Unable to load products: $error';
+      });
+    } finally {
+      if (mounted && version == _stockLoadVersion) {
+        setState(() => _loadingStock = false);
+      }
+    }
+  }
+
+  Widget _stockLoadingStatus() {
+    if (_stockError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Expanded(child: Text(_stockError!)),
+            TextButton(
+              onPressed: () => _loadStock(force: true),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (!_loadingStock) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const LinearProgressIndicator(),
+          const SizedBox(height: 4),
+          Text('Loading products… ${_products.length} loaded'),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadProducts() async {
+    final catalogueVersion = ++_catalogueLoadVersion;
+    ++_stockLoadVersion;
+    _stockScope = null;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final response = await Supabase.instance.client
-          .from('products')
-          .select('''
-            id,
-            sku,
-            product_name,
-            description,
-            brand,
-            origin_country,
-            origin_state,
-            temperature_state,
-            available_quantity,
-            quantity_unit,
-            availability_status,
-            supplier_business_id,
-            meat_animal_id,
-            meat_section_id,
-            meat_specification_id,
-            meat_grade_id,
-            active,
-            catch_weight,
-
-            marbling_score,
-            grade,
-            breed_program,
-            feeding_days,
-            bone_state,
-            rib_count,
-            production_claim,
-            chicken_skin,
-            chicken_bone,
-            chicken_production_type,
-            chicken_preparation,
-            chicken_size_weight,
-            chicken_carton_size,
-            hgp_free,
-            piece_weight_min,
-            piece_weight_max,
-            piece_weight_unit,
-            carton_weight,
-            carton_weight_unit,
-            pieces_per_carton,
-            packaging_type,
-            trim_specification,
-            fat_specification,
-            halal_status,
-            supplier_specification,
-
-            businesses(
-              legal_name,
-              trading_name
-            ),
-
-
-            meat_animals(
-              id,
-              code,
-              name
-            ),
-            meat_sections(
-              id,
-              code,
-              name,
-              is_miscellaneous,
-              display_order
-            ),
-            meat_specifications(
-              id,
-              name,
-              specification_type
-            ),
-            meat_grades(
-              id,
-              code,
-              name
-            ),
-
-            supplier_spec_grade_offers(
-              id,
-              product_id,
-              specification_id,
-              grade_id,
-              standard_price_inc_gst,
-              minimum_order_quantity,
-              is_available,
-              is_active
-            ),
-
-
-            product_prices(
-              amount,
-              price_basis,
-              minimum_quantity,
-              active,
-
-              price_lists(
-                id,
-                name,
-                visibility,
-                active
-              )
-            )
-          ''')
-          .eq('active', true)
-          .order('product_name');
-
       final catalogueAnimalResponse = await Supabase.instance.client
           .from('meat_animals')
           .select('id, code, name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .timeout(const Duration(seconds: 20));
 
       final catalogueSectionResponse = await Supabase.instance.client
           .from('meat_sections')
           .select('id, animal_id, code, name, slug, hotspot_key, display_order')
           .eq('is_active', true)
-          .order('display_order');
+          .order('display_order')
+          .timeout(const Duration(seconds: 20));
 
       final catalogueSpecificationResponse = await Supabase.instance.client
           .from('meat_specifications')
           .select(
             'id, animal_id, section_id, name, slug, display_order, '
-            'specification_type, approval_status',
+            'specification_type, approval_status, alternate_names',
           )
           .eq('is_active', true)
-          .order('display_order');
+          .order('display_order')
+          .timeout(const Duration(seconds: 20));
 
-      final products = List<Map<String, dynamic>>.from(response);
-
-      if (!mounted) {
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
       }
 
       setState(() {
-        _products = products;
+        _products = [];
         _catalogueAnimals = List<Map<String, dynamic>>.from(
           catalogueAnimalResponse,
         );
@@ -583,9 +718,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _isLoading = false;
       });
 
-      _applySearch();
+      await _loadStock(force: true);
+      _applySearch(loadStock: false);
     } on PostgrestException catch (error) {
-      if (!mounted) {
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
       }
 
@@ -594,7 +730,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) {
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
       }
 
@@ -814,6 +950,18 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   List<Map<String, dynamic>> get _selectedAnimalSections {
     final byId = <String, Map<String, dynamic>>{};
 
+    final animalIds = _catalogueAnimals
+        .where((animal) => animal['code'] == _selectedAnimalCode)
+        .map((animal) => animal['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    for (final section in _catalogueSections) {
+      final id = section['id']?.toString();
+      if (id != null && animalIds.contains(section['animal_id']?.toString())) {
+        byId[id] = section;
+      }
+    }
+
     for (final product in _selectedAnimalProducts) {
       final section = _nestedMap(product['meat_sections']);
       final id = section?['id']?.toString();
@@ -965,26 +1113,37 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Map<String, dynamic>? _sectionForRegion(String animalCode, String regionKey) {
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
     if (catalogue == null) return null;
-
+    final animalIds = _catalogueAnimals
+        .where((animal) => animal['code'] == animalCode)
+        .map((animal) => animal['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    final sections = _catalogueSections.where(
+      (section) => animalIds.contains(section['animal_id']?.toString()),
+    );
     final sectionCode = catalogue.sectionCodeForRegion(regionKey);
     if (sectionCode != null) {
-      for (final section in _selectedAnimalSections) {
+      for (final section in sections) {
         if (section['code']?.toString().trim().toUpperCase() ==
             sectionCode.trim().toUpperCase()) {
           return section;
         }
       }
     }
-
-    for (final product in _products) {
-      if (_animalCode(product) != animalCode ||
-          !catalogue.productMatchesRegion(product, regionKey)) {
-        continue;
+    // Resolve diagram aliases (for example Chicken neck/tail) from the
+    // catalogue too. Navigation must never depend on downloaded stock.
+    for (final section in sections) {
+      for (final specification in _catalogueSpecifications) {
+        if (specification['section_id'] != section['id']) continue;
+        if (catalogue.productMatchesRegion({
+          'meat_sections': section,
+          'meat_specifications': specification,
+          'product_name': specification['name'],
+        }, regionKey)) {
+          return section;
+        }
       }
-      final section = _nestedMap(product['meat_sections']);
-      if (section != null) return section;
     }
-
     return null;
   }
 
@@ -1131,12 +1290,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _applySearch();
   }
 
-  void _applySearch() {
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) _applySearch();
+    });
+  }
+
+  void _applySearch({bool loadStock = true}) {
     if (!mounted) return;
+    if (loadStock) unawaited(_loadStock());
 
     final search = _searchController.text.trim().toLowerCase();
     final supplierSearch = _supplierSearchController.text.trim().toLowerCase();
-    final directSearch = search.isNotEmpty;
+    final directSearch = search.isNotEmpty || _halalOnly;
     final cutScopedSearch =
         directSearch &&
         (_selectedSectionId != null || _selectedAnimalRegionKey != null);
@@ -1151,6 +1318,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     setState(() {
       _filteredProducts = _products.where((product) {
+        if (_halalOnly && product['halal_status'] != 'halal') return false;
         if (directSearch) {
           if (cutScopedSearch) {
             if (_animalCode(product) != _selectedAnimalCode) {
@@ -1246,20 +1414,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
         if (search.isEmpty) return true;
 
-        final specification = _specificationName(product).toLowerCase();
-        final productName =
-            product['product_name']?.toString().toLowerCase() ?? '';
-        final supplierSpecification =
-            product['supplier_specification']?.toString().toLowerCase() ?? '';
-
-        if (cutScopedSearch) {
-          return specification.contains(search) ||
-              productName.contains(search) ||
-              supplierSpecification.contains(search) ||
-              _gradeCode(product).toLowerCase().contains(search) ||
-              _gradeName(product).toLowerCase().contains(search);
-        }
-
         final catalogueNames = _canonicalCatalogueNames(product);
         final searchableValues = <dynamic>[
           product['product_name'],
@@ -1286,7 +1440,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           product['packaging_type'],
           product['trim_specification'],
           product['fat_specification'],
-          product['halal_status'],
+          ...(_nestedMap(product['meat_specifications'])?['alternate_names']
+                  as List? ??
+              const []),
           product['supplier_specification'],
           _cataloguePath(product),
           _sectionName(product),
@@ -1297,9 +1453,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ...catalogueNames,
         ];
 
-        return searchableValues.any(
-          (value) =>
-              value != null && value.toString().toLowerCase().contains(search),
+        return matchesCatalogueSearch(
+          search,
+          searchableValues,
+          halalStatus: product['halal_status']?.toString() ?? 'not_specified',
         );
       }).toList();
 
@@ -2386,6 +2543,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           final identity = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              CatalogueProductImage(product: product, thumbnail: true),
+              const SizedBox(width: 9),
               _gradeBadge(product),
               const SizedBox(width: 11),
               Expanded(
@@ -2397,7 +2556,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 14.5,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -2422,6 +2581,17 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (product['halal_status'] == 'halal') ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        'HALAL • Supplier declared',
+                        style: TextStyle(
+                          color: Color(0xFF246342),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                     if (commercialSummary.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
@@ -2430,7 +2600,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFF3F444A),
-                          fontSize: 10.8,
+                          fontSize: 13,
                           height: 1.25,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2980,8 +3150,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     setState(() {
                       _sortMode = 'recommended';
                       _availableOnly = false;
+                      _halalOnly = false;
                       _chickenAttributeFilters.clear();
-                      _goatAttributeFilters.clear();
                       _goatAttributeFilters.clear();
                     });
                     _applySearch();
@@ -3073,9 +3243,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       final query = _searchController.text.trim().toLowerCase();
       final specifications = _availableSpecifications.where((specification) {
         if (query.isEmpty) return true;
-        return (specification['name']?.toString() ?? '').toLowerCase().contains(
-          query,
-        );
+        return matchesCatalogueSearch(query, [
+          specification['name'],
+          ...(specification['alternate_names'] as List? ?? const []),
+        ]);
       }).toList();
 
       if (specifications.isEmpty) {
@@ -3130,17 +3301,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         if (query.isEmpty) return true;
         final code = grade['code']?.toString() ?? '';
         final name = grade['name']?.toString() ?? '';
-        return code.toLowerCase().contains(query) ||
-            name.toLowerCase().contains(query);
+        return matchesCatalogueSearch(query, [code, name]);
       }).toList();
 
+      if (grades.isEmpty && _loadingStock) {
+        return const Center(child: CircularProgressIndicator());
+      }
       if (grades.isEmpty) {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(26),
             child: Text(
               query.isEmpty
-                  ? 'No grades are linked to this subcategory yet.'
+                  ? 'No stocked products are available for this subcategory yet.'
                   : 'No grades match “${_searchController.text.trim()}”.',
               textAlign: TextAlign.center,
               style: const TextStyle(
@@ -3262,11 +3435,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     Widget resultsPanel() {
-      final directSearch = _searchController.text.trim().isNotEmpty;
+      final directSearch =
+          _searchController.text.trim().isNotEmpty || _halalOnly;
       final globalSearch = directSearch && !cutSelected;
 
       final title = globalSearch
-          ? 'Search Results'
+          ? (_halalOnly ? 'Halal Products' : 'Search Results')
           : !cutSelected
           ? 'Choose a Cut'
           : !subcategorySelected
@@ -3276,7 +3450,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           : 'Supplier Stock';
 
       final subtitle = globalSearch
-          ? 'Matching products from all suppliers.'
+          ? (_halalOnly
+                ? 'Products marked Halal by their supplier.'
+                : 'Matching products from all suppliers.')
           : !cutSelected
           ? 'Select a cut from the animal diagram or cut row.'
           : !subcategorySelected
@@ -3354,6 +3530,33 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               ),
             ),
             universalSearchBar(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All products'),
+                    selected: !_halalOnly,
+                    onSelected: (_) {
+                      setState(() => _halalOnly = false);
+                      _applySearch();
+                    },
+                  ),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.verified_outlined, size: 18),
+                    label: const Text('Halal only'),
+                    selected: _halalOnly,
+                    onSelected: (selected) {
+                      setState(() => _halalOnly = selected);
+                      _applySearch();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            _stockLoadingStatus(),
             if (showingStock) resultsToolbar(),
             Expanded(
               child: globalSearch

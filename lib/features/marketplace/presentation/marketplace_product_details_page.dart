@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../orders/presentation/draft_orders_page.dart';
+import '../../../shared/widgets/catalogue_product_image.dart';
 
 class MarketplaceProductDetailsPage extends StatefulWidget {
   const MarketplaceProductDetailsPage({super.key, required this.product});
@@ -1072,7 +1073,12 @@ class _MarketplaceProductDetailsPageState
     );
   }
 
-  Widget _compactField(String label, String value, {double width = 180}) {
+  Widget _compactField(
+    String label,
+    String value, {
+    double width = 180,
+    bool prominent = false,
+  }) {
     return SizedBox(
       width: width,
       child: Padding(
@@ -1092,11 +1098,11 @@ class _MarketplaceProductDetailsPageState
             const SizedBox(height: 3),
             Text(
               value,
-              maxLines: 2,
+              maxLines: prominent ? 4 : 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF202020),
-                fontSize: 13,
+              style: TextStyle(
+                color: const Color(0xFF202020),
+                fontSize: prominent ? 18 : 13,
                 height: 1.25,
                 fontWeight: FontWeight.w700,
               ),
@@ -1143,39 +1149,7 @@ class _MarketplaceProductDetailsPageState
   }
 
   Widget _productImagePlaceholder() {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 210),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F2F0),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD9DCDE)),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.add_photo_alternate_outlined,
-              size: 48,
-              color: Color(0xFF8A8F94),
-            ),
-            SizedBox(height: 9),
-            Text(
-              'Product image',
-              style: TextStyle(
-                color: Color(0xFF5F6469),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 3),
-            Text(
-              'Image support coming soon',
-              style: TextStyle(color: Color(0xFF8A8F94), fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
+    return CatalogueProductImage(product: widget.product);
   }
 
   Widget _compactOrderCard(Map<String, dynamic> product) {
@@ -1339,9 +1313,14 @@ class _MarketplaceProductDetailsPageState
     ];
 
     final meatFields = <MapEntry<String, String>>[
+      MapEntry('Grade / category', _variantName()),
+      MapEntry(
+        'Temperature',
+        _formatTemperature(product['temperature_state'] as String?),
+      ),
+      MapEntry('Bone', _textValue('bone_state')),
       MapEntry('Marbling', _textValue('marbling_score')),
       MapEntry('Breed / program', _textValue('breed_program')),
-      MapEntry('Halal', _halalLabel()),
       MapEntry('Trim', _textValue('trim_specification')),
       MapEntry('Fat', _textValue('fat_specification')),
       MapEntry('Piece weight', _pieceWeightText()),
@@ -1349,14 +1328,18 @@ class _MarketplaceProductDetailsPageState
       MapEntry('Packaging', _textValue('packaging_type')),
       MapEntry(
         'Origin',
-        [
-          _textValue('origin_country'),
-          _textValue('origin_state'),
-        ].where((value) => value != 'Not specified').join(' • '),
+        [_textValue('origin_country'), _textValue('origin_state')]
+            .where(
+              (value) => value != 'Not specified' && value != 'Not provided',
+            )
+            .join(' • '),
       ),
     ];
 
-    Widget fields(List<MapEntry<String, String>> values) {
+    Widget fields(
+      List<MapEntry<String, String>> values, {
+      bool prominent = false,
+    }) {
       return LayoutBuilder(
         builder: (context, constraints) {
           final columns = constraints.maxWidth >= 720
@@ -1371,8 +1354,14 @@ class _MarketplaceProductDetailsPageState
             children: [
               for (final item in values)
                 if (item.value.trim().isNotEmpty &&
-                    item.value != 'Not specified')
-                  _compactField(item.key, item.value, width: width),
+                    item.value != 'Not specified' &&
+                    item.value != 'Not provided')
+                  _compactField(
+                    item.key,
+                    item.value,
+                    width: width,
+                    prominent: prominent,
+                  ),
             ],
           );
         },
@@ -1498,7 +1487,36 @@ class _MarketplaceProductDetailsPageState
         _compactCard(
           title: 'Specifications',
           icon: Icons.tune_outlined,
-          child: fields(meatFields),
+          child: fields(meatFields, prominent: true),
+        ),
+        const SizedBox(height: 10),
+        _compactCard(
+          title: 'Halal',
+          icon: Icons.verified_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _halalLabel(),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: product['halal_status'] == 'halal'
+                      ? const Color(0xFF246342)
+                      : const Color(0xFF555B61),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                product['halal_status'] == 'halal'
+                    ? 'Declared Halal by the supplier. Contact the supplier for certification details.'
+                    : product['halal_status'] == 'not_halal'
+                    ? 'The supplier has marked this product as not Halal.'
+                    : 'The supplier has not specified Halal status for this product.',
+                style: const TextStyle(color: Color(0xFF5E6469), height: 1.35),
+              ),
+            ],
+          ),
         ),
         if (supplierSpecification.isNotEmpty) ...[
           const SizedBox(height: 10),

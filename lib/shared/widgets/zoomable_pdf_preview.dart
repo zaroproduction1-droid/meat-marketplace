@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -9,7 +10,7 @@ class ZoomablePdfPreview extends StatefulWidget {
     super.key,
     required this.documentKey,
     required this.buildPdf,
-    this.dpi = 420,
+    this.dpi = 540,
     this.minScale = 0.55,
     this.maxScale = 5,
     this.maxPageWidth = 920,
@@ -30,8 +31,10 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
   final TransformationController _controller = TransformationController();
   final GlobalKey _viewportKey = GlobalKey();
   late Future<List<Uint8List>> _pagesFuture;
-  double _lastViewportWidth = 0;
   bool _needsInitialCentre = true;
+  final List<GlobalKey> _pageKeys = [];
+  double _gestureStartScale = 1;
+  Offset _gestureSceneFocal = Offset.zero;
 
   @override
   void initState() {
@@ -77,21 +80,18 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
 
     final focal = focalPoint ?? _viewportCentre();
     final factor = next / currentScale;
-    final adjustment = Matrix4.identity()
-      ..translateByDouble(focal.dx, focal.dy, 0, 1)
+    final sceneFocal = _controller.toScene(focal);
+    final adjustment = Matrix4.copy(_controller.value)
+      ..translateByDouble(sceneFocal.dx, sceneFocal.dy, 0, 1)
       ..scaleByDouble(factor, factor, 1, 1)
-      ..translateByDouble(-focal.dx, -focal.dy, 0, 1)
-      ..multiply(_controller.value);
+      ..translateByDouble(-sceneFocal.dx, -sceneFocal.dy, 0, 1);
 
     _controller.value = adjustment;
     setState(() {});
   }
 
   void _applyCentredTransform() {
-    if (_lastViewportWidth <= 0) return;
-    const sidePanSpace = 900.0;
-    _controller.value = Matrix4.identity()
-      ..translateByDouble(-sidePanSpace, 0, 0, 1);
+    _controller.value = Matrix4.identity();
   }
 
   void _reset() {
@@ -99,10 +99,57 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
     if (mounted) setState(() {});
   }
 
+  bool _isOverPaper(Offset globalPosition) {
+    for (final key in _pageKeys) {
+      final object = key.currentContext?.findRenderObject();
+      if (object is RenderBox && object.hasSize) {
+        final local = object.globalToLocal(globalPosition);
+        if ((Offset.zero & object.size).contains(local)) return true;
+      }
+    }
+    return false;
+  }
+
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
-    final direction = event.scrollDelta.dy > 0 ? 0.90 : 1.10;
-    _setScale(_currentScale * direction, focalPoint: event.localPosition);
+    GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+      if (!mounted) return;
+      final viewport = _viewportKey.currentContext?.findRenderObject();
+      if (viewport is! RenderBox) return;
+      if (_isOverPaper(event.position)) {
+        final factor = math.exp(
+          -event.scrollDelta.dy.clamp(-240.0, 240.0) / 400,
+        );
+        _setScale(
+          _currentScale * factor,
+          focalPoint: viewport.globalToLocal(event.position),
+        );
+      } else {
+        final next = Matrix4.copy(_controller.value);
+        next.setTranslationRaw(
+          next.storage[12] - event.scrollDelta.dx,
+          next.storage[13] - event.scrollDelta.dy,
+          0,
+        );
+        _controller.value = next;
+      }
+    });
+  }
+
+  void _startGesture(ScaleStartDetails details) {
+    _gestureStartScale = _currentScale;
+    _gestureSceneFocal = _controller.toScene(details.localFocalPoint);
+  }
+
+  void _updateGesture(ScaleUpdateDetails details) {
+    final scale = (_gestureStartScale * details.scale)
+        .clamp(widget.minScale, widget.maxScale)
+        .toDouble();
+    final offset = details.localFocalPoint - _gestureSceneFocal * scale;
+    _controller.value = Matrix4.identity()
+      ..translateByDouble(offset.dx, offset.dy, 0, 1)
+      ..scaleByDouble(scale, scale, 1, 1);
+    setState(() {});
   }
 
   @override
@@ -131,12 +178,16 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
           return const Center(child: Text('No PDF pages to preview.'));
         }
 
+        while (_pageKeys.length < pages.length) {
+          _pageKeys.add(GlobalKey());
+        }
+        if (_pageKeys.length > pages.length) {
+          _pageKeys.removeRange(pages.length, _pageKeys.length);
+        }
+
         return LayoutBuilder(
           builder: (context, constraints) {
             final viewportWidth = constraints.maxWidth;
-            _lastViewportWidth = viewportWidth;
-            const sidePanSpace = 900.0;
-            final canvasWidth = viewportWidth + (sidePanSpace * 2);
             final pageWidth = (viewportWidth - 40)
                 .clamp(320.0, widget.maxPageWidth)
                 .toDouble();
@@ -159,61 +210,73 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                     child: ClipRect(
                       child: Listener(
                         onPointerSignal: _handlePointerSignal,
-                        child: InteractiveViewer(
-                          transformationController: _controller,
-                          minScale: widget.minScale,
-                          maxScale: widget.maxScale,
-                          panEnabled: true,
-                          scaleEnabled: true,
-                          constrained: false,
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none,
-                          boundaryMargin: const EdgeInsets.all(1200),
-                          child: SizedBox(
-                            width: canvasWidth,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: sidePanSpace + 20,
-                                vertical: 18,
+                        behavior: HitTestBehavior.opaque,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onScaleStart: _startGesture,
+                          onScaleUpdate: _updateGesture,
+                          child: OverflowBox(
+                            alignment: Alignment.topLeft,
+                            minHeight: 0,
+                            maxHeight: double.infinity,
+                            child: ValueListenableBuilder<Matrix4>(
+                              valueListenable: _controller,
+                              builder: (context, transform, child) => Transform(
+                                transform: transform,
+                                alignment: Alignment.topLeft,
+                                child: child,
                               ),
-                              child: Center(
-                                child: SizedBox(
-                                  width: pageWidth,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      for (
-                                        var i = 0;
-                                        i < pages.length;
-                                        i++
-                                      ) ...[
-                                        DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            boxShadow: const [
-                                              BoxShadow(
-                                                color: Color(0x22000000),
-                                                blurRadius: 12,
-                                                offset: Offset(0, 4),
+                              child: SizedBox(
+                                width: viewportWidth,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 18,
+                                  ),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: pageWidth,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          for (
+                                            var i = 0;
+                                            i < pages.length;
+                                            i++
+                                          ) ...[
+                                            DecoratedBox(
+                                              key: _pageKeys[i],
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                boxShadow: const [
+                                                  BoxShadow(
+                                                    color: Color(0x22000000),
+                                                    blurRadius: 12,
+                                                    offset: Offset(0, 4),
+                                                  ),
+                                                ],
+                                                border: Border.all(
+                                                  color: const Color(
+                                                    0xFFD5D8DC,
+                                                  ),
+                                                ),
                                               ),
-                                            ],
-                                            border: Border.all(
-                                              color: const Color(0xFFD5D8DC),
+                                              child: Image.memory(
+                                                pages[i],
+                                                width: pageWidth,
+                                                fit: BoxFit.fitWidth,
+                                                filterQuality:
+                                                    FilterQuality.high,
+                                                gaplessPlayback: true,
+                                                isAntiAlias: true,
+                                              ),
                                             ),
-                                          ),
-                                          child: Image.memory(
-                                            pages[i],
-                                            width: pageWidth,
-                                            fit: BoxFit.fitWidth,
-                                            filterQuality: FilterQuality.high,
-                                            gaplessPlayback: true,
-                                            isAntiAlias: true,
-                                          ),
-                                        ),
-                                        if (i != pages.length - 1)
-                                          const SizedBox(height: 20),
-                                      ],
-                                    ],
+                                            if (i != pages.length - 1)
+                                              const SizedBox(height: 20),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -245,7 +308,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                               size: 17,
                             ),
                             label: Text(
-                              '${(_currentScale * 100).round()}%',
+                              'Reset  ${(_currentScale * 100).round()}%',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
@@ -263,6 +326,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                   ),
                   const Positioned(
                     left: 16,
+                    right: 16,
                     bottom: 12,
                     child: IgnorePointer(
                       child: DecoratedBox(
@@ -276,7 +340,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                             vertical: 6,
                           ),
                           child: Text(
-                            'Scroll to zoom - drag in any direction - Reset to centre',
+                            'Wheel over paper to zoom • Outside paper to scroll • Drag to pan',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 11,
