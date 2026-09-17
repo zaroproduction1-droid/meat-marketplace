@@ -291,7 +291,11 @@ class _SupplierCustomerAccountPageState
                   id,
                   invoice_id,
                   amount,
-                  invoices(invoice_number)
+                  invoices(
+                    invoice_number,
+                    status,
+                    outstanding_amount
+                  )
                 )
               ''')
               .eq('supplier_business_id', supplierId)
@@ -347,6 +351,9 @@ class _SupplierCustomerAccountPageState
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
+
+  double _roundMoney(dynamic value) =>
+      (_asDouble(value) * 100).roundToDouble() / 100;
 
   String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
@@ -621,9 +628,11 @@ class _SupplierCustomerAccountPageState
       return 0;
     }
 
-    final amount = _asDouble(payment['amount']);
-    final allocated = _allocatedForPayment(id);
-    return (amount - allocated).clamp(0, double.infinity).toDouble();
+    final amount = _roundMoney(payment['amount']);
+    final allocated = _roundMoney(_allocatedForPayment(id));
+    return _roundMoney(
+      (amount - allocated).clamp(0, double.infinity).toDouble(),
+    );
   }
 
   bool get _canAllocateSelectedPayment {
@@ -790,8 +799,8 @@ class _SupplierCustomerAccountPageState
 
                           if (amount == null ||
                               amount <= 0 ||
-                              amount > available ||
-                              amount > outstanding) {
+                              amount > available + 0.005 ||
+                              amount > outstanding + 0.005) {
                             return;
                           }
 
@@ -1184,9 +1193,9 @@ class _SupplierCustomerAccountPageState
     final paymentId = payment['id']?.toString();
     if (paymentId == null) return;
 
-    final alreadyAllocated = _allocatedForPayment(paymentId);
-    final paymentAmount = _asDouble(payment['amount']);
-    final available = paymentAmount - alreadyAllocated;
+    final alreadyAllocated = _roundMoney(_allocatedForPayment(paymentId));
+    final paymentAmount = _roundMoney(payment['amount']);
+    final available = _roundMoney(paymentAmount - alreadyAllocated);
 
     final candidates =
         _invoices
@@ -1210,9 +1219,11 @@ class _SupplierCustomerAccountPageState
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (context, setDialogState) {
-              double enteredTotal() => controllers.values.fold(
-                0.0,
-                (sum, c) => sum + (double.tryParse(c.text.trim()) ?? 0),
+              double enteredTotal() => _roundMoney(
+                controllers.values.fold(
+                  0.0,
+                  (sum, c) => sum + (double.tryParse(c.text.trim()) ?? 0),
+                ),
               );
 
               return AlertDialog(
@@ -1346,9 +1357,9 @@ class _SupplierCustomerAccountPageState
                       Builder(
                         builder: (_) {
                           final entered = enteredTotal();
-                          final remaining = available - entered;
+                          final remaining = _roundMoney(available - entered);
                           final invalid =
-                              entered > available ||
+                              entered > available + 0.005 ||
                               candidates.any((invoice) {
                                 final enteredForInvoice =
                                     double.tryParse(
@@ -1359,7 +1370,8 @@ class _SupplierCustomerAccountPageState
                                     ) ??
                                     0;
                                 return enteredForInvoice >
-                                    _asDouble(invoice['outstanding_amount']);
+                                    _roundMoney(invoice['outstanding_amount']) +
+                                        0.005;
                               });
 
                           return Row(
@@ -1408,11 +1420,15 @@ class _SupplierCustomerAccountPageState
 
                         if (amount > 0) {
                           if (amount >
-                              _asDouble(invoice['outstanding_amount'])) {
+                              _roundMoney(invoice['outstanding_amount']) +
+                                  0.005) {
                             return;
                           }
 
-                          result.add({'invoice_id': id, 'amount': amount});
+                          result.add({
+                            'invoice_id': id,
+                            'amount': _roundMoney(amount),
+                          });
                         }
                       }
 
@@ -1421,7 +1437,7 @@ class _SupplierCustomerAccountPageState
                         (sum, item) => sum + _asDouble(item['amount']),
                       );
 
-                      if (total <= 0 || total > available) return;
+                      if (total <= 0 || total > available + 0.005) return;
 
                       Navigator.of(dialogContext).pop(result);
                     },
@@ -2224,6 +2240,33 @@ class _SupplierCustomerAccountPageState
     final id = submission['id']?.toString();
     if (id == null || _isSaving) return;
 
+    final paymentAmount = _asDouble(submission['amount']);
+    final proposedAllocations =
+        submission['customer_payment_submission_allocations'] is List
+        ? List<dynamic>.from(
+            submission['customer_payment_submission_allocations'] as List,
+          )
+        : <dynamic>[];
+    var availableForProposedInvoices = 0.0;
+
+    for (final raw in proposedAllocations.whereType<Map>()) {
+      final proposedAmount = _asDouble(raw['amount']);
+      final invoice = raw['invoices'];
+      final outstanding = invoice is Map
+          ? _asDouble(invoice['outstanding_amount'])
+          : 0.0;
+      availableForProposedInvoices += proposedAmount < outstanding
+          ? proposedAmount
+          : outstanding;
+    }
+
+    final invoiceAlreadyAllocated =
+        confirm &&
+        proposedAllocations.isNotEmpty &&
+        availableForProposedInvoices <= 0.005;
+    final willLeaveUnallocated =
+        confirm && availableForProposedInvoices + 0.005 < paymentAmount;
+
     final noteController = TextEditingController();
 
     final proceed = await showDialog<bool>(
@@ -2287,6 +2330,43 @@ class _SupplierCustomerAccountPageState
                       height: 1.4,
                     ),
                   ),
+                  if (willLeaveUnallocated) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF6E5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2B75B)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF8A5700),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              invoiceAlreadyAllocated
+                                  ? 'This invoice has already been allocated. '
+                                        'The payment can still be confirmed and '
+                                        'the funds will go to Unallocated Payments.'
+                                  : 'The invoice cannot accept the full payment. '
+                                        'Any remaining funds will go to '
+                                        'Unallocated Payments.',
+                              style: const TextStyle(
+                                color: Color(0xFF6D4600),
+                                fontWeight: FontWeight.w700,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -2370,12 +2450,30 @@ class _SupplierCustomerAccountPageState
     setState(() => _isSaving = true);
 
     try {
-      await Supabase.instance.client.rpc(
+      final response = await Supabase.instance.client.rpc(
         confirm
             ? 'confirm_butcher_account_payment'
             : 'reject_butcher_account_payment',
         params: {'target_submission_id': id, 'review_note_value': note},
       );
+
+      var confirmedUnallocated = 0.0;
+      if (confirm && response is Map) {
+        final paymentId = response['confirmed_payment_id']?.toString();
+        if (paymentId != null && paymentId.isNotEmpty) {
+          final allocationRows = await Supabase.instance.client
+              .from('payment_allocations')
+              .select('amount')
+              .eq('payment_id', paymentId)
+              .eq('status', 'active');
+          final allocated = List<Map<String, dynamic>>.from(
+            allocationRows,
+          ).fold<double>(0, (sum, row) => sum + _asDouble(row['amount']));
+          confirmedUnallocated = (paymentAmount - allocated)
+              .clamp(0, double.infinity)
+              .toDouble();
+        }
+      }
 
       await _loadPage();
 
@@ -2384,7 +2482,10 @@ class _SupplierCustomerAccountPageState
           SnackBar(
             content: Text(
               confirm
-                  ? 'Payment confirmed and added to the account ledger.'
+                  ? confirmedUnallocated > 0.005
+                        ? 'Payment confirmed. ${_money(confirmedUnallocated)} '
+                              'was added to Unallocated Payments.'
+                        : 'Payment confirmed and allocated to the invoice.'
                   : 'Payment submission rejected.',
             ),
           ),

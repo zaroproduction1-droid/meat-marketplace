@@ -341,6 +341,74 @@ class _SupplierCustomerRequestsPageState
     }
   }
 
+  Future<Map<String, dynamic>?> _accountForOpening(
+    Map<String, dynamic> relationship,
+  ) async {
+    final existing = _accountForRelationship(relationship);
+    if (existing != null) return existing;
+
+    await _ensureCustomerAccountForRelationship(relationship);
+
+    final supplierBusinessId = _supplierBusinessId;
+    final butcherBusinessId = relationship['butcher_business_id']?.toString();
+    if (supplierBusinessId == null || butcherBusinessId == null) return null;
+
+    final response = await Supabase.instance.client
+        .from('supplier_customer_accounts')
+        .select()
+        .eq('supplier_business_id', supplierBusinessId)
+        .eq('linked_butcher_business_id', butcherBusinessId)
+        .maybeSingle();
+
+    return response == null ? null : Map<String, dynamic>.from(response);
+  }
+
+  Future<void> _openRelationshipAccount(
+    Map<String, dynamic> relationship,
+  ) async {
+    try {
+      final account = await _accountForOpening(relationship);
+      if (account == null) {
+        throw Exception('The customer account could not be opened.');
+      }
+      if (!mounted) return;
+      await _openCustomerAccount(account);
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _editRelationshipAccount(
+    Map<String, dynamic> relationship,
+  ) async {
+    try {
+      final account = await _accountForOpening(relationship);
+      if (account == null) {
+        throw Exception('The customer account could not be opened.');
+      }
+      if (!mounted) return;
+      await _editCustomerAccount(account);
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
   Future<void> _updateStatus({
     required Map<String, dynamic> relationship,
     required String status,
@@ -413,7 +481,6 @@ class _SupplierCustomerRequestsPageState
     final business = relationship['businesses'] as Map<String, dynamic>?;
 
     if (supplierBusinessId == null ||
-        relationshipId == null ||
         butcherBusinessId == null ||
         business == null) {
       return;
@@ -617,86 +684,196 @@ class _SupplierCustomerRequestsPageState
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Widget fieldGrid(List<Widget> fields) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 620) {
+                    return Column(
+                      children: [
+                        for (var index = 0; index < fields.length; index++) ...[
+                          fields[index],
+                          if (index != fields.length - 1)
+                            const SizedBox(height: 12),
+                        ],
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var index = 0; index < fields.length; index++) ...[
+                        Expanded(child: fields[index]),
+                        if (index != fields.length - 1)
+                          const SizedBox(width: 12),
+                      ],
+                    ],
+                  );
+                },
+              );
+            }
+
+            Widget sectionHeader(IconData icon, String title) {
+              return Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4E5E5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 17, color: _darkRed),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return AlertDialog(
-              title: Text(
-                account == null ? 'Add External Customer' : 'Edit Customer',
+              backgroundColor: const Color(0xFFFAFAF9),
+              surfaceTintColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
               ),
+              titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 12),
+              title: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _darkRed,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(
+                      account == null
+                          ? Icons.person_add_alt_1
+                          : Icons.manage_accounts_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          account == null
+                              ? 'Add Customer'
+                              : 'Edit Account Settings',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          account == null
+                              ? 'Create a supplier-managed customer account.'
+                              : 'Update contact details and commercial terms.',
+                          style: const TextStyle(
+                            color: Color(0xFF6D6D6D),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 6, 24, 12),
               content: SizedBox(
-                width: 680,
+                width: 820,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      TextField(
-                        controller: customerNameController,
-                        autofocus: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Business name',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: contactNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact name',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: abnController,
-                        decoration: const InputDecoration(
-                          labelText: 'ABN (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Delivery address',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
+                      sectionHeader(Icons.badge_outlined, 'Customer details'),
+                      const SizedBox(height: 10),
+                      fieldGrid([
+                        TextField(
+                          controller: customerNameController,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Business name',
+                            prefixIcon: Icon(Icons.storefront_outlined),
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                      ),
+                        TextField(
+                          controller: contactNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Contact name',
+                            prefixIcon: Icon(Icons.person_outline),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ]),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: deliveryLine1Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Address line 1 (optional)',
-                          border: OutlineInputBorder(),
+                      fieldGrid([
+                        TextField(
+                          controller: abnController,
+                          decoration: const InputDecoration(
+                            labelText: 'ABN (optional)',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: deliveryLine2Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Address line 2 (optional)',
-                          border: OutlineInputBorder(),
+                        TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Email (optional)',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
+                        TextField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 20),
+                      sectionHeader(
+                        Icons.local_shipping_outlined,
+                        'Delivery address',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
+                      fieldGrid([
+                        TextField(
+                          controller: deliveryLine1Controller,
+                          decoration: const InputDecoration(
+                            labelText: 'Address line 1 (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        TextField(
+                          controller: deliveryLine2Controller,
+                          decoration: const InputDecoration(
+                            labelText: 'Address line 2 (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 12),
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final narrow = constraints.maxWidth < 560;
@@ -747,95 +924,100 @@ class _SupplierCustomerRequestsPageState
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Commercial terms',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
+                      const SizedBox(height: 20),
+                      sectionHeader(
+                        Icons.account_balance_wallet_outlined,
+                        'Commercial terms',
+                      ),
+                      const SizedBox(height: 10),
+                      fieldGrid([
+                        DropdownButtonFormField<String>(
+                          initialValue: paymentMethod,
+                          decoration: const InputDecoration(
+                            labelText: 'Payment type',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'cod', child: Text('COD')),
+                            DropdownMenuItem(
+                              value: 'prepaid',
+                              child: Text('Prepaid'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'account',
+                              child: Text('Account'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setDialogState(() {
+                              paymentMethod = value;
+                              if (value != 'account') {
+                                paymentTermsController.text = '0';
+                                creditLimitController.clear();
+                              }
+                            });
+                          },
+                        ),
+                        TextField(
+                          controller: accountReferenceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Account reference (optional)',
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: paymentMethod,
-                        decoration: const InputDecoration(
-                          labelText: 'Payment type',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'cod', child: Text('COD')),
-                          DropdownMenuItem(
-                            value: 'prepaid',
-                            child: Text('Prepaid'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'account',
-                            child: Text('Account'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-
-                          setDialogState(() {
-                            paymentMethod = value;
-
-                            if (value != 'account') {
-                              paymentTermsController.text = '0';
-                              creditLimitController.clear();
-                            }
-                          });
-                        },
-                      ),
+                      ]),
                       if (paymentMethod == 'account') ...[
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: paymentTermsController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Account terms (days)',
-                            hintText: 'Example: 7, 15, 30',
-                            border: OutlineInputBorder(),
+                        const SizedBox(height: 12),
+                        fieldGrid([
+                          TextField(
+                            controller: paymentTermsController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Account terms (days)',
+                              hintText: 'Example: 7, 15, 30',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: creditLimitController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          TextField(
+                            controller: creditLimitController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Credit limit (optional)',
+                              prefixText: '\$',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                          decoration: const InputDecoration(
-                            labelText: 'Credit limit (optional)',
-                            prefixText: '\$',
-                            border: OutlineInputBorder(),
+                          TextField(
+                            controller: issueWindowController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Issue window (hours)',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
+                        ]),
+                      ] else ...[
+                        const SizedBox(height: 12),
+                        fieldGrid([
+                          TextField(
+                            controller: issueWindowController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Issue reporting window (hours)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox.shrink(),
+                        ]),
                       ],
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: accountReferenceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Account reference (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: issueWindowController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Issue reporting window (hours)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
+              actionsPadding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
@@ -934,7 +1116,9 @@ class _SupplierCustomerRequestsPageState
                     });
                   },
                   style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  child: Text(account == null ? 'Add Customer' : 'Save'),
+                  child: Text(
+                    account == null ? 'Create Customer' : 'Save Changes',
+                  ),
                 ),
               ],
             );
@@ -1556,7 +1740,7 @@ class _SupplierCustomerRequestsPageState
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: account == null ? null : () => _openCustomerAccount(account),
+      onTap: () => _openRelationshipAccount(relationship),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -1633,44 +1817,47 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ),
                 ),
-                if (account != null)
-                  const Icon(Icons.chevron_right, color: _darkRed),
-                if (relationship['id'] != null || account != null)
-                  PopupMenuButton<String>(
-                    tooltip: 'Member actions',
-                    onSelected: (value) {
-                      if (value == 'edit' && account != null) {
-                        _editCustomerAccount(account);
-                      } else if (value == 'suspend') {
-                        _updateStatus(
-                          relationship: relationship,
-                          status: 'suspended',
-                        );
-                      } else if (value == 'approve') {
-                        _updateStatus(
-                          relationship: relationship,
-                          status: 'approved',
-                        );
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      if (account != null)
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Edit Account Settings'),
-                        ),
-                      if (status == 'approved')
-                        const PopupMenuItem(
-                          value: 'suspend',
-                          child: Text('Suspend Access'),
-                        ),
-                      if (status == 'suspended' || status == 'declined')
-                        const PopupMenuItem(
-                          value: 'approve',
-                          child: Text('Approve Access'),
-                        ),
-                    ],
-                  ),
+                const Icon(Icons.chevron_right, color: _darkRed),
+                PopupMenuButton<String>(
+                  tooltip: 'Member actions',
+                  onSelected: (value) {
+                    if (value == 'open') {
+                      _openRelationshipAccount(relationship);
+                    } else if (value == 'edit') {
+                      _editRelationshipAccount(relationship);
+                    } else if (value == 'suspend') {
+                      _updateStatus(
+                        relationship: relationship,
+                        status: 'suspended',
+                      );
+                    } else if (value == 'approve') {
+                      _updateStatus(
+                        relationship: relationship,
+                        status: 'approved',
+                      );
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'open',
+                      child: Text('Open Account'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit Account Settings'),
+                    ),
+                    if (status == 'approved')
+                      const PopupMenuItem(
+                        value: 'suspend',
+                        child: Text('Suspend Access'),
+                      ),
+                    if (status == 'suspended' || status == 'declined')
+                      const PopupMenuItem(
+                        value: 'approve',
+                        child: Text('Approve Access'),
+                      ),
+                  ],
+                ),
               ],
             ),
             if (summary != null) ...[

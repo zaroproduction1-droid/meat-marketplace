@@ -1072,8 +1072,537 @@ class _MarketplaceProductDetailsPageState
     );
   }
 
+  Widget _compactField(String label, String value, {double width = 180}) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF777777),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .45,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF202020),
+                fontSize: 13,
+                height: 1.25,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE1E3E5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF741C1C), size: 18),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _productImagePlaceholder() {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 210),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F2F0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD9DCDE)),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_photo_alternate_outlined,
+              size: 48,
+              color: Color(0xFF8A8F94),
+            ),
+            SizedBox(height: 9),
+            Text(
+              'Product image',
+              style: TextStyle(
+                color: Color(0xFF5F6469),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 3),
+            Text(
+              'Image support coming soon',
+              style: TextStyle(color: Color(0xFF8A8F94), fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactOrderCard(Map<String, dynamic> product) {
+    final price = _findVisiblePrice();
+    final amount = price?['amount'];
+    final unitPrice = amount is num
+        ? amount.toDouble()
+        : double.tryParse(amount?.toString() ?? '');
+    final quantityUnit = _orderQuantityUnit(price);
+    final unitLabel = _orderQuantityUnitLabel(quantityUnit);
+    final minimum = price?['minimum_quantity'];
+    final catchWeightKgPricing = _isCatchWeightKgPricing(price);
+    final requiresWholeNumber =
+        quantityUnit == 'carton' || quantityUnit == 'unit';
+    final estimatedTotal = !catchWeightKgPricing && unitPrice != null
+        ? unitPrice * _orderQuantityPreview
+        : null;
+    final unavailable = product['availability_status'] == 'out_of_stock';
+
+    return _compactCard(
+      title: 'Order Product',
+      icon: Icons.add_shopping_cart_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildCustomerPriceDisplay(
+            visiblePrice: price,
+            alignment: CrossAxisAlignment.start,
+            priceFontSize: 25,
+          ),
+          if (minimum != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Minimum ${_formatNumber(minimum)} $unitLabel',
+              style: const TextStyle(color: Color(0xFF666666), fontSize: 11),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (unitPrice == null)
+            const Text(
+              'A visible price is required before ordering.',
+              style: TextStyle(color: Color(0xFF666666)),
+            )
+          else if (unavailable)
+            const Text(
+              'This product is currently out of stock.',
+              style: TextStyle(color: Color(0xFFB3261E)),
+            )
+          else ...[
+            TextField(
+              controller: _quantityController,
+              keyboardType: TextInputType.numberWithOptions(
+                decimal: !requiresWholeNumber,
+              ),
+              onChanged: (value) {
+                final parsed = double.tryParse(value.trim());
+                setState(() {
+                  _orderQuantityPreview = parsed != null && parsed > 0
+                      ? parsed
+                      : 0;
+                });
+              },
+              decoration: InputDecoration(
+                isDense: true,
+                labelText: 'Quantity',
+                suffixText: unitLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F7F5),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      catchWeightKgPricing
+                          ? 'Final total after weighing'
+                          : 'Order total',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    catchWeightKgPricing
+                        ? 'Pending weight'
+                        : _formatMoney(estimatedTotal ?? 0),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF741C1C),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (catchWeightKgPricing) ...[
+              const SizedBox(height: 7),
+              const Text(
+                'The supplier confirms actual kilograms during preparation.',
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 10.5,
+                  height: 1.3,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _isAddingToOrder ? null : _addToOrder,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              icon: _isAddingToOrder
+                  ? const SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.add_shopping_cart),
+              label: Text(_isAddingToOrder ? 'Adding' : 'Add to Order'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactProductDetails(BuildContext context) {
+    final product = widget.product;
+    final visiblePrice = _findVisiblePrice();
+    final supplierSpecification =
+        product['supplier_specification']?.toString().trim() ?? '';
+
+    final detailFields = <MapEntry<String, String>>[
+      MapEntry('SKU', product['sku']?.toString() ?? 'Not provided'),
+      MapEntry('Brand', _textValue('brand')),
+      MapEntry('Available', _availableQuantityText()),
+      MapEntry('Animal', _speciesName()),
+      MapEntry('Section', _newSectionName()),
+      MapEntry('Specification', _currentCatalogueProductName()),
+      MapEntry('Grade', _variantName()),
+      MapEntry(
+        'Temperature',
+        _formatTemperature(product['temperature_state'] as String?),
+      ),
+      MapEntry(
+        'Availability',
+        _formatAvailability(product['availability_status'] as String?),
+      ),
+    ];
+
+    final meatFields = <MapEntry<String, String>>[
+      MapEntry('Marbling', _textValue('marbling_score')),
+      MapEntry('Breed / program', _textValue('breed_program')),
+      MapEntry('Halal', _halalLabel()),
+      MapEntry('Trim', _textValue('trim_specification')),
+      MapEntry('Fat', _textValue('fat_specification')),
+      MapEntry('Piece weight', _pieceWeightText()),
+      MapEntry('Carton', _cartonText()),
+      MapEntry('Packaging', _textValue('packaging_type')),
+      MapEntry(
+        'Origin',
+        [
+          _textValue('origin_country'),
+          _textValue('origin_state'),
+        ].where((value) => value != 'Not specified').join(' • '),
+      ),
+    ];
+
+    Widget fields(List<MapEntry<String, String>> values) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 720
+              ? 4
+              : constraints.maxWidth >= 470
+              ? 2
+              : 1;
+          final width = (constraints.maxWidth - ((columns - 1) * 12)) / columns;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 1,
+            children: [
+              for (final item in values)
+                if (item.value.trim().isNotEmpty &&
+                    item.value != 'Not specified')
+                  _compactField(item.key, item.value, width: width),
+            ],
+          );
+        },
+      );
+    }
+
+    final identity = _compactCard(
+      title: 'Product',
+      icon: Icons.inventory_2_outlined,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stack = constraints.maxWidth < 700;
+          final image = SizedBox(
+            width: stack ? double.infinity : 265,
+            child: _productImagePlaceholder(),
+          );
+          final information = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _gradeIdentityBadge(),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _newSpecificationName(),
+                          style: const TextStyle(
+                            fontSize: 25,
+                            height: 1.05,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _supplierName(),
+                          style: const TextStyle(
+                            color: Color(0xFF741C1C),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _fullCataloguePath(),
+                style: const TextStyle(
+                  color: Color(0xFF5E6469),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCustomerPriceDisplay(
+                visiblePrice: visiblePrice,
+                alignment: CrossAxisAlignment.start,
+                priceFontSize: 23,
+              ),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  Chip(
+                    label: Text(
+                      _formatTemperature(
+                        product['temperature_state'] as String?,
+                      ),
+                    ),
+                  ),
+                  Chip(
+                    label: Text(
+                      _formatAvailability(
+                        product['availability_status'] as String?,
+                      ),
+                    ),
+                  ),
+                  if (_halalLabel() != 'Not specified')
+                    Chip(
+                      avatar: const Icon(Icons.verified_outlined, size: 16),
+                      label: Text(_halalLabel()),
+                    ),
+                  if (product['catch_weight'] == true)
+                    const Chip(label: Text('Catch weight')),
+                ],
+              ),
+            ],
+          );
+
+          if (stack) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [image, const SizedBox(height: 14), information],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              image,
+              const SizedBox(width: 18),
+              Expanded(child: information),
+            ],
+          );
+        },
+      ),
+    );
+
+    final details = Column(
+      children: [
+        _compactCard(
+          title: 'Product Details',
+          icon: Icons.fact_check_outlined,
+          child: fields(detailFields),
+        ),
+        const SizedBox(height: 10),
+        _compactCard(
+          title: 'Specifications',
+          icon: Icons.tune_outlined,
+          child: fields(meatFields),
+        ),
+        if (supplierSpecification.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _compactCard(
+            title: 'Supplier Specification',
+            icon: Icons.description_outlined,
+            child: Text(
+              supplierSpecification,
+              style: const TextStyle(color: Color(0xFF4E5357), height: 1.4),
+            ),
+          ),
+        ],
+      ],
+    );
+
+    final side = Column(
+      children: [
+        _compactOrderCard(product),
+        const SizedBox(height: 10),
+        _compactCard(
+          title: 'Supplier Access',
+          icon: Icons.verified_user_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Approved customers can access customer pricing and order from this supplier.',
+                style: TextStyle(
+                  color: Color(0xFF5E6469),
+                  fontSize: 11,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _buildRelationshipButton(),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6F4),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: const Text(
+          'Product Details',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _openDraftOrdersPage,
+            tooltip: 'Draft orders',
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 980;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(desktop ? 16 : 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1280),
+                child: Column(
+                  children: [
+                    identity,
+                    const SizedBox(height: 10),
+                    if (desktop)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: details),
+                          const SizedBox(width: 10),
+                          SizedBox(width: 350, child: side),
+                        ],
+                      )
+                    else ...[
+                      side,
+                      const SizedBox(height: 10),
+                      details,
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    return _buildCompactProductDetails(context);
+  }
+
+  // Kept temporarily as a safe fallback while the compact marketplace layout
+  // is rolled out; all current navigation uses the compact layout above.
+  // ignore: unused_element
+  Widget _buildLegacyProductDetails(BuildContext context) {
     final product = widget.product;
     final usesCanonicalCatalogue = _usesCanonicalCatalogue();
     final catalogueNames = _catalogueProductPathNames();

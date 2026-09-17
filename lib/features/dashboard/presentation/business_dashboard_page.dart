@@ -23,6 +23,7 @@ import '../../orders/presentation/supplier_sales_page.dart';
 import '../../orders/presentation/supplier_settings_page.dart';
 import '../../orders/presentation/supplier_unified_orders_page.dart';
 import '../../orders/presentation/supplier_work_orders_page.dart';
+import '../../support/presentation/support_center_page.dart';
 
 class BusinessDashboardPage extends StatefulWidget {
   const BusinessDashboardPage({super.key});
@@ -48,6 +49,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   int _newSupplierOrderCount = 0;
   int _butcherCartItemCount = 0;
+  int _supportUnreadCount = 0;
 
   String? _errorMessage;
   String? _businessId;
@@ -185,6 +187,31 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       var supplierProducts = <Map<String, dynamic>>[];
       var supplierDeliveryRuns = <Map<String, dynamic>>[];
       var pendingVipApplications = 0;
+      var supportUnreadCount = 0;
+
+      var supportQuery = client.from('support_tickets').select('''
+        last_message_at,
+        requester_last_read_at,
+        admin_last_read_at
+      ''');
+      if (!isAdmin) {
+        supportQuery = supportQuery.eq('business_id', businessId);
+      }
+      final supportRows = await supportQuery;
+      for (final row in supportRows) {
+        final lastMessageAt = DateTime.tryParse(
+          row['last_message_at']?.toString() ?? '',
+        );
+        final lastReadAt = DateTime.tryParse(
+          row[isAdmin ? 'admin_last_read_at' : 'requester_last_read_at']
+                  ?.toString() ??
+              '',
+        );
+        if (lastMessageAt != null &&
+            (lastReadAt == null || lastMessageAt.isAfter(lastReadAt))) {
+          supportUnreadCount++;
+        }
+      }
 
       if (businessType == 'supplier') {
         final supplierOrderResponse = await client
@@ -434,6 +461,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _butcherOrders = butcherOrders;
         _butcherAccounts = butcherAccounts;
         _butcherCartItemCount = butcherCartItemCount;
+        _supportUnreadCount = supportUnreadCount;
         _supplierOrders = supplierOrders;
         _supplierAccounts = supplierAccounts;
         _supplierInvoices = supplierInvoices;
@@ -510,6 +538,19 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             value: businessId,
           ),
           callback: scheduleRefresh,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'support_tickets',
+          filter: _isAdmin
+              ? null
+              : PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'business_id',
+                  value: businessId,
+                ),
+          callback: scheduleRefresh,
         );
 
     if (businessType == 'supplier') {
@@ -564,6 +605,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (page is ButcherAccountsPage) return 'accounts';
     if (page is ButcherSettingsPage) return 'settings';
     if (page is BusinessAnalyticsPage) return 'analytics';
+    if (page is SupportCenterPage) return 'support';
 
     if (page is SupplierSalesPage) return 'sales';
     if (page is SupplierUnifiedOrdersPage) return 'invoices';
@@ -652,6 +694,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _refreshBusinessBranding();
         },
       ),
+    );
+  }
+
+  void _openSupport() {
+    final businessId = _businessId;
+    if (businessId == null) return;
+
+    _openPage(
+      SupportCenterPage(businessId: businessId, adminMode: _isAdmin),
+      workspaceKey: 'support',
     );
   }
 
@@ -1156,6 +1208,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             'supplier_accounts',
             'supplier_inventory',
             'supplier_sales',
+            'supplier_support',
             'supplier_quick_actions',
           ]
         : const <String>[
@@ -1165,6 +1218,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             'butcher_delivery',
             'butcher_quick_reorder',
             'butcher_purchasing',
+            'butcher_support',
             'butcher_quick_actions',
           ];
 
@@ -1237,6 +1291,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         return 'Inventory Snapshot';
       case 'supplier_sales':
         return 'Sales Overview';
+      case 'supplier_support':
+      case 'butcher_support':
+        return 'CutLink Support';
       case 'supplier_quick_actions':
       case 'butcher_quick_actions':
         return 'Quick Actions';
@@ -1269,6 +1326,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         return _supplierInventorySnapshotCard();
       case 'supplier_sales':
         return _supplierSalesOverviewCard();
+      case 'supplier_support':
+        return _supportDashboardCard();
       case 'supplier_quick_actions':
         return _supplierQuickActionsCard();
       case 'butcher_attention':
@@ -1283,11 +1342,71 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         return _quickReorderCard();
       case 'butcher_purchasing':
         return _purchasingOverviewCard();
+      case 'butcher_support':
+        return _supportDashboardCard();
       case 'butcher_quick_actions':
         return _quickActionsCard();
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _supportDashboardCard() {
+    final unread = _supportUnreadCount;
+    return _sectionCard(
+      title: 'CutLink Support',
+      trailing: unread > 0 ? _smallBadge(unread.toString()) : null,
+      actionText: 'Open Support',
+      onAction: _openSupport,
+      child: InkWell(
+        onTap: _openSupport,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8EDEE),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.support_agent, color: _darkRed),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      unread > 0
+                          ? '$unread unread support ${unread == 1 ? 'message' : 'messages'}'
+                          : 'Contact CutLink or review your tickets',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _isAdmin
+                          ? 'Review supplier and butcher support requests.'
+                          : 'Create a ticket and chat directly with CutLink.',
+                      style: const TextStyle(
+                        color: Color(0xFF6A6E75),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF777B82)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _butcherDeliveryOperationsCard() {
@@ -2507,6 +2626,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       const ButcherNotificationSettingsPage(),
                       workspaceKey: 'notifications',
                     ),
+                  ),
+                  _sideItem(
+                    Icons.support_agent_outlined,
+                    'Support',
+                    selected: _workspaceKey == 'support',
+                    badgeCount: _supportUnreadCount,
+                    onTap: _openSupport,
                   ),
                   _sideItem(
                     Icons.settings_outlined,
@@ -3828,6 +3954,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     ),
                   ),
                   _sideItem(
+                    Icons.support_agent_outlined,
+                    'Support',
+                    selected: _workspaceKey == 'support',
+                    badgeCount: _supportUnreadCount,
+                    onTap: _openSupport,
+                  ),
+                  _sideItem(
                     Icons.settings_outlined,
                     'Settings',
                     selected: _workspaceKey == 'settings',
@@ -4161,6 +4294,15 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                             'Manage delivery days, zones and minimum orders.',
                         onTap: () =>
                             _openPage(const SupplierDeliverySettingsPage()),
+                      ),
+                      _LegacyDashboardCard(
+                        width: cardWidth,
+                        icon: Icons.support_agent_outlined,
+                        title: 'CutLink Support',
+                        description:
+                            'Create support tickets and chat with CutLink.',
+                        badgeCount: _supportUnreadCount,
+                        onTap: _openSupport,
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
