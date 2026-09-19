@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
 
@@ -20,6 +21,168 @@ class _MarketplaceProductDetailsPageState
     text: '1',
   );
 
+  Map<String, dynamic> _supplierProfile = {};
+  bool _loadingSupplierProfile = true;
+  bool _supplierProfileFailed = false;
+
+  Future<void> _loadSupplierProfile() async {
+    if (mounted) {
+      setState(() {
+        _loadingSupplierProfile = true;
+        _supplierProfileFailed = false;
+      });
+    }
+    try {
+      final id = widget.product['supplier_business_id']?.toString();
+      if (id == null || id.isEmpty) throw StateError('Missing supplier');
+      final profile = await Supabase.instance.client
+          .from('businesses')
+          .select(
+            'trading_name, legal_name, logo_path, business_email, business_phone, '
+            'address_line_1, address_line_2, suburb, state, postcode',
+          )
+          .eq('id', id)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      setState(() {
+        _supplierProfile = profile == null
+            ? {}
+            : Map<String, dynamic>.from(profile);
+        _supplierProfileFailed = profile == null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _supplierProfileFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingSupplierProfile = false);
+    }
+  }
+
+  Widget _supplierContactPanel() {
+    String value(String key) => _supplierProfile[key]?.toString().trim() ?? '';
+    final embedded = widget.product['businesses'];
+    final logoPath = value('logo_path').isNotEmpty
+        ? value('logo_path')
+        : embedded is Map
+        ? embedded['logo_path']?.toString().trim() ?? ''
+        : '';
+    final name = value('trading_name').isNotEmpty
+        ? value('trading_name')
+        : value('legal_name').isNotEmpty
+        ? value('legal_name')
+        : _supplierName();
+    final address = [
+      value('address_line_1'),
+      value('address_line_2'),
+      [
+        value('suburb'),
+        value('state'),
+        value('postcode'),
+      ].where((v) => v.isNotEmpty).join(' '),
+    ].where((v) => v.isNotEmpty).join('\n');
+    Widget contact(IconData icon, String text, String fallback) => Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF741C1C)),
+          const SizedBox(width: 9),
+          Expanded(
+            child: SelectableText(
+              text.isEmpty ? fallback : text,
+              style: const TextStyle(fontSize: 13, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+    const fallbackLogo = Icon(
+      Icons.storefront_outlined,
+      size: 34,
+      color: Color(0xFF741C1C),
+    );
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF8F7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8DEDB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 64,
+                child: logoPath.isEmpty
+                    ? fallbackLogo
+                    : Image.network(
+                        Supabase.instance.client.storage
+                            .from('business-branding')
+                            .getPublicUrl(logoPath),
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        semanticLabel: '$name logo',
+                        errorBuilder: (_, error, stackTrace) => fallbackLogo,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'SUPPLIER',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF666666)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_loadingSupplierProfile)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(minHeight: 2),
+            )
+          else if (_supplierProfileFailed)
+            TextButton.icon(
+              onPressed: _loadSupplierProfile,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry supplier contact details'),
+            )
+          else ...[
+            contact(
+              Icons.location_on_outlined,
+              address,
+              'Address not provided',
+            ),
+            contact(
+              Icons.email_outlined,
+              value('business_email'),
+              'Email not provided',
+            ),
+            contact(
+              Icons.phone_outlined,
+              value('business_phone'),
+              'Phone not provided',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   bool _isCheckingRelationship = true;
   bool _isSubmittingRequest = false;
   bool _isAddingToOrder = false;
@@ -33,6 +196,7 @@ class _MarketplaceProductDetailsPageState
   void initState() {
     super.initState();
     _loadRelationshipStatus();
+    _loadSupplierProfile();
   }
 
   @override
@@ -148,25 +312,9 @@ class _MarketplaceProductDetailsPageState
     }
   }
 
-  bool _usesCanonicalCatalogue() {
-    return widget.product['meat_specification_id'] != null;
-  }
-
   String _speciesName() {
     final value = _newAnimalName();
     return value.isEmpty ? 'Not linked' : value;
-  }
-
-  List<String> _catalogueProductPathNames() {
-    return <String>[
-      _newSectionName(),
-      _newSpecificationName(),
-    ].where((value) => value.trim().isNotEmpty).toList();
-  }
-
-  String _catalogueProductPath() {
-    final names = _catalogueProductPathNames();
-    return names.isEmpty ? 'Not linked' : names.join(' → ');
   }
 
   String _currentCatalogueProductName() {
@@ -918,25 +1066,8 @@ class _MarketplaceProductDetailsPageState
   }
 
   String _pieceWeightText() {
-    final min = widget.product['piece_weight_min'];
-    final max = widget.product['piece_weight_max'];
-    final unit = widget.product['piece_weight_unit']?.toString();
-
-    if (min == null && max == null) {
-      return 'Not provided';
-    }
-
-    final suffix = unit == null || unit.trim().isEmpty ? '' : ' ${unit.trim()}';
-
-    if (min != null && max != null) {
-      return '${_formatNumber(min)}–${_formatNumber(max)}$suffix';
-    }
-
-    if (min != null) {
-      return '${_formatNumber(min)}+$suffix';
-    }
-
-    return 'Up to ${_formatNumber(max)}$suffix';
+    final label = productSizeLabel(widget.product);
+    return label.isEmpty ? 'Not provided' : label;
   }
 
   String _cartonText() {
@@ -1055,22 +1186,6 @@ class _MarketplaceProductDetailsPageState
           ),
         );
     }
-  }
-
-  Widget _section({required String title, required List<Widget> children}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        const SizedBox(height: 20),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 18),
-        ...children,
-      ],
-    );
   }
 
   Widget _compactField(
@@ -1460,18 +1575,39 @@ class _MarketplaceProductDetailsPageState
 
           if (stack) {
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [image, const SizedBox(height: 14), information],
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                image,
+                const SizedBox(height: 14),
+                information,
+                const SizedBox(height: 14),
+                _supplierContactPanel(),
+              ],
             );
           }
-          return Row(
+          final wide = constraints.maxWidth >= 1100;
+          final productRow = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               image,
               const SizedBox(width: 18),
               Expanded(child: information),
+              if (wide) ...[
+                const SizedBox(width: 18),
+                SizedBox(width: 340, child: _supplierContactPanel()),
+              ],
             ],
           );
+          return wide
+              ? productRow
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    productRow,
+                    const SizedBox(height: 14),
+                    _supplierContactPanel(),
+                  ],
+                );
         },
       ),
     );
@@ -1615,709 +1751,5 @@ class _MarketplaceProductDetailsPageState
   @override
   Widget build(BuildContext context) {
     return _buildCompactProductDetails(context);
-  }
-
-  // Kept temporarily as a safe fallback while the compact marketplace layout
-  // is rolled out; all current navigation uses the compact layout above.
-  // ignore: unused_element
-  Widget _buildLegacyProductDetails(BuildContext context) {
-    final product = widget.product;
-    final usesCanonicalCatalogue = _usesCanonicalCatalogue();
-    final catalogueNames = _catalogueProductPathNames();
-
-    final visiblePrice = _findVisiblePrice();
-    final minimumQuantity = visiblePrice?['minimum_quantity'];
-
-    final supplierSpecification = product['supplier_specification']
-        ?.toString()
-        .trim();
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Product Details',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _openDraftOrdersPage,
-            tooltip: 'Draft orders',
-            icon: const Icon(Icons.shopping_cart_outlined),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 650;
-
-                          final titleBlock = Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _gradeIdentityBadge(),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _newSpecificationName(),
-                                      style: const TextStyle(
-                                        fontSize: 30,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 7),
-                                    if (_newSectionName().isNotEmpty)
-                                      Text(
-                                        [
-                                          if (_newAnimalName().isNotEmpty)
-                                            _newAnimalName(),
-                                          _newSectionName(),
-                                        ].join(' • '),
-                                        style: const TextStyle(
-                                          color: Color(0xFF666666),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _supplierName(),
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        color: Color(0xFF741C1C),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-
-                          final priceBlock = Column(
-                            crossAxisAlignment: narrow
-                                ? CrossAxisAlignment.start
-                                : CrossAxisAlignment.end,
-                            children: [
-                              _buildCustomerPriceDisplay(
-                                visiblePrice: visiblePrice,
-                                alignment: narrow
-                                    ? CrossAxisAlignment.start
-                                    : CrossAxisAlignment.end,
-                                priceFontSize: 24,
-                              ),
-                              if (minimumQuantity != null) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Minimum: ${_formatNumber(minimumQuantity)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          );
-
-                          if (narrow) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                titleBlock,
-                                const SizedBox(height: 18),
-                                priceBlock,
-                              ],
-                            );
-                          }
-
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: titleBlock),
-                              const SizedBox(width: 24),
-                              priceBlock,
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 22),
-
-                      Text(
-                        _fullCataloguePath(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF5E5E5E),
-                          height: 1.5,
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          if (_speciesName() != 'Not linked')
-                            Chip(label: Text(_speciesName())),
-
-                          if (usesCanonicalCatalogue)
-                            for (final name in catalogueNames)
-                              Chip(label: Text(name)),
-
-                          if (!usesCanonicalCatalogue &&
-                              _currentCatalogueProductName() != 'Not linked')
-                            Chip(label: Text(_currentCatalogueProductName())),
-
-                          Chip(
-                            label: Text(
-                              _formatTemperature(
-                                product['temperature_state'] as String?,
-                              ),
-                            ),
-                          ),
-
-                          Chip(
-                            label: Text(
-                              _formatAvailability(
-                                product['availability_status'] as String?,
-                              ),
-                            ),
-                          ),
-
-                          if (_halalLabel() != 'Not specified')
-                            Chip(
-                              avatar: const Icon(
-                                Icons.verified_outlined,
-                                size: 17,
-                              ),
-                              label: Text(_halalLabel()),
-                            ),
-
-                          if (product['catch_weight'] == true)
-                            const Chip(
-                              avatar: Icon(
-                                Icons.monitor_weight_outlined,
-                                size: 17,
-                              ),
-                              label: Text('Catch weight'),
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      _section(
-                        title: 'Product Information',
-                        children: [
-                          _DetailRow(
-                            label: 'SKU',
-                            value: product['sku']?.toString() ?? 'Not provided',
-                          ),
-                          _DetailRow(
-                            label: 'Brand',
-                            value: _textValue('brand'),
-                          ),
-                          _DetailRow(
-                            label: 'Available quantity',
-                            value: _availableQuantityText(),
-                          ),
-                          _DetailRow(
-                            label: 'Storage condition',
-                            value: _formatTemperature(
-                              product['temperature_state'] as String?,
-                            ),
-                          ),
-                          _DetailRow(
-                            label: 'Availability',
-                            value: _formatAvailability(
-                              product['availability_status'] as String?,
-                            ),
-                          ),
-                          if (usesCanonicalCatalogue) ...[
-                            _DetailRow(label: 'Animal', value: _speciesName()),
-                            _DetailRow(
-                              label: 'Cut path',
-                              value: _catalogueProductPath(),
-                            ),
-                            _DetailRow(
-                              label: 'Specification',
-                              value: _currentCatalogueProductName(),
-                            ),
-                            _DetailRow(label: 'Grade', value: _variantName()),
-                          ],
-                        ],
-                      ),
-
-                      if (product['meat_specification_id'] != null &&
-                          product['meat_grade_id'] != null)
-                        _section(
-                          title: 'Exact Marketplace Selection',
-                          children: [
-                            _DetailRow(
-                              label: 'Animal',
-                              value: _newAnimalName().isEmpty
-                                  ? 'Not specified'
-                                  : _newAnimalName(),
-                            ),
-                            _DetailRow(
-                              label: 'Cut section',
-                              value: _newSectionName().isEmpty
-                                  ? 'Not specified'
-                                  : _newSectionName(),
-                            ),
-                            _DetailRow(
-                              label: 'Specification',
-                              value: _newSpecificationName(),
-                            ),
-                            _DetailRow(
-                              label: 'Grade / category',
-                              value: _newGradeName().isEmpty
-                                  ? _newGradeCode()
-                                  : '${_newGradeCode()} — ${_newGradeName()}',
-                            ),
-                            const Text(
-                              'This exact supplier + specification + grade is what will be locked into the order.',
-                              style: TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 12.5,
-                                height: 1.4,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      _section(
-                        title: 'Meat Specifications',
-                        children: [
-                          _DetailRow(
-                            label: 'Marbling / MB score',
-                            value: _textValue('marbling_score'),
-                          ),
-                          _DetailRow(
-                            label: 'Grade',
-                            value: _newGradeName().isEmpty
-                                ? _newGradeCode()
-                                : '${_newGradeCode()} — ${_newGradeName()}',
-                          ),
-                          _DetailRow(
-                            label: 'Breed / program',
-                            value: _textValue('breed_program'),
-                          ),
-                          _DetailRow(
-                            label: 'Halal status',
-                            value: _halalLabel(),
-                          ),
-                          _DetailRow(
-                            label: 'Trim specification',
-                            value: _textValue('trim_specification'),
-                          ),
-                          _DetailRow(
-                            label: 'Fat specification',
-                            value: _textValue('fat_specification'),
-                          ),
-                        ],
-                      ),
-
-                      _section(
-                        title: 'Piece and Carton Details',
-                        children: [
-                          _DetailRow(
-                            label: 'Piece weight',
-                            value: _pieceWeightText(),
-                          ),
-                          _DetailRow(label: 'Carton', value: _cartonText()),
-                          _DetailRow(
-                            label: 'Packaging',
-                            value: _textValue('packaging_type'),
-                          ),
-                          _DetailRow(
-                            label: 'Catch weight',
-                            value: product['catch_weight'] == true
-                                ? 'Yes'
-                                : 'No',
-                          ),
-                        ],
-                      ),
-
-                      _section(
-                        title: 'Origin',
-                        children: [
-                          _DetailRow(
-                            label: 'Country',
-                            value: _textValue('origin_country'),
-                          ),
-                          _DetailRow(
-                            label: 'State',
-                            value: _textValue('origin_state'),
-                          ),
-                        ],
-                      ),
-
-                      if (supplierSpecification != null &&
-                          supplierSpecification.isNotEmpty)
-                        _section(
-                          title: 'Supplier Specification',
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8F8F6),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFE1E1DE),
-                                ),
-                              ),
-                              child: Text(
-                                supplierSpecification,
-                                style: const TextStyle(
-                                  height: 1.5,
-                                  color: Color(0xFF4E4E4E),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      _section(
-                        title: 'Add to Order',
-                        children: [
-                          Builder(
-                            builder: (context) {
-                              final price = _findVisiblePrice();
-                              final amount = price?['amount'];
-                              final quantityUnit = _orderQuantityUnit(price);
-                              final unitLabel = _orderQuantityUnitLabel(
-                                quantityUnit,
-                              );
-                              final minimum = price?['minimum_quantity'];
-                              final catchWeightKgPricing =
-                                  _isCatchWeightKgPricing(price);
-                              final requiresWholeNumber =
-                                  quantityUnit == 'carton' ||
-                                  quantityUnit == 'unit';
-
-                              final unitPrice = amount is num
-                                  ? amount.toDouble()
-                                  : double.tryParse(amount?.toString() ?? '');
-
-                              final estimatedTotal =
-                                  !catchWeightKgPricing && unitPrice != null
-                                  ? unitPrice * _orderQuantityPreview
-                                  : null;
-
-                              if (amount == null || unitPrice == null) {
-                                return const Text(
-                                  'A visible price is required before this product can be added to an order.',
-                                  style: TextStyle(
-                                    color: Color(0xFF666666),
-                                    height: 1.5,
-                                  ),
-                                );
-                              }
-
-                              if (product['availability_status'] ==
-                                  'out_of_stock') {
-                                return const Text(
-                                  'This product is currently out of stock and cannot be added to an order.',
-                                  style: TextStyle(
-                                    color: Color(0xFF666666),
-                                    height: 1.5,
-                                  ),
-                                );
-                              }
-
-                              return LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final narrow = constraints.maxWidth < 700;
-
-                                  final quantityAndButton = Wrap(
-                                    spacing: 14,
-                                    runSpacing: 14,
-                                    crossAxisAlignment: WrapCrossAlignment.end,
-                                    children: [
-                                      SizedBox(
-                                        width: 190,
-                                        child: TextField(
-                                          controller: _quantityController,
-                                          keyboardType:
-                                              TextInputType.numberWithOptions(
-                                                decimal: !requiresWholeNumber,
-                                              ),
-                                          onChanged: (value) {
-                                            final parsed = double.tryParse(
-                                              value.trim(),
-                                            );
-
-                                            setState(() {
-                                              _orderQuantityPreview =
-                                                  parsed != null && parsed > 0
-                                                  ? parsed
-                                                  : 0;
-                                            });
-                                          },
-                                          decoration: InputDecoration(
-                                            labelText: 'Quantity',
-                                            suffixText: unitLabel,
-                                            helperText: catchWeightKgPricing
-                                                ? 'Enter the number of cartons to order. Final weight is confirmed by the supplier.'
-                                                : minimum == null
-                                                ? null
-                                                : 'Minimum ${_formatNumber(minimum)}',
-                                            border: const OutlineInputBorder(),
-                                          ),
-                                        ),
-                                      ),
-                                      FilledButton.icon(
-                                        onPressed: _isAddingToOrder
-                                            ? null
-                                            : _addToOrder,
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF741C1C,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 22,
-                                            vertical: 18,
-                                          ),
-                                        ),
-                                        icon: _isAddingToOrder
-                                            ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Colors.white,
-                                                    ),
-                                              )
-                                            : const Icon(
-                                                Icons.add_shopping_cart,
-                                              ),
-                                        label: Text(
-                                          _isAddingToOrder
-                                              ? 'Adding'
-                                              : 'Add to Order',
-                                        ),
-                                      ),
-                                    ],
-                                  );
-
-                                  final priceSummary = Container(
-                                    width: narrow ? double.infinity : 290,
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8F8F6),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: const Color(0xFFE1E1DE),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Price',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF666666),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          '${_formatMoney(unitPrice)} / ${_formatPriceBasis(price?['price_basis']?.toString())}',
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF741C1C),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        const Divider(height: 1),
-                                        const SizedBox(height: 14),
-                                        if (catchWeightKgPricing) ...[
-                                          const Text(
-                                            'Final total',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF666666),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          const Text(
-                                            'Pending final weight',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 7),
-                                          Text(
-                                            '${_formatNumber(_orderQuantityPreview)} $unitLabel ordered at ${_formatMoney(unitPrice)} / kg',
-                                            style: const TextStyle(
-                                              color: Color(0xFF666666),
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 7),
-                                          const Text(
-                                            'The supplier confirms the actual kilograms when the order is prepared.',
-                                            style: TextStyle(
-                                              color: Color(0xFF666666),
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                        ] else ...[
-                                          const Text(
-                                            'Order total',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF666666),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            estimatedTotal == null
-                                                ? '\$0.00'
-                                                : _formatMoney(estimatedTotal),
-                                            style: const TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            '${_formatNumber(_orderQuantityPreview)} $unitLabel × ${_formatMoney(unitPrice)}',
-                                            style: const TextStyle(
-                                              color: Color(0xFF666666),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-
-                                  if (narrow) {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        priceSummary,
-                                        const SizedBox(height: 16),
-                                        quantityAndButton,
-                                      ],
-                                    );
-                                  }
-
-                                  return Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      priceSummary,
-                                      const SizedBox(width: 20),
-                                      Expanded(child: quantityAndButton),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-
-                      _section(
-                        title: 'Supplier Access',
-                        children: [
-                          const Text(
-                            'Request access to become an approved customer of this supplier and view customer-only pricing.',
-                            style: TextStyle(
-                              color: Color(0xFF5E5E5E),
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          _buildRelationshipButton(),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 600) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 5),
-                Text(value),
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 210,
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              Expanded(child: Text(value)),
-            ],
-          );
-        },
-      ),
-    );
   }
 }

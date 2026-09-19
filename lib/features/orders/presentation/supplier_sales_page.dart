@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/widgets/cutlink_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
@@ -32,6 +35,172 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   final ScrollController _subcategoryScrollController = ScrollController();
   final ScrollController _finalSpecificationScrollController =
       ScrollController();
+
+  String _sizeFilter = '';
+  String _programFilter = '';
+  String _marblingFilter = '';
+  String _brandFilter = '';
+  String _stockSort = 'name';
+  bool _halalFilter = false;
+  bool _availableFilter = false;
+  bool _salesFiltersOpen = false;
+  bool _salesStockViewActive = false;
+
+  void _resetStockFilters() {
+    _sizeFilter = '';
+    _programFilter = '';
+    _marblingFilter = '';
+    _brandFilter = '';
+    _halalFilter = false;
+    _availableFilter = false;
+  }
+
+  bool _matchesStockFilters(Map<String, dynamic> p) =>
+      (_sizeFilter.isEmpty || productSizeLabel(p) == _sizeFilter) &&
+      (_programFilter.isEmpty || productProgram(p) == _programFilter) &&
+      (_marblingFilter.isEmpty || p['marbling_score'] == _marblingFilter) &&
+      (_brandFilter.isEmpty || p['brand'] == _brandFilter) &&
+      (!_halalFilter || p['halal_status'] == 'halal') &&
+      (!_availableFilter ||
+          (p['availability_status'] != 'out_of_stock' &&
+              (double.tryParse('${p['available_quantity']}') ?? 0) > 0));
+
+  Widget _salesStockFilters() {
+    final scope = _animalRegionProducts
+        .where(
+          (p) =>
+              _selectedSpecificationId == null ||
+              _specificationId(p) == _selectedSpecificationId,
+        )
+        .toList();
+    Widget picker(
+      String label,
+      String value,
+      Iterable<String> values,
+      ValueChanged<String> change,
+    ) {
+      final choices = values.where((v) => v.isNotEmpty).toSet().toList()
+        ..sort();
+      return SizedBox(
+        width: 195,
+        child: CutLinkPickerField<String>(
+          label: label,
+          value: value,
+          dense: true,
+          options: [
+            CutLinkPickerOption(value: '', label: 'Any ${label.toLowerCase()}'),
+            for (final v in {...choices, if (value.isNotEmpty) value})
+              CutLinkPickerOption(value: v, label: v),
+          ],
+          onChanged: (v) {
+            if (v != null) {
+              setState(() {
+                _salesStockViewActive = _selectedSpecificationId != null;
+                _selectedCommercialSpecificationKey = null;
+                change(v);
+              });
+            }
+          },
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextButton.icon(
+          onPressed: () =>
+              setState(() => _salesFiltersOpen = !_salesFiltersOpen),
+          icon: const Icon(Icons.tune, size: 18),
+          label: Text(
+            _salesFiltersOpen
+                ? 'Hide stock filters'
+                : 'Stock filters & sorting',
+          ),
+        ),
+        if (_salesFiltersOpen)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                picker(
+                  'Size',
+                  _sizeFilter,
+                  scope.map(productSizeLabel),
+                  (v) => _sizeFilter = v,
+                ),
+                if (scope.any((p) => productProgram(p).isNotEmpty))
+                  picker(
+                    'Program',
+                    _programFilter,
+                    scope.map(productProgram),
+                    (v) => _programFilter = v,
+                  ),
+                if (scope.any(
+                  (p) => (p['marbling_score']?.toString() ?? '').isNotEmpty,
+                ))
+                  picker(
+                    _programFilter == 'Wagyu' ? 'Wagyu MB' : 'Marbling',
+                    _marblingFilter,
+                    scope.map((p) => p['marbling_score']?.toString() ?? ''),
+                    (v) => _marblingFilter = v,
+                  ),
+                picker(
+                  'Brand',
+                  _brandFilter,
+                  scope.map((p) => p['brand']?.toString() ?? ''),
+                  (v) => _brandFilter = v,
+                ),
+                SizedBox(
+                  width: 195,
+                  child: CutLinkPickerField<String>(
+                    label: 'Sort stock',
+                    value: _stockSort,
+                    dense: true,
+                    enableSearch: false,
+                    options: const [
+                      CutLinkPickerOption(value: 'name', label: 'Product: A–Z'),
+                      CutLinkPickerOption(
+                        value: 'price_low',
+                        label: 'Standard price: low to high',
+                      ),
+                      CutLinkPickerOption(
+                        value: 'price_high',
+                        label: 'Standard price: high to low',
+                      ),
+                      CutLinkPickerOption(
+                        value: 'stock',
+                        label: 'Stock: most available',
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _stockSort = v);
+                    },
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Halal only'),
+                  selected: _halalFilter,
+                  onSelected: (v) => setState(() => _halalFilter = v),
+                ),
+                FilterChip(
+                  label: const Text('Available only'),
+                  selected: _availableFilter,
+                  onSelected: (v) => setState(() => _availableFilter = v),
+                ),
+                TextButton(
+                  onPressed: () => setState(_resetStockFilters),
+                  child: const Text('Clear filters'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -294,13 +463,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final client = Supabase.instance.client;
       final supplierBusinessId = await _resolveSupplierBusinessId();
 
-      final productResponse = await client
-          .from('products')
-          .select('''
+      final productResponse = <Map<String, dynamic>>[];
+      for (var offset = 0; ; offset += 500) {
+        final batch = await client
+            .from('products')
+            .select('''
             id,
             sku,
             product_name,
             brand,
+            breed_program,
+            marbling_score,
+            piece_size_kind,
             temperature_state,
             halal_status,
             chicken_skin,
@@ -364,9 +538,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               )
             )
           ''')
-          .eq('supplier_business_id', supplierBusinessId)
-          .eq('active', true)
-          .order('product_name');
+            .eq('supplier_business_id', supplierBusinessId)
+            .eq('active', true)
+            .order('product_name')
+            .order('id')
+            .range(offset, offset + 499);
+        if (!mounted) return;
+        productResponse.addAll(List<Map<String, dynamic>>.from(batch));
+        if (batch.length < 500) break;
+      }
 
       final catalogueAnimalResponse = await client
           .from('meat_animals')
@@ -655,7 +835,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         AnimalCatalogueRegistry.forCode(_selectedAnimalCode)?.usesGradeStage ??
         true;
 
-    return _animalRegionProducts.where((product) {
+    final rows = _animalRegionProducts.where((product) {
+      if (!_matchesStockFilters(product)) return false;
       if (_selectedSpecificationId != null &&
           _specificationId(product) != _selectedSpecificationId) {
         return false;
@@ -682,11 +863,34 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         _specificationName(product),
         _gradeCode(product),
         _gradeName(product),
+        productSizeLabel(product),
+        productProgram(product),
+        product['marbling_score']?.toString() ?? '',
         _commercialSpecificationLabel(product),
       ].join(' ').toLowerCase();
 
-      return searchable.contains(query);
+      return query.split(RegExp(r'\s+')).every(searchable.contains);
     }).toList();
+    rows.sort((a, b) {
+      int result = 0;
+      if (_stockSort == 'price_low' || _stockSort == 'price_high') {
+        final pa = double.tryParse('${_standardPrice(a)?['amount']}');
+        final pb = double.tryParse('${_standardPrice(b)?['amount']}');
+        result = pa == null
+            ? (pb == null ? 0 : 1)
+            : pb == null
+            ? -1
+            : (_stockSort == 'price_low' ? pa.compareTo(pb) : pb.compareTo(pa));
+      } else if (_stockSort == 'stock') {
+        result = (double.tryParse('${b['available_quantity']}') ?? 0).compareTo(
+          double.tryParse('${a['available_quantity']}') ?? 0,
+        );
+      }
+      return result != 0
+          ? result
+          : _specificationName(a).compareTo(_specificationName(b));
+    });
+    return rows;
   }
 
   String _selectedCutLabel(String regionKey) {
@@ -899,6 +1103,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
 
     setState(() {
+      _resetStockFilters();
+      _salesStockViewActive = false;
       _selectedAnimalCode = animalCode;
       _selectedAnimalRegionKey = catalogue?.defaultRegionKey;
       _selectedSpecificationId = null;
@@ -915,6 +1121,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
 
     setState(() {
+      _resetStockFilters();
+      _salesStockViewActive = false;
       _selectedAnimalRegionKey = regionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
@@ -935,6 +1143,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
 
     setState(() {
+      _resetStockFilters();
+      _salesStockViewActive = false;
       _selectedAnimalRegionKey = null;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
@@ -3778,9 +3988,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           true;
                       final cutSelected = _selectedAnimalRegionKey != null;
                       final subcutSelected = _selectedSpecificationId != null;
-                      final finalSpecificationSelected = usesGradeStage
-                          ? _selectedGradeId != null
-                          : _selectedCommercialSpecificationKey != null;
+                      final finalSpecificationSelected =
+                          _salesStockViewActive ||
+                          (usesGradeStage
+                              ? _selectedGradeId != null
+                              : _selectedCommercialSpecificationKey != null);
 
                       Widget rightChoiceCard({
                         required IconData icon,
@@ -4025,7 +4237,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       }
 
                       Widget stockStage() {
-                        if (_filteredProducts.isEmpty) {
+                        final stock = _filteredProducts;
+                        if (stock.isEmpty) {
                           return const Center(
                             child: Padding(
                               padding: EdgeInsets.all(28),
@@ -4058,9 +4271,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
                         return ListView.builder(
                           padding: const EdgeInsets.all(10),
-                          itemCount: _filteredProducts.length,
+                          itemCount: stock.length,
                           itemBuilder: (context, index) =>
-                              _buildProductCard(_filteredProducts[index]),
+                              _buildProductCard(stock[index]),
                         );
                       }
 
@@ -4251,6 +4464,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                 ),
                               ),
                             ),
+                            _salesStockFilters(),
                             const Divider(height: 1),
                             SizedBox(
                               height: narrow ? 460 : 560,

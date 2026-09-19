@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/widgets/product_variant_fields.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 
 class EditProductPage extends StatefulWidget {
@@ -95,6 +97,7 @@ class _EditProductPageState extends State<EditProductPage> {
   String _availabilityStatus = 'in_stock';
 
   String _pieceWeightUnit = 'kg';
+  String _pieceSizeKind = 'none';
   String _cartonWeightUnit = 'kg';
   String _halalStatus = 'not_specified';
 
@@ -166,6 +169,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _productNameController.text = product['product_name']?.toString() ?? '';
     _descriptionController.text = product['description']?.toString() ?? '';
     _brandController.text = product['brand']?.toString() ?? '';
+    _pieceSizeKind = ProductPieceSize.fromProduct(product).effectiveKind;
     _originCountryController.text = product['origin_country']?.toString() ?? '';
     _originStateController.text = product['origin_state']?.toString() ?? '';
     _quantityController.text = product['available_quantity']?.toString() ?? '';
@@ -670,34 +674,6 @@ class _EditProductPageState extends State<EditProductPage> {
     return null;
   }
 
-  bool _validatePieceWeightRange() {
-    final minText = _pieceWeightMinController.text.trim();
-
-    final maxText = _pieceWeightMaxController.text.trim();
-
-    if (minText.isEmpty || maxText.isEmpty) {
-      return true;
-    }
-
-    final min = double.tryParse(minText);
-
-    final max = double.tryParse(maxText);
-
-    if (min == null || max == null) {
-      return true;
-    }
-
-    if (min > max) {
-      _showMessage(
-        'Minimum piece weight cannot be greater than maximum piece weight.',
-      );
-
-      return false;
-    }
-
-    return true;
-  }
-
   double? _optionalDouble(TextEditingController controller) {
     final value = controller.text.trim();
 
@@ -725,7 +701,18 @@ class _EditProductPageState extends State<EditProductPage> {
       return;
     }
 
-    if (!_validatePieceWeightRange()) {
+    final size = ProductPieceSize(
+      _pieceSizeKind,
+      double.tryParse(_pieceWeightMinController.text.trim()),
+      double.tryParse(_pieceWeightMaxController.text.trim()),
+      _pieceWeightUnit,
+    );
+    if (size.error != null) {
+      _showMessage(size.error!);
+      return;
+    }
+    if (_brandController.text.trim().isEmpty) {
+      _showMessage('Choose a brand or Unbranded.');
       return;
     }
 
@@ -748,11 +735,18 @@ class _EditProductPageState extends State<EditProductPage> {
     });
 
     try {
+      String? catalogueGradeId = _selectedGradeId;
+      if (_usesSpecGradeCatalogue && !_usesGradeStage) {
+        final generalGrade = await Supabase.instance.client
+            .from('meat_grades')
+            .select('id, meat_grade_systems!inner(code)')
+            .eq('code', 'NA')
+            .eq('meat_grade_systems.code', 'CUTLINK_GENERAL')
+            .eq('is_active', true)
+            .single();
+        catalogueGradeId = generalGrade['id'].toString();
+      }
       final quantityText = _quantityController.text.trim();
-
-      final pieceWeightMin = _optionalDouble(_pieceWeightMinController);
-
-      final pieceWeightMax = _optionalDouble(_pieceWeightMaxController);
 
       final cartonWeight = _optionalDouble(_cartonWeightController);
 
@@ -791,13 +785,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
         'breed_program': _emptyToNull(_breedProgramController.text),
 
-        'piece_weight_min': pieceWeightMin,
-
-        'piece_weight_max': pieceWeightMax,
-
-        'piece_weight_unit': pieceWeightMin == null && pieceWeightMax == null
-            ? null
-            : _pieceWeightUnit,
+        ...size.fields,
 
         'carton_weight': cartonWeight,
 
@@ -826,7 +814,7 @@ class _EditProductPageState extends State<EditProductPage> {
         updateData['meat_animal_id'] = _selectedAnimalId;
         updateData['meat_section_id'] = _selectedSectionId;
         updateData['meat_specification_id'] = _selectedSpecificationId;
-        updateData['meat_grade_id'] = _usesGradeStage ? _selectedGradeId : null;
+        updateData['meat_grade_id'] = catalogueGradeId;
 
         updateData['price_basis'] = 'kilogram';
         updateData['order_unit'] = 'carton';
@@ -855,7 +843,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 .from('supplier_spec_grade_offers')
                 .update({
                   'specification_id': _selectedSpecificationId,
-                  'grade_id': _usesGradeStage ? _selectedGradeId : null,
+                  'grade_id': catalogueGradeId,
                   'supplier_sku': _skuController.text.trim(),
                   'supplier_product_name': _productNameController.text.trim(),
                   'is_available': _availabilityStatus != 'out_of_stock',
@@ -2522,6 +2510,45 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                   const SizedBox(height: 20),
 
+                                  ProductBrandField(
+                                    controller: _brandController,
+                                    supplierBusinessId: widget
+                                        .product['supplier_business_id']
+                                        ?.toString(),
+                                    enabled: !_isSaving,
+                                  ),
+                                  const SizedBox(height: 18),
+                                  ProductSizeFields(
+                                    minimum: _pieceWeightMinController,
+                                    maximum: _pieceWeightMaxController,
+                                    kind: _pieceSizeKind,
+                                    unit: _pieceWeightUnit,
+                                    enabled: !_isSaving,
+                                    onKindChanged: (v) =>
+                                        setState(() => _pieceSizeKind = v),
+                                    onUnitChanged: (v) => setState(() {
+                                      if (v != _pieceWeightUnit) {
+                                        for (final controller in [
+                                          _pieceWeightMinController,
+                                          _pieceWeightMaxController,
+                                        ]) {
+                                          final number = double.tryParse(
+                                            controller.text.trim(),
+                                          );
+                                          if (number != null) {
+                                            controller.text =
+                                                ProductPieceSize.number(
+                                                  v == 'g'
+                                                      ? number * 1000
+                                                      : number / 1000,
+                                                );
+                                          }
+                                        }
+                                        _pieceWeightUnit = v;
+                                      }
+                                    }),
+                                  ),
+                                  const SizedBox(height: 18),
                                   ExpansionTile(
                                     tilePadding: EdgeInsets.zero,
                                     childrenPadding: const EdgeInsets.only(
@@ -2534,40 +2561,37 @@ class _EditProductPageState extends State<EditProductPage> {
                                       ),
                                     ),
                                     subtitle: const Text(
-                                      'Optional brand, marbling, trim, origin and supplier notes.',
+                                      'Marbling, trim, origin and supplier notes.',
                                     ),
                                     children: [
                                       const SizedBox(height: 12),
 
                                       _twoColumnFields(
-                                        TextFormField(
-                                          controller: _brandController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Brand (optional)',
-                                            border: OutlineInputBorder(),
-                                          ),
+                                        const Text(
+                                          'Wagyu and Angus are product programs. Select the applicable AUS-MEAT category separately.',
                                         ),
-                                        TextFormField(
+                                        ProductAttributeField(
                                           controller: _marblingScoreController,
-                                          decoration: const InputDecoration(
-                                            labelText:
-                                                'Marbling / MB score (optional)',
-                                            hintText: 'Example: MB4-5',
-                                            border: OutlineInputBorder(),
-                                          ),
+                                          label:
+                                              _breedProgramController.text
+                                                  .toLowerCase()
+                                                  .contains('wagyu')
+                                              ? 'Wagyu marbling / MB score'
+                                              : 'Marbling / MB score',
+                                          choices: productMarblingScores,
+                                          enabled: !_isSaving,
                                         ),
                                       ),
 
                                       const SizedBox(height: 18),
 
                                       _twoColumnFields(
-                                        TextFormField(
+                                        ProductAttributeField(
                                           controller: _breedProgramController,
-                                          decoration: const InputDecoration(
-                                            labelText:
-                                                'Breed / program (optional)',
-                                            border: OutlineInputBorder(),
-                                          ),
+                                          label: 'Breed / program',
+                                          choices: productPrograms,
+                                          enabled: !_isSaving,
+                                          onChanged: () => setState(() {}),
                                         ),
                                         DropdownButtonFormField<String>(
                                           initialValue: _halalStatus,

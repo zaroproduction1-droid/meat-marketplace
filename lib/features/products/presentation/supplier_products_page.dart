@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import 'add_product_page.dart';
 import 'edit_product_page.dart';
@@ -148,6 +149,22 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               product_name,
               description,
               brand,
+              piece_size_kind,
+              piece_weight_min,
+              piece_weight_max,
+              piece_weight_unit,
+              carton_weight,
+              carton_weight_unit,
+              pieces_per_carton,
+              breed_program,
+              marbling_score,
+              grade,
+              origin_country,
+              origin_state,
+              packaging_type,
+              trim_specification,
+              fat_specification,
+              supplier_specification,
               temperature_state,
               halal_status,
               feeding_days,
@@ -2489,140 +2506,172 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       () => product['availability_status']?.toString() ?? 'out_of_stock',
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 800;
-
-        final chicken = _isChickenProduct(product);
-        final gradeBadge = Container(
-          width: narrow
-              ? null
-              : chicken
-              ? 235
-              : 68,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3E8E8),
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: const Color(0xFFD8BEBE)),
-          ),
-          child: Text(
-            chicken ? _chickenVariationLabel(product) : _gradeCode(product),
-            textAlign: chicken ? TextAlign.left : TextAlign.center,
-            maxLines: chicken ? 3 : 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _darkRed,
-              fontSize: chicken ? 12.5 : 17,
-              height: 1.25,
-              fontWeight: FontWeight.w900,
+    final variant = <String>[
+      product['sku']?.toString() ?? '',
+      product['brand']?.toString() ?? '',
+      productSizeLabel(product),
+      product['breed_program']?.toString() ?? '',
+      product['marbling_score']?.toString() ?? '',
+    ].where((v) => v.trim().isNotEmpty).join(' • ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (variant.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 5),
+            child: Text(
+              variant,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ),
-        );
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 800;
 
-        final stockField = TextField(
-          controller: stockController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            isDense: true,
-            suffixText: 'ctn',
-            border: OutlineInputBorder(),
-          ),
-        );
-
-        final standardField = TextField(
-          controller: standardController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            isDense: true,
-            prefixText: r'$ ',
-            border: OutlineInputBorder(),
-          ),
-        );
-
-        final tradeField = TextField(
-          controller: tradeController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            isDense: true,
-            prefixText: r'$ ',
-            hintText: 'Optional',
-            border: OutlineInputBorder(),
-          ),
-        );
-
-        final statusField = CutLinkPickerField<String>(
-          label: 'Status',
-          value: availability,
-          dense: true,
-          enableSearch: false,
-          options: const [
-            CutLinkPickerOption(value: 'in_stock', label: 'In stock'),
-            CutLinkPickerOption(value: 'low_stock', label: 'Low stock'),
-            CutLinkPickerOption(value: 'out_of_stock', label: 'Out of stock'),
-            CutLinkPickerOption(value: 'made_to_order', label: 'Made to order'),
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _matrixAvailability[productId] = value);
-          },
-        );
-
-        final editButton = IconButton(
-          tooltip: 'Open full product editor',
-          onPressed: () => _openEditProductPage(product),
-          icon: const Icon(Icons.open_in_new, size: 18),
-          visualDensity: VisualDensity.compact,
-        );
-
-        if (narrow) {
-          return Container(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(children: [gradeBadge, const Spacer(), editButton]),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: stockField),
-                    const SizedBox(width: 8),
-                    Expanded(child: standardField),
-                  ],
+            final chicken = _isChickenProduct(product);
+            final gradeBadge = Container(
+              width: narrow
+                  ? null
+                  : chicken
+                  ? 235
+                  : 68,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E8E8),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: const Color(0xFFD8BEBE)),
+              ),
+              child: Text(
+                chicken ? _chickenVariationLabel(product) : _gradeCode(product),
+                textAlign: chicken ? TextAlign.left : TextAlign.center,
+                maxLines: chicken ? 3 : 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _darkRed,
+                  fontSize: chicken ? 12.5 : 17,
+                  height: 1.25,
+                  fontWeight: FontWeight.w900,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: tradeField),
-                    const SizedBox(width: 8),
-                    Expanded(child: statusField),
-                  ],
+              ),
+            );
+
+            final stockField = TextField(
+              controller: stockController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                suffixText: 'ctn',
+                border: OutlineInputBorder(),
+              ),
+            );
+
+            final standardField = TextField(
+              controller: standardController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixText: r'$ ',
+                border: OutlineInputBorder(),
+              ),
+            );
+
+            final tradeField = TextField(
+              controller: tradeController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixText: r'$ ',
+                hintText: 'Optional',
+                border: OutlineInputBorder(),
+              ),
+            );
+
+            final statusField = CutLinkPickerField<String>(
+              label: 'Status',
+              value: availability,
+              dense: true,
+              enableSearch: false,
+              options: const [
+                CutLinkPickerOption(value: 'in_stock', label: 'In stock'),
+                CutLinkPickerOption(value: 'low_stock', label: 'Low stock'),
+                CutLinkPickerOption(
+                  value: 'out_of_stock',
+                  label: 'Out of stock',
+                ),
+                CutLinkPickerOption(
+                  value: 'made_to_order',
+                  label: 'Made to order',
                 ),
               ],
-            ),
-          );
-        }
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _matrixAvailability[productId] = value);
+              },
+            );
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              SizedBox(
-                width: chicken ? 245 : 78,
-                child: Align(child: gradeBadge),
+            final editButton = IconButton(
+              tooltip: 'Open full product editor',
+              onPressed: () => _openEditProductPage(product),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              visualDensity: VisualDensity.compact,
+            );
+
+            if (narrow) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(children: [gradeBadge, const Spacer(), editButton]),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: stockField),
+                        const SizedBox(width: 8),
+                        Expanded(child: standardField),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: tradeField),
+                        const SizedBox(width: 8),
+                        Expanded(child: statusField),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: chicken ? 245 : 78,
+                    child: Align(child: gradeBadge),
+                  ),
+                  Expanded(flex: 2, child: stockField),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: standardField),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: tradeField),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: statusField),
+                  SizedBox(width: 38, child: editButton),
+                ],
               ),
-              Expanded(flex: 2, child: stockField),
-              const SizedBox(width: 10),
-              Expanded(flex: 2, child: standardField),
-              const SizedBox(width: 10),
-              Expanded(flex: 2, child: tradeField),
-              const SizedBox(width: 10),
-              Expanded(flex: 2, child: statusField),
-              SizedBox(width: 38, child: editButton),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 }

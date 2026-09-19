@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/widgets/product_variant_fields.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
@@ -53,6 +55,8 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _specificationId;
   String? _gradeId;
 
+  String _pieceSizeKind = 'none';
+  String _pieceSizeUnit = 'kg';
   String _temperature = 'chilled';
   String _availability = 'in_stock';
   String _halal = 'not_specified';
@@ -541,40 +545,27 @@ class _AddProductPageState extends State<AddProductPage> {
 
     final piecesText = _piecesPerCarton.text.trim();
     final pieces = piecesText.isEmpty ? null : int.tryParse(piecesText);
-    if (piecesText.isNotEmpty && (pieces == null || pieces < 0)) {
+    if (piecesText.isNotEmpty && (pieces == null || pieces <= 0)) {
       _message('Enter a valid pieces per carton value.');
       return;
     }
 
-    if (_isGoat) {
-      final weightMin = _goatWeightMin.text.trim().isEmpty
-          ? null
-          : double.tryParse(_goatWeightMin.text.trim());
-      final weightMax = _goatWeightMax.text.trim().isEmpty
-          ? null
-          : double.tryParse(_goatWeightMax.text.trim());
-      final cartonWeight = _goatCartonWeight.text.trim().isEmpty
-          ? null
-          : double.tryParse(_goatCartonWeight.text.trim());
-
-      if ((_goatWeightMin.text.trim().isNotEmpty && weightMin == null) ||
-          (_goatWeightMax.text.trim().isNotEmpty && weightMax == null) ||
-          (_goatCartonWeight.text.trim().isNotEmpty && cartonWeight == null)) {
-        _message('Enter valid Goat weight values.');
-        return;
-      }
-
-      if (weightMin != null && weightMin < 0 ||
-          weightMax != null && weightMax < 0 ||
-          cartonWeight != null && cartonWeight < 0) {
-        _message('Goat weight values cannot be negative.');
-        return;
-      }
-
-      if (weightMin != null && weightMax != null && weightMax < weightMin) {
-        _message('Maximum Goat weight must be greater than minimum weight.');
-        return;
-      }
+    final size = ProductPieceSize(
+      _pieceSizeKind,
+      double.tryParse(_goatWeightMin.text.trim()),
+      double.tryParse(_goatWeightMax.text.trim()),
+      _pieceSizeUnit,
+    );
+    if (size.error != null) {
+      _message(size.error!);
+      return;
+    }
+    final cartonWeight = double.tryParse(_goatCartonWeight.text.trim());
+    if (_isGoat &&
+        _goatCartonWeight.text.trim().isNotEmpty &&
+        (cartonWeight == null || !cartonWeight.isFinite || cartonWeight < 0)) {
+      _message('Enter a valid carton weight.');
+      return;
     }
 
     setState(() => _saving = true);
@@ -582,128 +573,110 @@ class _AddProductPageState extends State<AddProductPage> {
     try {
       if (_isChicken) {
         await Supabase.instance.client.rpc(
-          'create_supplier_chicken_product',
+          'create_supplier_catalogue_product',
           params: {
-            'p_supplier_business_id': _supplierBusinessId,
-            'p_animal_id': _animalId,
-            'p_section_id': _sectionId,
-            'p_specification_id': _specificationId,
-            'p_sku': _sku.text.trim(),
-            'p_product_name': _productName.text.trim(),
-            'p_standard_price_inc_gst': double.parse(
-              _standardPrice.text.trim(),
-            ),
-            'p_available_cartons': _availableCartons.text.trim().isEmpty
-                ? null
-                : double.parse(_availableCartons.text.trim()),
-            'p_minimum_cartons': minimum,
-            'p_temperature_state': _temperature,
-            'p_availability_status': _availability,
-            'p_description': _description.text.trim().isEmpty
-                ? null
-                : _description.text.trim(),
-            'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
-            'p_halal_status': _halal,
-            'p_chicken_skin': _chickenSkin,
-            'p_chicken_bone': _chickenBone,
-            'p_chicken_production_type': _chickenProductionType,
-            'p_chicken_preparation': _chickenPreparation,
-            'p_chicken_size_weight': _chickenSizeWeight.text.trim().isEmpty
-                ? null
-                : _chickenSizeWeight.text.trim(),
-            'p_chicken_carton_size': _chickenCartonSize.text.trim().isEmpty
-                ? null
-                : _chickenCartonSize.text.trim(),
-            'p_packaging_type': _packaging.text.trim().isEmpty
-                ? null
-                : _packaging.text.trim(),
-            'p_pieces_per_carton': pieces,
-            'p_supplier_specification': _supplierNotes.text.trim().isEmpty
-                ? null
-                : _supplierNotes.text.trim(),
+            'p_details': {
+              ...size.fields,
+              'p_supplier_business_id': _supplierBusinessId,
+              'p_animal_id': _animalId,
+              'p_section_id': _sectionId,
+              'p_specification_id': _specificationId,
+              'p_sku': _sku.text.trim(),
+              'p_product_name': _productName.text.trim(),
+              'p_standard_price_inc_gst': double.parse(
+                _standardPrice.text.trim(),
+              ),
+              'p_available_cartons': _availableCartons.text.trim().isEmpty
+                  ? null
+                  : double.parse(_availableCartons.text.trim()),
+              'p_minimum_cartons': minimum,
+              'p_temperature_state': _temperature,
+              'p_availability_status': _availability,
+              'p_description': _description.text.trim().isEmpty
+                  ? null
+                  : _description.text.trim(),
+              'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
+              'p_halal_status': _halal,
+              'p_chicken_skin': _chickenSkin,
+              'p_chicken_bone': _chickenBone,
+              'p_chicken_production_type': _chickenProductionType,
+              'p_chicken_preparation': _chickenPreparation,
+              'p_chicken_size_weight': _chickenSizeWeight.text.trim().isEmpty
+                  ? null
+                  : _chickenSizeWeight.text.trim(),
+              'p_chicken_carton_size': _chickenCartonSize.text.trim().isEmpty
+                  ? null
+                  : _chickenCartonSize.text.trim(),
+              'p_packaging_type': _packaging.text.trim().isEmpty
+                  ? null
+                  : _packaging.text.trim(),
+              'p_pieces_per_carton': pieces,
+              'p_supplier_specification': _supplierNotes.text.trim().isEmpty
+                  ? null
+                  : _supplierNotes.text.trim(),
+            },
           },
         );
       } else {
-        final createdProductId = await Supabase.instance.client.rpc(
-          'create_supplier_spec_grade_product',
+        await Supabase.instance.client.rpc(
+          'create_supplier_catalogue_product',
           params: {
-            'p_supplier_business_id': _supplierBusinessId,
-            'p_animal_id': _animalId,
-            'p_section_id': _sectionId,
-            'p_specification_id': _specificationId,
-            'p_grade_id': _gradeId,
-            'p_sku': _sku.text.trim(),
-            'p_product_name': _productName.text.trim(),
-            'p_standard_price_inc_gst': double.parse(
-              _standardPrice.text.trim(),
-            ),
-            'p_available_cartons': _availableCartons.text.trim().isEmpty
-                ? null
-                : double.parse(_availableCartons.text.trim()),
-            'p_minimum_cartons': minimum,
-            'p_temperature_state': _temperature,
-            'p_availability_status': _availability,
-            'p_description': _description.text.trim().isEmpty
-                ? null
-                : _description.text.trim(),
-            'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
-            'p_origin_country': _originCountry.text.trim().isEmpty
-                ? null
-                : _originCountry.text.trim(),
-            'p_origin_state': _originState.text.trim().isEmpty
-                ? null
-                : _originState.text.trim(),
-            'p_marbling_score': _marbling.text.trim().isEmpty
-                ? null
-                : _marbling.text.trim(),
-            'p_breed_program': _breed.text.trim().isEmpty
-                ? null
-                : _breed.text.trim(),
-            'p_trim_specification': _trim.text.trim().isEmpty
-                ? null
-                : _trim.text.trim(),
-            'p_fat_specification': _fat.text.trim().isEmpty
-                ? null
-                : _fat.text.trim(),
-            'p_halal_status': _halal,
-            'p_packaging_type': _packaging.text.trim().isEmpty
-                ? null
-                : _packaging.text.trim(),
-            'p_pieces_per_carton': pieces,
-            'p_supplier_specification': _supplierNotes.text.trim().isEmpty
-                ? null
-                : _supplierNotes.text.trim(),
+            'p_details': {
+              ...size.fields,
+              if (_isGoat) ...{
+                'bone_state': _goatBoneState,
+                'carton_weight': cartonWeight,
+                'carton_weight_unit': cartonWeight == null ? null : 'kg',
+              },
+              'p_supplier_business_id': _supplierBusinessId,
+              'p_animal_id': _animalId,
+              'p_section_id': _sectionId,
+              'p_specification_id': _specificationId,
+              'p_grade_id': _gradeId,
+              'p_sku': _sku.text.trim(),
+              'p_product_name': _productName.text.trim(),
+              'p_standard_price_inc_gst': double.parse(
+                _standardPrice.text.trim(),
+              ),
+              'p_available_cartons': _availableCartons.text.trim().isEmpty
+                  ? null
+                  : double.parse(_availableCartons.text.trim()),
+              'p_minimum_cartons': minimum,
+              'p_temperature_state': _temperature,
+              'p_availability_status': _availability,
+              'p_description': _description.text.trim().isEmpty
+                  ? null
+                  : _description.text.trim(),
+              'p_brand': _brand.text.trim().isEmpty ? null : _brand.text.trim(),
+              'p_origin_country': _originCountry.text.trim().isEmpty
+                  ? null
+                  : _originCountry.text.trim(),
+              'p_origin_state': _originState.text.trim().isEmpty
+                  ? null
+                  : _originState.text.trim(),
+              'p_marbling_score': _marbling.text.trim().isEmpty
+                  ? null
+                  : _marbling.text.trim(),
+              'p_breed_program': _breed.text.trim().isEmpty
+                  ? null
+                  : _breed.text.trim(),
+              'p_trim_specification': _trim.text.trim().isEmpty
+                  ? null
+                  : _trim.text.trim(),
+              'p_fat_specification': _fat.text.trim().isEmpty
+                  ? null
+                  : _fat.text.trim(),
+              'p_halal_status': _halal,
+              'p_packaging_type': _packaging.text.trim().isEmpty
+                  ? null
+                  : _packaging.text.trim(),
+              'p_pieces_per_carton': pieces,
+              'p_supplier_specification': _supplierNotes.text.trim().isEmpty
+                  ? null
+                  : _supplierNotes.text.trim(),
+            },
           },
         );
-
-        final productId = createdProductId?.toString();
-
-        if (_isGoat && productId != null && productId.isNotEmpty) {
-          final weightMin = _goatWeightMin.text.trim().isEmpty
-              ? null
-              : double.parse(_goatWeightMin.text.trim());
-          final weightMax = _goatWeightMax.text.trim().isEmpty
-              ? null
-              : double.parse(_goatWeightMax.text.trim());
-          final cartonWeight = _goatCartonWeight.text.trim().isEmpty
-              ? null
-              : double.parse(_goatCartonWeight.text.trim());
-
-          await Supabase.instance.client
-              .from('products')
-              .update({
-                'bone_state': _goatBoneState,
-                'piece_weight_min': weightMin,
-                'piece_weight_max': weightMax,
-                'piece_weight_unit': weightMin == null && weightMax == null
-                    ? null
-                    : 'kilogram',
-                'carton_weight': cartonWeight,
-                'carton_weight_unit': cartonWeight == null ? null : 'kilogram',
-                'updated_at': DateTime.now().toUtc().toIso8601String(),
-              })
-              .eq('id', productId);
-        }
       }
 
       if (!mounted) return;
@@ -1113,8 +1086,9 @@ class _AddProductPageState extends State<AddProductPage> {
           TextFormField(
             controller: _chickenSizeWeight,
             decoration: const InputDecoration(
-              labelText: 'Size / Weight (optional)',
-              hintText: 'Example: 1.8-2.0 kg or 200 g portions',
+              labelText: 'Bird size / other size label (optional)',
+              hintText: 'Example: No. 12, No. 18 or XL',
+              helperText: 'Use Piece size above for weights in kg or g.',
               border: OutlineInputBorder(),
             ),
           ),
@@ -1272,6 +1246,34 @@ class _AddProductPageState extends State<AddProductPage> {
                             label: const Text('Add Supplier-Specific Cut'),
                           ),
                         ),
+                        const SizedBox(height: 14),
+                        ProductSizeFields(
+                          minimum: _goatWeightMin,
+                          maximum: _goatWeightMax,
+                          kind: _pieceSizeKind,
+                          unit: _pieceSizeUnit,
+                          enabled: !_saving,
+                          onKindChanged: (v) =>
+                              setState(() => _pieceSizeKind = v),
+                          onUnitChanged: (v) => setState(() {
+                            if (v != _pieceSizeUnit) {
+                              for (final controller in [
+                                _goatWeightMin,
+                                _goatWeightMax,
+                              ]) {
+                                final number = double.tryParse(
+                                  controller.text.trim(),
+                                );
+                                if (number != null) {
+                                  controller.text = ProductPieceSize.number(
+                                    v == 'g' ? number * 1000 : number / 1000,
+                                  );
+                                }
+                              }
+                              _pieceSizeUnit = v;
+                            }
+                          }),
+                        ),
                         if (_usesGradeStage) ...[
                           const SizedBox(height: 14),
                           _cutLinkPickerField(
@@ -1356,12 +1358,10 @@ class _AddProductPageState extends State<AddProductPage> {
                         ),
                         const SizedBox(height: 14),
                         _twoFields(
-                          TextFormField(
+                          ProductBrandField(
                             controller: _brand,
-                            decoration: const InputDecoration(
-                              labelText: 'Brand (optional)',
-                              border: OutlineInputBorder(),
-                            ),
+                            supplierBusinessId: _supplierBusinessId,
+                            enabled: !_saving,
                           ),
                           TextFormField(
                             controller: _packaging,
@@ -1507,6 +1507,8 @@ class _AddProductPageState extends State<AddProductPage> {
                     },
                   ),
                   const SizedBox(height: 14),
+
+                  const SizedBox(height: 14),
                   if (_isGoat)
                     _sectionCard(
                       title: 'Goat Specifications',
@@ -1583,42 +1585,16 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }
                               },
                             ),
-                            TextFormField(
+                            ProductAttributeField(
                               controller: _breed,
-                              decoration: const InputDecoration(
-                                labelText: 'Brand / Supplier Program',
-                                hintText: 'Supplier program or range name',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: 'Breed / program',
+                              choices: productPrograms,
+                              enabled: !_saving,
+                              onChanged: () => setState(() {}),
                             ),
                           ),
                           const SizedBox(height: 14),
-                          _twoFields(
-                            TextFormField(
-                              controller: _goatWeightMin,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                labelText: 'Weight Range Minimum',
-                                suffixText: 'kg',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                            TextFormField(
-                              controller: _goatWeightMax,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                labelText: 'Weight Range Maximum',
-                                suffixText: 'kg',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
+
                           const SizedBox(height: 14),
                           _twoFields(
                             TextFormField(
@@ -1705,19 +1681,20 @@ class _AddProductPageState extends State<AddProductPage> {
                           ),
                           const SizedBox(height: 14),
                           _twoFields(
-                            TextFormField(
+                            ProductAttributeField(
                               controller: _marbling,
-                              decoration: const InputDecoration(
-                                labelText: 'Marbling / MB score (optional)',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: _breed.text.toLowerCase().contains('wagyu')
+                                  ? 'Wagyu marbling / MB score'
+                                  : 'Marbling / MB score',
+                              choices: productMarblingScores,
+                              enabled: !_saving,
                             ),
-                            TextFormField(
+                            ProductAttributeField(
                               controller: _breed,
-                              decoration: const InputDecoration(
-                                labelText: 'Breed / Program (optional)',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: 'Breed / program',
+                              choices: productPrograms,
+                              enabled: !_saving,
+                              onChanged: () => setState(() {}),
                             ),
                           ),
                           const SizedBox(height: 14),

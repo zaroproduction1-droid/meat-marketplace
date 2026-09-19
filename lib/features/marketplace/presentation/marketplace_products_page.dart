@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/widgets/cutlink_picker.dart';
 import 'marketplace_product_details_page.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
@@ -42,6 +45,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String? _errorMessage;
 
   List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _facetProducts = [];
+  String? _facetScope;
+  DateTime? _facetsLoadedAt;
+  static const _stockPageSize = 60;
+  int _stockPageOffset = 0;
+  int _stockTotal = 0;
   List<Map<String, dynamic>> _filteredProducts = [];
   List<Map<String, dynamic>> _catalogueAnimals = [];
   List<Map<String, dynamic>> _catalogueSections = [];
@@ -53,6 +62,162 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String? _selectedSpecificationId;
   String? _selectedGradeId;
   String? _selectedCommercialSpecificationKey;
+  String? _selectedPieceSize;
+  String _selectedProgram = '';
+  String _selectedMarbling = '';
+  String _selectedBrand = '';
+  bool _stockViewActive = false;
+  bool _filtersExpanded = false;
+
+  void _resetVariants() {
+    _stockViewActive = false;
+    _selectedPieceSize = null;
+    _selectedProgram = '';
+    _selectedMarbling = '';
+    _selectedBrand = '';
+  }
+
+  bool _matchesVariants(
+    Map<String, dynamic> p, {
+    bool grade = false,
+    bool brand = true,
+    bool marbling = true,
+  }) {
+    return (_selectedPieceSize == null ||
+            _selectedPieceSize!.isEmpty ||
+            productSizeLabel(p) == _selectedPieceSize) &&
+        (_selectedProgram.isEmpty || productProgram(p) == _selectedProgram) &&
+        (!marbling ||
+            _selectedMarbling.isEmpty ||
+            (p['marbling_score']?.toString().trim() ?? '') ==
+                _selectedMarbling) &&
+        (!brand ||
+            _selectedBrand.isEmpty ||
+            (p['brand']?.toString().trim() ?? '') == _selectedBrand) &&
+        (!grade ||
+            _selectedGradeId == null ||
+            _matchesGrade(p, _selectedGradeId!));
+  }
+
+  List<Map<String, dynamic>> get _variantScope => _facetProducts.where((p) {
+    final hasCut =
+        _selectedSectionId != null || _selectedAnimalRegionKey != null;
+    if (hasCut &&
+        (_animalCode(p) != _selectedAnimalCode || !_matchesSelectedCut(p))) {
+      return false;
+    }
+    if (_selectedSpecificationId != null &&
+        !_matchesSpecification(p, _selectedSpecificationId!)) {
+      return false;
+    }
+    if (_halalOnly && p['halal_status'] != 'halal') return false;
+    if (_availableOnly && p['availability_status'] == 'out_of_stock') {
+      return false;
+    }
+    return true;
+  }).toList();
+
+  List<String> get _pieceSizes =>
+      _variantScope.map(productSizeLabel).toSet().toList()..sort();
+
+  Widget _variantFilters() {
+    final scope = _variantScope;
+    final sizes = _pieceSizes;
+    final sized = scope
+        .where(
+          (p) =>
+              _selectedPieceSize == null ||
+              _selectedPieceSize!.isEmpty ||
+              productSizeLabel(p) == _selectedPieceSize,
+        )
+        .toList();
+    final programs =
+        sized.map(productProgram).where((v) => v.isNotEmpty).toSet().toList()
+          ..sort();
+    final marbling =
+        sized
+            .where(
+              (p) =>
+                  _selectedProgram.isEmpty ||
+                  productProgram(p) == _selectedProgram,
+            )
+            .map((p) => p['marbling_score']?.toString().trim() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final brands =
+        scope
+            .where((p) => _matchesVariants(p, grade: true, brand: false))
+            .map((p) => p['brand']?.toString().trim() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    Widget picker(
+      String label,
+      String selected,
+      List<String> values,
+      ValueChanged<String> change,
+    ) => SizedBox(
+      width: 210,
+      child: CutLinkPickerField<String>(
+        label: label,
+        value: selected,
+        dense: true,
+        options: [
+          CutLinkPickerOption(value: '', label: 'Any ${label.toLowerCase()}'),
+          for (final v in {...values, if (selected.isNotEmpty) selected})
+            CutLinkPickerOption(value: v, label: v),
+        ],
+        onChanged: (v) {
+          if (v == null) return;
+          setState(() => change(v));
+          _applySearch();
+        },
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(11, 0, 11, 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (sizes.length > 1 || _selectedPieceSize?.isNotEmpty == true)
+            picker(
+              'Size',
+              _selectedPieceSize ?? '',
+              sizes.where((v) => v.isNotEmpty).toList(),
+              (v) {
+                _selectedPieceSize = v;
+                _selectedCommercialSpecificationKey = null;
+              },
+            ),
+          if (programs.isNotEmpty || _selectedProgram.isNotEmpty)
+            picker('Program', _selectedProgram, programs, (v) {
+              _selectedProgram = v;
+              _selectedCommercialSpecificationKey = null;
+            }),
+          if (marbling.isNotEmpty || _selectedMarbling.isNotEmpty)
+            picker(
+              _selectedProgram == 'Wagyu' ? 'Wagyu MB' : 'Marbling',
+              _selectedMarbling,
+              marbling,
+              (v) {
+                _selectedMarbling = v;
+                _selectedCommercialSpecificationKey = null;
+              },
+            ),
+          if (brands.isNotEmpty || _selectedBrand.isNotEmpty)
+            picker('Brand', _selectedBrand, brands, (v) {
+              _selectedBrand = v;
+              _selectedCommercialSpecificationKey = null;
+            }),
+        ],
+      ),
+    );
+  }
+
   String _sortMode = 'recommended';
   bool _availableOnly = false;
   bool _halalOnly = false;
@@ -440,193 +605,197 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
   }
 
-  Future<void> _loadStock({bool force = false}) async {
+  Future<void> _loadStock({bool force = false, int offset = 0}) async {
     if (_isLoading || !mounted) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     final cutSelected =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
-    final globalSearch =
-        (_searchController.text.trim().isNotEmpty || _halalOnly) &&
-        !cutSelected;
-    final animalCode = _selectedAnimalCode;
-    final baseScope = globalSearch
-        ? 'search-all'
-        : cutSelected
-        ? '$_selectedAnimalCode:${_selectedSectionId ?? _selectedAnimalRegionKey}'
-        : 'browse';
-    final halalOnly = _halalOnly;
-    final scope = '$baseScope:halal=$halalOnly';
-    if (!force && _stockScope == scope) return;
-    _stockScope = scope;
-    final version = ++_stockLoadVersion;
+    final directSearch = _searchController.text.trim().isNotEmpty || _halalOnly;
+    final globalSearch = directSearch && !cutSelected;
     final animal = _catalogueAnimals.where(
       (row) => row['code'] == _selectedAnimalCode,
     );
-    final animalId = animal.isEmpty ? null : animal.first['id']?.toString();
-    final sectionId =
-        _selectedSectionId ??
-        (_selectedAnimalRegionKey == null
-            ? null
-            : _sectionForRegion(
-                animalCode,
-                _selectedAnimalRegionKey!,
-              )?['id']?.toString());
-
+    final animalId = globalSearch || animal.isEmpty
+        ? null
+        : animal.first['id']?.toString();
+    // Non-beef diagrams can group several sections. Their lightweight index
+    // retains the existing region matcher before requesting a result page.
+    final sectionId = globalSearch || _selectedAnimalCode != CutLinkAnimals.beef
+        ? null
+        : _selectedCatalogueSectionId;
+    final facetScope = jsonEncode([userId, animalId, sectionId]);
+    final scope = jsonEncode([
+      facetScope,
+      _selectedAnimalRegionKey,
+      _selectedSpecificationId,
+      _selectedGradeId,
+      _selectedCommercialSpecificationKey,
+      _selectedPieceSize,
+      _selectedProgram,
+      _selectedMarbling,
+      _selectedBrand,
+      _halalOnly,
+      _availableOnly,
+      _chickenAttributeFilters,
+      _goatAttributeFilters,
+      _searchController.text.trim(),
+      _supplierSearchController.text.trim(),
+      _sortMode,
+      offset,
+    ]);
+    if (!force && _stockScope == scope) return;
+    _stockScope = scope;
+    final version = ++_stockLoadVersion;
     setState(() {
       _products = [];
       _filteredProducts = [];
+      _stockTotal = 0;
+      _stockPageOffset = offset;
       _stockError = null;
-      _loadingStock = baseScope != 'browse';
+      _loadingStock = cutSelected || directSearch;
+      if (_facetScope != facetScope || force) _facetProducts = [];
     });
-    if (baseScope == 'browse') return;
+    if (!cutSelected && !directSearch) return;
     try {
-      if (Supabase.instance.client.auth.currentUser == null) {
+      if (userId == null) {
         throw StateError('Your session has ended. Please sign in again.');
       }
       if (!globalSearch && animalId == null) {
-        throw StateError(
-          'The selected animal could not be loaded. Please refresh.',
-        );
+        throw StateError('Select an animal first.');
       }
       if (!globalSearch &&
-          animalCode == CutLinkAnimals.beef &&
+          _selectedAnimalCode == CutLinkAnimals.beef &&
           sectionId == null) {
         throw StateError(
           'This cut could not be matched. Please refresh the catalogue.',
         );
       }
-      const pageSize = 100;
-      var offset = 0;
-      while (mounted && version == _stockLoadVersion) {
-        var query = Supabase.instance.client.from('products').select('''
-              id,
-              sku,
-              product_name,
-              description,
-              brand,
-              origin_country,
-              origin_state,
-              temperature_state,
-              available_quantity,
-              quantity_unit,
-              availability_status,
-              supplier_business_id,
-              meat_animal_id,
-              meat_section_id,
-              meat_specification_id,
-              meat_grade_id,
-              active,
-              catch_weight,
-
-              marbling_score,
-              grade,
-              breed_program,
-              feeding_days,
-              bone_state,
-              rib_count,
-              production_claim,
-              chicken_skin,
-              chicken_bone,
-              chicken_production_type,
-              chicken_preparation,
-              chicken_size_weight,
-              chicken_carton_size,
-              hgp_free,
-              piece_weight_min,
-              piece_weight_max,
-              piece_weight_unit,
-              carton_weight,
-              carton_weight_unit,
-              pieces_per_carton,
-              packaging_type,
-              trim_specification,
-              fat_specification,
-              halal_status,
-              supplier_specification,
-
-              businesses(
-                legal_name,
-                trading_name
-              ),
-
-              meat_animals(
-                id,
-                code,
-                name
-              ),
-              meat_sections(
-                id,
-                code,
-                name,
-                is_miscellaneous,
-                display_order
-              ),
-              meat_specifications(
-                id,
-                name,
-                specification_type,
-                alternate_names
-              ),
-              meat_grades(
-                id,
-                code,
-                name
-              ),
-
-              supplier_spec_grade_offers(
-                id,
-                product_id,
-                specification_id,
-                grade_id,
-                standard_price_inc_gst,
-                minimum_order_quantity,
-                is_available,
-                is_active
-              ),
-
-              product_prices(
-                amount,
-                price_basis,
-                minimum_quantity,
-                active,
-
-                price_lists(
-                  id,
-                  name,
-                  visibility,
-                  active
-                )
-              )
-            ''');
-        query = query.eq('active', true);
-        if (halalOnly) query = query.eq('halal_status', 'halal');
-        if (!globalSearch) {
-          query = query.eq('meat_animal_id', animalId!);
-          // Chicken and other animal diagrams may map one region to multiple
-          // sections. Their small catalogues retain those existing mappings.
-          if (animalCode == CutLinkAnimals.beef && sectionId != null) {
-            query = query.eq('meat_section_id', sectionId);
-          }
-        }
-        final page = await query
-            .order('id')
-            .range(offset, offset + pageSize - 1)
+      final refreshIndex =
+          force ||
+          _facetScope != facetScope ||
+          _facetsLoadedAt == null ||
+          DateTime.now().difference(_facetsLoadedAt!) >
+              const Duration(minutes: 1);
+      if (refreshIndex) {
+        final raw = await Supabase.instance.client
+            .rpc(
+              'marketplace_catalogue_index',
+              params: {'p_animal_id': animalId, 'p_section_id': sectionId},
+            )
             .timeout(const Duration(seconds: 20));
-        if (!mounted || version != _stockLoadVersion) return;
-        if (Supabase.instance.client.auth.currentUser == null) {
-          throw StateError('Your session has ended. Please sign in again.');
+        if (!mounted ||
+            version != _stockLoadVersion ||
+            Supabase.instance.client.auth.currentUser?.id != userId) {
+          return;
         }
-        if (page.isEmpty) break;
-        setState(() {
-          _products.addAll(List<Map<String, dynamic>>.from(page));
-        });
-        _applySearch(loadStock: false);
-        offset += page.length;
-        if (page.length < pageSize) break;
-        await Future<void>.delayed(Duration.zero);
+        final result = Map<String, dynamic>.from(raw as Map);
+        final animals = {
+          for (final row in _catalogueAnimals) row['id'].toString(): row,
+        };
+        final sections = {
+          for (final row in _catalogueSections) row['id'].toString(): row,
+        };
+        final specifications = {
+          for (final row in _catalogueSpecifications) row['id'].toString(): row,
+        };
+        final grades = {
+          for (final rawGrade in result['grades'] as List)
+            (rawGrade as Map)['id'].toString(): Map<String, dynamic>.from(
+              rawGrade,
+            ),
+        };
+        _facetProducts =
+            [
+                  for (final rawVariant in result['variants'] as List)
+                    Map<String, dynamic>.from(rawVariant as Map),
+                ]
+                .map(
+                  (row) => <String, dynamic>{
+                    ...row,
+                    'meat_animals': animals[row['meat_animal_id']],
+                    'meat_sections': sections[row['meat_section_id']],
+                    'meat_specifications':
+                        specifications[row['meat_specification_id']],
+                    'meat_grades': grades[row['meat_grade_id']],
+                  },
+                )
+                .toList();
+        _facetScope = facetScope;
+        _facetsLoadedAt = DateTime.now();
       }
+      final sizeReady = _selectedPieceSize != null || _pieceSizes.length <= 1;
+      final specificationReady = _usesGradeStage
+          ? _selectedGradeId != null || _availableGrades.length == 1
+          : _selectedCommercialSpecificationKey != null ||
+                _availableCommercialSpecifications.length == 1;
+      // Browsing choices needs no prices, supplier joins or full product rows.
+      if (!_stockViewActive &&
+          !directSearch &&
+          !(_selectedSpecificationId != null &&
+              sizeReady &&
+              specificationReady)) {
+        return;
+      }
+      _stockViewActive = true;
+      final keys = _facetProducts
+          .where((product) {
+            if (!globalSearch &&
+                (_animalCode(product) != _selectedAnimalCode ||
+                    !_matchesSelectedCut(product))) {
+              return false;
+            }
+            if (_selectedSpecificationId != null &&
+                !_matchesSpecification(product, _selectedSpecificationId!)) {
+              return false;
+            }
+            if (_usesGradeStage &&
+                _selectedGradeId != null &&
+                !_matchesGrade(product, _selectedGradeId!)) {
+              return false;
+            }
+            if (_halalOnly && product['halal_status'] != 'halal') return false;
+            if (_availableOnly &&
+                product['availability_status'] == 'out_of_stock') {
+              return false;
+            }
+            return _matchesVariants(product) &&
+                _matchesCommercialSpecification(product) &&
+                _matchesChickenAttributeFilters(product) &&
+                _matchesGoatAttributeFilters(product);
+          })
+          .map((p) => p['_variant_key'].toString())
+          .toList();
+      if (keys.isEmpty) return;
+      final raw = await Supabase.instance.client
+          .rpc(
+            'marketplace_stock_page',
+            params: {
+              'p_animal_id': animalId,
+              'p_section_id': sectionId,
+              'p_variant_keys': keys,
+              'p_search': _searchController.text.trim(),
+              'p_supplier_search': _supplierSearchController.text.trim(),
+              'p_sort': _sortMode,
+              'p_offset': offset,
+              'p_limit': _stockPageSize,
+            },
+          )
+          .timeout(const Duration(seconds: 20));
+      if (!mounted ||
+          version != _stockLoadVersion ||
+          Supabase.instance.client.auth.currentUser?.id != userId) {
+        return;
+      }
+      final result = Map<String, dynamic>.from(raw as Map);
+      setState(() {
+        _products = List<Map<String, dynamic>>.from(result['products'] as List);
+        _filteredProducts = _products;
+        _stockTotal = (result['total'] as num).toInt();
+      });
     } catch (error) {
       if (!mounted || version != _stockLoadVersion) return;
       setState(() {
+        _stockScope = null;
         _stockError = error is TimeoutException
             ? 'Loading took too long. Please retry.'
             : 'Unable to load products: $error';
@@ -661,7 +830,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         children: [
           const LinearProgressIndicator(),
           const SizedBox(height: 4),
-          Text('Loading products… ${_products.length} loaded'),
+          const Text('Loading matching products…'),
         ],
       ),
     );
@@ -671,6 +840,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final catalogueVersion = ++_catalogueLoadVersion;
     ++_stockLoadVersion;
     _stockScope = null;
+    _facetScope = null;
+    _facetsLoadedAt = null;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -719,7 +890,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       });
 
       await _loadStock(force: true);
-      _applySearch(loadStock: false);
     } on PostgrestException catch (error) {
       if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
@@ -739,35 +909,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _isLoading = false;
       });
     }
-  }
-
-  List<String> _canonicalCatalogueNames(Map<String, dynamic> product) {
-    final names = <String>[];
-
-    final animal = _nestedMap(product['meat_animals']);
-    final section = _nestedMap(product['meat_sections']);
-    final specification = _nestedMap(product['meat_specifications']);
-    final grade = _nestedMap(product['meat_grades']);
-
-    for (final value in [
-      animal?['name'],
-      section?['name'],
-      specification?['name'],
-      grade?['code'],
-      grade?['name'],
-    ]) {
-      final text = value?.toString().trim();
-      if (text != null && text.isNotEmpty && !names.contains(text)) {
-        names.add(text);
-      }
-    }
-
-    return names;
-  }
-
-  String _cataloguePath(Map<String, dynamic> product) {
-    final parts = _canonicalCatalogueNames(product);
-    return parts.isEmpty ? 'Catalogue not linked' : parts.join(' → ');
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
@@ -886,24 +1027,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     ).any((offer) => offer['grade_id']?.toString() == gradeId);
   }
 
-  bool _matchesExactSpecGrade(
-    Map<String, dynamic> product, {
-    required String specificationId,
-    required String gradeId,
-  }) {
-    final directSpec = _directProductSpecificationId(product);
-    final directGrade = _directProductGradeId(product);
-
-    if (directSpec == specificationId && directGrade == gradeId) {
-      return true;
-    }
-
-    return _activeSpecGradeOffers(product).any((offer) {
-      return offer['specification_id']?.toString() == specificationId &&
-          offer['grade_id']?.toString() == gradeId;
-    });
-  }
-
   bool _marketplaceCatalogueVisible(Map<String, dynamic> product) {
     final specificationId = product['meat_specification_id']?.toString();
     if (specificationId == null || specificationId.isEmpty) {
@@ -914,7 +1037,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   List<Map<String, dynamic>> get _selectedAnimalProducts {
-    return _products.where((product) {
+    return _facetProducts.where((product) {
       if (!_marketplaceCatalogueVisible(product)) {
         return false;
       }
@@ -983,14 +1106,49 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   bool _matchesSelectedCut(Map<String, dynamic> product) {
     final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
-    final regionKey = _selectedAnimalRegionKey;
-
-    if (catalogue != null && regionKey != null) {
-      return catalogue.productMatchesRegion(product, regionKey);
+    final region = _selectedAnimalRegionKey;
+    if (catalogue == null || region == null) {
+      return _selectedSectionId == null ||
+          _productSectionId(product) == _selectedSectionId;
     }
-
-    return _selectedSectionId == null ||
-        _productSectionId(product) == _selectedSectionId;
+    final section = _nestedMap(product['meat_sections']);
+    final code = section?['code']?.toString().toUpperCase() ?? '';
+    final expected = catalogue.sectionCodeForRegion(region);
+    final spec = _nestedMap(product['meat_specifications']);
+    final name = (spec?['name'] ?? product['product_name'] ?? '')
+        .toString()
+        .toLowerCase();
+    if (_selectedAnimalCode == CutLinkAnimals.chicken) {
+      // Neck/tail share a storage section with other parts, not a buying choice.
+      if (region == 'wing') return code == 'WING' || code == 'WINGS';
+      if (region == 'neck') return name.contains('neck');
+      if (region == 'tail') return name.contains('tail');
+      if (code.isNotEmpty) {
+        if (region == 'back-frame') {
+          return code == 'BONES_FRAMES_SKIN' && !name.contains('neck');
+        }
+        if (region == 'misc-offal-other') {
+          return code == 'OFFAL_OTHER' ||
+              (code == 'OTHER' &&
+                  RegExp(
+                    r'offal|liver|heart|gizzard|giblet|feet',
+                  ).hasMatch(name));
+        }
+        return code == expected;
+      }
+    }
+    final aliases = <String, Set<String>>{
+      'RACK_RIB': {'RACK'},
+      'CHUMP_RUMP': {'CHUMP', 'RUMP'},
+      'SHOULDER_BLADE': {'SHOULDER'},
+      'BRISKET_BREAST': {'BREAST'},
+      'LEG_ROUND': {'LEG'},
+      'SHIN_SHANK': {'SHANK'},
+    };
+    if (code == expected || (aliases[expected]?.contains(code) ?? false)) {
+      return true;
+    }
+    return catalogue.productMatchesRegion(product, region);
   }
 
   bool get _usesGradeStage =>
@@ -1059,10 +1217,25 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     if (sectionId == null) return const [];
 
     final rows = _catalogueSpecifications
-        .where(
-          (specification) =>
-              specification['section_id']?.toString() == sectionId,
-        )
+        .where((specification) {
+          final sections = _catalogueSections.where(
+            (section) => section['id'] == specification['section_id'],
+          );
+          if (sections.isEmpty) return false;
+          final section = sections.first;
+          final animals = _catalogueAnimals.where(
+            (animal) => animal['id'] == section['animal_id'],
+          );
+          if (animals.isEmpty || animals.first['code'] != _selectedAnimalCode) {
+            return false;
+          }
+          return _matchesSelectedCut({
+            'meat_section_id': section['id'],
+            'meat_sections': section,
+            'meat_specifications': specification,
+            'product_name': specification['name'],
+          });
+        })
         .map((row) => Map<String, dynamic>.from(row))
         .toList();
 
@@ -1093,6 +1266,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         continue;
       }
 
+      if (!_matchesVariants(product)) continue;
       final grade = _nestedMap(product['meat_grades']);
       final id = grade?['id']?.toString();
 
@@ -1200,6 +1374,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedAnimalRegionKey = defaultRegionKey;
       _selectedSectionId = null;
       _selectedSpecificationId = null;
+      _resetVariants();
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
@@ -1230,6 +1405,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedAnimalRegionKey = regionKey;
       _selectedSectionId = section?['id']?.toString();
       _selectedSpecificationId = null;
+      _resetVariants();
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
@@ -1275,6 +1451,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedAnimalRegionKey = regionKey;
       _selectedSectionId = section['id']?.toString();
       _selectedSpecificationId = null;
+      _resetVariants();
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
@@ -1299,227 +1476,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   void _applySearch({bool loadStock = true}) {
     if (!mounted) return;
-    if (loadStock) unawaited(_loadStock());
-
-    final search = _searchController.text.trim().toLowerCase();
-    final supplierSearch = _supplierSearchController.text.trim().toLowerCase();
-    final directSearch = search.isNotEmpty || _halalOnly;
-    final cutScopedSearch =
-        directSearch &&
-        (_selectedSectionId != null || _selectedAnimalRegionKey != null);
-
-    double? visibleAmount(Map<String, dynamic> product) {
-      final price = _findVisiblePrice(product);
-      final raw = price?['amount'];
-
-      if (raw is num) return raw.toDouble();
-      return double.tryParse(raw?.toString() ?? '');
+    if (loadStock) {
+      unawaited(_loadStock());
+    } else {
+      setState(() => _filteredProducts = _products);
     }
-
-    setState(() {
-      _filteredProducts = _products.where((product) {
-        if (_halalOnly && product['halal_status'] != 'halal') return false;
-        if (directSearch) {
-          if (cutScopedSearch) {
-            if (_animalCode(product) != _selectedAnimalCode) {
-              return false;
-            }
-
-            if (!_matchesSelectedCut(product)) {
-              return false;
-            }
-
-            if (_selectedSpecificationId != null &&
-                !_matchesSpecification(product, _selectedSpecificationId!)) {
-              return false;
-            }
-
-            if (_usesGradeStage &&
-                _selectedGradeId != null &&
-                !_matchesGrade(product, _selectedGradeId!)) {
-              return false;
-            }
-          }
-        } else {
-          if (_animalCode(product) != _selectedAnimalCode) {
-            return false;
-          }
-
-          if ((_selectedSectionId != null ||
-                  _selectedAnimalRegionKey != null) &&
-              !_matchesSelectedCut(product)) {
-            return false;
-          }
-
-          if (_usesGradeStage &&
-              _selectedSpecificationId != null &&
-              _selectedGradeId != null) {
-            if (!_matchesExactSpecGrade(
-              product,
-              specificationId: _selectedSpecificationId!,
-              gradeId: _selectedGradeId!,
-            )) {
-              return false;
-            }
-          } else {
-            if (_selectedSpecificationId != null &&
-                !_matchesSpecification(product, _selectedSpecificationId!)) {
-              return false;
-            }
-
-            if (_usesGradeStage &&
-                _selectedGradeId != null &&
-                !_matchesGrade(product, _selectedGradeId!)) {
-              return false;
-            }
-          }
-        }
-
-        if (!_matchesCommercialSpecification(product)) {
-          return false;
-        }
-
-        if (!_matchesGoatAttributeFilters(product)) {
-          return false;
-        }
-
-        if (!_matchesChickenAttributeFilters(product)) {
-          return false;
-        }
-
-        if (_availableOnly) {
-          final status = product['availability_status']?.toString();
-          final rawQuantity = product['available_quantity'];
-          final quantity = rawQuantity is num
-              ? rawQuantity.toDouble()
-              : double.tryParse(rawQuantity?.toString() ?? '');
-
-          final offerAvailable = _activeSpecGradeOffers(
-            product,
-          ).any((offer) => offer['is_available'] == true);
-
-          final productAvailable =
-              status != 'out_of_stock' && (quantity == null || quantity > 0);
-
-          if (!productAvailable && !offerAvailable) {
-            return false;
-          }
-        }
-
-        final supplierName = _supplierName(product);
-        if (supplierSearch.isNotEmpty &&
-            !supplierName.toLowerCase().contains(supplierSearch)) {
-          return false;
-        }
-
-        if (search.isEmpty) return true;
-
-        final catalogueNames = _canonicalCatalogueNames(product);
-        final searchableValues = <dynamic>[
-          product['product_name'],
-          product['sku'],
-          product['brand'],
-          product['description'],
-          product['origin_country'],
-          product['origin_state'],
-          product['temperature_state'],
-          product['marbling_score'],
-          product['grade'],
-          product['breed_program'],
-          product['feeding_days'],
-          product['bone_state'],
-          product['rib_count'],
-          product['production_claim'],
-          product['chicken_skin'],
-          product['chicken_bone'],
-          product['chicken_production_type'],
-          product['chicken_preparation'],
-          product['chicken_size_weight'],
-          product['chicken_carton_size'],
-          product['hgp_free'],
-          product['packaging_type'],
-          product['trim_specification'],
-          product['fat_specification'],
-          ...(_nestedMap(product['meat_specifications'])?['alternate_names']
-                  as List? ??
-              const []),
-          product['supplier_specification'],
-          _cataloguePath(product),
-          _sectionName(product),
-          _specificationName(product),
-          _gradeCode(product),
-          _gradeName(product),
-          _supplierName(product),
-          ...catalogueNames,
-        ];
-
-        return matchesCatalogueSearch(
-          search,
-          searchableValues,
-          halalStatus: product['halal_status']?.toString() ?? 'not_specified',
-        );
-      }).toList();
-
-      switch (_sortMode) {
-        case 'price_low':
-          _filteredProducts.sort((a, b) {
-            final aPrice = visibleAmount(a);
-            final bPrice = visibleAmount(b);
-            if (aPrice == null && bPrice == null) return 0;
-            if (aPrice == null) return 1;
-            if (bPrice == null) return -1;
-            return aPrice.compareTo(bPrice);
-          });
-          break;
-        case 'price_high':
-          _filteredProducts.sort((a, b) {
-            final aPrice = visibleAmount(a);
-            final bPrice = visibleAmount(b);
-            if (aPrice == null && bPrice == null) return 0;
-            if (aPrice == null) return 1;
-            if (bPrice == null) return -1;
-            return bPrice.compareTo(aPrice);
-          });
-          break;
-        case 'supplier':
-          _filteredProducts.sort(
-            (a, b) => _supplierName(
-              a,
-            ).toLowerCase().compareTo(_supplierName(b).toLowerCase()),
-          );
-          break;
-        case 'grade':
-          _filteredProducts.sort((a, b) {
-            final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
-            if (gradeCompare != 0) return gradeCompare;
-            return _supplierName(
-              a,
-            ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
-          });
-          break;
-        default:
-          _filteredProducts.sort((a, b) {
-            final specCompare = _specificationName(
-              a,
-            ).toLowerCase().compareTo(_specificationName(b).toLowerCase());
-            if (specCompare != 0) return specCompare;
-
-            final gradeCompare = _gradeCode(a).compareTo(_gradeCode(b));
-            if (gradeCompare != 0) return gradeCompare;
-
-            final aPrice = visibleAmount(a);
-            final bPrice = visibleAmount(b);
-            if (aPrice != null && bPrice != null) {
-              final priceCompare = aPrice.compareTo(bPrice);
-              if (priceCompare != 0) return priceCompare;
-            }
-
-            return _supplierName(
-              a,
-            ).toLowerCase().compareTo(_supplierName(b).toLowerCase());
-          });
-      }
-    });
   }
 
   Map<String, dynamic>? _findVisiblePrice(Map<String, dynamic> product) {
@@ -1662,27 +1623,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         .replaceFirst(RegExp(r'\.$'), '');
   }
 
-  String _pieceWeightText(Map<String, dynamic> product) {
-    final min = product['piece_weight_min'];
-    final max = product['piece_weight_max'];
-    final unit = product['piece_weight_unit']?.toString();
-
-    if (min == null && max == null) {
-      return '';
-    }
-
-    final suffix = unit == null || unit.trim().isEmpty ? '' : ' $unit';
-
-    if (min != null && max != null) {
-      return '${_formatNumber(min)}–${_formatNumber(max)}$suffix';
-    }
-
-    if (min != null) {
-      return '${_formatNumber(min)}+$suffix';
-    }
-
-    return 'Up to ${_formatNumber(max)}$suffix';
-  }
+  String _pieceWeightText(Map<String, dynamic> product) =>
+      productSizeLabel(product);
 
   String _cartonText(Map<String, dynamic> product) {
     final cartonWeight = product['carton_weight'];
@@ -1936,10 +1878,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _prettyChickenValue(product['chicken_preparation']),
         _prettyChickenValue(product['temperature_state']),
         _prettyChickenValue(product['halal_status']),
-        _prettyChickenValue(product['chicken_size_weight']),
+        productSizeLabel(product),
         _prettyChickenValue(product['chicken_carton_size']),
         _prettyChickenValue(product['packaging_type']),
-        _prettyChickenValue(product['brand']),
+        product['brand']?.toString().trim() ?? '',
       ].where((value) => value.isNotEmpty).toList();
 
       final pieces = product['pieces_per_carton']?.toString().trim() ?? '';
@@ -1957,19 +1899,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _prettyChickenValue(product['temperature_state']),
       _prettyChickenValue(product['halal_status']),
       _prettyChickenValue(product['packaging_type']),
-      _prettyChickenValue(product['brand']),
+      product['brand']?.toString().trim() ?? '',
       _prettyChickenValue(product['supplier_specification']),
     ].where((value) => value.isNotEmpty).toList();
 
-    final pieceMin = product['piece_weight_min']?.toString().trim() ?? '';
-    final pieceMax = product['piece_weight_max']?.toString().trim() ?? '';
-    final pieceUnit = product['piece_weight_unit']?.toString().trim() ?? '';
-    if (pieceMin.isNotEmpty || pieceMax.isNotEmpty) {
-      final range = pieceMin.isNotEmpty && pieceMax.isNotEmpty
-          ? '$pieceMin–$pieceMax'
-          : (pieceMin.isNotEmpty ? pieceMin : pieceMax);
-      values.add('$range ${pieceUnit.isEmpty ? 'kg' : pieceUnit}'.trim());
-    }
+    final size = productSizeLabel(product);
+    if (size.isNotEmpty) values.add(size);
 
     final carton = product['carton_weight']?.toString().trim() ?? '';
     if (carton.isNotEmpty) {
@@ -1995,7 +1930,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     final byKey = <String, String>{};
 
-    for (final product in _selectedAnimalProducts) {
+    for (final product in _variantScope) {
       if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
           !_matchesSelectedCut(product)) {
         continue;
@@ -2004,6 +1939,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         continue;
       }
 
+      if (!_matchesVariants(product)) continue;
       final key = _commercialSpecificationKey(product);
       if (key.isEmpty) continue;
       byKey[key] = _commercialSpecificationLabel(product);
@@ -2044,7 +1980,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           onTap: () {
             setState(() {
               _selectedCommercialSpecificationKey = null;
-              _searchController.clear();
             });
             _applySearch();
           },
@@ -2057,7 +1992,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             onTap: () {
               setState(() {
                 _selectedCommercialSpecificationKey = specification['key'];
-                _searchController.clear();
               });
               _applySearch();
             },
@@ -2201,6 +2135,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               _selectedAnimalRegionKey = null;
               _selectedSectionId = null;
               _selectedSpecificationId = null;
+              _resetVariants();
               _selectedGradeId = null;
             });
             _applySearch();
@@ -2231,6 +2166,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           onTap: () {
             setState(() {
               _selectedSpecificationId = null;
+              _resetVariants();
               _selectedGradeId = null;
             });
             _applySearch();
@@ -2244,6 +2180,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             onTap: () {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
+                _resetVariants();
                 _selectedGradeId = null;
                 _selectedCommercialSpecificationKey = null;
                 _selectedCommercialSpecificationKey = null;
@@ -2465,6 +2402,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _mainCommercialSummary(Map<String, dynamic> product) {
     final parts = <String>[];
 
+    final pieceSize = productSizeLabel(product);
+    if (pieceSize.isNotEmpty) parts.add(pieceSize);
+    final brand = product['brand']?.toString().trim() ?? '';
+    if (brand.isNotEmpty) parts.add(brand);
+
     final breedProgram = product['breed_program']?.toString().trim() ?? '';
     final marbling = product['marbling_score']?.toString().trim() ?? '';
     final productionClaim = product['production_claim']?.toString();
@@ -2511,6 +2453,60 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     return parts.join(' • ');
+  }
+
+  Widget _supplierIdentity(Map<String, dynamic> product) {
+    final business = _nestedMap(product['businesses']);
+    final path = business?['logo_path']?.toString().trim() ?? '';
+    final name = _supplierName(product);
+    final fallback = Center(
+      child: Text(
+        name.isEmpty ? 'S' : name.substring(0, 1).toUpperCase(),
+        style: const TextStyle(
+          color: Color(0xFF741C1C),
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F5F3),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFE3E5E8)),
+          ),
+          child: path.isEmpty
+              ? fallback
+              : Image.network(
+                  Supabase.instance.client.storage
+                      .from('business-branding')
+                      .getPublicUrl(path),
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  isAntiAlias: true,
+                  semanticLabel: '$name logo',
+                  errorBuilder: (_, error, stackTrace) => fallback,
+                ),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF741C1C),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildMarketplaceProductCard(Map<String, dynamic> product) {
@@ -2561,16 +2557,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _supplierName(product),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF741C1C),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    _supplierIdentity(product),
                     const SizedBox(height: 4),
                     Text(
                       '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}'
@@ -2784,9 +2771,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     final subcategorySelected = _selectedSpecificationId != null;
     final finalSpecificationSelected = _usesGradeStage
-        ? _selectedGradeId != null
-        : _selectedCommercialSpecificationKey != null;
-    final exactSelection = subcategorySelected && finalSpecificationSelected;
+        ? _selectedGradeId != null ||
+              (!_loadingStock && _availableGrades.length == 1)
+        : _selectedCommercialSpecificationKey != null ||
+              (!_loadingStock &&
+                  _availableCommercialSpecifications.length == 1);
+    final sizeSelected = _selectedPieceSize != null || _pieceSizes.length <= 1;
+    final exactSelection =
+        _stockViewActive ||
+        (subcategorySelected && sizeSelected && finalSpecificationSelected);
 
     // ignore: unused_element
     Widget filterLabel(String label) {
@@ -2954,7 +2947,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         child: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: !cutSelected
+            hintText: exactSelection
+                ? 'Search matching products...'
+                : !cutSelected
                 ? 'Search all products — e.g. Scotch Fillet, Brisket...'
                 : !subcategorySelected
                 ? 'Search subcategories within ${_selectedSectionName ?? 'this cut'}...'
@@ -3003,151 +2998,113 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               builder: (context, constraints) {
                 final narrow = constraints.maxWidth < 560;
 
-                final supplierField = TextField(
-                  controller: _supplierSearchController,
-                  decoration: InputDecoration(
-                    hintText: 'Filter supplier',
-                    prefixIcon: const Icon(Icons.storefront_outlined, size: 18),
-                    suffixIcon: _supplierSearchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: _supplierSearchController.clear,
-                            icon: const Icon(Icons.close, size: 17),
+                final supplierField = SizedBox(
+                  height: 46,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Filter supplier'),
+                        content: SizedBox(
+                          width: 400,
+                          height: 56,
+                          child: TextField(
+                            controller: _supplierSearchController,
+                            autofocus: true,
+                            maxLines: 1,
+                            decoration: const InputDecoration(
+                              hintText: 'Supplier name',
+                              border: OutlineInputBorder(),
+                            ),
+                            onSubmitted: (_) =>
+                                Navigator.of(dialogContext).pop(),
                           ),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => _supplierSearchController.clear(),
+                            child: const Text('Clear'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text('Done'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    icon: const Icon(Icons.storefront_outlined, size: 18),
+                    label: Text(
+                      _supplierSearchController.text.isEmpty
+                          ? 'Filter supplier'
+                          : _supplierSearchController.text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 );
 
-                String sortLabel(String value) => switch (value) {
-                  'price_low' => 'Cheapest',
-                  'price_high' => 'Highest',
-                  'grade' => 'Grade',
-                  'supplier' => 'Supplier A–Z',
-                  _ => 'Recommended',
-                };
-
-                IconData sortIcon(String value) => switch (value) {
-                  'price_low' => Icons.south_east,
-                  'price_high' => Icons.north_east,
-                  'grade' => Icons.workspace_premium_outlined,
-                  'supplier' => Icons.storefront_outlined,
-                  _ => Icons.auto_awesome_outlined,
-                };
-
-                final sortField = PopupMenuButton<String>(
-                  initialValue: _sortMode,
-                  onSelected: (value) {
+                final sortField = CutLinkPickerField<String>(
+                  label: 'Sort results',
+                  value: _sortMode,
+                  dense: true,
+                  enableSearch: false,
+                  options: const [
+                    CutLinkPickerOption(
+                      value: 'recommended',
+                      label: 'Recommended',
+                      icon: Icons.auto_awesome_outlined,
+                    ),
+                    CutLinkPickerOption(
+                      value: 'price_low',
+                      label: 'Price: low to high',
+                      icon: Icons.arrow_downward,
+                    ),
+                    CutLinkPickerOption(
+                      value: 'price_high',
+                      label: 'Price: high to low',
+                      icon: Icons.arrow_upward,
+                    ),
+                    CutLinkPickerOption(
+                      value: 'supplier',
+                      label: 'Supplier: A–Z',
+                      icon: Icons.storefront_outlined,
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
                     setState(() => _sortMode = value);
                     _applySearch();
                   },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: 'recommended',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.auto_awesome_outlined),
-                        title: Text('Recommended'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'price_low',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.south_east),
-                        title: Text('Cheapest price'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'price_high',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.north_east),
-                        title: Text('Highest price'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'grade',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.workspace_premium_outlined),
-                        title: Text('Grade'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'supplier',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.storefront_outlined),
-                        title: Text('Supplier A–Z'),
-                      ),
-                    ),
-                  ],
-                  child: Container(
-                    height: 47,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFDADAD6)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          sortIcon(_sortMode),
-                          size: 17,
-                          color: const Color(0xFF741C1C),
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            sortLabel(_sortMode),
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.keyboard_arrow_down, size: 18),
-                      ],
-                    ),
-                  ),
                 );
 
-                if (narrow) {
-                  return Column(
-                    children: [
-                      supplierField,
-                      const SizedBox(height: 7),
-                      sortField,
-                    ],
-                  );
-                }
-
-                return Row(
+                final fieldWidth = narrow
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 8) / 2;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Expanded(flex: 6, child: supplierField),
-                    const SizedBox(width: 7),
-                    Expanded(flex: 4, child: sortField),
+                    SizedBox(width: fieldWidth, child: supplierField),
+                    SizedBox(width: fieldWidth, child: sortField),
                   ],
                 );
               },
             ),
             const SizedBox(height: 7),
-            Row(
+            Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 availableToggle(),
-                const Spacer(),
                 TextButton(
                   onPressed: () {
                     _supplierSearchController.clear();
                     setState(() {
+                      final wasViewingStock = _stockViewActive;
+                      _resetVariants();
+                      _stockViewActive = wasViewingStock;
+                      _selectedCommercialSpecificationKey = null;
+                      _selectedPieceSize = '';
                       _sortMode = 'recommended';
                       _availableOnly = false;
                       _halalOnly = false;
@@ -3284,14 +3241,52 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             onTap: () {
               setState(() {
                 _selectedSpecificationId = specification['id']?.toString();
+                _resetVariants();
                 _selectedGradeId = null;
                 _selectedCommercialSpecificationKey = null;
               });
-              _searchController.clear();
               _applySearch();
             },
           );
         },
+      );
+    }
+
+    Widget sizeStage() {
+      if (_loadingStock) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final sizes = _pieceSizes;
+      return ListView(
+        padding: const EdgeInsets.all(10),
+        children: [
+          rightChoiceCard(
+            icon: Icons.straighten,
+            title: 'Any size',
+            subtitle: 'Compare all piece sizes for this sub-cut.',
+            onTap: () {
+              setState(() => _selectedPieceSize = '');
+              _applySearch();
+            },
+          ),
+          for (final size in sizes.where((v) => v.isNotEmpty))
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: rightChoiceCard(
+                icon: Icons.straighten,
+                title: size,
+                subtitle: 'Size of each piece inside the carton.',
+                onTap: () {
+                  setState(() {
+                    _selectedPieceSize = size;
+                    _selectedGradeId = null;
+                    _selectedCommercialSpecificationKey = null;
+                  });
+                  _applySearch();
+                },
+              ),
+            ),
+        ],
       );
     }
 
@@ -3342,7 +3337,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               setState(() {
                 _selectedGradeId = grade['id']?.toString();
               });
-              _searchController.clear();
               _applySearch();
             },
           );
@@ -3386,7 +3380,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             onTap: () {
               setState(() {
                 _selectedCommercialSpecificationKey = specification['key'];
-                _searchController.clear();
               });
               _applySearch();
             },
@@ -3396,6 +3389,17 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     Widget supplierStockStage() {
+      if (_loadingStock) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (_filteredProducts.isEmpty && _stockPageOffset > 0) {
+        return Center(
+          child: TextButton(
+            onPressed: () => _loadStock(force: true),
+            child: const Text('Return to first page'),
+          ),
+        );
+      }
       if (_filteredProducts.isEmpty) {
         return const Center(
           child: Padding(
@@ -3415,7 +3419,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'No active supplier product is linked to this exact subcategory and grade.',
+                  'No active supplier product matches these cut and specification choices.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF777777), height: 1.35),
                 ),
@@ -3425,12 +3429,53 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         );
       }
 
-      return ListView.separated(
-        padding: const EdgeInsets.all(10),
-        itemCount: _filteredProducts.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
-        itemBuilder: (_, index) =>
-            _buildMarketplaceProductCard(_filteredProducts[index]),
+      return Column(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              key: ValueKey('$_stockScope:$_stockPageOffset'),
+              padding: const EdgeInsets.all(10),
+              itemCount: _filteredProducts.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 7),
+              itemBuilder: (_, index) =>
+                  _buildMarketplaceProductCard(_filteredProducts[index]),
+            ),
+          ),
+          if (_stockTotal > _stockPageSize || _stockPageOffset > 0)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: _stockPageOffset == 0
+                        ? null
+                        : () => _loadStock(
+                            offset: _stockPageOffset - _stockPageSize,
+                          ),
+                    icon: const Icon(Icons.chevron_left),
+                    label: const Text('Previous'),
+                  ),
+                  Text(
+                    '${_stockPageOffset + 1}–${_stockPageOffset + _filteredProducts.length} of $_stockTotal',
+                  ),
+                  TextButton.icon(
+                    onPressed:
+                        _stockPageOffset + _filteredProducts.length >=
+                            _stockTotal
+                        ? null
+                        : () => _loadStock(
+                            offset: _stockPageOffset + _stockPageSize,
+                          ),
+                    icon: const Icon(Icons.chevron_right),
+                    label: const Text('Next'),
+                  ),
+                ],
+              ),
+            ),
+        ],
       );
     }
 
@@ -3439,17 +3484,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           _searchController.text.trim().isNotEmpty || _halalOnly;
       final globalSearch = directSearch && !cutSelected;
 
-      final title = globalSearch
+      final showingStock = directSearch || exactSelection;
+      final title = showingStock
+          ? (globalSearch
+                ? (_halalOnly ? 'Halal Products' : 'Search Results')
+                : 'Supplier Stock')
+          : globalSearch
           ? (_halalOnly ? 'Halal Products' : 'Search Results')
           : !cutSelected
           ? 'Choose a Cut'
           : !subcategorySelected
           ? 'Subcategories'
+          : !sizeSelected
+          ? 'Choose Piece Size'
           : !finalSpecificationSelected
           ? (_usesGradeStage ? 'Choose Grade' : 'Choose Specification')
           : 'Supplier Stock';
 
-      final subtitle = globalSearch
+      final subtitle = showingStock
+          ? 'Compare matching supplier offers and pricing.'
+          : globalSearch
           ? (_halalOnly
                 ? 'Products marked Halal by their supplier.'
                 : 'Matching products from all suppliers.')
@@ -3457,152 +3511,212 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ? 'Select a cut from the animal diagram or cut row.'
           : !subcategorySelected
           ? 'Choose the exact subcategory for this cut.'
+          : !sizeSelected
+          ? 'Select the weight of each cut inside the carton.'
           : !finalSpecificationSelected
           ? (_usesGradeStage
                 ? 'Choose the commercial grade/category.'
                 : 'Choose the product specification for this sub-cut.')
           : 'Compare matching supplier offers and pricing.';
 
-      final showingStock = globalSearch || exactSelection;
-
+      Widget filters() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                ChoiceChip(
+                  label: const Text('All products'),
+                  selected: !_halalOnly,
+                  onSelected: (_) {
+                    setState(() => _halalOnly = false);
+                    _applySearch();
+                  },
+                ),
+                ChoiceChip(
+                  avatar: const Icon(Icons.verified_outlined, size: 18),
+                  label: const Text('Halal only'),
+                  selected: _halalOnly,
+                  onSelected: (selected) {
+                    setState(() => _halalOnly = selected);
+                    _applySearch();
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (subcategorySelected || globalSearch) _variantFilters(),
+          if (showingStock) resultsToolbar(),
+        ],
+      );
+      Widget content() => showingStock
+          ? supplierStockStage()
+          : !cutSelected
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.touch_app_outlined,
+                      size: 48,
+                      color: Color(0xFFAAAAAA),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Select a cut or search above',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : !subcategorySelected
+          ? subcategoryStage()
+          : !sizeSelected
+          ? sizeStage()
+          : !finalSpecificationSelected
+          ? (_usesGradeStage ? gradeStage() : commercialSpecificationStage())
+          : supplierStockStage();
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE3E5E8)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x07000000),
-              blurRadius: 10,
-              offset: Offset(0, 3),
-            ),
-          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 10.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (showingStock)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5EAEA),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${_filteredProducts.length} result${_filteredProducts.length == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                          color: Color(0xFF741C1C),
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            universalSearchBar(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  ChoiceChip(
-                    label: const Text('All products'),
-                    selected: !_halalOnly,
-                    onSelected: (_) {
-                      setState(() => _halalOnly = false);
-                      _applySearch();
-                    },
-                  ),
-                  ChoiceChip(
-                    avatar: const Icon(Icons.verified_outlined, size: 18),
-                    label: const Text('Halal only'),
-                    selected: _halalOnly,
-                    onSelected: (selected) {
-                      setState(() => _halalOnly = selected);
-                      _applySearch();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            _stockLoadingStatus(),
-            if (showingStock) resultsToolbar(),
-            Expanded(
-              child: globalSearch
-                  ? supplierStockStage()
-                  : !cutSelected
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(28),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+        child: LayoutBuilder(
+          builder: (context, panel) {
+            final sideFilters = panel.maxWidth >= 780;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
+                        child: Row(
                           children: [
-                            Icon(
-                              Icons.touch_app_outlined,
-                              size: 48,
-                              color: Color(0xFFAAAAAA),
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Select a cut or search above',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    subtitle,
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            if (showingStock)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5EAEA),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF741C1C),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                    )
-                  : !subcategorySelected
-                  ? subcategoryStage()
-                  : !finalSpecificationSelected
-                  ? (_usesGradeStage
-                        ? gradeStage()
-                        : commercialSpecificationStage())
-                  : supplierStockStage(),
-            ),
-          ],
+                      universalSearchBar(),
+                      if (!sideFilters) ...[
+                        TextButton.icon(
+                          onPressed: () => setState(
+                            () => _filtersExpanded = !_filtersExpanded,
+                          ),
+                          icon: Icon(
+                            _filtersExpanded ? Icons.expand_less : Icons.tune,
+                          ),
+                          label: Text(
+                            _filtersExpanded
+                                ? 'Hide filters & sorting'
+                                : 'Filters & sorting',
+                          ),
+                        ),
+                        if (_filtersExpanded)
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: panel.maxHeight * 0.38,
+                            ),
+                            child: SingleChildScrollView(
+                              child: SizedBox(
+                                width: panel.maxWidth,
+                                child: filters(),
+                              ),
+                            ),
+                          ),
+                      ],
+                      _stockLoadingStatus(),
+                      Expanded(child: content()),
+                    ],
+                  ),
+                ),
+                if (sideFilters) ...[
+                  const VerticalDivider(width: 1, color: Color(0xFFE3E5E8)),
+                  SizedBox(
+                    width: 234,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(top: 14, bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(12, 0, 12, 14),
+                            child: Text(
+                              'Filters & sorting',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                          filters(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       );
     }
 
-    return Center(
+    return Align(
+      alignment: Alignment.topLeft,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1320),
+        constraints: const BoxConstraints(maxWidth: 1740),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 930;
@@ -3620,9 +3734,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(flex: 5, child: animalPanel()),
+                  Expanded(flex: 4, child: animalPanel()),
                   const SizedBox(width: 14),
-                  Expanded(flex: 5, child: resultsPanel()),
+                  Expanded(flex: 7, child: resultsPanel()),
                 ],
               );
             },
