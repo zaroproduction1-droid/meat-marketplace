@@ -110,7 +110,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         !_matchesSpecification(p, _selectedSpecificationId!)) {
       return false;
     }
-    if (_halalOnly && p['halal_status'] != 'halal') return false;
+    if (_halalOnly && p['halal_status'] != 'halal') {
+      return false;
+    }
     if (_availableOnly && p['availability_status'] == 'out_of_stock') {
       return false;
     }
@@ -171,7 +173,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             CutLinkPickerOption(value: v, label: v),
         ],
         onChanged: (v) {
-          if (v == null) return;
+          if (v == null) {
+            return;
+          }
           setState(() => change(v));
           _applySearch();
         },
@@ -267,7 +271,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Future<void> _loadButcherBusinessId() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        return;
+      }
 
       final membership = await Supabase.instance.client
           .from('business_memberships')
@@ -277,7 +283,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           .limit(1)
           .single();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _butcherBusinessId = membership['business_id']?.toString();
@@ -349,20 +357,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ? raw.toDouble()
         : double.tryParse(raw?.toString() ?? '');
 
-    if (minimum == null || minimum <= 1) return 1;
+    if (minimum == null || minimum <= 1) {
+      return 1;
+    }
     return minimum.ceil();
   }
 
   int _cartQuantity(Map<String, dynamic> product) {
     final id = product['id']?.toString();
-    if (id == null) return _minimumCartQuantity(product);
+    if (id == null) {
+      return _minimumCartQuantity(product);
+    }
 
     return _cartQuantities[id] ?? _minimumCartQuantity(product);
   }
 
   void _changeCartQuantity(Map<String, dynamic> product, int delta) {
     final id = product['id']?.toString();
-    if (id == null) return;
+    if (id == null) {
+      return;
+    }
 
     final minimum = _minimumCartQuantity(product);
     final current = _cartQuantity(product);
@@ -394,7 +408,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         }
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _cartItemCount = count);
       _syncCartBounce();
     } on PostgrestException {
@@ -418,7 +434,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         return;
       }
       await _cartBounceController.forward(from: 0);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       await _cartBounceController.reverse();
     }
 
@@ -571,7 +589,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         });
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       CutLinkNotice.show(
         context,
@@ -606,7 +626,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Future<void> _loadStock({bool force = false, int offset = 0}) async {
-    if (_isLoading || !mounted) return;
+    if (_isLoading || !mounted) {
+      return;
+    }
     final userId = Supabase.instance.client.auth.currentUser?.id;
     final cutSelected =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
@@ -643,7 +665,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _sortMode,
       offset,
     ]);
-    if (!force && _stockScope == scope) return;
+    if (!force && _stockScope == scope) {
+      return;
+    }
     _stockScope = scope;
     final version = ++_stockLoadVersion;
     setState(() {
@@ -653,9 +677,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _stockPageOffset = offset;
       _stockError = null;
       _loadingStock = cutSelected || directSearch;
-      if (_facetScope != facetScope || force) _facetProducts = [];
+      if (_facetScope != facetScope || force) {
+        _facetProducts = [];
+      }
     });
-    if (!cutSelected && !directSearch) return;
+    if (!cutSelected && !directSearch) {
+      return;
+    }
     try {
       if (userId == null) {
         throw StateError('Your session has ended. Please sign in again.');
@@ -753,7 +781,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 !_matchesGrade(product, _selectedGradeId!)) {
               return false;
             }
-            if (_halalOnly && product['halal_status'] != 'halal') return false;
+            if (_halalOnly && product['halal_status'] != 'halal') {
+              return false;
+            }
             if (_availableOnly &&
                 product['availability_status'] == 'out_of_stock') {
               return false;
@@ -765,7 +795,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           })
           .map((p) => p['_variant_key'].toString())
           .toList();
-      if (keys.isEmpty) return;
+      if (keys.isEmpty) {
+        return;
+      }
       final raw = await Supabase.instance.client
           .rpc(
             'marketplace_stock_page',
@@ -793,7 +825,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _stockTotal = (result['total'] as num).toInt();
       });
     } catch (error) {
-      if (!mounted || version != _stockLoadVersion) return;
+      if (!mounted || version != _stockLoadVersion) {
+        return;
+      }
       setState(() {
         _stockScope = null;
         _stockError = error is TimeoutException
@@ -822,7 +856,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ),
       );
     }
-    if (!_loadingStock) return const SizedBox.shrink();
+    if (!_loadingStock) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -912,8 +948,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) return raw;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -1060,7 +1100,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       return catalogue.regionLabel(regionKey);
     }
 
-    if (_selectedSectionId == null) return null;
+    if (_selectedSectionId == null) {
+      return null;
+    }
 
     for (final section in _selectedAnimalSections) {
       if (section['id']?.toString() == _selectedSectionId) {
@@ -1088,7 +1130,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     for (final product in _selectedAnimalProducts) {
       final section = _nestedMap(product['meat_sections']);
       final id = section?['id']?.toString();
-      if (section == null || id == null || id.isEmpty) continue;
+      if (section == null || id == null || id.isEmpty) {
+        continue;
+      }
       byId[id] = section;
     }
 
@@ -1096,7 +1140,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     rows.sort((a, b) {
       final aOrder = int.tryParse(a['display_order']?.toString() ?? '') ?? 9999;
       final bOrder = int.tryParse(b['display_order']?.toString() ?? '') ?? 9999;
-      if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+      if (aOrder != bOrder) {
+        return aOrder.compareTo(bOrder);
+      }
       return (a['name']?.toString() ?? '').compareTo(
         b['name']?.toString() ?? '',
       );
@@ -1120,9 +1166,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         .toLowerCase();
     if (_selectedAnimalCode == CutLinkAnimals.chicken) {
       // Neck/tail share a storage section with other parts, not a buying choice.
-      if (region == 'wing') return code == 'WING' || code == 'WINGS';
-      if (region == 'neck') return name.contains('neck');
-      if (region == 'tail') return name.contains('tail');
+      if (region == 'wing') {
+        return code == 'WING' || code == 'WINGS';
+      }
+      if (region == 'neck') {
+        return name.contains('neck');
+      }
+      if (region == 'tail') {
+        return name.contains('tail');
+      }
       if (code.isNotEmpty) {
         if (region == 'back-frame') {
           return code == 'BONES_FRAMES_SKIN' && !name.contains('neck');
@@ -1174,7 +1226,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     final regionKey = _selectedAnimalRegionKey;
-    if (regionKey == null) return null;
+    if (regionKey == null) {
+      return null;
+    }
 
     final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
     final expectedCode = catalogue?.sectionCodeForRegion(regionKey);
@@ -1187,14 +1241,18 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         break;
       }
     }
-    if (animalId == null) return null;
+    if (animalId == null) {
+      return null;
+    }
 
     final targetCode = _normaliseCatalogueKey(expectedCode);
     final targetRegion = _normaliseCatalogueKey(regionKey);
     final targetLabel = _normaliseCatalogueKey(expectedLabel);
 
     for (final section in _catalogueSections) {
-      if (section['animal_id']?.toString() != animalId) continue;
+      if (section['animal_id']?.toString() != animalId) {
+        continue;
+      }
 
       final code = _normaliseCatalogueKey(section['code']);
       final name = _normaliseCatalogueKey(section['name']);
@@ -1214,14 +1272,18 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   List<Map<String, dynamic>> get _availableSpecifications {
     final sectionId = _selectedCatalogueSectionId;
-    if (sectionId == null) return const [];
+    if (sectionId == null) {
+      return const [];
+    }
 
     final rows = _catalogueSpecifications
         .where((specification) {
           final sections = _catalogueSections.where(
             (section) => section['id'] == specification['section_id'],
           );
-          if (sections.isEmpty) return false;
+          if (sections.isEmpty) {
+            return false;
+          }
           final section = sections.first;
           final animals = _catalogueAnimals.where(
             (animal) => animal['id'] == section['animal_id'],
@@ -1242,7 +1304,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     rows.sort((a, b) {
       final aOrder = (a['display_order'] as num?)?.toInt() ?? 9999;
       final bOrder = (b['display_order'] as num?)?.toInt() ?? 9999;
-      if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+      if (aOrder != bOrder) {
+        return aOrder.compareTo(bOrder);
+      }
       return (a['name']?.toString() ?? '').toLowerCase().compareTo(
         (b['name']?.toString() ?? '').toLowerCase(),
       );
@@ -1252,7 +1316,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   List<Map<String, dynamic>> get _availableGrades {
-    if (!_usesGradeStage) return const [];
+    if (!_usesGradeStage) {
+      return const [];
+    }
 
     final byId = <String, Map<String, dynamic>>{};
 
@@ -1266,11 +1332,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         continue;
       }
 
-      if (!_matchesVariants(product)) continue;
+      if (!_matchesVariants(product)) {
+        continue;
+      }
       final grade = _nestedMap(product['meat_grades']);
       final id = grade?['id']?.toString();
 
-      if (grade == null || id == null || id.isEmpty) continue;
+      if (grade == null || id == null || id.isEmpty) {
+        continue;
+      }
       byId[id] = grade;
     }
 
@@ -1286,7 +1356,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Map<String, dynamic>? _sectionForRegion(String animalCode, String regionKey) {
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
-    if (catalogue == null) return null;
+    if (catalogue == null) {
+      return null;
+    }
     final animalIds = _catalogueAnimals
         .where((animal) => animal['code'] == animalCode)
         .map((animal) => animal['id']?.toString())
@@ -1308,7 +1380,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     // catalogue too. Navigation must never depend on downloaded stock.
     for (final section in sections) {
       for (final specification in _catalogueSpecifications) {
-        if (specification['section_id'] != section['id']) continue;
+        if (specification['section_id'] != section['id']) {
+          continue;
+        }
         if (catalogue.productMatchesRegion({
           'meat_sections': section,
           'meat_specifications': specification,
@@ -1325,7 +1399,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   String _prettyChickenValue(dynamic raw) {
     final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty) return '';
+    if (value.isEmpty) {
+      return '';
+    }
 
     return value
         .split('_')
@@ -1355,16 +1431,22 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   bool get _isGoatSelection => _selectedAnimalCode == CutLinkAnimals.goat;
 
   bool _matchesGoatAttributeFilters(Map<String, dynamic> product) {
-    if (!_isGoatSelection || _goatAttributeFilters.isEmpty) return true;
+    if (!_isGoatSelection || _goatAttributeFilters.isEmpty) {
+      return true;
+    }
 
     for (final entry in _goatAttributeFilters.entries) {
-      if (product[entry.key]?.toString() != entry.value) return false;
+      if (product[entry.key]?.toString() != entry.value) {
+        return false;
+      }
     }
     return true;
   }
 
   void _selectAnimal(String animalCode) {
-    if (animalCode == _selectedAnimalCode) return;
+    if (animalCode == _selectedAnimalCode) {
+      return;
+    }
 
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
     final defaultRegionKey = catalogue?.defaultRegionKey;
@@ -1417,7 +1499,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   String? _regionForSection(Map<String, dynamic> section) {
     final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
-    if (catalogue == null) return null;
+    if (catalogue == null) {
+      return null;
+    }
 
     final sectionCode = _normaliseCatalogueKey(section['code']);
     final sectionName = _normaliseCatalogueKey(section['name']);
@@ -1470,12 +1554,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   void _onSearchChanged() {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 250), () {
-      if (mounted) _applySearch();
+      if (mounted) {
+        _applySearch();
+      }
     });
   }
 
   void _applySearch({bool loadStock = true}) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (loadStock) {
       unawaited(_loadStock());
     } else {
@@ -1904,7 +1992,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     ].where((value) => value.isNotEmpty).toList();
 
     final size = productSizeLabel(product);
-    if (size.isNotEmpty) values.add(size);
+    if (size.isNotEmpty) {
+      values.add(size);
+    }
 
     final carton = product['carton_weight']?.toString().trim() ?? '';
     if (carton.isNotEmpty) {
@@ -1916,7 +2006,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     final pieces = product['pieces_per_carton']?.toString().trim() ?? '';
-    if (pieces.isNotEmpty) values.add('$pieces pcs/carton');
+    if (pieces.isNotEmpty) {
+      values.add('$pieces pcs/carton');
+    }
 
     return values.isEmpty ? 'Standard specification' : values.join(' • ');
   }
@@ -1926,7 +2018,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   List<Map<String, String>> get _availableCommercialSpecifications {
-    if (_selectedSpecificationId == null) return const [];
+    if (_selectedSpecificationId == null) {
+      return const [];
+    }
 
     final byKey = <String, String>{};
 
@@ -1939,9 +2033,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         continue;
       }
 
-      if (!_matchesVariants(product)) continue;
+      if (!_matchesVariants(product)) {
+        continue;
+      }
       final key = _commercialSpecificationKey(product);
-      if (key.isEmpty) continue;
+      if (key.isEmpty) {
+        continue;
+      }
       byKey[key] = _commercialSpecificationLabel(product);
     }
 
@@ -1968,7 +2066,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Widget _buildCommercialSpecificationStrip() {
     final specifications = _availableCommercialSpecifications;
-    if (specifications.isEmpty) return const SizedBox.shrink();
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _finalSpecificationScrollController,
@@ -2047,7 +2147,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     required List<Widget> children,
   }) {
     Future<void> move(double direction) async {
-      if (!controller.hasClients) return;
+      if (!controller.hasClients) {
+        return;
+      }
 
       final position = controller.position;
       final target = (controller.offset + (direction * 240))
@@ -2121,7 +2223,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _buildSectionStrip() {
     final sections = _selectedAnimalSections;
 
-    if (sections.isEmpty) return const SizedBox.shrink();
+    if (sections.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _cutScrollController,
@@ -2154,7 +2258,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _buildSpecificationStrip() {
     final specifications = _availableSpecifications;
 
-    if (specifications.isEmpty) return const SizedBox.shrink();
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _subcategoryScrollController,
@@ -2177,18 +2283,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             label: specification['name']?.toString() ?? 'Subcategory',
             selected:
                 _selectedSpecificationId == specification['id']?.toString(),
-            onTap: () {
-              setState(() {
-                _selectedSpecificationId = specification['id']?.toString();
-                _resetVariants();
-                _selectedGradeId = null;
-                _selectedCommercialSpecificationKey = null;
-                _selectedCommercialSpecificationKey = null;
-                _chickenAttributeFilters.clear();
-                _goatAttributeFilters.clear();
-              });
-              _applySearch();
-            },
+            onTap: () => _chooseCatalogueSubcut(specification),
           ),
       ],
     );
@@ -2197,7 +2292,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _buildGradeStrip() {
     final grades = _availableGrades;
 
-    if (grades.isEmpty) return const SizedBox.shrink();
+    if (grades.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _gradeScrollController,
@@ -2403,9 +2500,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final parts = <String>[];
 
     final pieceSize = productSizeLabel(product);
-    if (pieceSize.isNotEmpty) parts.add(pieceSize);
+    if (pieceSize.isNotEmpty) {
+      parts.add(pieceSize);
+    }
     final brand = product['brand']?.toString().trim() ?? '';
-    if (brand.isNotEmpty) parts.add(brand);
+    if (brand.isNotEmpty) {
+      parts.add(brand);
+    }
 
     final breedProgram = product['breed_program']?.toString().trim() ?? '';
     final marbling = product['marbling_score']?.toString().trim() ?? '';
@@ -2737,6 +2838,185 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
   }
 
+  void _chooseCatalogueSubcut(Map<String, dynamic> specification) {
+    setState(() {
+      _selectedSpecificationId = specification['id']?.toString();
+      _resetVariants();
+      _selectedGradeId = null;
+      _selectedCommercialSpecificationKey = null;
+      _chickenAttributeFilters.clear();
+      _goatAttributeFilters.clear();
+      _stockViewActive = true;
+      _stockScope = null;
+    });
+    _applySearch();
+  }
+
+  Future<void> _openAnimalCatalogue() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) {
+          final specifications = _availableSpecifications;
+          Widget diagram() => InteractiveAnimalBrowser(
+            selectedAnimalCode: _selectedAnimalCode,
+            selectedRegionKey: _selectedAnimalRegionKey,
+            maxWidth: 900,
+            onAnimalChanged: (code) {
+              _selectAnimal(code);
+              update(() {});
+            },
+            onRegionSelected: (region) {
+              _selectAnimalRegion(region);
+              update(() {});
+            },
+          );
+          Widget choices() => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '1. Choose a cut',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final section in _selectedAnimalSections)
+                    ChoiceChip(
+                      label: Text(section['name']?.toString() ?? 'Cut'),
+                      selected: _selectedSectionId == section['id']?.toString(),
+                      onSelected: (_) {
+                        _selectSection(section);
+                        update(() {});
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '2. Choose a sub-cut',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choose a sub-cut to view supplier offers. Refine grade, size and brand on the results page.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF666A70)),
+              ),
+              const SizedBox(height: 10),
+              if (specifications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'Select a cut on the diagram or above to see its sub-cuts.',
+                  ),
+                ),
+              for (final specification in specifications)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
+                    onPressed: () {
+                      _chooseCatalogueSubcut(specification);
+                      Navigator.pop(dialogContext);
+                    },
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            specification['name']?.toString() ?? 'Sub-cut',
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+          return Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: 1240,
+              height: MediaQuery.sizeOf(dialogContext).height * 0.88,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Browse animal catalogue',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close catalogue',
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        if (box.maxWidth < 850) {
+                          return ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              diagram(),
+                              const SizedBox(height: 20),
+                              choices(),
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 7,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(20),
+                                child: diagram(),
+                              ),
+                            ),
+                            const VerticalDivider(width: 1),
+                            Expanded(
+                              flex: 4,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(18),
+                                child: choices(),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -2792,105 +3072,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             fontSize: 10.5,
             fontWeight: FontWeight.w900,
           ),
-        ),
-      );
-    }
-
-    Widget animalPanel() {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x07000000),
-              blurRadius: 10,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(14, 11, 14, 0),
-              child: Text(
-                'Browse by Animal',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 14, 7),
-              child: Text(
-                _usesGradeStage
-                    ? 'Choose the animal, cut, subcategory and $_gradeStageLabel.'
-                    : 'Choose the animal, cut and subcategory.',
-                style: const TextStyle(
-                  color: Color(0xFF666666),
-                  fontSize: 10.5,
-                ),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    InteractiveAnimalBrowser(
-                      selectedAnimalCode: _selectedAnimalCode,
-                      selectedRegionKey: _selectedAnimalRegionKey,
-                      onAnimalChanged: _selectAnimal,
-                      onRegionSelected: _selectAnimalRegion,
-                      maxWidth: 650,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'CUT',
-                      style: TextStyle(
-                        color: Color(0xFF777777),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _buildSectionStrip(),
-                    if (cutSelected) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'SUBCATEGORY',
-                        style: TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      _buildSpecificationStrip(),
-                    ],
-                    if (subcategorySelected) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _usesGradeStage
-                            ? _gradeStageLabel.toUpperCase()
-                            : 'SPECIFICATION',
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      _usesGradeStage
-                          ? _buildGradeStrip()
-                          : _buildCommercialSpecificationStrip(),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
         ),
       );
     }
@@ -3071,7 +3252,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     ),
                   ],
                   onChanged: (value) {
-                    if (value == null) return;
+                    if (value == null) {
+                      return;
+                    }
                     setState(() => _sortMode = value);
                     _applySearch();
                   },
@@ -3199,7 +3382,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget subcategoryStage() {
       final query = _searchController.text.trim().toLowerCase();
       final specifications = _availableSpecifications.where((specification) {
-        if (query.isEmpty) return true;
+        if (query.isEmpty) {
+          return true;
+        }
         return matchesCatalogueSearch(query, [
           specification['name'],
           ...(specification['alternate_names'] as List? ?? const []),
@@ -3293,7 +3478,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget gradeStage() {
       final query = _searchController.text.trim().toLowerCase();
       final grades = _availableGrades.where((grade) {
-        if (query.isEmpty) return true;
+        if (query.isEmpty) {
+          return true;
+        }
         final code = grade['code']?.toString() ?? '';
         final name = grade['name']?.toString() ?? '';
         return matchesCatalogueSearch(query, [code, name]);
@@ -3508,7 +3695,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 ? 'Products marked Halal by their supplier.'
                 : 'Matching products from all suppliers.')
           : !cutSelected
-          ? 'Select a cut from the animal diagram or cut row.'
+          ? 'Open the animal catalogue or choose a cut above.'
           : !subcategorySelected
           ? 'Choose the exact subcategory for this cut.'
           : !sizeSelected
@@ -3717,29 +3904,65 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         constraints: const BoxConstraints(maxWidth: 1740),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 930;
-
-              if (narrow) {
-                return ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(height: 640, child: animalPanel()),
-                    const SizedBox(height: 14),
-                    SizedBox(height: 720, child: resultsPanel()),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: _openAnimalCatalogue,
+                          icon: const Icon(Icons.menu_book_outlined, size: 20),
+                          label: const Text('Browse animal catalogue'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF741C1C),
+                          ),
+                        ),
+                        for (final animal in const [
+                          'BEEF',
+                          'VEAL',
+                          'LAMB',
+                          'MUTTON',
+                          'GOAT',
+                          'CHICKEN',
+                        ])
+                          ChoiceChip(
+                            label: Text(animal),
+                            selected: _selectedAnimalCode == animal,
+                            onSelected: (_) => _selectAnimal(animal),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _buildSectionStrip(),
+                    if (cutSelected) ...[
+                      const SizedBox(height: 4),
+                      _buildSpecificationStrip(),
+                    ],
+                    if (subcategorySelected) ...[
+                      const SizedBox(height: 4),
+                      _usesGradeStage
+                          ? _buildGradeStrip()
+                          : _buildCommercialSpecificationStrip(),
+                    ],
                   ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(flex: 4, child: animalPanel()),
-                  const SizedBox(width: 14),
-                  Expanded(flex: 7, child: resultsPanel()),
-                ],
-              );
-            },
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(child: resultsPanel()),
+            ],
           ),
         ),
       ),
