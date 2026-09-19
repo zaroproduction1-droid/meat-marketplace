@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../animal_catalogues/catalogue_cut_images.dart';
 
@@ -7,17 +8,27 @@ class CatalogueProductImage extends StatelessWidget {
     super.key,
     required this.product,
     this.thumbnail = false,
+    this.imageHeight,
   });
 
   final Map<String, dynamic> product;
   final bool thumbnail;
+  final double? imageHeight;
 
   @override
   Widget build(BuildContext context) {
-    final asset = catalogueImageAsset(product);
+    final path = product['photo_path']?.toString();
+    final url = path == null || path.isEmpty
+        ? null
+        : Supabase.instance.client.storage
+              .from('product-photos')
+              .getPublicUrl(path);
+    final asset = product['hide_catalogue_photo'] == true
+        ? null
+        : catalogueImageAsset(product);
     final cut =
         (product['meat_specifications'] as Map?)?['name']?.toString() ?? 'Cut';
-    final height = thumbnail ? 64.0 : 210.0;
+    final height = imageHeight ?? (thumbnail ? 64.0 : 210.0);
     Widget placeholder() => SizedBox(
       height: height,
       child: Center(
@@ -41,7 +52,9 @@ class CatalogueProductImage extends StatelessWidget {
       ),
     );
     return Tooltip(
-      message: asset == null
+      message: url != null
+          ? '$cut • Supplier photo'
+          : asset == null
           ? 'Photo not yet available'
           : '$cut • Illustrative image',
       child: Container(
@@ -55,7 +68,17 @@ class CatalogueProductImage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (asset == null)
+            if (url != null)
+              Image.network(
+                url,
+                height: height,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                semanticLabel: '$cut supplier photo',
+                errorBuilder: (_, _, _) => placeholder(),
+              )
+            else if (asset == null)
               placeholder()
             else
               Image.asset(
@@ -67,7 +90,7 @@ class CatalogueProductImage extends StatelessWidget {
                 semanticLabel: '$cut, illustrative image',
                 errorBuilder: (_, _, _) => placeholder(),
               ),
-            if (asset != null && !thumbnail)
+            if (url == null && asset != null && !thumbnail)
               const Padding(
                 padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
                 child: Text(

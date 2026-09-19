@@ -3899,22 +3899,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   ),
                   _sideItem(
                     Icons.inventory_2_outlined,
-                    'Inventory',
+                    'Inventory & Pricing',
                     selected: _workspaceKey == 'inventory',
                     onTap: () =>
                         _openPage(const SupplierInventoryPage(embedded: true)),
-                  ),
-                  _sideItem(
-                    Icons.price_change_outlined,
-                    'Pricing',
-                    selected: _workspaceKey == 'pricing',
-                    onTap: () => _openPage(
-                      const SupplierInventoryPage(
-                        embedded: true,
-                        initialTabIndex: 1,
-                      ),
-                      workspaceKey: 'pricing',
-                    ),
                   ),
                   _sideItem(
                     Icons.receipt_long_outlined,

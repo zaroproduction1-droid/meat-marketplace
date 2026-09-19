@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+
+import '../../../shared/widgets/supplier_stock_filters.dart';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,7 +20,11 @@ class SupplierProductsPage extends StatefulWidget {
   State<SupplierProductsPage> createState() => _SupplierProductsPageState();
 }
 
-class _SupplierProductsPageState extends State<SupplierProductsPage> {
+class _SupplierProductsPageState extends State<SupplierProductsPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
@@ -38,6 +45,119 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   bool _loadingStock = false;
   String? _stockError;
   String? _stockScope;
+  String? _scheduledScope;
+  Timer? _stockDebounce;
+  int _stockOffset = 0;
+  int _stockTotal = 0;
+  List<Map<String, dynamic>> _stockOptions = [];
+  final _stockFilters = SupplierStockFilters();
+  bool _showAllStock = true;
+  bool _browseCompact = false;
+  final Set<String> _resetProductEditors = {};
+  final Map<String, String> _matrixBaselines = {};
+  final Map<String, String> _availabilityBaselines = {};
+
+  void _syncMatrixEditors(Map<String, dynamic> product) {
+    final id = product['id'].toString();
+    final reset = _resetProductEditors.remove(id);
+    for (final entry in [
+      (_matrixStockControllers, _matrixNumber(product['available_quantity'])),
+      (_matrixStandardControllers, _matrixStandardInitial(product)),
+      (_matrixTradeControllers, _matrixTradeInitial(product)),
+    ]) {
+      final key = '${identityHashCode(entry.$1)}:$id';
+      final controller = entry.$1[id];
+      if (controller != null &&
+          (reset || controller.text == _matrixBaselines[key])) {
+        controller.text = entry.$2;
+      }
+      _matrixBaselines[key] = entry.$2;
+    }
+    final status = product['availability_status']?.toString() ?? 'out_of_stock';
+    if (reset ||
+        !_matrixAvailability.containsKey(id) ||
+        _matrixAvailability[id] == _availabilityBaselines[id]) {
+      _matrixAvailability[id] = status;
+    }
+    _availabilityBaselines[id] = status;
+  }
+
+  String get _selectionSignature => jsonEncode([
+    _selectedAnimalCode,
+    _selectedAnimalRegionKey,
+    _selectedSectionId,
+    _selectedSpecificationId,
+    _selectedGradeId,
+    _searchController.text.trim(),
+    _chickenAttributeFilters,
+    _goatAttributeFilters,
+    _stockFilters.signature,
+  ]);
+
+  void _scheduleStock() {
+    if (_isLoading || _scheduledScope == _selectionSignature) {
+      return;
+    }
+    _scheduledScope = _selectionSignature;
+    _stockDebounce?.cancel();
+    _stockDebounce = Timer(const Duration(milliseconds: 320), () {
+      if (!mounted) {
+        return;
+      }
+      _stockOffset = 0;
+      unawaited(_loadStock(force: true));
+    });
+  }
+
+  List<Map<String, dynamic>> get _scopedStockOptions =>
+      _stockOptions.where((p) {
+        final globalSearch =
+            _searchController.text.trim().isNotEmpty &&
+            _selectedSectionId == null &&
+            _selectedAnimalRegionKey == null;
+        return (globalSearch || _productAnimalCode(p) == _selectedAnimalCode) &&
+            (_selectedSectionId == null && _selectedAnimalRegionKey == null ||
+                _matchesSelectedCut(p)) &&
+            (_selectedSpecificationId == null ||
+                p['meat_specification_id']?.toString() ==
+                    _selectedSpecificationId) &&
+            (_selectedGradeId == null ||
+                p['meat_grade_id']?.toString() == _selectedGradeId) &&
+            _matchesChickenAttributeFilters(p) &&
+            _matchesGoatAttributeFilters(p);
+      }).toList();
+
+  Future<void> _openStockFilters() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('Filter inventory'),
+          content: SizedBox(
+            width: 580,
+            child: SingleChildScrollView(
+              child: SupplierStockFilterBar(
+                rows: _scopedStockOptions,
+                filters: _stockFilters,
+                showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
+                onChanged: () => update(() {}),
+              ),
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Show products'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (mounted) {
+      setState(() => _showAllStock = true);
+    }
+  }
+
   int _stockLoadVersion = 0;
   int _catalogueLoadVersion = 0;
   String? _errorMessage;
@@ -62,6 +182,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   @override
   void dispose() {
+    _stockDebounce?.cancel();
     _searchController.removeListener(_refresh);
     _searchController.dispose();
     _cutScrollController.dispose();
@@ -79,169 +200,70 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   void _refresh() {
     if (mounted) {
-      unawaited(_loadStock());
       setState(() {});
     }
   }
 
   Future<void> _loadStock({bool force = false}) async {
-    if (_isLoading || !mounted) return;
-    final cutSelected =
-        _selectedSectionId != null || _selectedAnimalRegionKey != null;
-    final globalSearch =
-        _searchController.text.trim().isNotEmpty && !cutSelected;
-    final animalCode = _selectedAnimalCode;
-    final scope = globalSearch
-        ? 'search-all'
-        : cutSelected
-        ? '$_selectedAnimalCode:${_selectedSectionId ?? _selectedAnimalRegionKey}'
-        : 'browse';
-    if (!force && _stockScope == scope) return;
+    if (_isLoading || !mounted || _supplierBusinessId == null) {
+      return;
+    }
+    final scope = '$_selectionSignature:$_stockOffset';
+    if (!force && _stockScope == scope) {
+      return;
+    }
     _stockScope = scope;
+    _scheduledScope = _selectionSignature;
+    _stockDebounce?.cancel();
     final version = ++_stockLoadVersion;
-    final animal = _sections.where(
-      (row) => row['animal_code'] == _selectedAnimalCode,
-    );
-    final animalId = animal.isEmpty
-        ? null
-        : animal.first['animal_id']?.toString();
-    final sectionId =
-        _selectedSectionId ??
-        (_selectedAnimalRegionKey == null
-            ? null
-            : _sectionForRegion(
-                animalCode,
-                _selectedAnimalRegionKey!,
-              )?['id']?.toString());
-    final supplierId = _supplierBusinessId;
-    if (supplierId == null) return;
-    _resetMatrixEditors();
+    final keys = _scopedStockOptions
+        .where(_stockFilters.matches)
+        .map((p) => p['_variant_key'].toString())
+        .toSet()
+        .toList();
     setState(() {
-      _products = [];
-
+      _loadingStock = true;
       _stockError = null;
-      _loadingStock = scope != 'browse';
     });
-    if (scope == 'browse') return;
     try {
-      if (Supabase.instance.client.auth.currentUser == null) {
-        throw StateError('Your session has ended. Please sign in again.');
+      final response = await Supabase.instance.client
+          .rpc(
+            'supplier_stock_page',
+            params: {
+              'p_supplier_business_id': _supplierBusinessId,
+              'p_variant_keys': keys,
+              'p_search': _searchController.text.trim(),
+              'p_status': _stockFilters.status,
+              'p_sort': _stockFilters.sort,
+              'p_offset': _stockOffset,
+              'p_limit': 40,
+            },
+          )
+          .timeout(const Duration(seconds: 25));
+      if (!mounted ||
+          version != _stockLoadVersion ||
+          scope != '$_selectionSignature:$_stockOffset') {
+        return;
       }
-      if (!globalSearch && animalId == null) {
-        throw StateError(
-          'The selected animal could not be loaded. Please refresh.',
+      setState(() {
+        _products = List<Map<String, dynamic>>.from(
+          response['products'] as List,
         );
-      }
-      if (!globalSearch &&
-          animalCode == CutLinkAnimals.beef &&
-          sectionId == null) {
-        throw StateError(
-          'This cut could not be matched. Please refresh the catalogue.',
-        );
-      }
-      const pageSize = 100;
-      var offset = 0;
-      while (mounted && version == _stockLoadVersion) {
-        var query = Supabase.instance.client.from('products').select('''
-              id,
-              supplier_business_id,
-              sku,
-              product_name,
-              description,
-              brand,
-              piece_size_kind,
-              piece_weight_min,
-              piece_weight_max,
-              piece_weight_unit,
-              carton_weight,
-              carton_weight_unit,
-              pieces_per_carton,
-              breed_program,
-              marbling_score,
-              grade,
-              origin_country,
-              origin_state,
-              packaging_type,
-              trim_specification,
-              fat_specification,
-              supplier_specification,
-              temperature_state,
-              halal_status,
-              feeding_days,
-              bone_state,
-              rib_count,
-              production_claim,
-              hgp_free,
-              chicken_skin,
-              chicken_bone,
-              chicken_production_type,
-              chicken_preparation,
-              chicken_size_weight,
-              chicken_carton_size,
-              available_quantity,
-              quantity_unit,
-              availability_status,
-              active,
-              created_at,
-              meat_animal_id,
-              meat_section_id,
-              meat_specification_id,
-              meat_grade_id,
-              catch_weight,
-              weight_type,
-              price_basis,
-              order_unit,
-              meat_animals(id, code, name),
-              meat_sections(id, code, name, is_miscellaneous),
-              meat_specifications(id, name, specification_type),
-              meat_grades(id, code, name),
-              supplier_spec_grade_offers(
-                id,
-                specification_id,
-                grade_id,
-                standard_price_inc_gst,
-                minimum_order_quantity,
-                is_available,
-                is_active
-              ),
-              product_prices(
-                id,
-                price_list_id,
-                amount,
-                price_basis,
-                active,
-                price_lists(id, visibility, active)
-              )
-            ''');
-        query = query.eq('supplier_business_id', supplierId);
-        if (!globalSearch) {
-          query = query.eq('meat_animal_id', animalId!);
-          // Chicken and other animal diagrams may map one region to multiple
-          // sections. Their small catalogues retain those existing mappings.
-          if (animalCode == CutLinkAnimals.beef && sectionId != null) {
-            query = query.eq('meat_section_id', sectionId);
-          }
+        _stockTotal = (response['total'] as num).toInt();
+        for (final product in _products) {
+          _syncMatrixEditors(product);
         }
-        final page = await query
-            .order('id')
-            .range(offset, offset + pageSize - 1)
-            .timeout(const Duration(seconds: 20));
-        if (!mounted || version != _stockLoadVersion) return;
-        if (Supabase.instance.client.auth.currentUser == null) {
-          throw StateError('Your session has ended. Please sign in again.');
-        }
-        if (page.isEmpty) break;
-        setState(() {
-          _products.addAll(List<Map<String, dynamic>>.from(page));
-        });
-
-        offset += page.length;
-        if (page.length < pageSize) break;
-        await Future<void>.delayed(Duration.zero);
+      });
+      if (_stockOffset > 0 && _stockOffset >= _stockTotal) {
+        _stockOffset = 0;
+        await _loadStock(force: true);
       }
     } catch (error) {
-      if (!mounted || version != _stockLoadVersion) return;
+      if (!mounted || version != _stockLoadVersion) {
+        return;
+      }
       setState(() {
+        _products = [];
         _stockError = error is TimeoutException
             ? 'Loading took too long. Please retry.'
             : 'Unable to load products: $error';
@@ -268,7 +290,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         ),
       );
     }
-    if (!_loadingStock) return const SizedBox.shrink();
+    if (!_loadingStock) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -282,7 +306,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     );
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool refresh = false}) async {
     final catalogueVersion = ++_catalogueLoadVersion;
     ++_stockLoadVersion;
     _stockScope = null;
@@ -417,12 +441,19 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         }
       }
 
-      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
-
-      _resetMatrixEditors();
+      if (refresh) {
+        SupplierStockCatalogue.invalidate(supplierBusinessId);
+      }
+      final stockOptions = await SupplierStockCatalogue.load(
+        supplierBusinessId,
+      );
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
+        return;
+      }
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
+        _stockOptions = stockOptions;
         _priceLists = List<Map<String, dynamic>>.from(priceListResponse);
         _products = [];
         _sections = sections;
@@ -431,14 +462,18 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       });
       await _loadStock(force: true);
     } on PostgrestException catch (error) {
-      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
+        return;
+      }
 
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted || catalogueVersion != _catalogueLoadVersion) return;
+      if (!mounted || catalogueVersion != _catalogueLoadVersion) {
+        return;
+      }
 
       setState(() {
         _errorMessage = error.toString();
@@ -462,7 +497,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     );
 
     if (changed == true) {
-      await _loadProducts();
+      await _loadProducts(refresh: true);
     }
   }
 
@@ -470,15 +505,24 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => EditProductPage(product: product)),
     );
-
+    if (!mounted) {
+      return;
+    }
+    _resetProductEditors.add(product['id'].toString());
     if (changed == true) {
-      await _loadProducts();
+      await _loadProducts(refresh: true);
+    } else {
+      await _loadStock(force: true);
     }
   }
 
   Map<String, dynamic>? _map(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
     return null;
   }
 
@@ -487,42 +531,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         'Unclassified';
   }
 
-  String _sectionCode(Map<String, dynamic> product) {
-    return _map(product['meat_sections'])?['code']?.toString() ?? '';
-  }
-
   String _specificationName(Map<String, dynamic> product) {
     return _map(product['meat_specifications'])?['name']?.toString() ??
         product['product_name']?.toString() ??
         'Unspecified';
-  }
-
-  String _gradeName(Map<String, dynamic> product) {
-    final grade = _map(product['meat_grades']);
-    if (grade == null) return '';
-
-    final code = grade['code']?.toString().trim() ?? '';
-    final name = grade['name']?.toString().trim() ?? '';
-
-    if (code == 'NA') return 'Not applicable';
-    if (code.isEmpty) return name;
-    if (name.isEmpty) return code;
-
-    return '$code • $name';
-  }
-
-  void _resetMatrixEditors() {
-    for (final controller in [
-      ..._matrixStockControllers.values,
-      ..._matrixStandardControllers.values,
-      ..._matrixTradeControllers.values,
-    ]) {
-      controller.dispose();
-    }
-    _matrixStockControllers.clear();
-    _matrixStandardControllers.clear();
-    _matrixTradeControllers.clear();
-    _matrixAvailability.clear();
   }
 
   TextEditingController _matrixController(
@@ -538,7 +550,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   Map<String, dynamic>? _offer(Map<String, dynamic> product) {
     final raw = product['supplier_spec_grade_offers'];
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List) {
       for (final item in raw) {
         if (item is Map && item['is_active'] == true) {
@@ -557,13 +571,19 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     String visibility,
   ) {
     final rawPrices = product['product_prices'];
-    if (rawPrices is! List) return null;
+    if (rawPrices is! List) {
+      return null;
+    }
 
     for (final raw in rawPrices) {
-      if (raw is! Map || raw['active'] != true) continue;
+      if (raw is! Map || raw['active'] != true) {
+        continue;
+      }
       final price = Map<String, dynamic>.from(raw);
       final rawList = price['price_lists'];
-      if (rawList is! Map) continue;
+      if (rawList is! Map) {
+        continue;
+      }
       final priceList = Map<String, dynamic>.from(rawList);
       if (priceList['active'] == true &&
           priceList['visibility']?.toString() == visibility) {
@@ -577,8 +597,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final number = value is num
         ? value.toDouble()
         : double.tryParse(value?.toString() ?? '');
-    if (number == null) return '';
-    if (number == number.roundToDouble()) return number.toInt().toString();
+    if (number == null) {
+      return '';
+    }
+    if (number == number.roundToDouble()) {
+      return number.toInt().toString();
+    }
     return number.toStringAsFixed(2);
   }
 
@@ -657,8 +681,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final size = product['chicken_size_weight']?.toString().trim() ?? '';
     final carton = product['chicken_carton_size']?.toString().trim() ?? '';
 
-    if (size.isNotEmpty) values.add(size);
-    if (carton.isNotEmpty) values.add(carton);
+    if (size.isNotEmpty) {
+      values.add(size);
+    }
+    if (carton.isNotEmpty) {
+      values.add(carton);
+    }
 
     return values.isEmpty ? 'Standard' : values.join(' • ');
   }
@@ -698,7 +726,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     required String defaultName,
   }) async {
     final existing = _firstPriceListForVisibility(visibility);
-    if (existing != null) return existing;
+    if (existing != null) {
+      return existing;
+    }
 
     final supplierId = _supplierBusinessId;
     if (supplierId == null || supplierId.isEmpty) {
@@ -719,6 +749,35 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     final row = Map<String, dynamic>.from(inserted);
     _priceLists.add(row);
     return row;
+  }
+
+  bool _matrixHasChanges(Map<String, dynamic> product) {
+    final id = product['id'].toString();
+    bool changed(
+      Map<String, TextEditingController> controllers,
+      String initial,
+    ) {
+      final controller = controllers[id];
+      if (controller == null) {
+        return false;
+      }
+      final value = controller.text.trim();
+      if (value == initial) {
+        return false;
+      }
+      final number = double.tryParse(value);
+      return number == null || number != double.tryParse(initial);
+    }
+
+    return changed(
+          _matrixStockControllers,
+          _matrixNumber(product['available_quantity']),
+        ) ||
+        changed(_matrixStandardControllers, _matrixStandardInitial(product)) ||
+        changed(_matrixTradeControllers, _matrixTradeInitial(product)) ||
+        (_matrixAvailability.containsKey(id) &&
+            _matrixAvailability[id] !=
+                product['availability_status']?.toString());
   }
 
   Future<void> _saveMatrixProduct(Map<String, dynamic> product) async {
@@ -752,19 +811,35 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         product['availability_status']?.toString() ??
         'out_of_stock';
 
-    if (stock == null || stock < 0) {
+    if (stock == null || !stock.isFinite || stock < 0) {
       throw Exception(
         '${_specificationName(product)} • ${_gradeCode(product)}: enter valid stock.',
       );
     }
-    if (standard == null || standard < 0) {
+    final standardChanged =
+        standardController.text.trim() != _matrixStandardInitial(product) &&
+        (standard == null ||
+            standard != double.tryParse(_matrixStandardInitial(product)));
+    final tradeChanged =
+        tradeText != _matrixTradeInitial(product) &&
+        (trade == null ||
+            trade != double.tryParse(_matrixTradeInitial(product)));
+    if (standardChanged &&
+        (standard == null || !standard.isFinite || standard < 0)) {
       throw Exception(
         '${_specificationName(product)} • ${_gradeCode(product)}: enter a valid Standard price.',
       );
     }
-    if (tradeText.isNotEmpty && (trade == null || trade < 0)) {
+    if (tradeText.isNotEmpty &&
+        (trade == null || !trade.isFinite || trade < 0)) {
       throw Exception(
         '${_specificationName(product)} • ${_gradeCode(product)}: enter a valid Trade price.',
+      );
+    }
+
+    if (tradeChanged && trade == null) {
+      throw Exception(
+        'Use the product Pricing tab to remove an existing Trade price.',
       );
     }
 
@@ -790,43 +865,38 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       );
     }
 
-    final standardList = await _ensurePriceList(
-      visibility: 'public',
-      defaultName: 'Standard Pricing',
-    );
-    final standardListId = standardList['id']?.toString();
-    if (standardListId == null || standardListId.isEmpty) {
-      throw Exception('Standard price list could not be identified.');
-    }
-
-    await client.from('product_prices').upsert({
-      'price_list_id': standardListId,
-      'product_id': productId,
-      'amount': standard,
-      'price_basis': 'kilogram',
-      'minimum_quantity': 1,
-      'minimum_quantity_unit': 'carton',
-      'active': true,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'price_list_id,product_id');
-
-    if (trade != null) {
-      final tradeList = await _ensurePriceList(
-        visibility: 'approved_customers',
-        defaultName: 'Trade Pricing',
-      );
-      final tradeListId = tradeList['id']?.toString();
-      if (tradeListId == null || tradeListId.isEmpty) {
-        throw Exception('Trade price list could not be identified.');
+    for (final change in [
+      (standardChanged, 'public', standard),
+      (tradeChanged, 'approved_customers', trade),
+    ]) {
+      if (!change.$1 || change.$3 == null) {
+        continue;
       }
-
+      final existing = _priceForVisibility(product, change.$2);
+      final list = await _ensurePriceList(
+        visibility: change.$2,
+        defaultName: change.$2 == 'public'
+            ? 'Standard Pricing'
+            : 'Trade Pricing',
+      );
+      final catchWeight =
+          product['catch_weight'] == true ||
+          product['weight_type'] == 'catch_weight';
       await client.from('product_prices').upsert({
-        'price_list_id': tradeListId,
+        'price_list_id': list['id'],
         'product_id': productId,
-        'amount': trade,
-        'price_basis': 'kilogram',
-        'minimum_quantity': 1,
-        'minimum_quantity_unit': 'carton',
+        'amount': change.$3,
+        'price_basis':
+            existing?['price_basis'] ??
+            (catchWeight ? 'kilogram' : product['price_basis'] ?? 'kilogram'),
+        'minimum_quantity': existing == null ? 1 : existing['minimum_quantity'],
+        'minimum_quantity_unit':
+            existing?['minimum_quantity_unit'] ??
+            (catchWeight
+                ? 'carton'
+                : product['order_unit'] ??
+                      product['quantity_unit'] ??
+                      'carton'),
         'active': true,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'price_list_id,product_id');
@@ -837,7 +907,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       await client
           .from('supplier_spec_grade_offers')
           .update({
-            'standard_price_inc_gst': standard,
+            if (standardChanged && standard != null)
+              'standard_price_inc_gst': standard,
             'is_available': availability != 'out_of_stock',
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
@@ -849,31 +920,44 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     String specificationId,
     List<Map<String, dynamic>> products,
   ) async {
-    if (_savingSpecificationIds.contains(specificationId)) return;
+    if (_savingSpecificationIds.contains(specificationId)) {
+      return;
+    }
 
+    final changedProducts = products.where(_matrixHasChanges).toList();
+    if (changedProducts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No changes to save on this page.')),
+      );
+      return;
+    }
     setState(() => _savingSpecificationIds.add(specificationId));
 
     try {
-      for (final product in products) {
+      for (final product in changedProducts) {
         await _saveMatrixProduct(product);
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${_specificationName(products.first)} grades updated.',
-          ),
+          content: Text('${changedProducts.length} product changes saved.'),
         ),
       );
-      await _loadProducts();
+      await _loadStock(force: true);
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
@@ -925,7 +1009,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   List<Map<String, dynamic>> get _selectedAnimalProducts {
-    return _products
+    return _stockOptions
         .where((product) => _productAnimalCode(product) == _selectedAnimalCode)
         .toList();
   }
@@ -968,7 +1052,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         }
 
         final id = specification['id']?.toString();
-        if (id == null || id.isEmpty) continue;
+        if (id == null || id.isEmpty) {
+          continue;
+        }
         byId[id] = specification;
       }
     }
@@ -983,7 +1069,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       final specification = _map(product['meat_specifications']);
       final id = specification?['id']?.toString();
 
-      if (specification == null || id == null || id.isEmpty) continue;
+      if (specification == null || id == null || id.isEmpty) {
+        continue;
+      }
       byId[id] = specification;
     }
 
@@ -991,7 +1079,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     rows.sort((a, b) {
       final aOrder = int.tryParse(a['display_order']?.toString() ?? '') ?? 9999;
       final bOrder = int.tryParse(b['display_order']?.toString() ?? '') ?? 9999;
-      if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+      if (aOrder != bOrder) {
+        return aOrder.compareTo(bOrder);
+      }
 
       return (a['name']?.toString() ?? '').toLowerCase().compareTo(
         (b['name']?.toString() ?? '').toLowerCase(),
@@ -1021,7 +1111,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       final grade = _map(product['meat_grades']);
       final id = grade?['id']?.toString();
 
-      if (grade == null || id == null || id.isEmpty) continue;
+      if (grade == null || id == null || id.isEmpty) {
+        continue;
+      }
       byId[id] = grade;
     }
 
@@ -1143,7 +1235,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   String _prettyGoatValue(dynamic raw) {
     final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty) return '';
+    if (value.isEmpty) {
+      return '';
+    }
 
     return value
         .split('_')
@@ -1257,91 +1351,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     );
   }
 
-  List<Map<String, dynamic>> get _filteredProducts {
-    final search = _searchController.text.trim().toLowerCase();
-    final directSearch = search.isNotEmpty;
-    final cutScopedSearch =
-        directSearch &&
-        (_selectedSectionId != null || _selectedAnimalRegionKey != null);
-
-    return _products.where((product) {
-      if (directSearch) {
-        if (cutScopedSearch) {
-          if (_productAnimalCode(product) != _selectedAnimalCode) {
-            return false;
-          }
-
-          if (!_matchesSelectedCut(product)) {
-            return false;
-          }
-        }
-      } else {
-        if (_productAnimalCode(product) != _selectedAnimalCode) {
-          return false;
-        }
-
-        if ((_selectedSectionId != null || _selectedAnimalRegionKey != null) &&
-            !_matchesSelectedCut(product)) {
-          return false;
-        }
-
-        if (_selectedSpecificationId != null &&
-            product['meat_specification_id']?.toString() !=
-                _selectedSpecificationId) {
-          return false;
-        }
-
-        if (_usesGradeStage &&
-            _selectedGradeId != null &&
-            product['meat_grade_id']?.toString() != _selectedGradeId) {
-          return false;
-        }
-      }
-
-      if (!_matchesGoatAttributeFilters(product)) {
-        return false;
-      }
-
-      if (!_matchesChickenAttributeFilters(product)) {
-        return false;
-      }
-
-      if (search.isEmpty) return true;
-
-      final values = [
-        product['product_name'],
-        product['sku'],
-        _sectionName(product),
-        _sectionCode(product),
-        _specificationName(product),
-        _gradeName(product),
-        product['brand'],
-        product['temperature_state'],
-        product['halal_status'],
-        product['feeding_days'],
-        product['bone_state'],
-        product['rib_count'],
-        product['production_claim'],
-        product['hgp_free'],
-        product['chicken_skin'],
-        product['chicken_bone'],
-        product['chicken_production_type'],
-        product['chicken_preparation'],
-        product['chicken_size_weight'],
-        product['chicken_carton_size'],
-        if (_isChickenProduct(product)) _chickenVariationLabel(product),
-      ];
-
-      return values.any(
-        (value) =>
-            value != null && value.toString().toLowerCase().contains(search),
-      );
-    }).toList();
-  }
+  List<Map<String, dynamic>> get _filteredProducts => _products;
 
   Map<String, dynamic>? _sectionForRegion(String animalCode, String regionKey) {
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
-    if (catalogue == null) return null;
+    if (catalogue == null) {
+      return null;
+    }
     final sections = _sections.where(
       (section) => section['animal_code'] == animalCode,
     );
@@ -1358,7 +1374,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     // catalogue too. Navigation must never depend on downloaded stock.
     for (final section in sections) {
       for (final specification in _catalogueSpecifications) {
-        if (specification['section_id'] != section['id']) continue;
+        if (specification['section_id'] != section['id']) {
+          continue;
+        }
         if (catalogue.productMatchesRegion({
           'meat_sections': section,
           'meat_specifications': specification,
@@ -1372,7 +1390,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   }
 
   void _selectAnimal(String animalCode) {
-    if (animalCode == _selectedAnimalCode) return;
+    if (animalCode == _selectedAnimalCode) {
+      return;
+    }
 
     final catalogue = AnimalCatalogueRegistry.forCode(animalCode);
     final defaultRegionKey = catalogue?.defaultRegionKey;
@@ -1382,11 +1402,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     setState(() {
       _selectedAnimalCode = animalCode;
+      _stockFilters.values.clear();
       _selectedAnimalRegionKey = defaultRegionKey;
       _selectedSectionId = defaultSection?['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
-      _searchController.clear();
     });
     unawaited(_loadStock());
   }
@@ -1404,7 +1424,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedSectionId = section?['id']?.toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
-      _searchController.clear();
     });
     unawaited(_loadStock());
   }
@@ -1415,14 +1434,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       _selectedSectionId = section['id'].toString();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
-      _searchController.clear();
     });
     unawaited(_loadStock());
   }
 
   String? get _selectedSectionName {
     final selected = _selectedSectionId;
-    if (selected == null) return null;
+    if (selected == null) {
+      return null;
+    }
 
     for (final section in _selectedAnimalSections) {
       if (section['id']?.toString() == selected) {
@@ -1435,6 +1455,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
       appBar: AppBar(
@@ -1457,7 +1478,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           ),
           const SizedBox(width: 4),
           IconButton(
-            onPressed: _isLoading ? null : _loadProducts,
+            onPressed: _isLoading ? null : () => _loadProducts(refresh: true),
             tooltip: 'Refresh',
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.refresh),
@@ -1465,11 +1486,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
           const SizedBox(width: 6),
         ],
       ),
-      body: _buildBody(),
+      body: AbsorbPointer(
+        absorbing: _savingSpecificationIds.isNotEmpty,
+        child: _buildBody(),
+      ),
     );
   }
 
   Widget _buildBody() {
+    _scheduleStock();
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1504,7 +1529,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     final subcategorySelected = _selectedSpecificationId != null;
     final gradeSelected = !_usesGradeStage || _selectedGradeId != null;
-    final directSearch = _searchController.text.trim().isNotEmpty;
+    final directSearch =
+        _showAllStock || _searchController.text.trim().isNotEmpty;
 
     Widget animalPanel() {
       return Container(
@@ -1717,6 +1743,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       }
 
       return ListView.separated(
+        key: ValueKey(_stockScope),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -1809,6 +1836,15 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     }
 
     Widget stockStage() {
+      if (_loadingStock ||
+          _stockScope != '$_selectionSignature:$_stockOffset') {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (_stockError != null) {
+        return const Center(
+          child: Text('Unable to load this page. Use Retry above.'),
+        );
+      }
       if (_filteredProducts.isEmpty) {
         return Center(
           child: Padding(
@@ -1898,7 +1934,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     Widget resultsPanel() {
       final title = directSearch
-          ? 'Search Results'
+          ? (_searchController.text.trim().isEmpty
+                ? 'My Stock'
+                : 'Search Results')
           : !cutSelected
           ? 'Choose a Cut'
           : !subcategorySelected
@@ -1973,7 +2011,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        '${_filteredProducts.length} product${_filteredProducts.length == 1 ? '' : 's'}',
+                        '$_stockTotal products',
                         style: const TextStyle(
                           color: _darkRed,
                           fontSize: 10.5,
@@ -1985,7 +2023,37 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               ),
             ),
             searchBar(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _openStockFilters,
+                    icon: const Icon(Icons.tune, size: 18),
+                    label: const Text('Filters & sort'),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _showAllStock = !_showAllStock),
+                    child: Text(
+                      _showAllStock ? 'Browse cuts' : 'Show all matching stock',
+                    ),
+                  ),
+                ],
+              ),
+            ),
             _stockLoadingStatus(),
+            if (showingStock)
+              SupplierStockPager(
+                offset: _stockOffset,
+                total: _stockTotal,
+                loading: _loadingStock,
+                onPage: (offset) {
+                  _stockOffset = offset;
+                  unawaited(_loadStock(force: true));
+                },
+              ),
             Expanded(
               child: directSearch
                   ? stockStage()
@@ -2026,19 +2094,37 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1320),
+        constraints: const BoxConstraints(maxWidth: 1600),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 930;
+              final narrow = constraints.maxWidth < 1200;
 
               if (narrow) {
-                return ListView(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(height: 640, child: animalPanel()),
-                    const SizedBox(height: 14),
-                    SizedBox(height: 720, child: resultsPanel()),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            setState(() => _browseCompact = !_browseCompact),
+                        icon: Icon(
+                          _browseCompact
+                              ? Icons.inventory_2_outlined
+                              : Icons.grid_view_outlined,
+                        ),
+                        label: Text(
+                          _browseCompact
+                              ? 'Back to products'
+                              : 'Choose animal / cut',
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _browseCompact ? animalPanel() : resultsPanel(),
+                    ),
                   ],
                 );
               }
@@ -2046,9 +2132,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(flex: 5, child: animalPanel()),
+                  SizedBox(width: 300, child: animalPanel()),
                   const SizedBox(width: 14),
-                  Expanded(flex: 5, child: resultsPanel()),
+                  Expanded(child: resultsPanel()),
                 ],
               );
             },
@@ -2092,7 +2178,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     required List<Widget> children,
   }) {
     Future<void> move(double direction) async {
-      if (!controller.hasClients) return;
+      if (!controller.hasClients) {
+        return;
+      }
 
       final position = controller.position;
       final target = (controller.offset + (direction * 240))
@@ -2166,7 +2254,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   Widget _buildSectionStrip() {
     final sections = _selectedAnimalSections;
 
-    if (sections.isEmpty) return const SizedBox.shrink();
+    if (sections.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _cutScrollController,
@@ -2200,7 +2290,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   Widget _buildSpecificationStrip() {
     final specifications = _availableSpecifications;
 
-    if (specifications.isEmpty) return const SizedBox.shrink();
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _subcategoryScrollController,
@@ -2235,7 +2327,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
   Widget _buildGradeStrip() {
     final grades = _availableGrades;
 
-    if (grades.isEmpty) return const SizedBox.shrink();
+    if (grades.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _gradeScrollController,
@@ -2291,12 +2385,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
     List<Map<String, dynamic>> products,
   ) {
     final first = products.first;
+    final chicken = _isChickenProduct(first);
     final specification = _specificationName(first);
     final section = _sectionName(first);
     final saving = _savingSpecificationIds.contains(specificationId);
-    final chicken = _isChickenProduct(first);
-    final itemWord = chicken ? 'variation' : 'grade';
-    final itemWordPlural = chicken ? 'variations' : 'grades';
+    const itemWord = 'product on this page';
+    const itemWordPlural = 'products on this page';
 
     return Card(
       elevation: 0,
@@ -2351,7 +2445,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                                   ?.toString(),
                             ),
                       icon: const Icon(Icons.add, size: 17),
-                      label: Text(chicken ? 'Add Variation' : 'Add Grade'),
+                      label: const Text('Add Variation'),
                       style: OutlinedButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                       ),
@@ -2378,13 +2472,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                               ),
                             )
                           : const Icon(Icons.save_outlined, size: 17),
-                      label: Text(
-                        saving
-                            ? 'Saving'
-                            : chicken
-                            ? 'Save Products'
-                            : 'Save Grades',
-                      ),
+                      label: Text(saving ? 'Saving' : 'Save these products'),
                     ),
                   ],
                 ),
@@ -2434,7 +2522,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       const Expanded(
                         flex: 2,
                         child: Text(
-                          r'STANDARD $/KG',
+                          'STANDARD PRICE',
                           style: TextStyle(
                             fontSize: 10.5,
                             color: Color(0xFF666666),
@@ -2446,7 +2534,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                       const Expanded(
                         flex: 2,
                         child: Text(
-                          r'TRADE $/KG',
+                          'TRADE PRICE',
                           style: TextStyle(
                             fontSize: 10.5,
                             color: Color(0xFF666666),
@@ -2512,6 +2600,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
       productSizeLabel(product),
       product['breed_program']?.toString() ?? '',
       product['marbling_score']?.toString() ?? '',
+      'Price per ${product['price_basis'] ?? 'kilogram'}',
     ].where((v) => v.trim().isNotEmpty).join(' • ');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2560,9 +2649,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                suffixText: 'ctn',
+                suffixText: product['quantity_unit'] == 'kilogram'
+                    ? 'kg'
+                    : product['quantity_unit'] == 'unit'
+                    ? 'units'
+                    : 'ctn',
                 border: OutlineInputBorder(),
               ),
             );
@@ -2610,7 +2703,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage> {
                 ),
               ],
               onChanged: (value) {
-                if (value == null) return;
+                if (value == null) {
+                  return;
+                }
                 setState(() => _matrixAvailability[productId] = value);
               },
             );
