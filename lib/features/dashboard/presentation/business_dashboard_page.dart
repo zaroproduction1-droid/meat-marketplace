@@ -8,10 +8,12 @@ import '../../../shared/formatters/order_reference.dart';
 
 import '../../admin/presentation/pending_businesses_page.dart';
 import 'business_analytics_page.dart';
+import 'butcher_favourite_products_panel.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../marketplace/presentation/butcher_vip_suppliers_page.dart';
 import '../../marketplace/presentation/marketplace_products_page.dart';
+import '../../marketplace/presentation/butcher_favourites_page.dart';
 import '../../orders/presentation/butcher_accounts_page.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../orders/presentation/butcher_settings_page.dart';
@@ -928,41 +930,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     return copy.take(4).toList();
   }
 
-  List<_QuickReorderItem> get _quickReorders {
-    final seen = <String>{};
-    final output = <_QuickReorderItem>[];
-
-    for (final order in _butcherOrders) {
-      final items = order['order_items'];
-      if (items is! List) continue;
-
-      for (final raw in items) {
-        if (raw is! Map) continue;
-        final item = Map<String, dynamic>.from(raw);
-
-        final name =
-            item['product_name_snapshot']?.toString().trim() ?? 'Product';
-        final key = '${order['supplier_business_id']}::$name'.toLowerCase();
-
-        if (!seen.add(key)) continue;
-
-        output.add(
-          _QuickReorderItem(
-            productName: name,
-            supplierName: _supplierName(order),
-            unitPrice: _asDouble(item['unit_price']),
-            priceBasis: item['price_basis']?.toString(),
-            lastOrdered: _orderDate(order),
-          ),
-        );
-
-        if (output.length >= 4) return output;
-      }
-    }
-
-    return output;
-  }
-
   String _orderStatusLabel(String? value) {
     return switch (value) {
       'submitted' => 'Submitted',
@@ -1304,7 +1271,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       case 'butcher_delivery':
         return 'Delivery Operations';
       case 'butcher_quick_reorder':
-        return 'Quick Reorder';
+        return 'Favourite Products';
       case 'butcher_purchasing':
         return 'Purchasing Overview';
       default:
@@ -1339,7 +1306,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       case 'butcher_delivery':
         return _butcherDeliveryOperationsCard();
       case 'butcher_quick_reorder':
-        return _quickReorderCard();
+        return _favouriteProductsCard();
       case 'butcher_purchasing':
         return _purchasingOverviewCard();
       case 'butcher_support':
@@ -2151,115 +2118,30 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
-  Widget _quickReorderCard() {
-    final items = _quickReorders;
-
-    return _sectionCard(
-      title: 'Quick Reorder',
-      actionText: 'Browse Products',
-      onAction: () =>
-          _openPage(MarketplaceProductsPage(onBack: () => _openDashboard())),
-      child: items.isEmpty
-          ? _emptyState(
-              Icons.refresh_rounded,
-              'No reorder history yet',
-              'Products from your recent orders will appear here.',
-            )
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final itemWidth = width >= 720
-                    ? (width - 30) / 4
-                    : width >= 430
-                    ? (width - 10) / 2
-                    : width;
-
-                return Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final item in items)
-                      SizedBox(
-                        width: itemWidth,
-                        child: _quickReorderTile(item),
-                      ),
-                  ],
-                );
-              },
-            ),
+  void _manageFavouriteProducts() {
+    _openPage(
+      ButcherFavouritesPage(
+        businessId: _businessId ?? '',
+        initialProducts: true,
+        initialDashboard: true,
+      ),
+      workspaceKey: 'favourites',
     );
   }
 
-  Widget _quickReorderTile(_QuickReorderItem item) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBFBFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E7E9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 72,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7ECEE),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.restaurant_menu_outlined,
-                color: _darkRed,
-                size: 31,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            item.productName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            item.supplierName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF6E7278), fontSize: 10.8),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item.unitPrice > 0
-                ? '${_money(item.unitPrice)}${item.priceBasis == 'kilogram' ? '/kg' : ''}'
-                : 'Price varies',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            item.lastOrdered == null
-                ? 'Previously ordered'
-                : 'Last ordered ${_date(item.lastOrdered)}',
-            style: const TextStyle(color: Color(0xFF777B82), fontSize: 10.3),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _openPage(
-                MarketplaceProductsPage(onBack: () => _openDashboard()),
-              ),
-              icon: const Icon(Icons.shopping_cart_outlined, size: 16),
-              label: const Text('Reorder'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _darkRed,
-                side: const BorderSide(color: Color(0xFFD7A8AE)),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ),
-        ],
+  Widget _favouriteProductsCard() {
+    final businessId = _businessId;
+    if (businessId == null) {
+      return const SizedBox.shrink();
+    }
+    return _sectionCard(
+      title: 'Favourite Products',
+      actionText: 'Manage favourites',
+      onAction: _manageFavouriteProducts,
+      child: ButcherFavouriteProductsPanel(
+        key: ValueKey(businessId),
+        businessId: businessId,
+        onManage: _manageFavouriteProducts,
       ),
     );
   }
@@ -2602,7 +2484,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     'Favourites',
                     selected: _workspaceKey == 'favourites',
                     onTap: () => _openPage(
-                      const MarketplaceProductsPage(),
+                      ButcherFavouritesPage(businessId: _businessId ?? ''),
                       workspaceKey: 'favourites',
                     ),
                   ),
@@ -4320,22 +4202,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       ),
     );
   }
-}
-
-class _QuickReorderItem {
-  const _QuickReorderItem({
-    required this.productName,
-    required this.supplierName,
-    required this.unitPrice,
-    required this.priceBasis,
-    required this.lastOrdered,
-  });
-
-  final String productName;
-  final String supplierName;
-  final double unitPrice;
-  final String? priceBasis;
-  final DateTime? lastOrdered;
 }
 
 class _AttentionItem {

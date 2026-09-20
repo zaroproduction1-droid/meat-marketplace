@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import 'marketplace_product_details_page.dart';
+import '../services/butcher_favourites_store.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/interactive_animal_browser.dart';
@@ -15,9 +16,16 @@ import '../../../shared/widgets/catalogue_product_image.dart';
 import '../../../shared/animal_catalogues/catalogue_search.dart';
 
 class MarketplaceProductsPage extends StatefulWidget {
-  const MarketplaceProductsPage({super.key, this.onBack});
+  const MarketplaceProductsPage({
+    super.key,
+    this.onBack,
+    this.initialSearch,
+    this.butcherBusinessId,
+  });
 
   final VoidCallback? onBack;
+  final Map<String, dynamic>? initialSearch;
+  final String? butcherBusinessId;
 
   @override
   State<MarketplaceProductsPage> createState() =>
@@ -235,10 +243,243 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   late final Animation<double> _cartBounceScale;
   Timer? _cartBounceTimer;
   int _cartItemCount = 0;
+  bool _savingFavourite = false;
+  late final ButcherFavouritesStore _favourites;
+
+  void _favouritesChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Map<String, dynamic> _savedSearchFilters() => {
+    'version': 1,
+    'animal': _selectedAnimalCode,
+    'region': _selectedAnimalRegionKey,
+    'section': _selectedSectionId,
+    'specification': _selectedSpecificationId,
+    'grade': _selectedGradeId,
+    'commercial': _selectedCommercialSpecificationKey,
+    'size': _selectedPieceSize,
+    'program': _selectedProgram,
+    'marbling': _selectedMarbling,
+    'brand': _selectedBrand,
+    'query': _searchController.text,
+    'supplier_query': _supplierSearchController.text,
+    'sort': _sortMode,
+    'available': _availableOnly,
+    'halal': _halalOnly,
+    'chicken': <String, String>{..._chickenAttributeFilters},
+    'goat': <String, String>{..._goatAttributeFilters},
+    'stock_view': _stockViewActive,
+  };
+
+  void _restoreSavedSearch(Map<String, dynamic> filters) {
+    String? value(String key) =>
+        filters[key] is String ? filters[key] as String : null;
+    final animal = value('animal');
+    if (AnimalCatalogueRegistry.supports(animal)) {
+      _selectedAnimalCode = animal!;
+    }
+    _selectedAnimalRegionKey = value('region');
+    _selectedSectionId = value('section');
+    _selectedSpecificationId = value('specification');
+    _selectedGradeId = value('grade');
+    _selectedCommercialSpecificationKey = value('commercial');
+    _selectedPieceSize = value('size');
+    _selectedProgram = value('program') ?? '';
+    _selectedMarbling = value('marbling') ?? '';
+    _selectedBrand = value('brand') ?? '';
+    _searchController.text = value('query') ?? '';
+    _supplierSearchController.text = value('supplier_query') ?? '';
+    final sort = value('sort');
+    _sortMode =
+        ['recommended', 'price_low', 'price_high', 'supplier'].contains(sort)
+        ? sort!
+        : 'recommended';
+    _availableOnly = filters['available'] == true;
+    _halalOnly = filters['halal'] == true;
+    _stockViewActive = filters['stock_view'] == true;
+    for (final entry in {
+      'chicken': _chickenAttributeFilters,
+      'goat': _goatAttributeFilters,
+    }.entries) {
+      final raw = filters[entry.key];
+      if (raw is Map) {
+        entry.value.addAll({
+          for (final item in raw.entries)
+            if (item.key is String && item.value is String)
+              item.key as String: item.value as String,
+        });
+      }
+    }
+  }
+
+  Future<void> _saveFavourite() async {
+    final businessId = _butcherBusinessId;
+    if (businessId == null || _savingFavourite) {
+      return;
+    }
+    final filters = _savedSearchFilters();
+    if (!_favourites.ready) {
+      await _favourites.load();
+      return;
+    }
+    if (_favourites.hasSearch(filters)) {
+      setState(() => _savingFavourite = true);
+      try {
+        await _favourites.removeSearch(filters);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not remove saved search. Please try again.'),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _savingFavourite = false);
+        }
+      }
+      return;
+    }
+    String catalogueName(List<Map<String, dynamic>> rows, String? id) {
+      for (final row in rows) {
+        if (row['id'] == id) {
+          return row['name']?.toString() ?? '';
+        }
+      }
+      return '';
+    }
+
+    final summary = [
+      _selectedAnimalCode,
+      if (_selectedAnimalRegionKey != null)
+        AnimalCatalogueRegistry.forCode(
+              _selectedAnimalCode,
+            )?.regionLabel(_selectedAnimalRegionKey!) ??
+            '',
+      catalogueName(_catalogueSections, _selectedSectionId),
+      catalogueName(_catalogueSpecifications, _selectedSpecificationId),
+      if (_selectedGradeId != null)
+        _gradeCode(
+          _facetProducts.firstWhere(
+            (product) => product['meat_grade_id'] == _selectedGradeId,
+            orElse: () => <String, dynamic>{},
+          ),
+        ),
+      ..._chickenAttributeFilters.values,
+      ..._goatAttributeFilters.values,
+      _selectedPieceSize ?? '',
+      _selectedProgram,
+      _selectedMarbling,
+      _selectedBrand,
+      if (_searchController.text.trim().isNotEmpty)
+        'Search: ${_searchController.text.trim()}',
+      if (_supplierSearchController.text.trim().isNotEmpty)
+        'Supplier: ${_supplierSearchController.text.trim()}',
+      if (_halalOnly) 'Halal only',
+      if (_availableOnly) 'Available only',
+    ].where((part) => part.isNotEmpty).toSet().join(' • ');
+    final controller = TextEditingController(
+      text: summary.length > 100 ? summary.substring(0, 100) : summary,
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Save search to Favourites'),
+        content: SizedBox(
+          width: 400,
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 100,
+            decoration: const InputDecoration(
+              labelText: 'Favourite name',
+              helperText: 'Filters are saved. Prices and stock stay current.',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
+            child: const Text('Save favourite'),
+          ),
+        ],
+      ),
+    );
+    // Let the dialog route finish disposing its text field before the controller.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    controller.dispose();
+    if (!mounted || name == null) {
+      return;
+    }
+    setState(() => _savingFavourite = true);
+    try {
+      final saved = await Supabase.instance.client
+          .from('butcher_saved_searches')
+          .insert({
+            'business_id': businessId,
+            'name': name,
+            'summary': summary.length > 2000
+                ? summary.substring(0, 2000)
+                : summary,
+            'filters': filters,
+          })
+          .select()
+          .single();
+      _favourites.rememberSearch(Map<String, dynamic>.from(saved));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Search saved. Open it from Favourites.'),
+          ),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.code == '23505'
+                  ? 'That favourite name already exists. Please choose another name.'
+                  : error.message,
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save this search. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingFavourite = false);
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _favourites = ButcherFavouritesStore(businessId: widget.butcherBusinessId);
+    _favourites.addListener(_favouritesChanged);
+    if (widget.initialSearch != null) {
+      _restoreSavedSearch(widget.initialSearch!);
+    }
     _cartBounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 620),
@@ -254,6 +495,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   @override
   void dispose() {
+    _favourites.removeListener(_favouritesChanged);
+    _favourites.dispose();
     _searchController.removeListener(_onSearchChanged);
     _supplierSearchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -275,11 +518,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         return;
       }
 
-      final membership = await Supabase.instance.client
+      var membershipQuery = Supabase.instance.client
           .from('business_memberships')
-          .select('business_id')
+          .select('business_id, businesses!inner(business_type)')
           .eq('user_id', user.id)
           .eq('status', 'active')
+          .eq('businesses.business_type', 'butcher');
+      if (widget.butcherBusinessId != null) {
+        membershipQuery = membershipQuery.eq(
+          'business_id',
+          widget.butcherBusinessId!,
+        );
+      }
+      final membership = await membershipQuery
+          .order('created_at')
           .limit(1)
           .single();
 
@@ -292,6 +544,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       });
 
       await _loadCartItemCount();
+      _favourites.businessId = _butcherBusinessId;
+      await _favourites.load();
     } catch (_) {
       // The add-to-cart action will show a clear message if this is unavailable.
     }
@@ -620,7 +874,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Future<void> _openProductInfo(Map<String, dynamic> product) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => MarketplaceProductDetailsPage(product: product),
+        builder: (context) => MarketplaceProductDetailsPage(
+          product: product,
+          favourites: _favourites,
+        ),
       ),
     );
   }
@@ -2344,45 +2601,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _gradeBadge(Map<String, dynamic> product) {
     final code = _gradeCode(product);
     final name = _gradeName(product);
-
+    final label = [
+      code,
+      if (name.isNotEmpty && name.toLowerCase() != code.toLowerCase()) name,
+    ].where((value) => value.isNotEmpty && value != '—').join(' • ');
+    if (label.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Container(
-      width: 82,
-      constraints: const BoxConstraints(minHeight: 70),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xFFF4E5E5),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7B8B8)),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            code,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: const Color(0xFF741C1C),
-              fontSize: code.length > 3 ? 22 : 28,
-              height: 1,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (name.isNotEmpty && name.toLowerCase() != code.toLowerCase()) ...[
-            const SizedBox(height: 5),
-            Text(
-              name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF666666),
-                fontSize: 9,
-                height: 1.05,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ],
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF741C1C),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -2416,6 +2654,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: _favourites.hasSearch(_savedSearchFilters())
+                ? 'Remove saved search'
+                : 'Save search to Favourites',
+            onPressed:
+                _isLoading ||
+                    _savingFavourite ||
+                    _favourites.loading ||
+                    _butcherBusinessId == null
+                ? null
+                : _saveFavourite,
+            icon: Icon(
+              _favourites.hasSearch(_savedSearchFilters())
+                  ? Icons.favorite
+                  : Icons.favorite_border,
+              color: _favourites.hasSearch(_savedSearchFilters())
+                  ? const Color(0xFFB32632)
+                  : const Color(0xFF747980),
+            ),
+          ),
           ScaleTransition(
             scale: _cartBounceScale,
             child: FilledButton(
@@ -2572,8 +2830,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Row(
       children: [
         Container(
-          width: 48,
-          height: 48,
+          width: 34,
+          height: 34,
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: const Color(0xFFF8F5F3),
@@ -2620,7 +2878,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final commercialSummary = _mainCommercialSummary(product);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -2640,22 +2898,36 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           final identity = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CatalogueProductImage(product: product, thumbnail: true),
-              const SizedBox(width: 9),
-              _gradeBadge(product),
+              CatalogueProductImage(
+                product: product,
+                thumbnail: true,
+                imageWidth: narrow ? 96 : 136,
+                imageHeight: narrow ? 96 : 136,
+                fit: BoxFit.cover,
+              ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _specificationName(product),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 3,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          _specificationName(product),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        _gradeBadge(product),
+                        ProductFavouriteHeart(
+                          store: _favourites,
+                          product: product,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     _supplierIdentity(product),

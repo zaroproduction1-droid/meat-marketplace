@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
+import '../../../shared/widgets/catalogue_product_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
@@ -31,6 +34,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _skuSearchController = TextEditingController();
+  Timer? _searchDebounce;
   final ScrollController _cutScrollController = ScrollController();
   final ScrollController _subcategoryScrollController = ScrollController();
   final ScrollController _finalSpecificationScrollController =
@@ -43,8 +48,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   String _stockSort = 'name';
   bool _halalFilter = false;
   bool _availableFilter = false;
-  bool _salesFiltersOpen = false;
-  bool _salesStockViewActive = false;
 
   void _resetStockFilters() {
     _sizeFilter = '';
@@ -95,7 +98,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           onChanged: (v) {
             if (v != null) {
               setState(() {
-                _salesStockViewActive = _selectedSpecificationId != null;
                 _selectedCommercialSpecificationKey = null;
                 change(v);
               });
@@ -105,99 +107,82 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        TextButton.icon(
-          onPressed: () =>
-              setState(() => _salesFiltersOpen = !_salesFiltersOpen),
-          icon: const Icon(Icons.tune, size: 18),
-          label: Text(
-            _salesFiltersOpen
-                ? 'Hide stock filters'
-                : 'Stock filters & sorting',
+        picker(
+          'Size',
+          _sizeFilter,
+          scope.map(productSizeLabel),
+          (v) => _sizeFilter = v,
+        ),
+        if (scope.any((p) => productProgram(p).isNotEmpty))
+          picker(
+            'Program',
+            _programFilter,
+            scope.map(productProgram),
+            (v) => _programFilter = v,
+          ),
+        if (scope.any(
+          (p) => (p['marbling_score']?.toString() ?? '').isNotEmpty,
+        ))
+          picker(
+            _programFilter == 'Wagyu' ? 'Wagyu MB' : 'Marbling',
+            _marblingFilter,
+            scope.map((p) => p['marbling_score']?.toString() ?? ''),
+            (v) => _marblingFilter = v,
+          ),
+        picker(
+          'Brand',
+          _brandFilter,
+          scope.map((p) => p['brand']?.toString() ?? ''),
+          (v) => _brandFilter = v,
+        ),
+        SizedBox(
+          width: 195,
+          child: CutLinkPickerField<String>(
+            label: 'Sort stock',
+            value: _stockSort,
+            dense: true,
+            enableSearch: false,
+            options: const [
+              CutLinkPickerOption(value: 'name', label: 'Product: A–Z'),
+              CutLinkPickerOption(
+                value: 'price_low',
+                label: 'Standard price: low to high',
+              ),
+              CutLinkPickerOption(
+                value: 'price_high',
+                label: 'Standard price: high to low',
+              ),
+              CutLinkPickerOption(
+                value: 'stock',
+                label: 'Stock: most available',
+              ),
+            ],
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => _stockSort = v);
+              }
+            },
           ),
         ),
-        if (_salesFiltersOpen)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                picker(
-                  'Size',
-                  _sizeFilter,
-                  scope.map(productSizeLabel),
-                  (v) => _sizeFilter = v,
-                ),
-                if (scope.any((p) => productProgram(p).isNotEmpty))
-                  picker(
-                    'Program',
-                    _programFilter,
-                    scope.map(productProgram),
-                    (v) => _programFilter = v,
-                  ),
-                if (scope.any(
-                  (p) => (p['marbling_score']?.toString() ?? '').isNotEmpty,
-                ))
-                  picker(
-                    _programFilter == 'Wagyu' ? 'Wagyu MB' : 'Marbling',
-                    _marblingFilter,
-                    scope.map((p) => p['marbling_score']?.toString() ?? ''),
-                    (v) => _marblingFilter = v,
-                  ),
-                picker(
-                  'Brand',
-                  _brandFilter,
-                  scope.map((p) => p['brand']?.toString() ?? ''),
-                  (v) => _brandFilter = v,
-                ),
-                SizedBox(
-                  width: 195,
-                  child: CutLinkPickerField<String>(
-                    label: 'Sort stock',
-                    value: _stockSort,
-                    dense: true,
-                    enableSearch: false,
-                    options: const [
-                      CutLinkPickerOption(value: 'name', label: 'Product: A–Z'),
-                      CutLinkPickerOption(
-                        value: 'price_low',
-                        label: 'Standard price: low to high',
-                      ),
-                      CutLinkPickerOption(
-                        value: 'price_high',
-                        label: 'Standard price: high to low',
-                      ),
-                      CutLinkPickerOption(
-                        value: 'stock',
-                        label: 'Stock: most available',
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => _stockSort = v);
-                    },
-                  ),
-                ),
-                FilterChip(
-                  label: const Text('Halal only'),
-                  selected: _halalFilter,
-                  onSelected: (v) => setState(() => _halalFilter = v),
-                ),
-                FilterChip(
-                  label: const Text('Available only'),
-                  selected: _availableFilter,
-                  onSelected: (v) => setState(() => _availableFilter = v),
-                ),
-                TextButton(
-                  onPressed: () => setState(_resetStockFilters),
-                  child: const Text('Clear filters'),
-                ),
-              ],
-            ),
-          ),
+        FilterChip(
+          label: const Text('Halal only'),
+          selected: _halalFilter,
+          onSelected: (v) => setState(() => _halalFilter = v),
+        ),
+        FilterChip(
+          label: const Text('Available only'),
+          selected: _availableFilter,
+          onSelected: (v) => setState(() => _availableFilter = v),
+        ),
+        TextButton(
+          onPressed: () => setState(_resetStockFilters),
+          child: const Text('Clear filters'),
+        ),
       ],
     );
   }
@@ -228,6 +213,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void initState() {
     super.initState();
     _searchController.addListener(_refresh);
+    _skuSearchController.addListener(_refresh);
     _initialiseSalesWorkspace();
   }
 
@@ -290,7 +276,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           .eq('id', orderId)
           .single();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       final order = Map<String, dynamic>.from(raw);
       final account = _nestedMap(order['supplier_customer_accounts']);
@@ -374,8 +362,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.removeListener(_refresh);
     _searchController.dispose();
+    _skuSearchController.removeListener(_refresh);
+    _skuSearchController.dispose();
     _cutScrollController.dispose();
     _subcategoryScrollController.dispose();
     _finalSpecificationScrollController.dispose();
@@ -383,9 +374,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   void _refresh() {
-    if (mounted) {
-      setState(() {});
-    }
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 180), () {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
@@ -471,9 +465,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             id,
             sku,
             product_name,
+            photo_path,
+            hide_catalogue_photo,
             brand,
             breed_program,
             marbling_score,
+            production_claim,
+            feeding_days,
+            rib_count,
+            hgp_free,
             piece_size_kind,
             temperature_state,
             halal_status,
@@ -543,9 +543,13 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             .order('product_name')
             .order('id')
             .range(offset, offset + 499);
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         productResponse.addAll(List<Map<String, dynamic>>.from(batch));
-        if (batch.length < 500) break;
+        if (batch.length < 500) {
+          break;
+        }
       }
 
       final catalogueAnimalResponse = await client
@@ -836,7 +840,16 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         true;
 
     final rows = _animalRegionProducts.where((product) {
-      if (!_matchesStockFilters(product)) return false;
+      if (!_matchesStockFilters(product)) {
+        return false;
+      }
+      final skuQuery = _skuSearchController.text.trim().toLowerCase();
+      if (skuQuery.isNotEmpty &&
+          !(product['sku']?.toString().toLowerCase() ?? '').contains(
+            skuQuery,
+          )) {
+        return false;
+      }
       if (_selectedSpecificationId != null &&
           _specificationId(product) != _selectedSpecificationId) {
         return false;
@@ -867,6 +880,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         productProgram(product),
         product['marbling_score']?.toString() ?? '',
         _commercialSpecificationLabel(product),
+        _salesProductSummary(product),
       ].join(' ').toLowerCase();
 
       return query.split(RegExp(r'\s+')).every(searchable.contains);
@@ -980,8 +994,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final size = product['chicken_size_weight']?.toString().trim() ?? '';
     final carton = product['chicken_carton_size']?.toString().trim() ?? '';
 
-    if (size.isNotEmpty) values.add(size);
-    if (carton.isNotEmpty) values.add(carton);
+    if (size.isNotEmpty) {
+      values.add(size);
+    }
+    if (carton.isNotEmpty) {
+      values.add(carton);
+    }
 
     return values.isEmpty ? 'Standard Chicken' : values.join(' • ');
   }
@@ -996,7 +1014,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   String? get _selectedCatalogueSectionId {
     final regionKey = _selectedAnimalRegionKey;
-    if (regionKey == null) return null;
+    if (regionKey == null) {
+      return null;
+    }
 
     final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
     final expectedCode = catalogue?.sectionCodeForRegion(regionKey);
@@ -1009,14 +1029,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         break;
       }
     }
-    if (animalId == null) return null;
+    if (animalId == null) {
+      return null;
+    }
 
     final targetCode = _normaliseCatalogueKey(expectedCode);
     final targetRegion = _normaliseCatalogueKey(regionKey);
     final targetLabel = _normaliseCatalogueKey(expectedLabel);
 
     for (final section in _catalogueSections) {
-      if (section['animal_id']?.toString() != animalId) continue;
+      if (section['animal_id']?.toString() != animalId) {
+        continue;
+      }
 
       final code = _normaliseCatalogueKey(section['code']);
       final name = _normaliseCatalogueKey(section['name']);
@@ -1040,10 +1064,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     if (sectionId != null) {
       for (final specification in _catalogueSpecifications) {
-        if (specification['section_id']?.toString() != sectionId) continue;
+        if (specification['section_id']?.toString() != sectionId) {
+          continue;
+        }
         final id = specification['id']?.toString();
         final name = specification['name']?.toString().trim();
-        if (id == null || id.isEmpty || name == null || name.isEmpty) continue;
+        if (id == null || id.isEmpty || name == null || name.isEmpty) {
+          continue;
+        }
         byId[id] = name;
       }
     }
@@ -1052,7 +1080,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     if (byId.isEmpty) {
       for (final product in _animalRegionProducts) {
         final id = _specificationId(product);
-        if (id.isEmpty) continue;
+        if (id.isEmpty) {
+          continue;
+        }
         byId[id] = _specificationName(product);
       }
     }
@@ -1080,7 +1110,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
 
       final gradeId = product['meat_grade_id']?.toString();
-      if (gradeId == null || gradeId.isEmpty) continue;
+      if (gradeId == null || gradeId.isEmpty) {
+        continue;
+      }
 
       final code = _gradeCode(product);
       final name = _gradeName(product);
@@ -1104,13 +1136,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     setState(() {
       _resetStockFilters();
-      _salesStockViewActive = false;
       _selectedAnimalCode = animalCode;
       _selectedAnimalRegionKey = catalogue?.defaultRegionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
-      _searchController.clear();
     });
   }
 
@@ -1122,12 +1152,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     setState(() {
       _resetStockFilters();
-      _salesStockViewActive = false;
       _selectedAnimalRegionKey = regionKey;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
-      _searchController.clear();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1144,12 +1172,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     setState(() {
       _resetStockFilters();
-      _salesStockViewActive = false;
       _selectedAnimalRegionKey = null;
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _selectedCommercialSpecificationKey = null;
-      _searchController.clear();
     });
   }
 
@@ -2026,7 +2052,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                     _activeSaleLines[index]['product_id']
                                         ?.toString();
 
-                                if (productId == null) return;
+                                if (productId == null) {
+                                  return;
+                                }
 
                                 final product = _products
                                     .where(
@@ -2233,7 +2261,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   Future<bool> _confirmCreditLimitForActiveSale() async {
     final sale = _activeSale;
-    if (sale == null) return true;
+    if (sale == null) {
+      return true;
+    }
 
     final accountId = sale['supplier_customer_account_id']?.toString();
 
@@ -2279,7 +2309,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final projected = _asDouble(check['projected_credit_exposure']);
       final overBy = _asDouble(check['over_limit_by']);
 
-      if (!mounted) return false;
+      if (!mounted) {
+        return false;
+      }
 
       final hasCatchWeight = _activeSaleLines.any(
         (line) => line['catch_weight_snapshot'] == true,
@@ -2497,7 +2529,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           },
         );
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         final added = (addedRaw as num?)?.toInt() ?? newItems.length;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3246,13 +3280,19 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   List<Map<String, String>> get _availableCommercialSpecifications {
-    if (_selectedSpecificationId == null) return const [];
+    if (_selectedSpecificationId == null) {
+      return const [];
+    }
 
     final byKey = <String, String>{};
     for (final product in _animalRegionProducts) {
-      if (_specificationId(product) != _selectedSpecificationId) continue;
+      if (_specificationId(product) != _selectedSpecificationId) {
+        continue;
+      }
       final key = _commercialSpecificationKey(product);
-      if (key.isEmpty) continue;
+      if (key.isEmpty) {
+        continue;
+      }
       byKey[key] = _commercialSpecificationLabel(product);
     }
 
@@ -3353,7 +3393,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     required List<Widget> children,
   }) {
     Future<void> move(double direction) async {
-      if (!controller.hasClients) return;
+      if (!controller.hasClients) {
+        return;
+      }
       final position = controller.position;
       final target = (controller.offset + (direction * 240))
           .clamp(position.minScrollExtent, position.maxScrollExtent)
@@ -3396,7 +3438,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   Widget _buildAnimalCutStrip() {
     final catalogue = AnimalCatalogueRegistry.forCode(_selectedAnimalCode);
-    if (catalogue == null) return const SizedBox.shrink();
+    if (catalogue == null) {
+      return const SizedBox.shrink();
+    }
 
     final regions = catalogue.regionKeys.toList();
     return _arrowScrollStrip(
@@ -3420,7 +3464,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   Widget _buildAnimalSubcutStrip() {
     final specifications = _availableSpecifications;
-    if (specifications.isEmpty) return const SizedBox.shrink();
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _subcategoryScrollController,
@@ -3431,10 +3477,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           selected: _selectedSpecificationId == null,
           onTap: () {
             setState(() {
+              _resetStockFilters();
               _selectedSpecificationId = null;
               _selectedGradeId = null;
               _selectedCommercialSpecificationKey = null;
-              _searchController.clear();
             });
           },
         ),
@@ -3444,10 +3490,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             selected: _selectedSpecificationId == specification['id'],
             onTap: () {
               setState(() {
+                _resetStockFilters();
                 _selectedSpecificationId = specification['id'];
                 _selectedGradeId = null;
                 _selectedCommercialSpecificationKey = null;
-                _searchController.clear();
               });
             },
           ),
@@ -3462,7 +3508,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     if (usesGradeStage) {
       final grades = _availableGrades;
-      if (grades.isEmpty) return const SizedBox.shrink();
+      if (grades.isEmpty) {
+        return const SizedBox.shrink();
+      }
 
       return _arrowScrollStrip(
         controller: _finalSpecificationScrollController,
@@ -3474,7 +3522,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             onTap: () {
               setState(() {
                 _selectedGradeId = null;
-                _searchController.clear();
               });
             },
           ),
@@ -3485,7 +3532,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               onTap: () {
                 setState(() {
                   _selectedGradeId = grade['id'];
-                  _searchController.clear();
                 });
               },
             ),
@@ -3494,7 +3540,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
 
     final specifications = _availableCommercialSpecifications;
-    if (specifications.isEmpty) return const SizedBox.shrink();
+    if (specifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return _arrowScrollStrip(
       controller: _finalSpecificationScrollController,
@@ -3506,7 +3554,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           onTap: () {
             setState(() {
               _selectedCommercialSpecificationKey = null;
-              _searchController.clear();
             });
           },
         ),
@@ -3518,7 +3565,6 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             onTap: () {
               setState(() {
                 _selectedCommercialSpecificationKey = specification['key'];
-                _searchController.clear();
               });
             },
           ),
@@ -3526,257 +3572,349 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
-    final standardPrice = _standardPrice(product);
-    final price = standardPrice?['amount'];
-    final catchWeight = _isCatchWeight(product);
-    final chicken = _isChickenProduct(product);
-    final gradeCode = _gradeCode(product);
-    final gradeName = _gradeName(product);
-    final specification = _specificationName(product);
-    final chickenVariation = chicken ? _chickenVariationLabel(product) : '';
-    final availability = _availabilityLabel(
-      product['availability_status']?.toString(),
-    );
-    final available =
-        product['availability_status']?.toString() != 'out_of_stock';
+  String _salesProductSummary(Map<String, dynamic> product) => [
+    productSizeLabel(product),
+    product['brand']?.toString() ?? '',
+    product['breed_program']?.toString() ?? '',
+    if ((product['marbling_score']?.toString() ?? '').isNotEmpty)
+      'MB ${product['marbling_score'].toString().replaceFirst(RegExp(r'^mb\s*', caseSensitive: false), '')}',
+    product['production_claim']?.toString().replaceAll('_', ' ') ?? '',
+    if (product['feeding_days'] != null) '${product['feeding_days']}D',
+    if (product['rib_count'] != null) '${product['rib_count']}R',
+    if (product['hgp_free'] == true) 'HGP Free',
+    if (_isChickenProduct(product)) _chickenVariationLabel(product),
+    product['bone_state']?.toString().replaceAll('_', ' ') ?? '',
+    product['packaging_type']?.toString().replaceAll('_', ' ') ?? '',
+  ].where((value) => value.trim().isNotEmpty).toSet().join(' • ');
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      color: available ? Colors.white : const Color(0xFFFAFAF8),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: available ? const Color(0xFFDEDEDA) : const Color(0xFFE8E8E4),
-        ),
-        borderRadius: BorderRadius.circular(10),
+  Future<void> _openSalesProductInfo(Map<String, dynamic> product) async {
+    final fields = <String, String>{
+      'Animal': _productAnimalCode(product) ?? 'Not specified',
+      'Main cut':
+          _nestedMap(product['meat_sections'])?['name']?.toString() ?? '',
+      'Sub-cut': _specificationName(product),
+      'Grade / category': <String>{
+        _gradeCode(product),
+        _gradeName(product),
+      }.join(' • '),
+      'SKU': product['sku']?.toString() ?? '',
+      'Brand': product['brand']?.toString() ?? '',
+      'Size per piece': productSizeLabel(product),
+      'Program': productProgram(product),
+      'Marbling': product['marbling_score']?.toString() ?? '',
+      'Feeding / production':
+          product['production_claim']?.toString().replaceAll('_', ' ') ?? '',
+      'Feeding days': product['feeding_days']?.toString() ?? '',
+      'Rib count': product['rib_count']?.toString() ?? '',
+      'HGP free': product['hgp_free'] == true ? 'Yes • Supplier declared' : '',
+      'Temperature': product['temperature_state']?.toString() ?? '',
+      'Halal': product['halal_status'] == 'halal'
+          ? 'Halal • Supplier declared'
+          : product['halal_status'] == 'not_halal'
+          ? 'Not Halal'
+          : 'Not specified',
+      'Stock': _quantityLabel(product),
+      'Availability': _availabilityLabel(
+        product['availability_status']?.toString(),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: available ? () => _handleAddToSale(product) : null,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 620;
-
-              final gradeBadge = Container(
-                width: narrow ? (chicken ? 150 : 82) : (chicken ? 190 : 92),
-                constraints: const BoxConstraints(minHeight: 72),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
+      'Ordering unit': product['order_unit']?.toString() ?? '',
+      'Weight': _isCatchWeight(product)
+          ? 'Catch weight • Final actual weight applies'
+          : 'Fixed weight / quantity',
+      for (final entry in const {
+        'bone_state': 'Bone',
+        'packaging_type': 'Packaging',
+        'pieces_per_carton': 'Pieces per carton',
+        'chicken_skin': 'Skin',
+        'chicken_bone': 'Chicken bone',
+        'chicken_production_type': 'Production',
+        'chicken_preparation': 'Preparation',
+        'chicken_carton_size': 'Chicken carton size',
+      }.entries)
+        entry.value: product[entry.key]?.toString().replaceAll('_', ' ') ?? '',
+      'Carton weight': product['carton_weight'] == null
+          ? ''
+          : '${product['carton_weight']} ${product['carton_weight_unit'] ?? 'kg'}',
+    };
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 880),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _specificationName(product),
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close information',
+                      onPressed: () => Navigator.pop(dialogContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
-                decoration: BoxDecoration(
-                  color: available
-                      ? const Color(0xFFF4E5E5)
-                      : const Color(0xFFF0F0ED),
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(
-                    color: available
-                        ? const Color(0xFFD7B8B8)
-                        : const Color(0xFFD9D9D5),
-                  ),
-                ),
-                child: chicken
-                    ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        CatalogueProductImage(
+                          product: product,
+                          imageHeight: 230,
+                        ),
+                        const SizedBox(height: 14),
+                        LayoutBuilder(
+                          builder: (context, constraints) => Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              for (final entry in fields.entries.where(
+                                (e) => e.value.trim().isNotEmpty,
+                              ))
+                                SizedBox(
+                                  width: constraints.maxWidth < 480
+                                      ? constraints.maxWidth
+                                      : (constraints.maxWidth - 24) / 3,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        entry.key,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF6D7177),
+                                        ),
+                                      ),
+                                      SelectableText(
+                                        entry.value,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if ((product['supplier_specification']
+                                    ?.toString()
+                                    .trim() ??
+                                '')
+                            .isNotEmpty) ...[
+                          const Divider(height: 24),
                           const Text(
-                            'CHICKEN',
-                            style: TextStyle(
-                              color: _darkRed,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.7,
-                            ),
+                            'Supplier specification',
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 5),
-                          Text(
-                            chickenVariation,
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: available
-                                  ? _darkRed
-                                  : const Color(0xFF777777),
-                              fontSize: 11.5,
-                              height: 1.25,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          SelectableText(
+                            product['supplier_specification'].toString(),
                           ),
                         ],
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            gradeCode,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: available
-                                  ? _darkRed
-                                  : const Color(0xFF777777),
-                              fontSize: gradeCode.length > 3 ? 24 : 30,
-                              height: 1,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          if (gradeName.isNotEmpty &&
-                              gradeName.toLowerCase() !=
-                                  gradeCode.toLowerCase()) ...[
-                            const SizedBox(height: 5),
-                            Text(
-                              gradeName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 9.5,
-                                height: 1.05,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-              );
-
-              final productDetails = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    specification,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    product['sku']?.toString().trim().isNotEmpty == true
-                        ? 'SKU ${product['sku']}'
-                        : 'No SKU',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 5,
-                    children: [
-                      _salesInfoPill(
-                        icon: Icons.inventory_2_outlined,
-                        label: _quantityLabel(product),
-                        emphasized: available,
-                      ),
-                      _salesInfoPill(
-                        icon: available
-                            ? Icons.check_circle_outline
-                            : Icons.cancel_outlined,
-                        label: availability,
-                      ),
-                      if (catchWeight)
-                        _salesInfoPill(
-                          icon: Icons.scale_outlined,
-                          label: 'Catch weight',
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Use Add to Sale to choose quantity and confirm the customer rate.',
+                          style: TextStyle(color: Color(0xFF6D7177)),
                         ),
-                    ],
-                  ),
-                ],
-              );
-
-              final pricing = Column(
-                crossAxisAlignment: narrow
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'STANDARD',
-                    style: TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 9.5,
-                      letterSpacing: .6,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    price == null
-                        ? 'Price not set'
-                        : '${_money(price)} / ${_basisLabel(product)}',
-                    style: TextStyle(
-                      color: price == null
-                          ? const Color(0xFF777777)
-                          : const Color(0xFF202020),
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  FilledButton.icon(
-                    onPressed: available
-                        ? () => _handleAddToSale(product)
-                        : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                      foregroundColor: Colors.white,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.add_shopping_cart_outlined,
-                      size: 17,
-                    ),
-                    label: const Text(
-                      'Add to Sale',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
-              );
-
-              if (narrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        gradeBadge,
-                        const SizedBox(width: 11),
-                        Expanded(child: productDetails),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    pricing,
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  gradeBadge,
-                  const SizedBox(width: 12),
-                  Expanded(child: productDetails),
-                  const SizedBox(width: 16),
-                  pricing,
-                ],
-              );
-            },
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    final price = _standardPrice(product)?['amount'];
+    final available =
+        product['availability_status']?.toString() != 'out_of_stock';
+    final summary = _salesProductSummary(product);
+    final grade = [
+      _gradeCode(product),
+      _gradeName(product),
+    ].where((value) => value.isNotEmpty && value != '—').toSet().join(' • ');
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 6),
+      color: available ? Colors.white : const Color(0xFFFAFAF8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE3E5E8)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 650;
+            final identity = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CatalogueProductImage(
+                  product: product,
+                  thumbnail: true,
+                  imageWidth: narrow ? 96 : 136,
+                  imageHeight: narrow ? 96 : 136,
+                  fit: BoxFit.cover,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            _specificationName(product),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          if (grade.isNotEmpty)
+                            _salesInfoPill(
+                              icon: Icons.verified_outlined,
+                              label: grade,
+                              emphasized: true,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'SKU ${product['sku'] ?? 'Not set'} • ${product['temperature_state'] ?? 'Not specified'}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6D7177),
+                        ),
+                      ),
+                      if (summary.isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          summary,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _salesInfoPill(
+                            icon: Icons.inventory_2_outlined,
+                            label: _quantityLabel(product),
+                            emphasized: available,
+                          ),
+                          _salesInfoPill(
+                            icon: Icons.check_circle_outline,
+                            label: _availabilityLabel(
+                              product['availability_status']?.toString(),
+                            ),
+                          ),
+                          if (_isCatchWeight(product))
+                            _salesInfoPill(
+                              icon: Icons.scale_outlined,
+                              label: 'Catch weight',
+                            ),
+                          if (product['halal_status'] == 'halal')
+                            _salesInfoPill(
+                              icon: Icons.verified_outlined,
+                              label: 'Halal • Supplier declared',
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+            final actions = Column(
+              crossAxisAlignment: narrow
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  'STANDARD PRICE',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF777777),
+                  ),
+                ),
+                Text(
+                  price == null
+                      ? 'Price not set'
+                      : '${_money(price)} / ${_basisLabel(product)}',
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: narrow ? WrapAlignment.start : WrapAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _openSalesProductInfo(product),
+                      icon: const Icon(Icons.info_outline, size: 17),
+                      label: const Text('Info'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: available
+                          ? () => _handleAddToSale(product)
+                          : null,
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: const Icon(
+                        Icons.add_shopping_cart_outlined,
+                        size: 17,
+                      ),
+                      label: const Text('Add to Sale'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+            return narrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [identity, const SizedBox(height: 10), actions],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: identity),
+                      const SizedBox(width: 14),
+                      SizedBox(width: 210, child: actions),
+                    ],
+                  );
+          },
         ),
       ),
     );
@@ -3802,15 +3940,153 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             color: emphasized ? _darkRed : const Color(0xFF666666),
           ),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: emphasized ? _darkRed : const Color(0xFF5F5F5F),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: emphasized ? _darkRed : const Color(0xFF5F5F5F),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openSalesCatalogue() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, updateDialog) => Dialog(
+          insetPadding: const EdgeInsets.all(14),
+          child: SizedBox(
+            width: 1220,
+            height: MediaQuery.sizeOf(context).height * .86,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Browse animal catalogue',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close catalogue',
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final diagram = InteractiveAnimalBrowser(
+                        selectedAnimalCode: _selectedAnimalCode,
+                        selectedRegionKey: _selectedAnimalRegionKey,
+                        onAnimalChanged: (animal) {
+                          _selectAnimal(animal);
+                          updateDialog(() {});
+                        },
+                        onRegionSelected: (region) {
+                          _selectAnimalRegion(region);
+                          updateDialog(() {});
+                        },
+                        maxWidth: 850,
+                      );
+                      final choices = Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            _selectedAnimalRegionKey == null
+                                ? 'Choose a main cut on the animal'
+                                : _selectedCutLabel(_selectedAnimalRegionKey!),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final specification in _availableSpecifications)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _resetStockFilters();
+                                    _selectedSpecificationId =
+                                        specification['id'];
+                                    _selectedGradeId = null;
+                                    _selectedCommercialSpecificationKey = null;
+                                  });
+                                  Navigator.pop(dialogContext);
+                                },
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    child: Text(
+                                      specification['name'] ?? 'Sub-cut',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (_availableSpecifications.isEmpty)
+                            const Text(
+                              'No sub-cuts available in this section.',
+                            ),
+                        ],
+                      );
+                      if (constraints.maxWidth < 800) {
+                        return ListView(
+                          padding: const EdgeInsets.all(12),
+                          children: [
+                            diagram,
+                            const SizedBox(height: 12),
+                            choices,
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 7,
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(12),
+                              child: diagram,
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            flex: 4,
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(14),
+                              child: choices,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -3819,713 +4095,231 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
-              Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: _loadStock,
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_errorMessage!, textAlign: TextAlign.center),
+            FilledButton(onPressed: _loadStock, child: const Text('Try again')),
+          ],
         ),
       );
     }
+    final products = _filteredProducts;
+    Widget panel(Widget child) => Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+      ),
+      child: child,
+    );
     return RefreshIndicator(
       onRefresh: _loadStock,
-      child: ListView(
+      child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 40),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1220),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            sliver: SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE3E5E8)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x08000000),
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
+                  panel(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text(
+                          'Sales workspace',
+                          style: TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
+                        FilledButton.icon(
+                          onPressed: () => _openNewSale(),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _darkRed,
+                          ),
+                          icon: const Icon(
+                            Icons.add_shopping_cart_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('New Sale'),
+                        ),
+                        _compactTopButton(
+                          icon: Icons.description_outlined,
+                          label: 'Quotes',
+                          onTap: _openQuotes,
+                        ),
+                        _ordersButton(),
                       ],
                     ),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 760;
-
-                        final titleBlock = Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 46,
-                              height: 46,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8EDEE),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.point_of_sale_outlined,
-                                color: _darkRed,
-                                size: 23,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Sales',
-                                    style: TextStyle(
-                                      fontSize: 23,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.3,
-                                    ),
-                                  ),
-                                  SizedBox(height: 3),
-                                  Text(
-                                    'Create direct sales, manage open sales and quotes, then move live orders into fulfilment.',
-                                    style: TextStyle(
-                                      color: Color(0xFF666A70),
-                                      fontSize: 12.5,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-
-                        final actions = Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.end,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: () => _openNewSale(),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.add_shopping_cart_outlined,
-                                size: 18,
-                              ),
-                              label: const Text(
-                                'New Sale',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                            _compactTopButton(
-                              icon: Icons.description_outlined,
-                              label: 'Quotes',
-                              onTap: _openQuotes,
-                            ),
-                            _ordersButton(),
-                          ],
-                        );
-
-                        if (narrow) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              titleBlock,
-                              const SizedBox(height: 14),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: actions,
-                              ),
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          children: [
-                            Expanded(child: titleBlock),
-                            const SizedBox(width: 18),
-                            actions,
-                          ],
-                        );
-                      },
-                    ),
                   ),
-                  const SizedBox(height: 16),
                   if (_openSaleCount > 0) _openSalesSwitcher(),
                   if (_activeSale != null) _activeSalePanel(),
-                  const SizedBox(height: 6),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final narrow = constraints.maxWidth < 940;
-                      final usesGradeStage =
-                          AnimalCatalogueRegistry.forCode(
-                            _selectedAnimalCode,
-                          )?.usesGradeStage ??
-                          true;
-                      final cutSelected = _selectedAnimalRegionKey != null;
-                      final subcutSelected = _selectedSpecificationId != null;
-                      final finalSpecificationSelected =
-                          _salesStockViewActive ||
-                          (usesGradeStage
-                              ? _selectedGradeId != null
-                              : _selectedCommercialSpecificationKey != null);
-
-                      Widget rightChoiceCard({
-                        required IconData icon,
-                        required String title,
-                        String? subtitle,
-                        required VoidCallback onTap,
-                      }) {
-                        return Material(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
-                            onTap: onTap,
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 13,
-                                vertical: 11,
+                  panel(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          spacing: 7,
+                          runSpacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: _openSalesCatalogue,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
                               ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: const Color(0xFFE3E5E8),
-                                ),
+                              icon: const Icon(
+                                Icons.menu_book_outlined,
+                                size: 18,
                               ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF5EAEA),
-                                      borderRadius: BorderRadius.circular(9),
-                                    ),
-                                    child: Icon(
-                                      icon,
-                                      size: 18,
-                                      color: _darkRed,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          title,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        if (subtitle != null &&
-                                            subtitle.trim().isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            subtitle,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Color(0xFF777777),
-                                              fontSize: 10.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 19,
-                                    color: _darkRed,
-                                  ),
-                                ],
-                              ),
+                              label: const Text('Browse animal catalogue'),
                             ),
-                          ),
-                        );
-                      }
-
-                      Widget subcutStage() {
-                        final query = _searchController.text
-                            .trim()
-                            .toLowerCase();
-                        final specifications = _availableSpecifications
-                            .where(
-                              (row) => (row['name'] ?? '')
-                                  .toLowerCase()
-                                  .contains(query),
-                            )
-                            .toList();
-
-                        if (specifications.isEmpty) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(26),
-                              child: Text(
-                                'No sub-cuts match this main cut.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF777777),
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            for (final animal in const [
+                              'BEEF',
+                              'VEAL',
+                              'LAMB',
+                              'MUTTON',
+                              'GOAT',
+                              'CHICKEN',
+                            ])
+                              ChoiceChip(
+                                label: Text(animal),
+                                selected: _selectedAnimalCode == animal,
+                                onSelected: (_) => _selectAnimal(animal),
                               ),
-                            ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(10),
-                          itemCount: specifications.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 7),
-                          itemBuilder: (_, index) {
-                            final specification = specifications[index];
-                            final name = specification['name'] ?? 'Sub-cut';
-
-                            return rightChoiceCard(
-                              icon: Icons.category_outlined,
-                              title: name,
-                              subtitle: usesGradeStage
-                                  ? 'Choose this sub-cut to view its AUS-MEAT Category.'
-                                  : 'Choose this sub-cut to view its specifications.',
-                              onTap: () {
-                                setState(() {
-                                  _selectedSpecificationId =
-                                      specification['id'];
-                                  _selectedGradeId = null;
-                                  _selectedCommercialSpecificationKey = null;
-                                  _searchController.clear();
-                                });
-                              },
-                            );
-                          },
-                        );
-                      }
-
-                      Widget gradeStage() {
-                        final query = _searchController.text
-                            .trim()
-                            .toLowerCase();
-                        final grades = _availableGrades.where((grade) {
-                          final code =
-                              grade['code']?.toString().toLowerCase() ?? '';
-                          final name =
-                              grade['name']?.toString().toLowerCase() ?? '';
-                          return code.contains(query) || name.contains(query);
-                        }).toList();
-
-                        if (grades.isEmpty) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(26),
-                              child: Text(
-                                'No AUS-MEAT categories match this sub-cut.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF777777),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(10),
-                          itemCount: grades.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 7),
-                          itemBuilder: (_, index) {
-                            final grade = grades[index];
-                            final code = grade['code']?.toString() ?? 'Grade';
-                            final name = grade['name']?.toString() ?? '';
-
-                            return rightChoiceCard(
-                              icon: Icons.workspace_premium_outlined,
-                              title: code,
-                              subtitle: name,
-                              onTap: () {
-                                setState(() {
-                                  _selectedGradeId = grade['id']?.toString();
-                                  _searchController.clear();
-                                });
-                              },
-                            );
-                          },
-                        );
-                      }
-
-                      Widget commercialSpecificationStage() {
-                        final query = _searchController.text
-                            .trim()
-                            .toLowerCase();
-                        final specifications =
-                            _availableCommercialSpecifications
-                                .where(
-                                  (row) => (row['label'] ?? '')
-                                      .toLowerCase()
-                                      .contains(query),
-                                )
-                                .toList();
-
-                        if (specifications.isEmpty) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(26),
-                              child: Text(
-                                'No product specifications are available for this sub-cut.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF777777),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(10),
-                          itemCount: specifications.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 7),
-                          itemBuilder: (_, index) {
-                            final specification = specifications[index];
-                            return rightChoiceCard(
-                              icon: Icons.tune_outlined,
-                              title:
-                                  specification['label'] ??
-                                  'Product specification',
-                              subtitle:
-                                  'Choose this specification to view matching stock and pricing.',
-                              onTap: () {
-                                setState(() {
-                                  _selectedCommercialSpecificationKey =
-                                      specification['key'];
-                                  _searchController.clear();
-                                });
-                              },
-                            );
-                          },
-                        );
-                      }
-
-                      Widget stockStage() {
-                        final stock = _filteredProducts;
-                        if (stock.isEmpty) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(28),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.search_off_outlined,
-                                    size: 44,
-                                    color: Color(0xFFAAAAAA),
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'No matching stock',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'No stock is linked to this exact selection.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Color(0xFF777777)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: const EdgeInsets.all(10),
-                          itemCount: stock.length,
-                          itemBuilder: (context, index) =>
-                              _buildProductCard(stock[index]),
-                        );
-                      }
-
-                      final cowPanel = Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE3E5E8)),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x07000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
                           ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                        const SizedBox(height: 6),
+                        _buildAnimalCutStrip(),
+                        if (_selectedAnimalRegionKey != null)
+                          _buildAnimalSubcutStrip(),
+                        if (_selectedSpecificationId != null)
+                          _buildFinalSpecificationStrip(),
+                      ],
+                    ),
+                  ),
+                  panel(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
                           children: [
-                            const Text(
-                              'Browse by Animal',
-                              style: TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.w900,
+                            const Expanded(
+                              child: Text(
+                                'Your stock',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
                             Text(
-                              usesGradeStage
-                                  ? 'Choose the animal, main cut, sub-cut and AUS-MEAT Category.'
-                                  : 'Choose the animal, main cut, sub-cut and product specification.',
+                              '${products.length} results',
                               style: const TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 10.5,
+                                color: _darkRed,
+                                fontWeight: FontWeight.w800,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            InteractiveAnimalBrowser(
-                              selectedAnimalCode: _selectedAnimalCode,
-                              selectedRegionKey: _selectedAnimalRegionKey,
-                              onAnimalChanged: _selectAnimal,
-                              onRegionSelected: _selectAnimalRegion,
-                              maxWidth: 700,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'CUT',
-                              style: TextStyle(
-                                color: Color(0xFF777777),
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _buildAnimalCutStrip(),
-                            if (cutSelected) ...[
-                              const SizedBox(height: 8),
-                              const Text(
-                                'SUB-CUT',
-                                style: TextStyle(
-                                  color: Color(0xFF777777),
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              _buildAnimalSubcutStrip(),
-                            ],
-                            if (subcutSelected) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                usesGradeStage
-                                    ? 'AUS-MEAT CATEGORY'
-                                    : 'SPECIFICATION',
-                                style: const TextStyle(
-                                  color: Color(0xFF777777),
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              _buildFinalSpecificationStrip(),
-                            ],
-                          ],
-                        ),
-                      );
-
-                      final panelTitle = !cutSelected
-                          ? 'Choose a Main Cut'
-                          : !subcutSelected
-                          ? 'Choose Sub-cut'
-                          : !finalSpecificationSelected
-                          ? (usesGradeStage
-                                ? 'Choose AUS-MEAT Category'
-                                : 'Choose Specification')
-                          : 'Matching Stock';
-
-                      final panelSubtitle = !cutSelected
-                          ? 'Select a cut directly from the animal diagram.'
-                          : !subcutSelected
-                          ? 'Choose the exact sub-cut for ${_selectedCutLabel(_selectedAnimalRegionKey!)}.'
-                          : !finalSpecificationSelected
-                          ? (usesGradeStage
-                                ? 'Choose the commercial AUS-MEAT Category.'
-                                : 'Choose the product specification for this sub-cut.')
-                          : 'Choose the matching product and pricing for the sale.';
-
-                      final inventoryPanel = Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE3E5E8)),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x07000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
                             ),
                           ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                14,
-                                16,
-                                10,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    panelTitle,
-                                    style: const TextStyle(
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    panelSubtitle,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: !cutSelected
-                                      ? 'Search cuts or stock...'
-                                      : !subcutSelected
-                                      ? 'Search sub-cuts...'
-                                      : !finalSpecificationSelected
-                                      ? (usesGradeStage
-                                            ? 'Search AUS-MEAT categories...'
-                                            : 'Search specifications...')
-                                      : 'Search matching stock...',
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    size: 20,
-                                  ),
-                                  suffixIcon: _searchController.text.isEmpty
-                                      ? null
-                                      : IconButton(
-                                          onPressed: _searchController.clear,
-                                          icon: const Icon(
-                                            Icons.close,
-                                            size: 18,
-                                          ),
-                                        ),
-                                  isDense: true,
-                                  filled: true,
-                                  fillColor: const Color(0xFFFBFBF9),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(9),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFDADAD6),
-                                    ),
+                        const SizedBox(height: 8),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            Widget search(
+                              TextEditingController controller,
+                              String hint,
+                            ) => TextField(
+                              controller: controller,
+                              decoration: InputDecoration(
+                                hintText: hint,
+                                prefixIcon: const Icon(Icons.search, size: 19),
+                                suffixIcon: controller.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: controller.clear,
+                                        tooltip: 'Clear search',
+                                        icon: const Icon(Icons.close, size: 17),
+                                      ),
+                                isDense: true,
+                                filled: true,
+                                fillColor: const Color(0xFFF7F8FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(9),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE3E5E8),
                                   ),
                                 ),
                               ),
-                            ),
-                            _salesStockFilters(),
-                            const Divider(height: 1),
-                            SizedBox(
-                              height: narrow ? 460 : 560,
-                              child: !cutSelected
-                                  ? const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(28),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app_outlined,
-                                              size: 48,
-                                              color: Color(0xFFAAAAAA),
-                                            ),
-                                            SizedBox(height: 12),
-                                            Text(
-                                              'Click a main cut on the animal',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                          ],
+                            );
+                            return constraints.maxWidth < 600
+                                ? Column(
+                                    children: [
+                                      search(
+                                        _searchController,
+                                        'Search products, brands or specifications…',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      search(
+                                        _skuSearchController,
+                                        'Search SKU…',
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        child: search(
+                                          _searchController,
+                                          'Search products, brands or specifications…',
                                         ),
                                       ),
-                                    )
-                                  : !subcutSelected
-                                  ? subcutStage()
-                                  : !finalSpecificationSelected
-                                  ? (usesGradeStage
-                                        ? gradeStage()
-                                        : commercialSpecificationStage())
-                                  : stockStage(),
-                            ),
-                          ],
+                                      const SizedBox(width: 10),
+                                      SizedBox(
+                                        width: 230,
+                                        child: search(
+                                          _skuSearchController,
+                                          'Search SKU…',
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                          },
                         ),
-                      );
-
-                      if (narrow) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            cowPanel,
-                            const SizedBox(height: 16),
-                            inventoryPanel,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 11, child: cowPanel),
-                          const SizedBox(width: 18),
-                          Expanded(flex: 9, child: inventoryPanel),
-                        ],
-                      );
-                    },
+                        const SizedBox(height: 10),
+                        _salesStockFilters(),
+                      ],
+                    ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          if (products.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(28),
+                child: Center(
+                  child: Text(
+                    'No matching stock. Adjust your cut, filters or search.',
+                  ),
+                ),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildProductCard(products[index]),
+                childCount: products.length,
               ),
             ),
           ),

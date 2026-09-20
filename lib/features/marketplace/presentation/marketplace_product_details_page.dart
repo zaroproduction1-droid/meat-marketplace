@@ -4,11 +4,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
+import '../services/butcher_favourites_store.dart';
 
 class MarketplaceProductDetailsPage extends StatefulWidget {
-  const MarketplaceProductDetailsPage({super.key, required this.product});
+  const MarketplaceProductDetailsPage({
+    super.key,
+    required this.product,
+    this.favourites,
+  });
 
   final Map<String, dynamic> product;
+  final ButcherFavouritesStore? favourites;
 
   @override
   State<MarketplaceProductDetailsPage> createState() =>
@@ -17,6 +23,7 @@ class MarketplaceProductDetailsPage extends StatefulWidget {
 
 class _MarketplaceProductDetailsPageState
     extends State<MarketplaceProductDetailsPage> {
+  late final ButcherFavouritesStore _favourites;
   final TextEditingController _quantityController = TextEditingController(
     text: '1',
   );
@@ -34,7 +41,9 @@ class _MarketplaceProductDetailsPageState
     }
     try {
       final id = widget.product['supplier_business_id']?.toString();
-      if (id == null || id.isEmpty) throw StateError('Missing supplier');
+      if (id == null || id.isEmpty) {
+        throw StateError('Missing supplier');
+      }
       final profile = await Supabase.instance.client
           .from('businesses')
           .select(
@@ -44,7 +53,9 @@ class _MarketplaceProductDetailsPageState
           .eq('id', id)
           .maybeSingle()
           .timeout(const Duration(seconds: 15));
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _supplierProfile = profile == null
             ? {}
@@ -52,9 +63,13 @@ class _MarketplaceProductDetailsPageState
         _supplierProfileFailed = profile == null;
       });
     } catch (_) {
-      if (mounted) setState(() => _supplierProfileFailed = true);
+      if (mounted) {
+        setState(() => _supplierProfileFailed = true);
+      }
     } finally {
-      if (mounted) setState(() => _loadingSupplierProfile = false);
+      if (mounted) {
+        setState(() => _loadingSupplierProfile = false);
+      }
     }
   }
 
@@ -195,12 +210,19 @@ class _MarketplaceProductDetailsPageState
   @override
   void initState() {
     super.initState();
+    _favourites = widget.favourites ?? ButcherFavouritesStore();
+    if (widget.favourites == null) {
+      _favourites.load();
+    }
     _loadRelationshipStatus();
     _loadSupplierProfile();
   }
 
   @override
   void dispose() {
+    if (widget.favourites == null) {
+      _favourites.dispose();
+    }
     _quantityController.dispose();
     super.dispose();
   }
@@ -213,11 +235,20 @@ class _MarketplaceProductDetailsPageState
         throw Exception('No signed-in user was found.');
       }
 
-      final membership = await Supabase.instance.client
+      var membershipQuery = Supabase.instance.client
           .from('business_memberships')
-          .select('business_id')
+          .select('business_id, businesses!inner(business_type)')
           .eq('user_id', user.id)
           .eq('status', 'active')
+          .eq('businesses.business_type', 'butcher');
+      if (_favourites.businessId != null) {
+        membershipQuery = membershipQuery.eq(
+          'business_id',
+          _favourites.businessId!,
+        );
+      }
+      final membership = await membershipQuery
+          .order('created_at')
           .limit(1)
           .single();
 
@@ -233,7 +264,9 @@ class _MarketplaceProductDetailsPageState
           .eq('butcher_business_id', butcherBusinessId)
           .limit(1);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _butcherBusinessId = butcherBusinessId;
@@ -243,7 +276,9 @@ class _MarketplaceProductDetailsPageState
         _isCheckingRelationship = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isCheckingRelationship = false;
@@ -253,7 +288,9 @@ class _MarketplaceProductDetailsPageState
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isCheckingRelationship = false;
@@ -268,7 +305,9 @@ class _MarketplaceProductDetailsPageState
   Future<void> _requestSupplierAccess() async {
     final butcherBusinessId = _butcherBusinessId;
 
-    if (butcherBusinessId == null) return;
+    if (butcherBusinessId == null) {
+      return;
+    }
 
     setState(() {
       _isSubmittingRequest = true;
@@ -283,7 +322,9 @@ class _MarketplaceProductDetailsPageState
             'status': 'requested',
           });
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _relationshipStatus = 'requested';
@@ -294,7 +335,9 @@ class _MarketplaceProductDetailsPageState
         const SnackBar(content: Text('Supplier access request sent.')),
       );
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isSubmittingRequest = false;
@@ -422,16 +465,24 @@ class _MarketplaceProductDetailsPageState
     var bestPriority = 0;
 
     for (final rawPrice in rawPrices) {
-      if (rawPrice is! Map) continue;
+      if (rawPrice is! Map) {
+        continue;
+      }
 
       final price = Map<String, dynamic>.from(rawPrice);
-      if (price['active'] != true) continue;
+      if (price['active'] != true) {
+        continue;
+      }
 
       final rawPriceList = price['price_lists'];
-      if (rawPriceList is! Map) continue;
+      if (rawPriceList is! Map) {
+        continue;
+      }
 
       final priceList = Map<String, dynamic>.from(rawPriceList);
-      if (priceList['active'] != true) continue;
+      if (priceList['active'] != true) {
+        continue;
+      }
 
       final visibility = priceList['visibility'] as String?;
 
@@ -655,8 +706,12 @@ class _MarketplaceProductDetailsPageState
   }
 
   Map<String, dynamic>? _taxonomyMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) return raw;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -695,7 +750,9 @@ class _MarketplaceProductDetailsPageState
       widget.product['meat_grades'],
     )?['code']?.toString().trim();
 
-    if (value != null && value.isNotEmpty) return value;
+    if (value != null && value.isNotEmpty) {
+      return value;
+    }
 
     final legacy = widget.product['grade']?.toString().trim();
     if (legacy != null && legacy.isNotEmpty) {
@@ -711,7 +768,9 @@ class _MarketplaceProductDetailsPageState
       widget.product['meat_grades'],
     )?['name']?.toString().trim();
 
-    if (value != null && value.isNotEmpty) return value;
+    if (value != null && value.isNotEmpty) {
+      return value;
+    }
     return '';
   }
 
@@ -1037,11 +1096,15 @@ class _MarketplaceProductDetailsPageState
   }
 
   String _formatNumber(dynamic value) {
-    if (value == null) return '';
+    if (value == null) {
+      return '';
+    }
 
     final number = value is num ? value.toDouble() : double.tryParse('$value');
 
-    if (number == null) return value.toString();
+    if (number == null) {
+      return value.toString();
+    }
 
     if (number == number.roundToDouble()) {
       return _withThousandsSeparators(number.toInt().toString());
@@ -1704,6 +1767,7 @@ class _MarketplaceProductDetailsPageState
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          ProductFavouriteHeart(store: _favourites, product: widget.product),
           IconButton(
             onPressed: _openDraftOrdersPage,
             tooltip: 'Draft orders',

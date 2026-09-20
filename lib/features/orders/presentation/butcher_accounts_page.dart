@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
 
 import '../services/invoice_pdf_service.dart';
+import '../services/invoice_account_balance.dart';
 import 'account_statement_page.dart';
 
 class ButcherAccountsPage extends StatefulWidget {
@@ -2497,6 +2498,12 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
       _supplierLogoBytes = supplierLogoBytes;
     });
 
+    final balance = await InvoiceAccountBalance.tryLoad(
+      _invoice['id'].toString(),
+    );
+    if (mounted) {
+      setState(() => _invoice['account_balance_summary'] = balance);
+    }
     await widget.onChanged();
   }
 
@@ -2640,14 +2647,26 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               .toList()
         : <Map<String, dynamic>>[];
 
-    await Printing.layoutPdf(
-      name: '${_invoice['invoice_number']?.toString() ?? 'invoice'}.pdf',
-      onLayout: (_) => CutLinkInvoicePdf.build(
-        invoice: _invoice,
-        items: items,
-        supplierLogoBytes: _supplierLogoBytes,
-      ),
-    );
+    try {
+      final accountBalance = await InvoiceAccountBalance.load(
+        _invoice['id'].toString(),
+      );
+      await Printing.layoutPdf(
+        name: '${_invoice['invoice_number']?.toString() ?? 'invoice'}.pdf',
+        onLayout: (_) => CutLinkInvoicePdf.build(
+          invoice: _invoice,
+          accountBalance: accountBalance,
+          items: items,
+          supplierLogoBytes: _supplierLogoBytes,
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not create invoice PDF: $error')),
+        );
+      }
+    }
   }
 
   @override
@@ -2803,6 +2822,10 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               _asDouble(_invoice['credit_applied']),
             ),
             _amountRow('Outstanding', _outstanding, strong: true),
+            InvoiceAccountBalancePanel(
+              balance:
+                  _invoice['account_balance_summary'] as Map<String, dynamic>?,
+            ),
             const SizedBox(height: 14),
             const Divider(height: 1),
             const SizedBox(height: 10),

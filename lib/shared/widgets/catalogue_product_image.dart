@@ -9,11 +9,15 @@ class CatalogueProductImage extends StatelessWidget {
     required this.product,
     this.thumbnail = false,
     this.imageHeight,
+    this.imageWidth,
+    this.fit = BoxFit.contain,
   });
 
   final Map<String, dynamic> product;
   final bool thumbnail;
   final double? imageHeight;
+  final double? imageWidth;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +62,7 @@ class CatalogueProductImage extends StatelessWidget {
           ? 'Photo not yet available'
           : '$cut • Illustrative image',
       child: Container(
-        width: thumbnail ? 64 : null,
+        width: imageWidth ?? (thumbnail ? 64 : null),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -73,7 +77,7 @@ class CatalogueProductImage extends StatelessWidget {
                 url,
                 height: height,
                 width: double.infinity,
-                fit: BoxFit.contain,
+                fit: fit,
                 filterQuality: FilterQuality.high,
                 semanticLabel: '$cut supplier photo',
                 errorBuilder: (_, _, _) => placeholder(),
@@ -83,10 +87,17 @@ class CatalogueProductImage extends StatelessWidget {
             else
               Image.asset(
                 asset,
+                filterQuality: FilterQuality.high,
                 height: height,
                 width: double.infinity,
-                fit: BoxFit.contain,
-                cacheWidth: thumbnail ? 160 : 800,
+                fit: fit,
+                cacheWidth: thumbnail
+                    ? ((imageWidth ?? 64) *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .ceil()
+                          .clamp(160, 1200)
+                          .toInt()
+                    : 800,
                 semanticLabel: '$cut, illustrative image',
                 errorBuilder: (_, _, _) => placeholder(),
               ),

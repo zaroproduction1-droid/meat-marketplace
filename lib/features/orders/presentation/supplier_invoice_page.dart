@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/invoice_pdf_service.dart';
+import '../services/invoice_account_balance.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
 class SupplierInvoicePage extends StatefulWidget {
@@ -281,6 +282,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         return;
       }
 
+      loaded['account_balance_summary'] = await InvoiceAccountBalance.tryLoad(
+        loaded['id'].toString(),
+      );
+      if (!mounted) {
+        return;
+      }
       _notesController.text = loaded['notes']?.toString() ?? '';
 
       setState(() {
@@ -842,7 +849,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       }
 
       setState(() {
-        _invoice = Map<String, dynamic>.from(updated);
+        _invoice = {...?_invoice, ...Map<String, dynamic>.from(updated)};
       });
 
       ScaffoldMessenger.of(
@@ -869,6 +876,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
     return CutLinkInvoicePdf.build(
       invoice: invoice,
+      accountBalance: await InvoiceAccountBalance.load(
+        invoice['id'].toString(),
+      ),
       items: _items,
       supplierLogoBytes: _supplierLogoBytes,
     );
@@ -1562,6 +1572,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 label: 'Outstanding',
                 value: _money(_amountOutstanding),
                 bold: true,
+              ),
+              InvoiceAccountBalancePanel(
+                balance:
+                    _invoice?['account_balance_summary']
+                        as Map<String, dynamic>?,
               ),
 
               if (_hasPendingCustomerPaymentClaim) ...[

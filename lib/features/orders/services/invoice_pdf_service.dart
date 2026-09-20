@@ -17,8 +17,15 @@ class CutLinkInvoicePdf {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  static String _money(dynamic value) =>
-      '\$${_asDouble(value).toStringAsFixed(2)}';
+  static String _money(dynamic value) {
+    final amount = _asDouble(value);
+    final parts = amount.abs().toStringAsFixed(2).split('.');
+    final whole = parts.first.replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]},',
+    );
+    return '${amount < 0 ? '-' : ''}\$$whole.${parts.last}';
+  }
 
   static String _date(dynamic value) {
     if (value == null) return '-';
@@ -242,6 +249,7 @@ class CutLinkInvoicePdf {
 
   static Future<Uint8List> build({
     required Map<String, dynamic> invoice,
+    required Map<String, dynamic> accountBalance,
     required List<Map<String, dynamic>> items,
     Uint8List? supplierLogoBytes,
   }) async {
@@ -298,9 +306,11 @@ class CutLinkInvoicePdf {
 
     final total = _asDouble(invoice['total_amount']);
     final paid = _asDouble(invoice['amount_paid']);
-    final outstanding = _asDouble(invoice['outstanding_amount']) > 0
+    final outstanding = invoice['outstanding_amount'] != null
         ? _asDouble(invoice['outstanding_amount'])
-        : (total - paid).clamp(0, double.infinity).toDouble();
+        : (total - paid - _asDouble(invoice['credit_applied']))
+              .clamp(0, double.infinity)
+              .toDouble();
 
     final fulfilment = order['fulfilment_method']?.toString().toLowerCase();
 
@@ -719,6 +729,8 @@ class CutLinkInvoicePdf {
                     pw.Divider(color: _border),
                     _totalRow('Total inc GST', total, bold: true),
                     _totalRow('Payments received', paid),
+                    if (_asDouble(invoice['credit_applied']) > 0)
+                      _totalRow('Credits applied', invoice['credit_applied']),
                     pw.Container(
                       margin: const pw.EdgeInsets.only(top: 5),
                       padding: const pw.EdgeInsets.symmetric(vertical: 7),
@@ -731,7 +743,7 @@ class CutLinkInvoicePdf {
                         children: [
                           pw.Expanded(
                             child: pw.Text(
-                              'BALANCE DUE',
+                              'THIS INVOICE DUE',
                               style: pw.TextStyle(
                                 fontSize: 10,
                                 fontWeight: pw.FontWeight.bold,
@@ -749,6 +761,39 @@ class CutLinkInvoicePdf {
                           ),
                         ],
                       ),
+                    ),
+                    pw.Divider(color: _border),
+                    _totalRow(
+                      _asDouble(accountBalance['account_balance']) < 0
+                          ? 'Account in credit'
+                          : 'Account balance',
+                      _asDouble(accountBalance['account_balance']).abs(),
+                      bold: true,
+                    ),
+                    if (_asDouble(accountBalance['unallocated_payments']) > 0 ||
+                        _asDouble(accountBalance['available_credit']) > 0) ...[
+                      _totalRow(
+                        'Unpaid invoices',
+                        accountBalance['outstanding_invoices'],
+                      ),
+                      if (_asDouble(accountBalance['unallocated_payments']) > 0)
+                        _totalRow(
+                          'Less unallocated payments',
+                          -_asDouble(accountBalance['unallocated_payments']),
+                        ),
+                      if (_asDouble(accountBalance['available_credit']) > 0)
+                        _totalRow(
+                          'Less available credits',
+                          -_asDouble(accountBalance['available_credit']),
+                        ),
+                    ],
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      'As at ${_date(accountBalance['as_at'])}. '
+                      '${accountBalance['invoice_included'] == true ? 'Includes this invoice.' : 'This draft/void invoice is not included.'} '
+                      '${accountBalance['scope'] == 'sent_invoices' ? 'Sent invoices only. ' : ''}'
+                      'Not an additional charge. Pending payments excluded.',
+                      style: pw.TextStyle(fontSize: 7.5, color: _muted),
                     ),
                   ],
                 ),
