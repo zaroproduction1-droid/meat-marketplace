@@ -1,3 +1,5 @@
+import '../services/document_product_details.dart';
+import '../services/document_product_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -157,6 +159,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               id,
               product_id,
               product_name_snapshot,
+              product_details_snapshot,
               sku_snapshot,
               quantity,
               quantity_unit,
@@ -187,36 +190,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
       final order = Map<String, dynamic>.from(orderResponse);
 
-      final rawItemsForGrades = order['order_items'];
-      if (rawItemsForGrades is List) {
-        final productIds = rawItemsForGrades
+      order['order_items'] = await loadDocumentProductDetails(
+        (order['order_items'] as List? ?? const [])
             .whereType<Map>()
-            .map((item) => item['product_id']?.toString())
-            .whereType<String>()
-            .where((id) => id.isNotEmpty)
-            .toSet()
-            .toList();
-        if (productIds.isNotEmpty) {
-          final productRows = await client
-              .from('products')
-              .select('id, meat_grades(code, name)')
-              .inFilter('id', productIds);
-          final gradeByProductId = <String, Map<String, dynamic>>{};
-          for (final rawProduct in productRows) {
-            final product = Map<String, dynamic>.from(rawProduct);
-            final id = product['id']?.toString();
-            final rawGrade = product['meat_grades'];
-            if (id != null && rawGrade is Map) {
-              gradeByProductId[id] = Map<String, dynamic>.from(rawGrade);
-            }
-          }
-          for (final rawItem in rawItemsForGrades.whereType<Map>()) {
-            final grade = gradeByProductId[rawItem['product_id']?.toString()];
-            rawItem['grade_code'] = grade?['code'];
-            rawItem['grade_name'] = grade?['name'];
-          }
-        }
-      }
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(),
+      );
 
       final privateComments = <String, String>{};
       final workOrderId = workOrder['id']?.toString();
@@ -415,17 +394,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         .toList();
   }
 
-  String _lineTitle(Map<String, dynamic> item) {
-    final product = item['product_name_snapshot']?.toString().trim();
-    final code = item['grade_code']?.toString().trim() ?? '';
-    final name = item['grade_name']?.toString().trim() ?? '';
-    final grade = [
-      if (code.isNotEmpty) code,
-      if (name.isNotEmpty && name != code) name,
-    ].join(' - ');
-    final base = product == null || product.isEmpty ? 'Product' : product;
-    return grade.isEmpty ? base : '$base - $grade';
-  }
+  String _lineTitle(Map<String, dynamic> item) => documentProductTitle(item);
 
   String _customerName() {
     final accountRaw = _order?['supplier_customer_accounts'];
@@ -1829,6 +1798,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     _pdfCell(
                       [
                         _lineTitle(item),
+                        if (documentProductSpecifications(item).isNotEmpty)
+                          documentProductSpecifications(item),
                         if ((item['sku_snapshot']?.toString().trim() ?? '')
                             .isNotEmpty)
                           'SKU: ${item['sku_snapshot']}',
@@ -3409,6 +3380,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
+                        if (documentProductSpecifications(item).isNotEmpty)
+                          Text(
+                            documentProductSpecifications(item),
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: Color(0xFF646A70),
+                            ),
+                          ),
                         if ((item['sku_snapshot']?.toString().trim() ?? '')
                             .isNotEmpty)
                           Text(

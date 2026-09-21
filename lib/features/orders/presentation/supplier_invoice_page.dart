@@ -1,3 +1,5 @@
+import '../services/document_product_details.dart';
+import '../services/document_product_loader.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -201,6 +203,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               order_item_id,
               product_id,
               product_name_snapshot,
+              product_details_snapshot,
               sku_snapshot,
               ordered_quantity,
               ordered_quantity_unit,
@@ -328,109 +331,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   Future<List<Map<String, dynamic>>> _enrichInvoiceItems(
     List<Map<String, dynamic>> items,
-  ) async {
-    final productIds = items
-        .map((item) => item['product_id']?.toString())
-        .whereType<String>()
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
-
-    if (productIds.isEmpty) {
-      return items;
-    }
-
-    final client = Supabase.instance.client;
-
-    final productRows = await client
-        .from('products')
-        .select(
-          'id, meat_animal_id, meat_section_id, meat_specification_id, meat_grade_id',
-        )
-        .inFilter('id', productIds);
-
-    final products = <String, Map<String, dynamic>>{};
-    final animalIds = <String>{};
-    final sectionIds = <String>{};
-    final specificationIds = <String>{};
-    final gradeIds = <String>{};
-
-    for (final raw in productRows) {
-      final row = Map<String, dynamic>.from(raw);
-      final id = row['id']?.toString();
-      if (id == null || id.isEmpty) continue;
-
-      products[id] = row;
-
-      final animalId = row['meat_animal_id']?.toString();
-      final sectionId = row['meat_section_id']?.toString();
-      final specificationId = row['meat_specification_id']?.toString();
-      final gradeId = row['meat_grade_id']?.toString();
-
-      if (animalId != null && animalId.isNotEmpty) animalIds.add(animalId);
-      if (sectionId != null && sectionId.isNotEmpty) sectionIds.add(sectionId);
-      if (specificationId != null && specificationId.isNotEmpty) {
-        specificationIds.add(specificationId);
-      }
-      if (gradeId != null && gradeId.isNotEmpty) gradeIds.add(gradeId);
-    }
-
-    Future<Map<String, Map<String, dynamic>>> loadByIds(
-      String table,
-      Set<String> ids,
-      String select,
-    ) async {
-      if (ids.isEmpty) return <String, Map<String, dynamic>>{};
-
-      final rows = await client
-          .from(table)
-          .select(select)
-          .inFilter('id', ids.toList());
-
-      return {
-        for (final raw in rows)
-          if (raw['id'] != null)
-            raw['id'].toString(): Map<String, dynamic>.from(raw),
-      };
-    }
-
-    final results = await Future.wait([
-      loadByIds('meat_animals', animalIds, 'id, code, name'),
-      loadByIds('meat_sections', sectionIds, 'id, code, name'),
-      loadByIds('meat_specifications', specificationIds, 'id, name, ham_code'),
-      loadByIds('meat_grades', gradeIds, 'id, code, name'),
-    ]);
-
-    final animals = results[0];
-    final sections = results[1];
-    final specifications = results[2];
-    final grades = results[3];
-
-    return items.map((item) {
-      final enriched = Map<String, dynamic>.from(item);
-      final productId = item['product_id']?.toString();
-      final product = productId == null ? null : products[productId];
-
-      if (product == null) return enriched;
-
-      final animal = animals[product['meat_animal_id']?.toString()];
-      final section = sections[product['meat_section_id']?.toString()];
-      final specification =
-          specifications[product['meat_specification_id']?.toString()];
-      final grade = grades[product['meat_grade_id']?.toString()];
-
-      enriched['animal_name'] = animal?['name'];
-      enriched['animal_code'] = animal?['code'];
-      enriched['section_name'] = section?['name'];
-      enriched['section_code'] = section?['code'];
-      enriched['specification_name'] = specification?['name'];
-      enriched['ham_code'] = specification?['ham_code'];
-      enriched['grade_code'] = grade?['code'];
-      enriched['grade_name'] = grade?['name'];
-
-      return enriched;
-    }).toList();
-  }
+  ) => loadDocumentProductDetails(items);
 
   double _asDouble(dynamic value) {
     if (value is num) {
@@ -1045,7 +946,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         Expanded(
           child: ZoomablePdfPreview(
             documentKey:
-                'invoice-${_invoice?['id'] ?? widget.invoiceId ?? widget.orderId}-$invoiceNumber',
+                'invoice-${_invoice?['id'] ?? widget.invoiceId ?? widget.orderId}-$invoiceNumber-${_invoice?['status']}-${_invoice?['outstanding_amount']}',
             buildPdf: _buildInvoicePdf,
             dpi: 420,
           ),
@@ -2030,6 +1931,14 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              if (documentProductSpecifications(item).isNotEmpty)
+                Text(
+                  documentProductSpecifications(item),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF646A70),
+                  ),
+                ),
               if ((item['sku_snapshot']?.toString().trim() ?? '')
                   .isNotEmpty) ...[
                 const SizedBox(height: 2),

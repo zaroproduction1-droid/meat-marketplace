@@ -1,3 +1,6 @@
+import '../../../shared/widgets/zoomable_pdf_preview.dart';
+import '../services/document_product_details.dart';
+import '../services/document_product_loader.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -956,6 +959,10 @@ class _ButcherSupplierAccountPageState
       final status = _invoiceStatus(invoice);
 
       switch (_invoiceFilter) {
+        case 'paid':
+          return status == 'Paid';
+        case 'all':
+          return true;
         case 'due_soon':
           return status == 'Due Soon';
         case 'overdue':
@@ -1664,7 +1671,7 @@ class _ButcherSupplierAccountPageState
               children: [
                 const Expanded(
                   child: Text(
-                    'Invoices Requiring Payment',
+                    'Invoices',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ),
@@ -1796,6 +1803,8 @@ class _ButcherSupplierAccountPageState
       'due_soon': 'Due Soon',
       'overdue': 'Overdue',
       'part_paid': 'Partially Paid',
+      'paid': 'Paid',
+      'all': 'All invoices',
     };
 
     return PopupMenuButton<String>(
@@ -2332,6 +2341,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
   late Map<String, dynamic> _invoice;
   bool _busy = false;
+  bool _pdfBusy = false;
   Map<String, dynamic>? _pendingPaymentSubmission;
   Uint8List? _supplierLogoBytes;
 
@@ -2339,7 +2349,15 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
   void initState() {
     super.initState();
     _invoice = Map<String, dynamic>.from(widget.initialInvoice);
-    _reloadInvoice();
+    _reloadInvoice().catchError((Object error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not refresh invoice. Open Preview to retry.'),
+          ),
+        );
+      }
+    });
   }
 
   double _asDouble(dynamic value) {
@@ -2395,6 +2413,11 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         .from('invoices')
         .select('''
           *,
+          orders(fulfilment_method,delivery_contact_name_snapshot,
+            delivery_contact_phone_snapshot,delivery_address_line_1_snapshot,
+            delivery_address_line_2_snapshot,delivery_suburb_snapshot,
+            delivery_state_snapshot,delivery_address_postcode_snapshot,
+            delivery_postcode_snapshot),
           payment_allocations(
             id,
             amount,
@@ -2425,7 +2448,13 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           ),
           invoice_items(
             id,
+            product_id,
             product_name_snapshot,
+            product_details_snapshot,
+            public_comment,
+            discount_type,
+            discount_value,
+            discount_amount,
             sku_snapshot,
             ordered_quantity,
             ordered_quantity_unit,
@@ -2439,7 +2468,15 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           )
         ''')
         .eq('id', widget.invoiceId)
+        .not('sent_to_butcher_at', 'is', null)
         .single();
+
+    data['invoice_items'] = await loadDocumentProductDetails(
+      (data['invoice_items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(),
+    );
 
     Map<String, dynamic>? pendingSubmission;
 
@@ -2639,32 +2676,116 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     }
   }
 
-  Future<void> _downloadPdf() async {
-    final items = _invoice['invoice_items'] is List
-        ? List<dynamic>.from(_invoice['invoice_items'] as List)
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList()
-        : <Map<String, dynamic>>[];
-
+  Future<void> _openInvoicePreview() async {
+    if (_pdfBusy) {
+      return;
+    }
+    setState(() => _pdfBusy = true);
     try {
-      final accountBalance = await InvoiceAccountBalance.load(
-        _invoice['id'].toString(),
+      // Reload before rendering so confirmed payments and reversals are current.
+      await _reloadInvoice();
+      final invoice = Map<String, dynamic>.from(_invoice);
+      final items = (invoice['invoice_items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final bytes = await CutLinkInvoicePdf.build(
+        invoice: invoice,
+        accountBalance: await InvoiceAccountBalance.load(widget.invoiceId),
+        items: items,
+        supplierLogoBytes: _supplierLogoBytes,
       );
-      await Printing.layoutPdf(
-        name: '${_invoice['invoice_number']?.toString() ?? 'invoice'}.pdf',
-        onLayout: (_) => CutLinkInvoicePdf.build(
-          invoice: _invoice,
-          accountBalance: accountBalance,
-          items: items,
-          supplierLogoBytes: _supplierLogoBytes,
+      if (!mounted) {
+        return;
+      }
+      final filename = '${invoice['invoice_number'] ?? 'invoice'}.pdf';
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (previewContext) {
+            Future<void> export({required bool print}) async {
+              try {
+                if (print) {
+                  await Printing.layoutPdf(
+                    name: filename,
+                    onLayout: (_) async => bytes,
+                  );
+                } else {
+                  await Printing.sharePdf(bytes: bytes, filename: filename);
+                }
+              } catch (_) {
+                if (previewContext.mounted) {
+                  ScaffoldMessenger.of(previewContext).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Could not export the invoice. Please try again.',
+                      ),
+                    ),
+                  );
+                }
+              }
+            }
+
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(invoice['invoice_number']?.toString() ?? 'Invoice'),
+              ),
+              body: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (invoiceIsPaid(invoice))
+                          const Chip(
+                            avatar: Icon(
+                              Icons.check_circle,
+                              color: Color(0xFF2E7D32),
+                            ),
+                            label: Text('PAID'),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: () => export(print: false),
+                          icon: const Icon(Icons.download_outlined),
+                          label: const Text('Download'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => export(print: true),
+                          icon: const Icon(Icons.print_outlined),
+                          label: const Text('Print'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ZoomablePdfPreview(
+                      documentKey:
+                          'butcher-invoice-${widget.invoiceId}-${invoice['status']}',
+                      buildPdf: () async => bytes,
+                      dpi: 420,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       );
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not create invoice PDF: $error')),
+          const SnackBar(
+            content: Text(
+              'Could not load the invoice preview. Please try again.',
+            ),
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _pdfBusy = false);
       }
     }
   }
@@ -2726,8 +2847,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item['product_name_snapshot']?.toString() ??
-                                    'Product',
+                                documentProductTitle(item),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -2735,6 +2855,28 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
+                              if (documentProductSpecifications(
+                                item,
+                              ).isNotEmpty)
+                                Text(
+                                  documentProductSpecifications(item),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF646A70),
+                                  ),
+                                ),
+                              if ((item['public_comment']?.toString().trim() ??
+                                      '')
+                                  .isNotEmpty)
+                                Text(
+                                  'Note: ${item['public_comment']}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              if (_asDouble(item['discount_amount']) > 0)
+                                Text(
+                                  'Discount: -${_money(_asDouble(item['discount_amount']))}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               const SizedBox(height: 3),
                               Text(
                                 actualWeight > 0
@@ -2850,9 +2992,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _downloadPdf,
+              onPressed: _pdfBusy ? null : _openInvoicePreview,
               icon: const Icon(Icons.picture_as_pdf_outlined),
-              label: const Text('Invoice PDF'),
+              label: Text(_pdfBusy ? 'Loading preview…' : 'Preview invoice'),
             ),
             if (_paymentSubmissionPending) ...[
               const SizedBox(height: 10),
@@ -2882,9 +3024,14 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          if (invoiceIsPaid(_invoice))
+            const Chip(
+              label: Text('PAID'),
+              avatar: Icon(Icons.check_circle, color: Color(0xFF2E7D32)),
+            ),
           IconButton(
-            tooltip: 'Download / Print PDF',
-            onPressed: _downloadPdf,
+            tooltip: 'Preview, download or print invoice',
+            onPressed: _pdfBusy ? null : _openInvoicePreview,
             icon: const Icon(Icons.picture_as_pdf_outlined),
           ),
         ],

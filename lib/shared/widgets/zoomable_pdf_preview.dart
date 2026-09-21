@@ -58,7 +58,9 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
   }
 
   Future<List<Uint8List>> _renderPages() async {
-    final pdfBytes = await widget.buildPdf();
+    // PDF.js can transfer this buffer to its worker, detaching it on web.
+    // Keep the caller's original bytes intact for downloads and printing.
+    final pdfBytes = Uint8List.fromList(await widget.buildPdf());
     final pages = <Uint8List>[];
     await for (final page in Printing.raster(pdfBytes, dpi: widget.dpi)) {
       pages.add(await page.toPng());

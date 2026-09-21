@@ -78,6 +78,7 @@ class LandingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: softBackground,
+      endDrawer: const _MobileMenu(),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -111,13 +112,8 @@ class _NavigationBar extends StatelessWidget {
               children: [
                 const Expanded(child: _Logo()),
                 IconButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('The mobile menu will be added later.'),
-                      ),
-                    );
-                  },
+                  tooltip: 'Open menu',
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
                   icon: const Icon(Icons.menu),
                 ),
               ],
@@ -140,6 +136,103 @@ class _NavigationBar extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _MobileMenu extends StatelessWidget {
+  const _MobileMenu();
+
+  void _openPage(BuildContext context, Widget page) {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'CutLink',
+                      style: TextStyle(
+                        color: LandingPage.darkRed,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close menu',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('Already have an account?'),
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () => _openPage(context, const SignInPage()),
+                icon: const Icon(Icons.login),
+                label: const Text('Sign In'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: LandingPage.darkRed,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(),
+              ),
+              const Text(
+                'New to CutLink?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.store_outlined,
+                  color: LandingPage.darkRed,
+                ),
+                title: const Text('Register as a Butcher'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openPage(
+                  context,
+                  const RegistrationTypePage(
+                    initialBusinessType: BusinessType.butcher,
+                  ),
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.local_shipping_outlined,
+                  color: LandingPage.darkRed,
+                ),
+                title: const Text('Register as a Supplier'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openPage(
+                  context,
+                  const RegistrationTypePage(
+                    initialBusinessType: BusinessType.supplier,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

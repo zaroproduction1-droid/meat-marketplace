@@ -1,3 +1,4 @@
+import 'document_product_details.dart';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -194,21 +195,19 @@ class CutLinkInvoicePdf {
   }
 
   static String _itemDescription(Map<String, dynamic> item) {
-    final product = _clean(item['product_name_snapshot'], fallback: 'Product');
-    final gradeCode = _clean(item['grade_code'], fallback: '');
-    final gradeName = _clean(item['grade_name'], fallback: '');
-    final gradeLabel = [
-      if (gradeCode.isNotEmpty) gradeCode,
-      if (gradeName.isNotEmpty && gradeName != gradeCode) gradeName,
-    ].join(' - ');
     final details = <String>[
-      gradeLabel.isEmpty ? product : '$product - $gradeLabel',
+      documentProductTitle(item),
+      if (documentProductSpecifications(item).isNotEmpty)
+        documentProductSpecifications(item),
     ];
     final specification = _clean(item['specification_name'], fallback: '');
     final hamCode = _clean(item['ham_code'], fallback: '');
     final sku = _clean(item['sku_snapshot'], fallback: '');
 
-    if (specification.isNotEmpty) details.add(specification);
+    if (specification.isNotEmpty &&
+        specification != item['product_name_snapshot']) {
+      details.add(specification);
+    }
     if (hamCode.isNotEmpty) details.add('HAM $hamCode');
     if (sku.isNotEmpty) details.add('SKU: $sku');
 
@@ -404,6 +403,29 @@ class CutLinkInvoicePdf {
                         color: _navy,
                       ),
                     ),
+                    if (invoiceIsPaid(invoice))
+                      pw.Container(
+                        margin: const pw.EdgeInsets.only(top: 8),
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 5,
+                        ),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(
+                            color: PdfColors.green800,
+                            width: 2,
+                          ),
+                          borderRadius: pw.BorderRadius.circular(3),
+                        ),
+                        child: pw.Text(
+                          'PAID',
+                          style: pw.TextStyle(
+                            fontSize: 20,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.green800,
+                          ),
+                        ),
+                      ),
                     pw.SizedBox(height: 8),
                     pw.Text(
                       _clean(invoice['invoice_number'], fallback: 'Invoice'),

@@ -2253,7 +2253,10 @@ class _TrendChartState extends State<_TrendChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               _money(total),
@@ -2263,12 +2266,10 @@ class _TrendChartState extends State<_TrendChart> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(width: 6),
             const Text(
               'total',
               style: TextStyle(color: Color(0xFF777C82), fontSize: 10),
             ),
-            const Spacer(),
             if (_selectedIndex != null)
               Text(
                 '${_label(widget.data[_selectedIndex!]['bucket'], full: true)}  •  ${_money(values[_selectedIndex!])}',

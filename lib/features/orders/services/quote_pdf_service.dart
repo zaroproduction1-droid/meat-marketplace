@@ -1,3 +1,4 @@
+import 'document_product_details.dart';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -480,34 +481,9 @@ class CutLinkQuotePdf {
                   children: [
                     _tableCell(
                       [
-                        [
-                          _clean(
-                            item['product_name_snapshot'],
-                            fallback: 'Product',
-                          ),
-                          if (_clean(
-                                item['grade_code'],
-                                fallback: '',
-                              ).isNotEmpty ||
-                              _clean(
-                                item['grade_name'],
-                                fallback: '',
-                              ).isNotEmpty)
-                            [
-                              if (_clean(
-                                item['grade_code'],
-                                fallback: '',
-                              ).isNotEmpty)
-                                _clean(item['grade_code'], fallback: ''),
-                              if (_clean(
-                                    item['grade_name'],
-                                    fallback: '',
-                                  ).isNotEmpty &&
-                                  _clean(item['grade_name'], fallback: '') !=
-                                      _clean(item['grade_code'], fallback: ''))
-                                _clean(item['grade_name'], fallback: ''),
-                            ].join(' - '),
-                        ].join(' - '),
+                        documentProductTitle(item),
+                        if (documentProductSpecifications(item).isNotEmpty)
+                          documentProductSpecifications(item),
                         if (_clean(
                           item['sku_snapshot'],
                           fallback: '',

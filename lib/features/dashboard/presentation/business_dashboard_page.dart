@@ -45,6 +45,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   bool _isLoading = true;
   bool _isAdmin = false;
   bool _sidebarCollapsed = false;
+  final _mobileNavigationScroll = ScrollController();
+  bool get _useBottomNavigation => MediaQuery.sizeOf(context).width < 700;
 
   Widget? _workspacePage;
   String _workspaceKey = 'dashboard';
@@ -60,6 +62,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String? _businessLogoUrl;
 
   List<Map<String, dynamic>> _butcherOrders = [];
+  double _invoicedThisMonth = 0;
   List<Map<String, dynamic>> _butcherAccounts = [];
 
   List<Map<String, dynamic>> _supplierOrders = [];
@@ -84,6 +87,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   void dispose() {
+    _mobileNavigationScroll.dispose();
     _realtimeRefreshTimer?.cancel();
     final channel = _realtimeChannel;
     if (channel != null) {
@@ -180,6 +184,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
       var newSupplierOrderCount = 0;
       var butcherOrders = <Map<String, dynamic>>[];
+      var butcherInvoicedThisMonth = 0.0;
       var butcherAccounts = <Map<String, dynamic>>[];
       var butcherCartItemCount = 0;
 
@@ -405,6 +410,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             .limit(100);
 
         butcherOrders = List<Map<String, dynamic>>.from(orderResponse as List);
+        butcherInvoicedThisMonth = await _loadButcherInvoicedThisMonth(
+          businessId,
+        );
 
         final cartRows = await client
             .from('orders')
@@ -461,6 +469,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _isAdmin = isAdmin;
         _newSupplierOrderCount = newSupplierOrderCount;
         _butcherOrders = butcherOrders;
+        _invoicedThisMonth = butcherInvoicedThisMonth;
         _butcherAccounts = butcherAccounts;
         _butcherCartItemCount = butcherCartItemCount;
         _supportUnreadCount = supportUnreadCount;
@@ -860,11 +869,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     )?.toLocal();
   }
 
-  bool _countSpend(Map<String, dynamic> order) {
-    final status = order['status']?.toString();
-    return status != 'declined' && status != 'cancelled' && status != 'void';
-  }
-
   int get _ordersThisMonth {
     final now = DateTime.now();
 
@@ -874,20 +878,37 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     }).length;
   }
 
-  double get _spendThisMonth {
+  Future<double> _loadButcherInvoicedThisMonth(String businessId) async {
     final now = DateTime.now();
-
-    return _butcherOrders.fold<double>(0, (sum, order) {
-      final date = _orderDate(order);
-      if (date == null ||
-          date.year != now.year ||
-          date.month != now.month ||
-          !_countSpend(order)) {
-        return sum;
+    final start = DateTime(
+      now.year,
+      now.month,
+    ).toIso8601String().substring(0, 10);
+    final end = DateTime(
+      now.year,
+      now.month + 1,
+    ).toIso8601String().substring(0, 10);
+    var cents = 0;
+    // Read only this month's sent invoices, without the recent-order row limit.
+    for (var offset = 0; ; offset += 500) {
+      final rows = await Supabase.instance.client
+          .from('invoices')
+          .select('id,total_amount')
+          .eq('butcher_business_id', businessId)
+          .inFilter('status', ['issued', 'part_paid', 'paid'])
+          .not('sent_to_butcher_at', 'is', null)
+          .gte('invoice_date', start)
+          .lt('invoice_date', end)
+          .order('id')
+          .range(offset, offset + 499);
+      for (final row in rows) {
+        cents += (_asDouble(row['total_amount']) * 100).round();
       }
-
-      return sum + _asDouble(order['total_amount']);
-    });
+      if (rows.length < 500) {
+        break;
+      }
+    }
+    return cents / 100;
   }
 
   double get _outstandingTotal {
@@ -1028,9 +1049,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   Widget _buildButcherDashboard() {
     return Scaffold(
       backgroundColor: _canvas,
+      bottomNavigationBar:
+          _useBottomNavigation && MediaQuery.viewInsetsOf(context).bottom == 0
+          ? _mobileNavigation(supplier: false)
+          : null,
       body: Row(
         children: [
-          _butcherSidebar(),
+          if (!_useBottomNavigation) _butcherSidebar(),
           Expanded(
             child: RepaintBoundary(
               child: _workspacePage != null
@@ -1744,9 +1769,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ),
           _summaryCard(
             icon: Icons.attach_money_rounded,
-            label: 'Total Spend',
-            value: _money(_spendThisMonth),
-            support: 'Across this month’s orders',
+            label: 'Invoiced This Month',
+            value: _money(_invoicedThisMonth),
+            support: 'Sent invoices • Paid and unpaid',
           ),
           _summaryCard(
             icon: Icons.receipt_long_outlined,
@@ -2240,9 +2265,15 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(15, 13, 15, 10),
-            child: Row(
+            child: Flex(
+              direction: _useBottomNavigation ? Axis.vertical : Axis.horizontal,
+              crossAxisAlignment: _useBottomNavigation
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
               children: [
-                Expanded(
+                Flexible(
+                  flex: _useBottomNavigation ? 0 : 1,
+                  fit: FlexFit.tight,
                   child: Text(
                     title,
                     style: const TextStyle(
@@ -2443,6 +2474,84 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
+  List<Widget> _butcherNavigationItems() => [
+    _sideItem(
+      Icons.grid_view_rounded,
+      'Dashboard',
+      selected: _workspaceKey == 'dashboard',
+      onTap: _openDashboard,
+    ),
+    _sideItem(
+      Icons.shopping_bag_outlined,
+      'Browse Products',
+      selected: _workspaceKey == 'browse',
+      onTap: () =>
+          _openPage(MarketplaceProductsPage(onBack: () => _openDashboard())),
+    ),
+    _sideItem(
+      Icons.people_outline,
+      'Suppliers',
+      selected: _workspaceKey == 'suppliers',
+      onTap: () => _openPage(const ButcherVipSuppliersPage()),
+    ),
+    _sideItem(
+      Icons.receipt_long_outlined,
+      'Orders',
+      selected: _workspaceKey == 'orders',
+      onTap: () => _openPage(const SubmittedOrdersPage()),
+    ),
+    _sideItem(
+      Icons.favorite_border,
+      'Favourites',
+      selected: _workspaceKey == 'favourites',
+      onTap: () => _openPage(
+        ButcherFavouritesPage(businessId: _businessId ?? ''),
+        workspaceKey: 'favourites',
+      ),
+    ),
+    _sideItem(
+      Icons.account_balance_wallet_outlined,
+      'Accounts & Invoices',
+      selected: _workspaceKey == 'accounts',
+      onTap: () => _openPage(const ButcherAccountsPage()),
+    ),
+    _sideItem(
+      Icons.bar_chart_outlined,
+      'Analytics',
+      selected: _workspaceKey == 'analytics',
+      onTap: _openAnalytics,
+    ),
+    _sideItem(
+      Icons.notifications_none_rounded,
+      'Notifications',
+      selected: _workspaceKey == 'notifications',
+      onTap: () => _openPage(
+        const ButcherNotificationSettingsPage(),
+        workspaceKey: 'notifications',
+      ),
+    ),
+    _sideItem(
+      Icons.support_agent_outlined,
+      'Support',
+      selected: _workspaceKey == 'support',
+      badgeCount: _supportUnreadCount,
+      onTap: _openSupport,
+    ),
+    _sideItem(
+      Icons.settings_outlined,
+      'Settings',
+      selected: _workspaceKey == 'settings',
+      onTap: () => _openPage(const ButcherSettingsPage()),
+    ),
+    if (_isAdmin)
+      _sideItem(
+        Icons.admin_panel_settings_outlined,
+        'Admin',
+        selected: _workspaceKey == 'admin',
+        onTap: () => _openPage(const PendingBusinessesPage()),
+      ),
+  ];
+
   Widget _butcherSidebar() {
     return _sidebarTransitionFrame(
       child: SafeArea(
@@ -2452,84 +2561,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                children: [
-                  _sideItem(
-                    Icons.grid_view_rounded,
-                    'Dashboard',
-                    selected: _workspaceKey == 'dashboard',
-                    onTap: _openDashboard,
-                  ),
-                  _sideItem(
-                    Icons.shopping_bag_outlined,
-                    'Browse Products',
-                    selected: _workspaceKey == 'browse',
-                    onTap: () => _openPage(
-                      MarketplaceProductsPage(onBack: () => _openDashboard()),
-                    ),
-                  ),
-                  _sideItem(
-                    Icons.people_outline,
-                    'Suppliers',
-                    selected: _workspaceKey == 'suppliers',
-                    onTap: () => _openPage(const ButcherVipSuppliersPage()),
-                  ),
-                  _sideItem(
-                    Icons.receipt_long_outlined,
-                    'Orders',
-                    selected: _workspaceKey == 'orders',
-                    onTap: () => _openPage(const SubmittedOrdersPage()),
-                  ),
-                  _sideItem(
-                    Icons.favorite_border,
-                    'Favourites',
-                    selected: _workspaceKey == 'favourites',
-                    onTap: () => _openPage(
-                      ButcherFavouritesPage(businessId: _businessId ?? ''),
-                      workspaceKey: 'favourites',
-                    ),
-                  ),
-                  _sideItem(
-                    Icons.account_balance_wallet_outlined,
-                    'Accounts & Invoices',
-                    selected: _workspaceKey == 'accounts',
-                    onTap: () => _openPage(const ButcherAccountsPage()),
-                  ),
-                  _sideItem(
-                    Icons.bar_chart_outlined,
-                    'Analytics',
-                    selected: _workspaceKey == 'analytics',
-                    onTap: _openAnalytics,
-                  ),
-                  _sideItem(
-                    Icons.notifications_none_rounded,
-                    'Notifications',
-                    selected: _workspaceKey == 'notifications',
-                    onTap: () => _openPage(
-                      const ButcherNotificationSettingsPage(),
-                      workspaceKey: 'notifications',
-                    ),
-                  ),
-                  _sideItem(
-                    Icons.support_agent_outlined,
-                    'Support',
-                    selected: _workspaceKey == 'support',
-                    badgeCount: _supportUnreadCount,
-                    onTap: _openSupport,
-                  ),
-                  _sideItem(
-                    Icons.settings_outlined,
-                    'Settings',
-                    selected: _workspaceKey == 'settings',
-                    onTap: () => _openPage(const ButcherSettingsPage()),
-                  ),
-                  if (_isAdmin)
-                    _sideItem(
-                      Icons.admin_panel_settings_outlined,
-                      'Admin',
-                      selected: _workspaceKey == 'admin',
-                      onTap: () => _openPage(const PendingBusinessesPage()),
-                    ),
-                ],
+                children: _butcherNavigationItems(),
               ),
             ),
             Container(
@@ -2600,6 +2632,132 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
+  Widget _mobileNavigation({required bool supplier}) {
+    return Material(
+      color: _deepNavy,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 76,
+          child: Row(
+            children: [
+              _mobileNavigationArrow(false),
+              Expanded(
+                child: ListView(
+                  controller: _mobileNavigationScroll,
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ...supplier
+                        ? _supplierNavigationItems()
+                        : _butcherNavigationItems(),
+                    _sideItem(Icons.logout_rounded, 'Logout', onTap: _signOut),
+                  ],
+                ),
+              ),
+              _mobileNavigationArrow(true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileNavigationArrow(bool forward) {
+    return SizedBox(
+      width: 28,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        tooltip: forward ? 'More menu options' : 'Previous menu options',
+        icon: Icon(
+          forward ? Icons.chevron_right : Icons.chevron_left,
+          color: Colors.white,
+          size: 20,
+        ),
+        onPressed: () {
+          if (!_mobileNavigationScroll.hasClients) {
+            return;
+          }
+          final position = _mobileNavigationScroll.position;
+          final target = (position.pixels + (forward ? 240 : -240))
+              .clamp(position.minScrollExtent, position.maxScrollExtent)
+              .toDouble();
+          _mobileNavigationScroll.animateTo(
+            target,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _mobileTopBar({required bool supplier}) {
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _businessName ?? 'CutLink',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Notifications',
+                onPressed: () => _openPage(
+                  supplier
+                      ? const SupplierNotificationSettingsPage()
+                      : const ButcherNotificationSettingsPage(),
+                  workspaceKey: 'notifications',
+                ),
+                icon: const Icon(Icons.notifications_none_rounded),
+              ),
+              IconButton(
+                tooltip: supplier ? 'New sale' : 'My cart',
+                onPressed: supplier
+                    ? () => _openPage(const SupplierSalesPage(embedded: true))
+                    : _openButcherCart,
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      supplier
+                          ? Icons.add_shopping_cart
+                          : Icons.shopping_cart_outlined,
+                    ),
+                    if (!supplier && _butcherCartItemCount > 0)
+                      Positioned(
+                        right: -10,
+                        top: -10,
+                        child: _sidebarBadge(
+                          _butcherCartItemCount,
+                          selected: false,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Settings',
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_outlined),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _sideItem(
     IconData icon,
     String label, {
@@ -2607,6 +2765,70 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     bool selected = false,
     int badgeCount = 0,
   }) {
+    if (_useBottomNavigation) {
+      final shortLabel = switch (label) {
+        'Browse Products' => 'Browse',
+        'Accounts & Invoices' => 'Accounts',
+        'Customers & Accounts' => 'Customers',
+        'Inventory & Pricing' => 'Inventory',
+        _ => label,
+      };
+      return SizedBox(
+        width: 88,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          child: Material(
+            color: selected ? _darkRed : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: Semantics(
+              selected: selected,
+              button: true,
+              child: Tooltip(
+                message: label,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(icon, color: Colors.white, size: 23),
+                          if (badgeCount > 0)
+                            Positioned(
+                              right: -13,
+                              top: -8,
+                              child: _sidebarBadge(
+                                badgeCount,
+                                selected: selected,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Text(
+                          shortLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final showLabel = !_sidebarCollapsed && constraints.maxWidth >= 120;
@@ -2706,6 +2928,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _topBar({bool cartVisible = false}) {
+    if (_useBottomNavigation) {
+      return _mobileTopBar(supplier: false);
+    }
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -3125,9 +3350,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   Widget _buildSupplierDashboard() {
     return Scaffold(
       backgroundColor: _canvas,
+      bottomNavigationBar:
+          _useBottomNavigation && MediaQuery.viewInsetsOf(context).bottom == 0
+          ? _mobileNavigation(supplier: true)
+          : null,
       body: Row(
         children: [
-          _supplierSidebar(),
+          if (!_useBottomNavigation) _supplierSidebar(),
           Expanded(
             child: RepaintBoundary(
               child: _workspacePage != null
@@ -3755,6 +3984,81 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
+  List<Widget> _supplierNavigationItems() => [
+    _sideItem(
+      Icons.grid_view_rounded,
+      'Dashboard',
+      selected: _workspaceKey == 'dashboard',
+      onTap: _openDashboard,
+    ),
+    _sideItem(
+      Icons.point_of_sale_outlined,
+      'Sales',
+      selected: _workspaceKey == 'sales',
+      badgeCount: _newSupplierOrderCount,
+      onTap: () => _openPage(const SupplierSalesPage(embedded: true)),
+    ),
+    _sideItem(
+      Icons.inventory_2_outlined,
+      'Inventory & Pricing',
+      selected: _workspaceKey == 'inventory',
+      onTap: () => _openPage(const SupplierInventoryPage(embedded: true)),
+    ),
+    _sideItem(
+      Icons.receipt_long_outlined,
+      'Invoices',
+      selected: _workspaceKey == 'invoices',
+      onTap: () => _openPage(const SupplierUnifiedOrdersPage(embedded: true)),
+    ),
+    _sideItem(
+      Icons.people_alt_outlined,
+      'Customers & Accounts',
+      selected: _workspaceKey == 'customers',
+      onTap: () => _openPage(const SupplierCustomerRequestsPage()),
+    ),
+    _sideItem(
+      Icons.bar_chart_outlined,
+      'Analytics',
+      selected: _workspaceKey == 'analytics',
+      onTap: _openAnalytics,
+    ),
+    _sideItem(
+      Icons.local_shipping_outlined,
+      'Delivery',
+      selected: _workspaceKey == 'delivery',
+      onTap: () => _openPage(const SupplierDeliverySettingsPage()),
+    ),
+    _sideItem(
+      Icons.notifications_none_rounded,
+      'Notifications',
+      selected: _workspaceKey == 'notifications',
+      onTap: () => _openPage(
+        const SupplierNotificationSettingsPage(),
+        workspaceKey: 'notifications',
+      ),
+    ),
+    _sideItem(
+      Icons.support_agent_outlined,
+      'Support',
+      selected: _workspaceKey == 'support',
+      badgeCount: _supportUnreadCount,
+      onTap: _openSupport,
+    ),
+    _sideItem(
+      Icons.settings_outlined,
+      'Settings',
+      selected: _workspaceKey == 'settings',
+      onTap: () => _openPage(const SupplierSettingsPage(embedded: true)),
+    ),
+    if (_isAdmin)
+      _sideItem(
+        Icons.admin_panel_settings_outlined,
+        'Admin',
+        selected: _workspaceKey == 'admin',
+        onTap: () => _openPage(const PendingBusinessesPage()),
+      ),
+  ];
+
   Widget _supplierSidebar() {
     return _sidebarTransitionFrame(
       child: SafeArea(
@@ -3764,87 +4068,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                children: [
-                  _sideItem(
-                    Icons.grid_view_rounded,
-                    'Dashboard',
-                    selected: _workspaceKey == 'dashboard',
-                    onTap: _openDashboard,
-                  ),
-                  _sideItem(
-                    Icons.point_of_sale_outlined,
-                    'Sales',
-                    selected: _workspaceKey == 'sales',
-                    badgeCount: _newSupplierOrderCount,
-                    onTap: () =>
-                        _openPage(const SupplierSalesPage(embedded: true)),
-                  ),
-                  _sideItem(
-                    Icons.inventory_2_outlined,
-                    'Inventory & Pricing',
-                    selected: _workspaceKey == 'inventory',
-                    onTap: () =>
-                        _openPage(const SupplierInventoryPage(embedded: true)),
-                  ),
-                  _sideItem(
-                    Icons.receipt_long_outlined,
-                    'Invoices',
-                    selected: _workspaceKey == 'invoices',
-                    onTap: () => _openPage(
-                      const SupplierUnifiedOrdersPage(embedded: true),
-                    ),
-                  ),
-                  _sideItem(
-                    Icons.people_alt_outlined,
-                    'Customers & Accounts',
-                    selected: _workspaceKey == 'customers',
-                    onTap: () =>
-                        _openPage(const SupplierCustomerRequestsPage()),
-                  ),
-                  _sideItem(
-                    Icons.bar_chart_outlined,
-                    'Analytics',
-                    selected: _workspaceKey == 'analytics',
-                    onTap: _openAnalytics,
-                  ),
-                  _sideItem(
-                    Icons.local_shipping_outlined,
-                    'Delivery',
-                    selected: _workspaceKey == 'delivery',
-                    onTap: () =>
-                        _openPage(const SupplierDeliverySettingsPage()),
-                  ),
-                  _sideItem(
-                    Icons.notifications_none_rounded,
-                    'Notifications',
-                    selected: _workspaceKey == 'notifications',
-                    onTap: () => _openPage(
-                      const SupplierNotificationSettingsPage(),
-                      workspaceKey: 'notifications',
-                    ),
-                  ),
-                  _sideItem(
-                    Icons.support_agent_outlined,
-                    'Support',
-                    selected: _workspaceKey == 'support',
-                    badgeCount: _supportUnreadCount,
-                    onTap: _openSupport,
-                  ),
-                  _sideItem(
-                    Icons.settings_outlined,
-                    'Settings',
-                    selected: _workspaceKey == 'settings',
-                    onTap: () =>
-                        _openPage(const SupplierSettingsPage(embedded: true)),
-                  ),
-                  if (_isAdmin)
-                    _sideItem(
-                      Icons.admin_panel_settings_outlined,
-                      'Admin',
-                      selected: _workspaceKey == 'admin',
-                      onTap: () => _openPage(const PendingBusinessesPage()),
-                    ),
-                ],
+                children: _supplierNavigationItems(),
               ),
             ),
             Container(
@@ -3916,6 +4140,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _supplierTopBar() {
+    if (_useBottomNavigation) {
+      return _mobileTopBar(supplier: true);
+    }
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 18),

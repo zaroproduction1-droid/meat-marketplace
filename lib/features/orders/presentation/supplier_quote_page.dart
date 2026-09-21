@@ -1,3 +1,5 @@
+import '../services/document_product_details.dart';
+import '../services/document_product_loader.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -76,7 +78,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           delivery_suburb, delivery_state, delivery_postcode
         ),
         order_items(
-          id, product_id, product_name_snapshot, sku_snapshot, quantity, quantity_unit,
+          id, product_id, product_name_snapshot, product_details_snapshot, sku_snapshot, quantity, quantity_unit,
           unit_price, price_basis, line_subtotal, catch_weight_snapshot, notes,
           discount_type, discount_value, discount_amount, public_comment
         )
@@ -114,37 +116,12 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         }
       }
 
-      final loadedItems = (quote['order_items'] as List? ?? const [])
+      var loadedItems = (quote['order_items'] as List? ?? const [])
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
 
-      final productIds = loadedItems
-          .map((item) => item['product_id']?.toString())
-          .whereType<String>()
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-      if (productIds.isNotEmpty) {
-        final productRows = await client
-            .from('products')
-            .select('id, meat_grades(code, name)')
-            .inFilter('id', productIds);
-        final gradeByProductId = <String, Map<String, dynamic>>{};
-        for (final rawProduct in productRows) {
-          final product = Map<String, dynamic>.from(rawProduct);
-          final id = product['id']?.toString();
-          final rawGrade = product['meat_grades'];
-          if (id != null && rawGrade is Map) {
-            gradeByProductId[id] = Map<String, dynamic>.from(rawGrade);
-          }
-        }
-        for (final item in loadedItems) {
-          final grade = gradeByProductId[item['product_id']?.toString()];
-          item['grade_code'] = grade?['code'];
-          item['grade_name'] = grade?['name'];
-        }
-      }
+      loadedItems = await loadDocumentProductDetails(loadedItems);
 
       final privateComments = <String, String>{};
       final lineIds = loadedItems
@@ -216,17 +193,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     return revision > 0 ? '$base R$revision' : base;
   }
 
-  String _lineTitle(Map<String, dynamic> item) {
-    final product = item['product_name_snapshot']?.toString().trim();
-    final code = item['grade_code']?.toString().trim() ?? '';
-    final name = item['grade_name']?.toString().trim() ?? '';
-    final grade = [
-      if (code.isNotEmpty) code,
-      if (name.isNotEmpty && name != code) name,
-    ].join(' - ');
-    final base = product == null || product.isEmpty ? 'Product' : product;
-    return grade.isEmpty ? base : '$base - $grade';
-  }
+  String _lineTitle(Map<String, dynamic> item) => documentProductTitle(item);
 
   String _date(dynamic value, {bool time = false}) {
     final parsed = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
@@ -737,6 +704,18 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                                 fontWeight: FontWeight.w900,
                                               ),
                                             ),
+                                            if (documentProductSpecifications(
+                                              item,
+                                            ).isNotEmpty)
+                                              Text(
+                                                documentProductSpecifications(
+                                                  item,
+                                                ),
+                                                style: const TextStyle(
+                                                  fontSize: 10.5,
+                                                  color: Color(0xFF646A70),
+                                                ),
+                                              ),
                                             Text(
                                               '${item['quantity']} ${item['quantity_unit']} • '
                                               '${_money(item['unit_price'])} / ${item['price_basis']}',
