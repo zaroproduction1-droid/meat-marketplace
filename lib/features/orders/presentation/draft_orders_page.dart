@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -333,38 +334,41 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 parsed > 0 &&
                 (!requiresWholeNumber || parsed == parsed.roundToDouble());
 
-            return AlertDialog(
-              title: const Text('Change quantity'),
-              content: TextField(
-                controller: controller,
-                autofocus: true,
-                keyboardType: TextInputType.numberWithOptions(
-                  decimal: !requiresWholeNumber,
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: const Text('Change quantity'),
+                content: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.numberWithOptions(
+                    decimal: !requiresWholeNumber,
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Quantity',
+                    suffixText: _unitLabel(quantityUnit),
+                    helperText: requiresWholeNumber
+                        ? 'Cartons and units must be whole numbers.'
+                        : null,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-                onChanged: (_) => setDialogState(() {}),
-                decoration: InputDecoration(
-                  labelText: 'Quantity',
-                  suffixText: _unitLabel(quantityUnit),
-                  helperText: requiresWholeNumber
-                      ? 'Cartons and units must be whole numbers.'
-                      : null,
-                  border: const OutlineInputBorder(),
-                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: !valid
+                        ? null
+                        : () {
+                            Navigator.of(context).pop(parsed);
+                          },
+                    child: const Text('Save'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: !valid
-                      ? null
-                      : () {
-                          Navigator.of(context).pop(parsed);
-                        },
-                  child: const Text('Save'),
-                ),
-              ],
             );
           },
         );
@@ -405,28 +409,31 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Remove product?'),
-          content: Text(
-            'Remove ${item['product_name_snapshot'] ?? 'this product'} from the draft order?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep'),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Remove product?'),
+            content: Text(
+              'Remove ${item['product_name_snapshot'] ?? 'this product'} from the draft order?',
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Keep'),
               ),
-              child: const Text('Remove'),
-            ),
-          ],
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -483,57 +490,60 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     final result = await showDialog<Map<String, String>?>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Order details'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: referenceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer reference',
-                    hintText: 'Example: PO-1048 or shop reference',
-                    border: OutlineInputBorder(),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Order details'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: referenceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Customer reference',
+                      hintText: 'Example: PO-1048 or shop reference',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: deliveryController,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Delivery notes',
-                    hintText: 'Example: Deliver Friday before 10am',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: deliveryController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Delivery notes',
+                      hintText: 'Example: Deliver Friday before 10am',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(context).pop({
-                  'customer_reference': referenceController.text.trim(),
-                  'delivery_notes': deliveryController.text.trim(),
-                });
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                ],
               ),
-              child: const Text('Save'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop({
+                    'customer_reference': referenceController.text.trim(),
+                    'delivery_notes': deliveryController.text.trim(),
+                  });
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -788,19 +798,22 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           borderRadius: BorderRadius.circular(9),
           border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: _darkRed),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+        child: PhoneRow(
+          mode: PhoneRowMode.wrap,
+          desktop: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: _darkRed),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -1008,25 +1021,28 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        option(
-          method: 'delivery',
-          icon: Icons.local_shipping_outlined,
-          title: 'Delivery',
-          subtitle: 'Deliver to your saved business address',
-          enabled: true,
-        ),
-        const SizedBox(width: 10),
-        option(
-          method: 'pickup',
-          icon: Icons.store_mall_directory_outlined,
-          title: 'Pickup',
-          subtitle: 'Collect directly from ${_supplierName(order)}',
-          enabled: true,
-        ),
-      ],
+    return PhoneRow(
+      mode: PhoneRowMode.stack,
+      desktop: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          option(
+            method: 'delivery',
+            icon: Icons.local_shipping_outlined,
+            title: 'Delivery',
+            subtitle: 'Deliver to your saved business address',
+            enabled: true,
+          ),
+          const SizedBox(width: 10),
+          option(
+            method: 'pickup',
+            icon: Icons.store_mall_directory_outlined,
+            title: 'Pickup',
+            subtitle: 'Collect directly from ${_supplierName(order)}',
+            enabled: true,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1192,23 +1208,26 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     final supplier = _supplierName(order);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove supplier order?'),
-        content: Text(
-          'Remove the entire draft order for $supplier from your cart? '
-          'All products in this supplier order will be removed.',
+      builder: (context) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Remove supplier order?'),
+          content: Text(
+            'Remove the entire draft order for $supplier from your cart? '
+            'All products in this supplier order will be removed.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Keep Order'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              child: const Text('Remove Order'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep Order'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            child: const Text('Remove Order'),
-          ),
-        ],
       ),
     );
     if (confirmed != true) return;
@@ -1287,24 +1306,27 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    pickup
-                        ? Icons.store_mall_directory_outlined
-                        : Icons.local_shipping_outlined,
-                    color: _darkRed,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Requested ${pickup ? 'pickup' : 'delivery'}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
+              PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  children: [
+                    Icon(
+                      pickup
+                          ? Icons.store_mall_directory_outlined
+                          : Icons.local_shipping_outlined,
+                      color: _darkRed,
+                      size: 20,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Requested ${pickup ? 'pickup' : 'delivery'}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -1381,32 +1403,35 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Submit $orderReference?'),
-          content: Text(
-            _orderHasCatchWeightItems(order)
-                ? 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
-                      'Catch-weight product totals remain pending until the supplier records the actual supplied kilograms.'
-                : 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
-                      'Once submitted, the order items can no longer be changed.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Not Yet'),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: Text('Submit $orderReference?'),
+            content: Text(
+              _orderHasCatchWeightItems(order)
+                  ? 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
+                        'Catch-weight product totals remain pending until the supplier records the actual supplied kilograms.'
+                  : 'Submit $orderReference to ${_supplierName(order)} for $fulfilmentLabel? '
+                        'Once submitted, the order items can no longer be changed.',
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Not Yet'),
               ),
-              child: const Text('Submit Order'),
-            ),
-          ],
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Submit Order'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1639,37 +1664,40 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(
-              Icons.shopping_cart_outlined,
-              color: Color(0xFF741C1C),
-              size: 22,
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Cart & Draft Orders',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loadDraftOrders,
-            tooltip: 'Refresh orders',
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(
+                Icons.shopping_cart_outlined,
+                color: Color(0xFF741C1C),
+                size: 22,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Cart & Draft Orders',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          actions: [
+            IconButton(
+              onPressed: _loadDraftOrders,
+              tooltip: 'Refresh orders',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: _buildBody(),

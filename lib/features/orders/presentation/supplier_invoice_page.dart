@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
 import 'dart:typed_data';
@@ -461,24 +462,27 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Send Invoice to Customer?'),
-        content: Text(
-          'Send ${_invoice?['invoice_number'] ?? 'this invoice'} to '
-          '${_invoice?['customer_name_snapshot'] ?? 'the customer'} inside CutLink?\n\n'
-          'It will appear in their Accounts section and remain linked to this supplier invoice.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Send Invoice to Customer?'),
+          content: Text(
+            'Send ${_invoice?['invoice_number'] ?? 'this invoice'} to '
+            '${_invoice?['customer_name_snapshot'] ?? 'the customer'} inside CutLink?\n\n'
+            'It will appear in their Accounts section and remain linked to this supplier invoice.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Send Invoice'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Send Invoice'),
-          ),
-        ],
       ),
     );
 
@@ -541,49 +545,52 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     final controller = TextEditingController();
     final amount = await showDialog<double>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Record Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Outstanding: ${_money(_amountOutstanding)}'),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Record Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Outstanding: ${_money(_amountOutstanding)}'),
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Payment received',
+                  prefixText: r'$',
+                  border: OutlineInputBorder(),
+                ),
               ),
-              decoration: const InputDecoration(
-                labelText: 'Payment received',
-                prefixText: r'$',
-                border: OutlineInputBorder(),
-              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () {
+                final parsed = double.tryParse(
+                  controller.text.replaceAll(',', '').trim(),
+                );
+
+                if (parsed == null || parsed <= 0) {
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(parsed);
+              },
+              child: const Text('Record Payment'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () {
-              final parsed = double.tryParse(
-                controller.text.replaceAll(',', '').trim(),
-              );
-
-              if (parsed == null || parsed <= 0) {
-                return;
-              }
-
-              Navigator.of(dialogContext).pop(parsed);
-            },
-            child: const Text('Record Payment'),
-          ),
-        ],
       ),
     );
     controller.dispose();
@@ -639,43 +646,46 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
     final proceed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(confirm ? 'Confirm Payment?' : 'Reject Payment Claim?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              confirm
-                  ? 'The customer says they paid ${_money(claimedAmount)}. Confirm only after checking that the payment has arrived.'
-                  : 'Reject this payment claim if the funds have not arrived or the details are incorrect.',
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: noteController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: confirm
-                    ? 'Confirmation note (optional)'
-                    : 'Reason / note (optional)',
-                border: const OutlineInputBorder(),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: Text(confirm ? 'Confirm Payment?' : 'Reject Payment Claim?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                confirm
+                    ? 'The customer says they paid ${_money(claimedAmount)}. Confirm only after checking that the payment has arrived.'
+                    : 'Reject this payment claim if the funds have not arrived or the details are incorrect.',
               ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: noteController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: confirm
+                      ? 'Confirmation note (optional)'
+                      : 'Reason / note (optional)',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: confirm ? const Color(0xFF2E7D32) : _darkRed,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(confirm ? 'Confirm Payment' : 'Reject Claim'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: confirm ? const Color(0xFF2E7D32) : _darkRed,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(confirm ? 'Confirm Payment' : 'Reject Claim'),
-          ),
-        ],
       ),
     );
 
@@ -808,52 +818,59 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: Row(
-          children: [
-            const Icon(Icons.receipt_long_outlined, color: _darkRed, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _invoice?['invoice_number']?.toString() ?? 'Supplier Invoice',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: Row(
+            children: [
+              const Icon(
+                Icons.receipt_long_outlined,
+                color: _darkRed,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _invoice?['invoice_number']?.toString() ?? 'Supplier Invoice',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
                 ),
               ),
+            ],
+          ),
+          actions: [
+            OutlinedButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _downloadInvoice,
+              icon: const Icon(Icons.download_outlined, size: 17),
+              label: const Text('Download'),
             ),
+            const SizedBox(width: 7),
+            FilledButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _printInvoice,
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              icon: const Icon(Icons.print_outlined, size: 17),
+              label: const Text('Print'),
+            ),
+            const SizedBox(width: 7),
+            IconButton(
+              onPressed: _isLoading ? null : _loadPage,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
           ],
-        ),
-        actions: [
-          OutlinedButton.icon(
-            onPressed: _isLoading || _isSaving ? null : _downloadInvoice,
-            icon: const Icon(Icons.download_outlined, size: 17),
-            label: const Text('Download'),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(49),
+            child: _workspaceTabs(),
           ),
-          const SizedBox(width: 7),
-          FilledButton.icon(
-            onPressed: _isLoading || _isSaving ? null : _printInvoice,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.print_outlined, size: 17),
-            label: const Text('Print'),
-          ),
-          const SizedBox(width: 7),
-          IconButton(
-            onPressed: _isLoading ? null : _loadPage,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 10),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(49),
-          child: _workspaceTabs(),
         ),
       ),
       body: switch (_workspaceTabIndex) {
@@ -873,12 +890,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
       ),
-      child: Row(
-        children: [
-          _workspaceTab(0, Icons.receipt_long_outlined, 'Invoice'),
-          _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
-          _workspaceTab(2, Icons.history, 'Order History'),
-        ],
+      child: PhoneRow(
+        mode: PhoneRowMode.scroll,
+        desktop: Row(
+          children: [
+            _workspaceTab(0, Icons.receipt_long_outlined, 'Invoice'),
+            _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
+            _workspaceTab(2, Icons.history, 'Order History'),
+          ],
+        ),
       ),
     );
   }
@@ -918,29 +938,32 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         Container(
           color: Colors.white,
           padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Invoice PDF',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+          child: PhoneRow(
+            mode: PhoneRowMode.wrap,
+            desktop: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Invoice PDF',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
                 ),
-              ),
-              const Text(
-                'Scroll wheel to zoom',
-                style: TextStyle(
-                  color: Color(0xFF6D7177),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                const Text(
+                  'Scroll wheel to zoom',
+                  style: TextStyle(
+                    color: Color(0xFF6D7177),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: _downloadInvoice,
-                icon: const Icon(Icons.download_outlined, size: 17),
-                label: const Text('Download'),
-              ),
-            ],
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _downloadInvoice,
+                  icon: const Icon(Icons.download_outlined, size: 17),
+                  label: const Text('Download'),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -1210,17 +1233,23 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     Widget sectionTitle(String title, {IconData? icon}) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: _darkRed),
-              const SizedBox(width: 7),
+        child: PhoneRow(
+          mode: PhoneRowMode.wrap,
+          desktop: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: _darkRed),
+                const SizedBox(width: 7),
+              ],
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ],
-            Text(
-              title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -1367,31 +1396,37 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.inventory_2_outlined,
-                    size: 19,
-                    color: _darkRed,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Invoice Items',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                  ),
-                  Text(
-                    '${_items.length} line${_items.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
+              child: PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  children: [
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 19,
+                      color: _darkRed,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Invoice Items',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      '${_items.length} line${_items.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const Divider(height: 1),
-            Expanded(
+            PhoneExpanded(
               child: _items.isEmpty
                   ? const Center(
                       child: Text(
@@ -1400,6 +1435,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                       ),
                     )
                   : ListView.builder(
+                      shrinkWrap: isPhoneLayout(context),
+                      physics: isPhoneLayout(context)
+                          ? const NeverScrollableScrollPhysics()
+                          : null,
                       padding: const EdgeInsets.all(10),
                       itemCount: _items.length,
                       itemBuilder: (context, index) {
@@ -1785,7 +1824,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               const SizedBox(height: 10),
               invoiceSummaryPanel(),
               const SizedBox(height: 10),
-              SizedBox(height: 460, child: itemsPanel()),
+              SizedBox(
+                height: isPhoneLayout(context) ? null : 460,
+                child: itemsPanel(),
+              ),
               const SizedBox(height: 10),
               totalsActionsPanel(),
             ],
@@ -2077,13 +2119,16 @@ class _TotalRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: style),
-          const SizedBox(width: 20),
-          Text(value, style: style),
-        ],
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: style),
+            const SizedBox(width: 20),
+            Text(value, style: style),
+          ],
+        ),
       ),
     );
   }

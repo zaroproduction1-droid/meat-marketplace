@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -984,24 +985,27 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Cancel Order?'),
-          content: Text(
-            'Cancel ${order['order_number'] ?? 'this order'} with ${_supplierName(order)}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Keep Order'),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Cancel Order?'),
+            content: Text(
+              'Cancel ${order['order_number'] ?? 'this order'} with ${_supplierName(order)}?',
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF8D1B1B),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Keep Order'),
               ),
-              child: const Text('Cancel Order'),
-            ),
-          ],
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8D1B1B),
+                ),
+                child: const Text('Cancel Order'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1766,215 +1770,220 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 }
               }
 
-              return AlertDialog(
-                title: Text(
-                  'Report Issue / Return\n'
-                  '${order['order_number'] ?? ''}',
-                ),
-                content: SizedBox(
-                  width: 620,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: _isWithinIssueWindow(order)
-                                ? const Color(0xFFE8F5E9)
-                                : const Color(0xFFFFF4E5),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            _issueWindowText(order),
-                            style: TextStyle(
+              return phoneDialog(
+                context,
+                AlertDialog(
+                  title: Text(
+                    'Report Issue / Return\n'
+                    '${order['order_number'] ?? ''}',
+                  ),
+                  content: SizedBox(
+                    width: 620,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
                               color: _isWithinIssueWindow(order)
-                                  ? const Color(0xFF2E7D32)
-                                  : const Color(0xFF9A5B00),
-                              fontWeight: FontWeight.w700,
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFFFF4E5),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              _issueWindowText(order),
+                              style: TextStyle(
+                                color: _isWithinIssueWindow(order)
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFF9A5B00),
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Affected products',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 8),
-                        for (final item in items)
-                          CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: selectedItemIds.contains(
-                              item['id']?.toString(),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'Affected products',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final item in items)
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: selectedItemIds.contains(
+                                item['id']?.toString(),
+                              ),
+                              title: Text(
+                                item['product_name_snapshot']?.toString() ??
+                                    'Unnamed product',
+                              ),
+                              subtitle: Text(
+                                '${_formatNumber(item['quantity'])} '
+                                '${_unitLabel(item['quantity_unit']?.toString())}',
+                              ),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              onChanged: saving
+                                  ? null
+                                  : (selected) {
+                                      final itemId = item['id']?.toString();
+
+                                      if (itemId == null || itemId.isEmpty) {
+                                        return;
+                                      }
+
+                                      setDialogState(() {
+                                        if (selected == true) {
+                                          selectedItemIds.add(itemId);
+                                        } else {
+                                          selectedItemIds.remove(itemId);
+                                        }
+                                      });
+                                    },
                             ),
-                            title: Text(
-                              item['product_name_snapshot']?.toString() ??
-                                  'Unnamed product',
+                          const SizedBox(height: 14),
+                          DropdownButtonFormField<String>(
+                            isExpanded: isPhoneLayout(context),
+                            initialValue: reason,
+                            decoration: const InputDecoration(
+                              labelText: 'Issue reason',
+                              border: OutlineInputBorder(),
                             ),
-                            subtitle: Text(
-                              '${_formatNumber(item['quantity'])} '
-                              '${_unitLabel(item['quantity_unit']?.toString())}',
-                            ),
-                            controlAffinity: ListTileControlAffinity.leading,
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'wrong_product',
+                                child: Text('Wrong product'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'quality_issue',
+                                child: Text('Quality issue'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'damaged_product',
+                                child: Text('Damaged product'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'missing_product',
+                                child: Text('Missing product'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'quantity_issue',
+                                child: Text('Quantity issue'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'temperature_issue',
+                                child: Text('Temperature issue'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'packaging_issue',
+                                child: Text('Packaging issue'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'other',
+                                child: Text('Other'),
+                              ),
+                            ],
                             onChanged: saving
                                 ? null
-                                : (selected) {
-                                    final itemId = item['id']?.toString();
-
-                                    if (itemId == null || itemId.isEmpty) {
-                                      return;
+                                : (value) {
+                                    if (value != null) {
+                                      setDialogState(() {
+                                        reason = value;
+                                      });
                                     }
-
-                                    setDialogState(() {
-                                      if (selected == true) {
-                                        selectedItemIds.add(itemId);
-                                      } else {
-                                        selectedItemIds.remove(itemId);
-                                      }
-                                    });
                                   },
                           ),
-                        const SizedBox(height: 14),
-                        DropdownButtonFormField<String>(
-                          initialValue: reason,
-                          decoration: const InputDecoration(
-                            labelText: 'Issue reason',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 14),
+                          DropdownButtonFormField<String>(
+                            isExpanded: isPhoneLayout(context),
+                            initialValue: requestedOutcome,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'What would you like the supplier to do?',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'replacement_exchange',
+                                child: Text('Replacement / exchange'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'supplier_collection',
+                                child: Text('Supplier collection'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'account_credit',
+                                child: Text('Account credit / credit note'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'discuss_with_supplier',
+                                child: Text('Discuss with supplier'),
+                              ),
+                            ],
+                            onChanged: saving
+                                ? null
+                                : (value) {
+                                    if (value != null) {
+                                      setDialogState(() {
+                                        requestedOutcome = value;
+                                      });
+                                    }
+                                  },
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'wrong_product',
-                              child: Text('Wrong product'),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: descriptionController,
+                            minLines: 4,
+                            maxLines: 7,
+                            enabled: !saving,
+                            decoration: const InputDecoration(
+                              labelText: 'Describe the issue',
+                              hintText:
+                                  'Explain what is wrong, the affected quantity, condition and any important delivery details.',
+                              border: OutlineInputBorder(),
                             ),
-                            DropdownMenuItem(
-                              value: 'quality_issue',
-                              child: Text('Quality issue'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'damaged_product',
-                              child: Text('Damaged product'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'missing_product',
-                              child: Text('Missing product'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'quantity_issue',
-                              child: Text('Quantity issue'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'temperature_issue',
-                              child: Text('Temperature issue'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'packaging_issue',
-                              child: Text('Packaging issue'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Other'),
-                            ),
-                          ],
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setDialogState(() {
-                                      reason = value;
-                                    });
-                                  }
-                                },
-                        ),
-                        const SizedBox(height: 14),
-                        DropdownButtonFormField<String>(
-                          initialValue: requestedOutcome,
-                          decoration: const InputDecoration(
-                            labelText:
-                                'What would you like the supplier to do?',
-                            border: OutlineInputBorder(),
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'replacement_exchange',
-                              child: Text('Replacement / exchange'),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'The supplier will review this report and confirm the final resolution. '
+                            'Submitting a request does not automatically create a refund or credit.',
+                            style: TextStyle(
+                              color: Color(0xFF666666),
+                              height: 1.4,
+                              fontSize: 12,
                             ),
-                            DropdownMenuItem(
-                              value: 'supplier_collection',
-                              child: Text('Supplier collection'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'account_credit',
-                              child: Text('Account credit / credit note'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'discuss_with_supplier',
-                              child: Text('Discuss with supplier'),
-                            ),
-                          ],
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setDialogState(() {
-                                      requestedOutcome = value;
-                                    });
-                                  }
-                                },
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: descriptionController,
-                          minLines: 4,
-                          maxLines: 7,
-                          enabled: !saving,
-                          decoration: const InputDecoration(
-                            labelText: 'Describe the issue',
-                            hintText:
-                                'Explain what is wrong, the affected quantity, condition and any important delivery details.',
-                            border: OutlineInputBorder(),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'The supplier will review this report and confirm the final resolution. '
-                          'Submitting a request does not automatically create a refund or credit.',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            height: 1.4,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+                  actions: [
+                    TextButton(
+                      onPressed: saving
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: saving ? null : submitIssue,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF741C1C),
+                      ),
+                      icon: saving
+                          ? const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.report_problem_outlined),
+                      label: Text(saving ? 'Submitting...' : 'Submit Issue'),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: saving ? null : submitIssue,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF741C1C),
-                    ),
-                    icon: saving
-                        ? const SizedBox(
-                            width: 17,
-                            height: 17,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.report_problem_outlined),
-                    label: Text(saving ? 'Submitting...' : 'Submit Issue'),
-                  ),
-                ],
               );
             },
           );
@@ -2387,23 +2396,26 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 ],
                               ],
                             )
-                          : const Row(
-                              children: [
-                                Icon(
-                                  Icons.schedule_outlined,
-                                  size: 17,
-                                  color: Color(0xFF9A5B00),
-                                ),
-                                SizedBox(width: 7),
-                                Text(
-                                  'Waiting for supplier response.',
-                                  style: TextStyle(
-                                    color: Color(0xFF666666),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                          : PhoneRow(
+                              mode: PhoneRowMode.wrap,
+                              desktop: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.schedule_outlined,
+                                    size: 17,
+                                    color: Color(0xFF9A5B00),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 7),
+                                  Text(
+                                    'Waiting for supplier response.',
+                                    style: TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                     ),
 
@@ -2653,29 +2665,32 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          pickup ? 'Confirm Order Collected?' : 'Confirm Order Received?',
-        ),
-        content: Text(
-          pickup
-              ? 'Confirm that you have collected this order. It will move to Complete for both you and the supplier.'
-              : 'Confirm that this order has been received. It will move to Complete for both you and the supplier.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Back'),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: Text(
+            pickup ? 'Confirm Order Collected?' : 'Confirm Order Received?',
           ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF741C1C),
+          content: Text(
+            pickup
+                ? 'Confirm that you have collected this order. It will move to Complete for both you and the supplier.'
+                : 'Confirm that this order has been received. It will move to Complete for both you and the supplier.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Back'),
             ),
-            icon: const Icon(Icons.task_alt),
-            label: Text(pickup ? 'Mark Collected' : 'Mark Received'),
-          ),
-        ],
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+              ),
+              icon: const Icon(Icons.task_alt),
+              label: Text(pickup ? 'Mark Collected' : 'Mark Received'),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -3087,38 +3102,41 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    order['order_number']?.toString() ??
-                                        'Order',
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w900,
+                        child: PhoneRow(
+                          mode: PhoneRowMode.wrap,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      order['order_number']?.toString() ??
+                                          'Order',
+                                      style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _supplierName(order),
-                                    style: const TextStyle(
-                                      color: Color(0xFF741C1C),
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w800,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _supplierName(order),
+                                      style: const TextStyle(
+                                        color: Color(0xFF741C1C),
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () => _openOrderWorkspace(order),
-                              icon: const Icon(Icons.open_in_new, size: 16),
-                              label: const Text('Open Order'),
-                            ),
-                          ],
+                              OutlinedButton.icon(
+                                onPressed: () => _openOrderWorkspace(order),
+                                icon: const Icon(Icons.open_in_new, size: 16),
+                                label: const Text('Open Order'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const Divider(height: 1),
@@ -3135,27 +3153,30 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
               return Scaffold(
                 backgroundColor: const Color(0xFFF7F8FA),
-                appBar: AppBar(
-                  backgroundColor: Colors.white,
-                  surfaceTintColor: Colors.white,
-                  title: const Text(
-                    'Issues & Returns',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Center(
-                        child: Text(
-                          '${_countForTab('issues')} open',
-                          style: const TextStyle(
-                            color: Color(0xFF741C1C),
-                            fontWeight: FontWeight.w900,
+                appBar: phoneAppBar(
+                  context,
+                  AppBar(
+                    backgroundColor: Colors.white,
+                    surfaceTintColor: Colors.white,
+                    title: const Text(
+                      'Issues & Returns',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: Center(
+                          child: Text(
+                            '${_countForTab('issues')} open',
+                            style: const TextStyle(
+                              color: Color(0xFF741C1C),
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 body: Center(
                   child: ConstrainedBox(
@@ -3250,147 +3271,153 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(
-              Icons.shopping_bag_outlined,
-              color: Color(0xFF741C1C),
-              size: 22,
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Orders',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          OutlinedButton.icon(
-            onPressed: _openIssuesPanel,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF741C1C),
-              side: const BorderSide(color: Color(0xFFD9DDE1)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(
+                Icons.shopping_bag_outlined,
+                color: Color(0xFF741C1C),
+                size: 22,
               ),
-            ),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.report_problem_outlined),
-                if (_countForTab('issues') > 0)
-                  Positioned(
-                    right: -9,
-                    top: -8,
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFB3261E),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        _countForTab('issues') > 99
-                            ? '99+'
-                            : _countForTab('issues').toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
+              SizedBox(width: 10),
+              Text(
+                'Orders',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
+          ),
+          actions: [
+            OutlinedButton.icon(
+              onPressed: _openIssuesPanel,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF741C1C),
+                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.report_problem_outlined),
+                  if (_countForTab('issues') > 0)
+                    Positioned(
+                      right: -9,
+                      top: -8,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB3261E),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          _countForTab('issues') > 99
+                              ? '99+'
+                              : _countForTab('issues').toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+              label: const Text('Issues & Returns'),
             ),
-            label: const Text('Issues & Returns'),
-          ),
-          IconButton(
-            onPressed: _loadOrders,
-            tooltip: 'Refresh orders',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 8),
-        ],
-        bottom: _isLoading || _errorMessage != null
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(112),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1240),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText:
-                                'Search order number, supplier, product, SKU or reference',
-                            prefixIcon: const Icon(Icons.search, size: 19),
-                            suffixIcon: _searchController.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    onPressed: _searchController.clear,
-                                    icon: const Icon(Icons.close, size: 18),
-                                  ),
-                            isDense: true,
-                            filled: true,
-                            fillColor: const Color(0xFFFAFAFB),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(9),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFDADAD6),
+            IconButton(
+              onPressed: _loadOrders,
+              tooltip: 'Refresh orders',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+          bottom: _isLoading || _errorMessage != null
+              ? null
+              : PreferredSize(
+                  preferredSize: const Size.fromHeight(112),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1240),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Search order number, supplier, product, SKU or reference',
+                              prefixIcon: const Icon(Icons.search, size: 19),
+                              suffixIcon: _searchController.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      onPressed: _searchController.clear,
+                                      icon: const Icon(Icons.close, size: 18),
+                                    ),
+                              isDense: true,
+                              filled: true,
+                              fillColor: const Color(0xFFFAFAFB),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFDADAD6),
+                                ),
                               ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(9),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFDADAD6),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFDADAD6),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        labelColor: const Color(0xFF741C1C),
-                        unselectedLabelColor: const Color(0xFF666A70),
-                        indicatorColor: const Color(0xFF741C1C),
-                        indicatorWeight: 3,
-                        labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          labelColor: const Color(0xFF741C1C),
+                          unselectedLabelColor: const Color(0xFF666A70),
+                          indicatorColor: const Color(0xFF741C1C),
+                          indicatorWeight: 3,
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                          ),
+                          labelStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          tabs: [for (final tab in _tabs) _buildTab(tab)],
                         ),
-                        labelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        tabs: [for (final tab in _tabs) _buildTab(tab)],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+        ),
       ),
       body: _buildBody(),
     );
@@ -3806,8 +3833,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               ),
             ),
             const Divider(height: 1),
-            Expanded(
+            PhoneExpanded(
               child: ListView.separated(
+                shrinkWrap: isPhoneLayout(context),
+                physics: isPhoneLayout(context)
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 padding: const EdgeInsets.all(10),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3824,59 +3855,62 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE3E5E8)),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['product_name_snapshot']?.toString() ??
-                                    'Unnamed product',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              if (item['sku_snapshot']
-                                      ?.toString()
-                                      .trim()
-                                      .isNotEmpty ==
-                                  true) ...[
-                                const SizedBox(height: 2),
+                    child: PhoneRow(
+                      mode: PhoneRowMode.wrap,
+                      desktop: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  'SKU ${item['sku_snapshot']}',
+                                  item['product_name_snapshot']?.toString() ??
+                                      'Unnamed product',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color: Color(0xFF777777),
-                                    fontSize: 10.5,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                if (item['sku_snapshot']
+                                        ?.toString()
+                                        .trim()
+                                        .isNotEmpty ==
+                                    true) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'SKU ${item['sku_snapshot']}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF777777),
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_formatNumber(item['quantity'])} '
+                                  '${_unitLabel(item['quantity_unit']?.toString())}'
+                                  ' × ${_money(item['unit_price'])}'
+                                  '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
+                                  style: const TextStyle(
+                                    color: Color(0xFF555555),
+                                    fontSize: 11.5,
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_formatNumber(item['quantity'])} '
-                                '${_unitLabel(item['quantity_unit']?.toString())}'
-                                ' × ${_money(item['unit_price'])}'
-                                '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
-                                style: const TextStyle(
-                                  color: Color(0xFF555555),
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${_money(item['line_subtotal'])} inc GST',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                          const SizedBox(width: 10),
+                          Text(
+                            '${_money(item['line_subtotal'])} inc GST',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -3903,6 +3937,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           ],
         ),
         child: ListView(
+          shrinkWrap: isPhoneLayout(context),
+          physics: isPhoneLayout(context)
+              ? const NeverScrollableScrollPhysics()
+              : null,
           children: [
             _buildTimeline(order),
             if (!pickup) _buildDeliveryTracking(order),
@@ -4081,12 +4119,15 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(
-          order['order_number']?.toString() ?? 'Order',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text(
+            order['order_number']?.toString() ?? 'Order',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
         ),
       ),
       body: LayoutBuilder(
@@ -4153,9 +4194,15 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               children: [
                 header,
                 const SizedBox(height: 10),
-                SizedBox(height: 430, child: productsPanel()),
+                SizedBox(
+                  height: isPhoneLayout(context) ? null : 430,
+                  child: productsPanel(),
+                ),
                 const SizedBox(height: 10),
-                SizedBox(height: 650, child: controlPanel()),
+                SizedBox(
+                  height: isPhoneLayout(context) ? null : 650,
+                  child: controlPanel(),
+                ),
               ],
             );
           }

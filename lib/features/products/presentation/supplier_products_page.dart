@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -131,25 +132,28 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, update) => AlertDialog(
-          title: const Text('Filter inventory'),
-          content: SizedBox(
-            width: 580,
-            child: SingleChildScrollView(
-              child: SupplierStockFilterBar(
-                rows: _scopedStockOptions,
-                filters: _stockFilters,
-                showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
-                onChanged: () => update(() {}),
+        builder: (context, update) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Filter inventory'),
+            content: SizedBox(
+              width: 580,
+              child: SingleChildScrollView(
+                child: SupplierStockFilterBar(
+                  rows: _scopedStockOptions,
+                  filters: _stockFilters,
+                  showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
+                  onChanged: () => update(() {}),
+                ),
               ),
             ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Show products'),
+              ),
+            ],
           ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Show products'),
-            ),
-          ],
         ),
       ),
     );
@@ -1458,33 +1462,39 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     super.build(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'My Stock',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: _isLoading ? null : () => _openAddProductPage(),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Product'),
-            style: TextButton.styleFrom(
-              foregroundColor: _darkRed,
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'My Stock',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: _isLoading ? null : () => _openAddProductPage(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Product'),
+              style: TextButton.styleFrom(
+                foregroundColor: _darkRed,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: _isLoading ? null : () => _loadProducts(refresh: true),
-            tooltip: 'Refresh',
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 6),
-        ],
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: _isLoading ? null : () => _loadProducts(refresh: true),
+              tooltip: 'Refresh',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 6),
+          ],
+        ),
       ),
       body: AbsorbPointer(
         absorbing: _savingSpecificationIds.isNotEmpty,

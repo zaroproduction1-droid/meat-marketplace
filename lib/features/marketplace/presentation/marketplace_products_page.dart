@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -387,34 +388,37 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Save search to Favourites'),
-        content: SizedBox(
-          width: 400,
-          child: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 100,
-            decoration: const InputDecoration(
-              labelText: 'Favourite name',
-              helperText: 'Filters are saved. Prices and stock stay current.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Save search to Favourites'),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 100,
+              decoration: const InputDecoration(
+                labelText: 'Favourite name',
+                helperText: 'Filters are saved. Prices and stock stay current.',
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  Navigator.pop(dialogContext, controller.text.trim());
+                }
+              },
+              child: const Text('Save favourite'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                Navigator.pop(dialogContext, controller.text.trim());
-              }
-            },
-            child: const Text('Save favourite'),
-          ),
-        ],
       ),
     );
     // Let the dialog route finish disposing its text field before the controller.
@@ -2629,125 +2633,134 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        automaticallyImplyLeading: widget.onBack == null,
-        leading: widget.onBack == null
-            ? null
-            : IconButton(
-                onPressed: widget.onBack,
-                tooltip: 'Back to dashboard',
-                icon: const Icon(Icons.arrow_back_rounded),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          automaticallyImplyLeading: widget.onBack == null,
+          leading: widget.onBack == null
+              ? null
+              : IconButton(
+                  onPressed: widget.onBack,
+                  tooltip: 'Back to dashboard',
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(
+                Icons.storefront_outlined,
+                color: Color(0xFF741C1C),
+                size: 22,
               ),
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.storefront_outlined, color: Color(0xFF741C1C), size: 22),
-            SizedBox(width: 10),
-            Text(
-              'Browse Products',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: _favourites.hasSearch(_savedSearchFilters())
-                ? 'Remove saved search'
-                : 'Save search to Favourites',
-            onPressed:
-                _isLoading ||
-                    _savingFavourite ||
-                    _favourites.loading ||
-                    _butcherBusinessId == null
-                ? null
-                : _saveFavourite,
-            icon: Icon(
-              _favourites.hasSearch(_savedSearchFilters())
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: _favourites.hasSearch(_savedSearchFilters())
-                  ? const Color(0xFFB32632)
-                  : const Color(0xFF747980),
-            ),
+              SizedBox(width: 10),
+              Text(
+                'Browse Products',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
           ),
-          ScaleTransition(
-            scale: _cartBounceScale,
-            child: FilledButton(
-              onPressed: _openCart,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          actions: [
+            IconButton(
+              tooltip: _favourites.hasSearch(_savedSearchFilters())
+                  ? 'Remove saved search'
+                  : 'Save search to Favourites',
+              onPressed:
+                  _isLoading ||
+                      _savingFavourite ||
+                      _favourites.loading ||
+                      _butcherBusinessId == null
+                  ? null
+                  : _saveFavourite,
+              icon: Icon(
+                _favourites.hasSearch(_savedSearchFilters())
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+                color: _favourites.hasSearch(_savedSearchFilters())
+                    ? const Color(0xFFB32632)
+                    : const Color(0xFF747980),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.shopping_cart_outlined, size: 19),
-                      if (_cartItemCount > 0)
-                        Positioned(
-                          right: -9,
-                          top: -9,
-                          child: Container(
-                            constraints: const BoxConstraints(
-                              minWidth: 18,
-                              minHeight: 18,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(0xFF741C1C),
-                                width: 1.5,
+            ),
+            ScaleTransition(
+              scale: _cartBounceScale,
+              child: FilledButton(
+                onPressed: _openCart,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.shopping_cart_outlined, size: 19),
+                        if (_cartItemCount > 0)
+                          Positioned(
+                            right: -9,
+                            top: -9,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
                               ),
-                            ),
-                            child: Text(
-                              _cartItemCount > 99 ? '99+' : '$_cartItemCount',
-                              style: const TextStyle(
-                                color: Color(0xFF741C1C),
-                                fontSize: 9.5,
-                                height: 1,
-                                fontWeight: FontWeight.w900,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0xFF741C1C),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                _cartItemCount > 99 ? '99+' : '$_cartItemCount',
+                                style: const TextStyle(
+                                  color: Color(0xFF741C1C),
+                                  fontSize: 9.5,
+                                  height: 1,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Cart',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Cart',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(width: 6),
+            IconButton(
+              onPressed: _loadProducts,
+              tooltip: 'Refresh products',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
           ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: _loadProducts,
-            tooltip: 'Refresh products',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
         ),
       ),
       body: Column(children: [Expanded(child: _buildBody())]),
@@ -3290,6 +3303,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Widget _buildBody() {
+    final phone = isPhoneLayout(context);
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -3456,33 +3470,38 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   child: OutlinedButton.icon(
                     onPressed: () => showDialog<void>(
                       context: context,
-                      builder: (dialogContext) => AlertDialog(
-                        title: const Text('Filter supplier'),
-                        content: SizedBox(
-                          width: 400,
-                          height: 56,
-                          child: TextField(
-                            controller: _supplierSearchController,
-                            autofocus: true,
-                            maxLines: 1,
-                            decoration: const InputDecoration(
-                              hintText: 'Supplier name',
-                              border: OutlineInputBorder(),
+                      builder: (dialogContext) => phoneDialog(
+                        context,
+                        AlertDialog(
+                          title: const Text('Filter supplier'),
+                          content: SizedBox(
+                            width: 400,
+                            height: 56,
+                            child: TextField(
+                              controller: _supplierSearchController,
+                              autofocus: true,
+                              maxLines: 1,
+                              decoration: const InputDecoration(
+                                hintText: 'Supplier name',
+                                border: OutlineInputBorder(),
+                              ),
+                              onSubmitted: (_) =>
+                                  Navigator.of(dialogContext).pop(),
                             ),
-                            onSubmitted: (_) =>
-                                Navigator.of(dialogContext).pop(),
                           ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  _supplierSearchController.clear(),
+                              child: const Text('Clear'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              child: const Text('Done'),
+                            ),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => _supplierSearchController.clear(),
-                            child: const Text('Clear'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            child: const Text('Done'),
-                          ),
-                        ],
                       ),
                     ),
                     icon: const Icon(Icons.storefront_outlined, size: 18),
@@ -3682,6 +3701,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
+        shrinkWrap: phone,
+        physics: phone ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3715,6 +3736,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
       final sizes = _pieceSizes;
       return ListView(
+        shrinkWrap: phone,
+        physics: phone ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.all(10),
         children: [
           rightChoiceCard(
@@ -3780,6 +3803,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
+        shrinkWrap: phone,
+        physics: phone ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.all(10),
         itemCount: grades.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3826,6 +3851,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
+        shrinkWrap: phone,
+        physics: phone ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3844,6 +3871,40 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             },
           );
         },
+      );
+    }
+
+    Widget stockPagination() {
+      if (_stockTotal <= _stockPageSize && _stockPageOffset == 0) {
+        return const SizedBox.shrink();
+      }
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: _stockPageOffset == 0
+                  ? null
+                  : () => _loadStock(offset: _stockPageOffset - _stockPageSize),
+              icon: const Icon(Icons.chevron_left),
+              label: const Text('Previous'),
+            ),
+            Text(
+              '${_stockPageOffset + 1}–${_stockPageOffset + _filteredProducts.length} of $_stockTotal',
+            ),
+            TextButton.icon(
+              onPressed:
+                  _stockPageOffset + _filteredProducts.length >= _stockTotal
+                  ? null
+                  : () => _loadStock(offset: _stockPageOffset + _stockPageSize),
+              icon: const Icon(Icons.chevron_right),
+              label: const Text('Next'),
+            ),
+          ],
+        ),
       );
     }
 
@@ -3900,43 +3961,43 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   _buildMarketplaceProductCard(_filteredProducts[index]),
             ),
           ),
-          if (_stockTotal > _stockPageSize || _stockPageOffset > 0)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
+          stockPagination(),
+        ],
+      );
+    }
+
+    final directSearch = _searchController.text.trim().isNotEmpty || _halalOnly;
+    final showingStock = directSearch || exactSelection;
+    Widget stageContent() => showingStock
+        ? supplierStockStage()
+        : !cutSelected
+        ? const Center(
+            child: Padding(
+              padding: EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton.icon(
-                    onPressed: _stockPageOffset == 0
-                        ? null
-                        : () => _loadStock(
-                            offset: _stockPageOffset - _stockPageSize,
-                          ),
-                    icon: const Icon(Icons.chevron_left),
-                    label: const Text('Previous'),
+                  Icon(
+                    Icons.touch_app_outlined,
+                    size: 48,
+                    color: Color(0xFFAAAAAA),
                   ),
+                  SizedBox(height: 12),
                   Text(
-                    '${_stockPageOffset + 1}–${_stockPageOffset + _filteredProducts.length} of $_stockTotal',
-                  ),
-                  TextButton.icon(
-                    onPressed:
-                        _stockPageOffset + _filteredProducts.length >=
-                            _stockTotal
-                        ? null
-                        : () => _loadStock(
-                            offset: _stockPageOffset + _stockPageSize,
-                          ),
-                    icon: const Icon(Icons.chevron_right),
-                    label: const Text('Next'),
+                    'Select a cut or search above',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ],
               ),
             ),
-        ],
-      );
-    }
+          )
+        : !subcategorySelected
+        ? subcategoryStage()
+        : !sizeSelected
+        ? sizeStage()
+        : !finalSpecificationSelected
+        ? (_usesGradeStage ? gradeStage() : commercialSpecificationStage())
+        : supplierStockStage();
 
     Widget resultsPanel() {
       final directSearch =
@@ -4011,39 +4072,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           if (showingStock) resultsToolbar(),
         ],
       );
-      Widget content() => showingStock
-          ? supplierStockStage()
-          : !cutSelected
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.touch_app_outlined,
-                      size: 48,
-                      color: Color(0xFFAAAAAA),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Select a cut or search above',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : !subcategorySelected
-          ? subcategoryStage()
-          : !sizeSelected
-          ? sizeStage()
-          : !finalSpecificationSelected
-          ? (_usesGradeStage ? gradeStage() : commercialSpecificationStage())
-          : supplierStockStage();
+
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -4052,95 +4081,99 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ),
         child: LayoutBuilder(
           builder: (context, panel) {
-            final sideFilters = panel.maxWidth >= 780;
-            return Row(
+            final sideFilters = !phone && panel.maxWidth >= 780;
+            final mainPanel = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
+                  child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
-                        child: Row(
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    subtitle,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 10.5,
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
-                            if (showingStock)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5EAEA),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF741C1C),
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 10.5,
                               ),
+                            ),
                           ],
                         ),
                       ),
-                      universalSearchBar(),
-                      if (!sideFilters) ...[
-                        TextButton.icon(
-                          onPressed: () => setState(
-                            () => _filtersExpanded = !_filtersExpanded,
+                      if (showingStock)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          icon: Icon(
-                            _filtersExpanded ? Icons.expand_less : Icons.tune,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5EAEA),
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                          label: Text(
-                            _filtersExpanded
-                                ? 'Hide filters & sorting'
-                                : 'Filters & sorting',
+                          child: Text(
+                            '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
+                            style: const TextStyle(
+                              color: Color(0xFF741C1C),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        if (_filtersExpanded)
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: panel.maxHeight * 0.38,
-                            ),
-                            child: SingleChildScrollView(
-                              child: SizedBox(
-                                width: panel.maxWidth,
-                                child: filters(),
-                              ),
-                            ),
-                          ),
-                      ],
-                      _stockLoadingStatus(),
-                      Expanded(child: content()),
                     ],
                   ),
                 ),
+                universalSearchBar(),
+                if (!sideFilters) ...[
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _filtersExpanded = !_filtersExpanded),
+                    icon: Icon(
+                      _filtersExpanded ? Icons.expand_less : Icons.tune,
+                    ),
+                    label: Text(
+                      _filtersExpanded
+                          ? 'Hide filters & sorting'
+                          : 'Filters & sorting',
+                    ),
+                  ),
+                  if (_filtersExpanded)
+                    if (phone)
+                      filters()
+                    else
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: panel.maxHeight * 0.38,
+                        ),
+                        child: SingleChildScrollView(
+                          child: SizedBox(
+                            width: panel.maxWidth,
+                            child: filters(),
+                          ),
+                        ),
+                      ),
+                ],
+                _stockLoadingStatus(),
+                if (!phone) Expanded(child: stageContent()),
+              ],
+            );
+            if (phone) {
+              return mainPanel;
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: mainPanel),
                 if (sideFilters) ...[
                   const VerticalDivider(width: 1, color: Color(0xFFE3E5E8)),
                   SizedBox(
@@ -4170,6 +4203,124 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       );
     }
 
+    Widget catalogueControls() => Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE3E5E8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (phone) ...[
+            FilledButton.icon(
+              onPressed: _openAnimalCatalogue,
+              icon: const Icon(Icons.menu_book_outlined, size: 20),
+              label: const Text('Browse animal catalogue'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF741C1C),
+              ),
+            ),
+            const SizedBox(height: 10),
+            PhoneAnimalSelector(
+              selectedCode: _selectedAnimalCode,
+              onChanged: _selectAnimal,
+            ),
+          ] else
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: _openAnimalCatalogue,
+                  icon: const Icon(Icons.menu_book_outlined, size: 20),
+                  label: const Text('Browse animal catalogue'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF741C1C),
+                  ),
+                ),
+                for (final animal in const [
+                  'BEEF',
+                  'VEAL',
+                  'LAMB',
+                  'MUTTON',
+                  'GOAT',
+                  'CHICKEN',
+                ])
+                  ChoiceChip(
+                    label: Text(animal),
+                    selected: _selectedAnimalCode == animal,
+                    onSelected: (_) => _selectAnimal(animal),
+                  ),
+              ],
+            ),
+          const SizedBox(height: 6),
+          _buildSectionStrip(),
+          if (cutSelected) ...[
+            const SizedBox(height: 4),
+            _buildSpecificationStrip(),
+          ],
+          if (subcategorySelected) ...[
+            const SizedBox(height: 4),
+            _usesGradeStage
+                ? _buildGradeStrip()
+                : _buildCommercialSpecificationStrip(),
+          ],
+        ],
+      ),
+    );
+
+    if (phone) {
+      // One page scroll: controls leave the viewport as products are browsed.
+      // SliverList keeps the existing paged product results lazily built.
+      final hasProducts =
+          showingStock && !_loadingStock && _filteredProducts.isNotEmpty;
+      return CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  catalogueControls(),
+                  const SizedBox(height: 10),
+                  resultsPanel(),
+                ],
+              ),
+            ),
+          ),
+          if (hasProducts) ...[
+            SliverPadding(
+              padding: const EdgeInsets.all(10),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: _buildMarketplaceProductCard(
+                      _filteredProducts[index],
+                    ),
+                  ),
+                  childCount: _filteredProducts.length,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(child: stockPagination()),
+          ] else
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: stageContent(),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        ],
+      );
+    }
+
     return Align(
       alignment: Alignment.topLeft,
       child: ConstrainedBox(
@@ -4179,59 +4330,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        FilledButton.icon(
-                          onPressed: _openAnimalCatalogue,
-                          icon: const Icon(Icons.menu_book_outlined, size: 20),
-                          label: const Text('Browse animal catalogue'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF741C1C),
-                          ),
-                        ),
-                        for (final animal in const [
-                          'BEEF',
-                          'VEAL',
-                          'LAMB',
-                          'MUTTON',
-                          'GOAT',
-                          'CHICKEN',
-                        ])
-                          ChoiceChip(
-                            label: Text(animal),
-                            selected: _selectedAnimalCode == animal,
-                            onSelected: (_) => _selectAnimal(animal),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    _buildSectionStrip(),
-                    if (cutSelected) ...[
-                      const SizedBox(height: 4),
-                      _buildSpecificationStrip(),
-                    ],
-                    if (subcategorySelected) ...[
-                      const SizedBox(height: 4),
-                      _usesGradeStage
-                          ? _buildGradeStrip()
-                          : _buildCommercialSpecificationStrip(),
-                    ],
-                  ],
-                ),
-              ),
+              catalogueControls(),
               const SizedBox(height: 10),
               Expanded(child: resultsPanel()),
             ],

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,25 +9,28 @@ class ButcherSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.settings_outlined, color: Color(0xFF741C1C), size: 22),
-            SizedBox(width: 10),
-            Text(
-              'Settings',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(Icons.settings_outlined, color: Color(0xFF741C1C), size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Settings',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: Center(
@@ -458,18 +462,21 @@ class _ButcherProfileSettingsPageState
           _field(_address1, 'Main Address Line 1'),
           _field(_address2, 'Main Address Line 2'),
           _field(_suburb, 'Suburb'),
-          Row(
-            children: [
-              Expanded(child: _field(_state, 'State')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  _postcode,
-                  'Postcode',
-                  keyboardType: TextInputType.number,
+          PhoneRow(
+            mode: PhoneRowMode.stack,
+            desktop: Row(
+              children: [
+                Expanded(child: _field(_state, 'State')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(
+                    _postcode,
+                    'Postcode',
+                    keyboardType: TextInputType.number,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -634,18 +641,21 @@ class _ButcherBillingSettingsPageState
           _field(_address1, 'Address Line 1'),
           _field(_address2, 'Address Line 2'),
           _field(_suburb, 'Suburb'),
-          Row(
-            children: [
-              Expanded(child: _field(_state, 'State')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  _postcode,
-                  'Postcode',
-                  keyboardType: TextInputType.number,
+          PhoneRow(
+            mode: PhoneRowMode.stack,
+            desktop: Row(
+              children: [
+                Expanded(child: _field(_state, 'State')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(
+                    _postcode,
+                    'Postcode',
+                    keyboardType: TextInputType.number,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const Divider(height: 30),
           const _SectionHeading('Accounts Contact'),
@@ -749,62 +759,70 @@ class _ButcherDeliveryAddressesPageState
     final save = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            existing == null ? 'Add Delivery Address' : 'Edit Delivery Address',
-          ),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _field(label, 'Address Label'),
-                  _field(contactName, 'Contact Name'),
-                  _field(
-                    contactPhone,
-                    'Contact Phone',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  _field(address1, 'Address Line 1'),
-                  _field(address2, 'Address Line 2'),
-                  _field(suburb, 'Suburb'),
-                  Row(
-                    children: [
-                      Expanded(child: _field(state, 'State')),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _field(
-                          postcode,
-                          'Postcode',
-                          keyboardType: TextInputType.number,
-                        ),
+        builder: (context, setDialogState) => phoneDialog(
+          context,
+          AlertDialog(
+            title: Text(
+              existing == null
+                  ? 'Add Delivery Address'
+                  : 'Edit Delivery Address',
+            ),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _field(label, 'Address Label'),
+                    _field(contactName, 'Contact Name'),
+                    _field(
+                      contactPhone,
+                      'Contact Phone',
+                      keyboardType: TextInputType.phone,
+                    ),
+                    _field(address1, 'Address Line 1'),
+                    _field(address2, 'Address Line 2'),
+                    _field(suburb, 'Suburb'),
+                    PhoneRow(
+                      mode: PhoneRowMode.stack,
+                      desktop: Row(
+                        children: [
+                          Expanded(child: _field(state, 'State')),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _field(
+                              postcode,
+                              'Postcode',
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  _field(instructions, 'Delivery Instructions', maxLines: 3),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Default delivery address'),
-                    value: isDefault,
-                    onChanged: (value) {
-                      setDialogState(() => isDefault = value);
-                    },
-                  ),
-                ],
+                    ),
+                    _field(instructions, 'Delivery Instructions', maxLines: 3),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Default delivery address'),
+                      value: isDefault,
+                      onChanged: (value) {
+                        setDialogState(() => isDefault = value);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Save'),
-            ),
-          ],
         ),
       ),
     );
@@ -868,29 +886,38 @@ class _ButcherDeliveryAddressesPageState
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Delivery Addresses')),
+        appBar: phoneAppBar(
+          context,
+          AppBar(title: const Text('Delivery Addresses')),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Delivery Addresses')),
+        appBar: phoneAppBar(
+          context,
+          AppBar(title: const Text('Delivery Addresses')),
+        ),
         body: Center(child: Text(_error!)),
       );
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        title: const Text('Delivery Addresses'),
-        actions: [
-          IconButton(
-            onPressed: () => _edit(),
-            icon: const Icon(Icons.add),
-            tooltip: 'Add address',
-          ),
-        ],
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          title: const Text('Delivery Addresses'),
+          actions: [
+            IconButton(
+              onPressed: () => _edit(),
+              icon: const Icon(Icons.add),
+              tooltip: 'Add address',
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -1251,14 +1278,14 @@ class _SettingsFormScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: phoneAppBar(context, AppBar(title: Text(title))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (error != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: phoneAppBar(context, AppBar(title: Text(title))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -1280,7 +1307,7 @@ class _SettingsFormScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(title: Text(title)),
+      appBar: phoneAppBar(context, AppBar(title: Text(title))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [

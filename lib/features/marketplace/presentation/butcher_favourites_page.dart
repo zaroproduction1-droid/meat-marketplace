@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -365,19 +366,22 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
     if (remove) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Remove favourite?'),
-          content: Text('Remove “${row['name']}” from your saved searches?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Remove'),
-            ),
-          ],
+        builder: (ctx) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Remove favourite?'),
+            content: Text('Remove “${row['name']}” from your saved searches?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
         ),
       );
       if (confirmed != true) {
@@ -387,29 +391,32 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
       var draft = row['name'].toString();
       name = await showDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Rename favourite'),
-          content: TextFormField(
-            initialValue: draft,
-            autofocus: true,
-            maxLength: 100,
-            onChanged: (value) => draft = value,
-            decoration: const InputDecoration(labelText: 'Name'),
+        builder: (ctx) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Rename favourite'),
+            content: TextFormField(
+              initialValue: draft,
+              autofocus: true,
+              maxLength: 100,
+              onChanged: (value) => draft = value,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (draft.trim().isNotEmpty) {
+                    Navigator.pop(ctx, draft.trim());
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (draft.trim().isNotEmpty) {
-                  Navigator.pop(ctx, draft.trim());
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
         ),
       );
       if (name == null) {
@@ -463,6 +470,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final phone = isPhoneLayout(context);
     final source = _kind == 'search' ? _rows : _productRows;
     final suppliers =
         source
@@ -527,351 +535,365 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
         },
       ),
     );
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        title: const Text('Favourites'),
-        backgroundColor: Colors.white,
-        actions: [
-          IconButton(
-            tooltip: 'Refresh favourites',
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh),
+    final header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            ChoiceChip(
+              label: Text('Saved searches (${_rows.length})'),
+              selected: _kind == 'search',
+              onSelected: (_) => setState(() {
+                _kind = 'search';
+                _supplier = '';
+              }),
+            ),
+            ChoiceChip(
+              label: Text('Products (${_productRows.length})'),
+              selected: _kind == 'product',
+              onSelected: (_) => setState(() {
+                _kind = 'product';
+                _supplier = '';
+              }),
+            ),
+            ChoiceChip(
+              label: Text('Dashboard ($_dashboardCount/4)'),
+              selected: _kind == 'dashboard',
+              onSelected: (_) => setState(() {
+                _kind = 'dashboard';
+                _supplier = '';
+              }),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_kind == 'dashboard') ...[
+          const Text(
+            'Choose up to four favourite products for your dashboard. Removing a selection keeps it in Favourites.',
           ),
+          const SizedBox(height: 10),
         ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            flex: 0,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .42,
+        TextField(
+          onChanged: (value) => setState(() => _query = value),
+          decoration: const InputDecoration(
+            hintText: 'Search favourites, cuts, brands or suppliers…',
+            prefixIcon: Icon(Icons.search),
+            isDense: true,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            picker('Animal', _animal, {
+              '': 'All animals',
+              for (final animal in const [
+                'BEEF',
+                'VEAL',
+                'LAMB',
+                'MUTTON',
+                'GOAT',
+                'CHICKEN',
+              ])
+                animal: animal,
+            }, (value) => _animal = value),
+            picker('Supplier', _supplier, {
+              '': 'All suppliers',
+              for (final name in {
+                ...suppliers,
+                if (_supplier.isNotEmpty) _supplier,
+              })
+                name: name,
+            }, (value) => _supplier = value),
+            picker('Sort', _sort, {
+              'recent': 'Recently saved',
+              'name': 'Name A–Z',
+            }, (value) => _sort = value),
+            FilterChip(
+              label: Text(
+                _kind == 'search' ? 'Saved with Halal only' : 'Halal only',
               ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(14),
+              selected: _halal,
+              onSelected: (value) => setState(() => _halal = value),
+            ),
+            if (_kind != 'search')
+              FilterChip(
+                label: const Text('Available only'),
+                selected: _available,
+                onSelected: (value) => setState(() => _available = value),
+              ),
+            TextButton(
+              onPressed: () => setState(() {
+                _animal = '';
+                _supplier = '';
+                _halal = false;
+                _available = false;
+                _sort = 'recent';
+              }),
+              child: const Text('Clear filters'),
+            ),
+            Text('${rows.length} results'),
+          ],
+        ),
+      ],
+    );
+    Widget item(BuildContext context, int index) {
+      final row = rows[index];
+      final product = favouriteMap(row['product']);
+      final isProduct = _kind != 'search';
+      final available = product['active'] == true;
+      return Card(
+        elevation: 0,
+        color: Colors.white,
+        margin: const EdgeInsets.only(bottom: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE3E5E8)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isProduct) ...[
+                CatalogueProductImage(
+                  product: product,
+                  thumbnail: true,
+                  imageWidth: 92,
+                  imageHeight: 92,
+                  fit: BoxFit.cover,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        ChoiceChip(
-                          label: Text('Saved searches (${_rows.length})'),
-                          selected: _kind == 'search',
-                          onSelected: (_) => setState(() {
-                            _kind = 'search';
-                            _supplier = '';
-                          }),
-                        ),
-                        ChoiceChip(
-                          label: Text('Products (${_productRows.length})'),
-                          selected: _kind == 'product',
-                          onSelected: (_) => setState(() {
-                            _kind = 'product';
-                            _supplier = '';
-                          }),
-                        ),
-                        ChoiceChip(
-                          label: Text('Dashboard ($_dashboardCount/4)'),
-                          selected: _kind == 'dashboard',
-                          onSelected: (_) => setState(() {
-                            _kind = 'dashboard';
-                            _supplier = '';
-                          }),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    if (_kind == 'dashboard') ...[
-                      const Text(
-                        'Choose up to four favourite products for your dashboard. Removing a selection keeps it in Favourites.',
+                    Text(
+                      _title(row),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
                       ),
-                      const SizedBox(height: 10),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      isProduct ? _supplierFor(row) : row['summary'].toString(),
+                      style: const TextStyle(color: Color(0xFF646A70)),
+                    ),
+                    if (isProduct) ...[
+                      Text(_productSummary(product)),
+                      Text(
+                        !available
+                            ? 'No longer available'
+                            : '${_price(product)}${product['availability_status'] == 'out_of_stock' ? ' • Out of stock' : ''}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ],
-                    TextField(
-                      onChanged: (value) => setState(() => _query = value),
-                      decoration: const InputDecoration(
-                        hintText:
-                            'Search favourites, cuts, brands or suppliers…',
-                        prefixIcon: Icon(Icons.search),
-                        isDense: true,
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 5,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        picker('Animal', _animal, {
-                          '': 'All animals',
-                          for (final animal in const [
-                            'BEEF',
-                            'VEAL',
-                            'LAMB',
-                            'MUTTON',
-                            'GOAT',
-                            'CHICKEN',
-                          ])
-                            animal: animal,
-                        }, (value) => _animal = value),
-                        picker('Supplier', _supplier, {
-                          '': 'All suppliers',
-                          for (final name in {
-                            ...suppliers,
-                            if (_supplier.isNotEmpty) _supplier,
-                          })
-                            name: name,
-                        }, (value) => _supplier = value),
-                        picker('Sort', _sort, {
-                          'recent': 'Recently saved',
-                          'name': 'Name A–Z',
-                        }, (value) => _sort = value),
-                        FilterChip(
-                          label: Text(
-                            _kind == 'search'
-                                ? 'Saved with Halal only'
-                                : 'Halal only',
-                          ),
-                          selected: _halal,
-                          onSelected: (value) => setState(() => _halal = value),
-                        ),
-                        if (_kind != 'search')
+                        if (isProduct && _kind == 'dashboard')
                           FilterChip(
-                            label: const Text('Available only'),
-                            selected: _available,
-                            onSelected: (value) =>
-                                setState(() => _available = value),
+                            selected: row['dashboard_slot'] != null,
+                            label: Text(
+                              row['dashboard_slot'] != null
+                                  ? 'On dashboard • ${row['dashboard_slot']}'
+                                  : 'Add to dashboard',
+                            ),
+                            onSelected:
+                                _busyId != null ||
+                                    _loading ||
+                                    (!available &&
+                                        row['dashboard_slot'] == null)
+                                ? null
+                                : (_) => _toggleDashboard(row),
                           ),
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _animal = '';
-                            _supplier = '';
-                            _halal = false;
-                            _available = false;
-                            _sort = 'recent';
-                          }),
-                          child: const Text('Clear filters'),
+                        FilledButton.icon(
+                          onPressed:
+                              _busyId != null || (isProduct && !available)
+                              ? null
+                              : () =>
+                                    isProduct ? _openProduct(row) : _open(row),
+                          icon: Icon(
+                            isProduct
+                                ? Icons.shopping_cart_outlined
+                                : Icons.search,
+                            size: 17,
+                          ),
+                          label: Text(
+                            isProduct ? 'View / order' : 'Open search',
+                          ),
                         ),
-                        Text('${rows.length} results'),
+                        if (!isProduct)
+                          TextButton(
+                            onPressed: _busyId != null
+                                ? null
+                                : () => _change(row),
+                            child: const Text('Rename'),
+                          ),
+                        IconButton(
+                          tooltip: isProduct
+                              ? 'Remove product favourite'
+                              : 'Remove saved search',
+                          onPressed: _busyId != null
+                              ? null
+                              : () => isProduct
+                                    ? _removeProduct(row)
+                                    : _change(row, remove: true),
+                          icon: const Icon(
+                            Icons.favorite,
+                            color: Color(0xFFB32632),
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!),
-                        TextButton(
-                          onPressed: _load,
-                          child: const Text('Try again'),
+        ),
+      );
+    }
+
+    final status = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_error!),
+                TextButton(onPressed: _load, child: const Text('Try again')),
+              ],
+            ),
+          )
+        : rows.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.favorite_border, size: 40, color: _brand),
+                  const SizedBox(height: 12),
+                  Text(
+                    source.isEmpty
+                        ? 'Use the search or product heart in Browse Products to save a favourite.'
+                        : 'No favourites match these filters.',
+                    textAlign: TextAlign.center,
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => MarketplaceProductsPage(
+                            butcherBusinessId: widget.businessId,
+                          ),
                         ),
-                      ],
-                    ),
-                  )
-                : rows.isEmpty
-                ? Center(
+                      );
+                      if (mounted) {
+                        await _load();
+                      }
+                    },
+                    child: const Text('Browse products'),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : null;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          title: const Text('Favourites'),
+          backgroundColor: Colors.white,
+          actions: [
+            IconButton(
+              tooltip: 'Refresh favourites',
+              onPressed: _loading ? null : _load,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+      ),
+      body: phone
+          ? RefreshIndicator(
+              onRefresh: _load,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.favorite_border,
-                            size: 40,
-                            color: _brand,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            source.isEmpty
-                                ? 'Use the search or product heart in Browse Products to save a favourite.'
-                                : 'No favourites match these filters.',
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => MarketplaceProductsPage(
-                                    butcherBusinessId: widget.businessId,
-                                  ),
-                                ),
-                              );
-                              if (mounted) {
-                                await _load();
-                              }
-                            },
-                            child: const Text('Browse products'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                      itemCount: rows.length,
-                      itemBuilder: (context, index) {
-                        final row = rows[index];
-                        final product = favouriteMap(row['product']);
-                        final isProduct = _kind != 'search';
-                        final available = product['active'] == true;
-                        return Card(
-                          elevation: 0,
-                          color: Colors.white,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFFE3E5E8)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (isProduct) ...[
-                                  CatalogueProductImage(
-                                    product: product,
-                                    thumbnail: true,
-                                    imageWidth: 92,
-                                    imageHeight: 92,
-                                    fit: BoxFit.cover,
-                                  ),
-                                  const SizedBox(width: 12),
-                                ],
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _title(row),
-                                        style: const TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        isProduct
-                                            ? _supplierFor(row)
-                                            : row['summary'].toString(),
-                                        style: const TextStyle(
-                                          color: Color(0xFF646A70),
-                                        ),
-                                      ),
-                                      if (isProduct) ...[
-                                        Text(_productSummary(product)),
-                                        Text(
-                                          !available
-                                              ? 'No longer available'
-                                              : '${_price(product)}${product['availability_status'] == 'out_of_stock' ? ' • Out of stock' : ''}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 5,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          if (isProduct && _kind == 'dashboard')
-                                            FilterChip(
-                                              selected:
-                                                  row['dashboard_slot'] != null,
-                                              label: Text(
-                                                row['dashboard_slot'] != null
-                                                    ? 'On dashboard • ${row['dashboard_slot']}'
-                                                    : 'Add to dashboard',
-                                              ),
-                                              onSelected:
-                                                  _busyId != null ||
-                                                      _loading ||
-                                                      (!available &&
-                                                          row['dashboard_slot'] ==
-                                                              null)
-                                                  ? null
-                                                  : (_) =>
-                                                        _toggleDashboard(row),
-                                            ),
-                                          FilledButton.icon(
-                                            onPressed:
-                                                _busyId != null ||
-                                                    (isProduct && !available)
-                                                ? null
-                                                : () => isProduct
-                                                      ? _openProduct(row)
-                                                      : _open(row),
-                                            icon: Icon(
-                                              isProduct
-                                                  ? Icons.shopping_cart_outlined
-                                                  : Icons.search,
-                                              size: 17,
-                                            ),
-                                            label: Text(
-                                              isProduct
-                                                  ? 'View / order'
-                                                  : 'Open search',
-                                            ),
-                                          ),
-                                          if (!isProduct)
-                                            TextButton(
-                                              onPressed: _busyId != null
-                                                  ? null
-                                                  : () => _change(row),
-                                              child: const Text('Rename'),
-                                            ),
-                                          IconButton(
-                                            tooltip: isProduct
-                                                ? 'Remove product favourite'
-                                                : 'Remove saved search',
-                                            onPressed: _busyId != null
-                                                ? null
-                                                : () => isProduct
-                                                      ? _removeProduct(row)
-                                                      : _change(
-                                                          row,
-                                                          remove: true,
-                                                        ),
-                                            icon: const Icon(
-                                              Icons.favorite,
-                                              color: Color(0xFFB32632),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      padding: const EdgeInsets.all(14),
+                      child: header,
                     ),
                   ),
-          ),
-        ],
-      ),
+                  if (status != null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: status,
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          item,
+                          childCount: rows.length,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  flex: 0,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * .42,
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(14),
+                      child: header,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child:
+                      status ??
+                      RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                          itemCount: rows.length,
+                          itemBuilder: item,
+                        ),
+                      ),
+                ),
+              ],
+            ),
     );
   }
 }

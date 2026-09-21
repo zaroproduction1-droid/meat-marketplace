@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -134,29 +135,32 @@ class _PendingBusinessesPageState extends State<PendingBusinessesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-            status == 'approved' ? 'Approve Business' : 'Reject Business',
-          ),
-          content: Text(
-            status == 'approved'
-                ? 'Approve $businessName to access the marketplace?'
-                : 'Reject $businessName?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
-              child: const Text('Cancel'),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: Text(
+              status == 'approved' ? 'Approve Business' : 'Reject Business',
             ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: Text(status == 'approved' ? 'Approve' : 'Reject'),
+            content: Text(
+              status == 'approved'
+                  ? 'Approve $businessName to access the marketplace?'
+                  : 'Reject $businessName?',
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                },
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: Text(status == 'approved' ? 'Approve' : 'Reject'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -173,21 +177,24 @@ class _PendingBusinessesPageState extends State<PendingBusinessesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Pending Businesses',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loadPendingBusinesses,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Pending Businesses',
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(width: 8),
-        ],
+          actions: [
+            IconButton(
+              onPressed: _loadPendingBusinesses,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: _buildBody(),
     );

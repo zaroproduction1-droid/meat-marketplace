@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -272,7 +273,8 @@ class _SupplierMarketplaceOrderDetailPageState
             Future<void> pickTime() async {
               final picked = await showTimePicker(
                 context: dialogContext,
-                initialTime: confirmedTime ?? const TimeOfDay(hour: 12, minute: 0),
+                initialTime:
+                    confirmedTime ?? const TimeOfDay(hour: 12, minute: 0),
               );
 
               if (picked != null) {
@@ -285,129 +287,142 @@ class _SupplierMarketplaceOrderDetailPageState
             final requestedDate = _parseRequestedDate();
             final requestedTime = _parseRequestedTime();
 
-            return AlertDialog(
-              title: Text(
-                'Confirm $fulfilment Schedule',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '${_customerName()} requested the following $fulfilment schedule.',
-                      style: const TextStyle(
-                        color: Color(0xFF555555),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF7F7F4),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE0E0DC)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.schedule_outlined, color: _darkRed),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              requestedDate == null || requestedTime == null
-                                  ? 'Butcher request is incomplete.'
-                                  : 'Requested: ${_dateDisplay(requestedDate)} at '
-                                        '${requestedTime.format(dialogContext)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'SUPPLIER CONFIRMED SCHEDULE',
-                      style: TextStyle(
-                        color: Color(0xFF777777),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: pickDate,
-                            icon: const Icon(Icons.calendar_month_outlined),
-                            label: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(
-                                confirmedDate == null
-                                    ? 'Choose date'
-                                    : _dateDisplay(confirmedDate!),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: pickTime,
-                            icon: const Icon(Icons.schedule_outlined),
-                            label: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(
-                                confirmedTime == null
-                                    ? 'Choose time'
-                                    : confirmedTime!.format(dialogContext),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Keep the butcher’s requested schedule or change it. '
-                      'The confirmed date and time will follow the order into fulfilment.',
-                      style: TextStyle(
-                        color: Color(0xFF666666),
-                        fontSize: 11.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text(
+                  'Confirm $fulfilment Schedule',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Back'),
-                ),
-                FilledButton.icon(
-                  onPressed: confirmedDate == null || confirmedTime == null
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop({
-                            'confirmed_date': _dateDbValue(confirmedDate!),
-                            'confirmed_time': _timeDbValue(confirmedTime!),
-                          });
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
-                    foregroundColor: Colors.white,
+                content: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${_customerName()} requested the following $fulfilment schedule.',
+                        style: const TextStyle(
+                          color: Color(0xFF555555),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F7F4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0E0DC)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_outlined,
+                              color: _darkRed,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                requestedDate == null || requestedTime == null
+                                    ? 'Butcher request is incomplete.'
+                                    : 'Requested: ${_dateDisplay(requestedDate)} at '
+                                          '${requestedTime.format(dialogContext)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'SUPPLIER CONFIRMED SCHEDULE',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      PhoneRow(
+                        mode: PhoneRowMode.stack,
+                        desktop: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: pickDate,
+                                icon: const Icon(Icons.calendar_month_outlined),
+                                label: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Text(
+                                    confirmedDate == null
+                                        ? 'Choose date'
+                                        : _dateDisplay(confirmedDate!),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: pickTime,
+                                icon: const Icon(Icons.schedule_outlined),
+                                label: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Text(
+                                    confirmedTime == null
+                                        ? 'Choose time'
+                                        : confirmedTime!.format(dialogContext),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Keep the butcher’s requested schedule or change it. '
+                        'The confirmed date and time will follow the order into fulfilment.',
+                        style: TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 11.5,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Accept & Create Work Order'),
                 ),
-              ],
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Back'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: confirmedDate == null || confirmedTime == null
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop({
+                              'confirmed_date': _dateDbValue(confirmedDate!),
+                              'confirmed_time': _timeDbValue(confirmedTime!),
+                            });
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Accept & Create Work Order'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -453,54 +468,59 @@ class _SupplierMarketplaceOrderDetailPageState
     try {
       final reason = await showDialog<String>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Reject marketplace order'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Give the butcher a clear reason. They will see it before '
-                  'the cancelled order is removed from their Orders page.',
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason for rejection',
-                    border: OutlineInputBorder(),
+        builder: (dialogContext) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Reject marketplace order'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Give the butcher a clear reason. They will see it before '
+                    'the cancelled order is removed from their Orders page.',
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Back'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.length < 3) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('Enter a rejection reason.')),
-                  );
-                  return;
-                }
-                Navigator.of(dialogContext).pop(value);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF8D1B1B),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason for rejection',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
-              child: const Text('Reject Order'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Back'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (value.length < 3) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter a rejection reason.'),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8D1B1B),
+                ),
+                child: const Text('Reject Order'),
+              ),
+            ],
+          ),
         ),
       );
 
@@ -568,12 +588,15 @@ class _SupplierMarketplaceOrderDetailPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'New Marketplace Order',
-          style: TextStyle(fontWeight: FontWeight.w800),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'New Marketplace Order',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
         ),
       ),
       body: _loading
@@ -814,73 +837,80 @@ class _SupplierMarketplaceOrderDetailPageState
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFE0E0DD)),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: PhoneRow(
+                  mode: PhoneRowMode.wrap,
+                  desktop: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['product_name_snapshot']?.toString() ??
+                                  'Product',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (item['sku_snapshot']
+                                    ?.toString()
+                                    .trim()
+                                    .isNotEmpty ==
+                                true) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'SKU ${item['sku_snapshot']}',
+                                style: const TextStyle(
+                                  color: Color(0xFF777777),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 7),
+                            Text(
+                              '${_quantity(item['quantity'])} ${_unit(item['quantity_unit']?.toString())} ordered',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (item['catch_weight_snapshot'] == true) ...[
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Catch weight — actual kilograms are entered during warehouse fulfilment.',
+                                style: TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            item['product_name_snapshot']?.toString() ??
-                                'Product',
+                            '${_money(item['unit_price'])}/${_unit(item['price_basis']?.toString())}',
                             style: const TextStyle(
+                              color: _darkRed,
                               fontWeight: FontWeight.w900,
                               fontSize: 16,
                             ),
                           ),
-                          if (item['sku_snapshot']
-                                  ?.toString()
-                                  .trim()
-                                  .isNotEmpty ==
-                              true) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'SKU ${item['sku_snapshot']}',
-                              style: const TextStyle(color: Color(0xFF777777)),
-                            ),
-                          ],
-                          const SizedBox(height: 7),
-                          Text(
-                            '${_quantity(item['quantity'])} ${_unit(item['quantity_unit']?.toString())} ordered',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          if (item['catch_weight_snapshot'] == true) ...[
-                            const SizedBox(height: 4),
+                          if (item['catch_weight_snapshot'] == true)
                             const Text(
-                              'Catch weight — actual kilograms are entered during warehouse fulfilment.',
+                              'Final total pending weight',
                               style: TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 12.5,
+                                color: Color(0xFF777777),
+                                fontSize: 11,
                               ),
                             ),
-                          ],
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${_money(item['unit_price'])}/${_unit(item['price_basis']?.toString())}',
-                          style: const TextStyle(
-                            color: _darkRed,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (item['catch_weight_snapshot'] == true)
-                          const Text(
-                            'Final total pending weight',
-                            style: TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 11,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             if (order['delivery_notes']?.toString().trim().isNotEmpty ==
@@ -906,37 +936,40 @@ class _SupplierMarketplaceOrderDetailPageState
             ],
             const SizedBox(height: 22),
             if (submitted)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _saving ? null : _reject,
-                    icon: const Icon(Icons.cancel_outlined),
-                    label: const Text('Reject'),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _accept,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 15,
-                      ),
+              PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : _reject,
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Reject'),
                     ),
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.check_circle_outline),
-                    label: const Text('Accept & Open Work Order'),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _accept,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _darkRed,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 15,
+                        ),
+                      ),
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check_circle_outline),
+                      label: const Text('Accept & Open Work Order'),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),

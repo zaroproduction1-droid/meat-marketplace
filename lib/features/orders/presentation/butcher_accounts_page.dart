@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
@@ -233,71 +234,74 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4E5E5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.storefront_outlined,
-                color: _darkRed,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 3,
-              child: Text(
-                account['supplier_name']?.toString() ?? 'Supplier',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
+        child: PhoneRow(
+          mode: PhoneRowMode.wrap,
+          desktop: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4E5E5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.storefront_outlined,
+                  color: _darkRed,
+                  size: 20,
                 ),
               ),
-            ),
-            _fact(
-              'OUTSTANDING',
-              _money(account['outstanding_balance']),
-              valueColor: _asDouble(account['outstanding_balance']) > 0
-                  ? _darkRed
-                  : null,
-            ),
-            const SizedBox(width: 20),
-            _fact(
-              'OVERDUE',
-              _money(account['overdue_amount']),
-              valueColor: _asDouble(account['overdue_amount']) > 0
-                  ? const Color(0xFFB3261E)
-                  : null,
-            ),
-            const SizedBox(width: 20),
-            _fact('TERMS', _terms(account)),
-            const SizedBox(width: 18),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                color: _statusColor(status).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _statusLabel(status),
-                style: TextStyle(
-                  color: _statusColor(status),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  account['supplier_name']?.toString() ?? 'Supplier',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: _darkRed),
-          ],
+              _fact(
+                'OUTSTANDING',
+                _money(account['outstanding_balance']),
+                valueColor: _asDouble(account['outstanding_balance']) > 0
+                    ? _darkRed
+                    : null,
+              ),
+              const SizedBox(width: 20),
+              _fact(
+                'OVERDUE',
+                _money(account['overdue_amount']),
+                valueColor: _asDouble(account['overdue_amount']) > 0
+                    ? const Color(0xFFB3261E)
+                    : null,
+              ),
+              const SizedBox(width: 20),
+              _fact('TERMS', _terms(account)),
+              const SizedBox(width: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _statusColor(status).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _statusLabel(status),
+                  style: TextStyle(
+                    color: _statusColor(status),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: _darkRed),
+            ],
+          ),
         ),
       ),
     );
@@ -353,7 +357,10 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Accounts & Invoices')),
+        appBar: phoneAppBar(
+          context,
+          AppBar(title: const Text('Accounts & Invoices')),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -379,37 +386,40 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              color: _darkRed,
-              size: 22,
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Accounts & Invoices',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loadAccounts,
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: _darkRed,
+                size: 22,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Accounts & Invoices',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _loadAccounts,
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: RefreshIndicator(
@@ -1106,80 +1116,86 @@ class _ButcherSupplierAccountPageState
                           onChanged: (_) => setDialogState(() {}),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                initialValue: method,
-                                decoration: InputDecoration(
-                                  labelText: 'Payment method',
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8F8F6),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(11),
-                                  ),
-                                ),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'bank_transfer',
-                                    child: Text('Bank Transfer'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'cash',
-                                    child: Text('Cash'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'card',
-                                    child: Text('Card'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'cheque',
-                                    child: Text('Cheque'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'other',
-                                    child: Text('Other'),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setDialogState(() => method = value);
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(11),
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: dialogContext,
-                                    initialDate: paymentDate,
-                                    firstDate: DateTime(2020),
-                                    lastDate: DateTime.now().add(
-                                      const Duration(days: 365),
-                                    ),
-                                  );
-
-                                  if (picked != null) {
-                                    setDialogState(() => paymentDate = picked);
-                                  }
-                                },
-                                child: InputDecorator(
+                        PhoneRow(
+                          mode: PhoneRowMode.stack,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  isExpanded: isPhoneLayout(context),
+                                  initialValue: method,
                                   decoration: InputDecoration(
-                                    labelText: 'Payment date',
+                                    labelText: 'Payment method',
                                     filled: true,
                                     fillColor: const Color(0xFFF8F8F6),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(11),
                                     ),
                                   ),
-                                  child: Text(_date(paymentDate)),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'bank_transfer',
+                                      child: Text('Bank Transfer'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'cash',
+                                      child: Text('Cash'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'card',
+                                      child: Text('Card'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'cheque',
+                                      child: Text('Cheque'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'other',
+                                      child: Text('Other'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setDialogState(() => method = value);
+                                    }
+                                  },
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(11),
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: dialogContext,
+                                      initialDate: paymentDate,
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime.now().add(
+                                        const Duration(days: 365),
+                                      ),
+                                    );
+
+                                    if (picked != null) {
+                                      setDialogState(
+                                        () => paymentDate = picked,
+                                      );
+                                    }
+                                  },
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Payment date',
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8F8F6),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(11),
+                                      ),
+                                    ),
+                                    child: Text(_date(paymentDate)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
@@ -1233,53 +1249,56 @@ class _ButcherSupplierAccountPageState
                                 ),
                                 const SizedBox(height: 10),
                                 for (final invoice in selected) ...[
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              invoice['invoice_number']
-                                                      ?.toString() ??
-                                                  'Invoice',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w900,
+                                  PhoneRow(
+                                    mode: PhoneRowMode.stack,
+                                    desktop: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                invoice['invoice_number']
+                                                        ?.toString() ??
+                                                    'Invoice',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                ),
                                               ),
-                                            ),
-                                            Text(
-                                              'Outstanding '
-                                              '${_money(invoice['outstanding_amount'])}',
-                                              style: const TextStyle(
-                                                color: Color(0xFF777777),
-                                                fontSize: 10.5,
+                                              Text(
+                                                'Outstanding '
+                                                '${_money(invoice['outstanding_amount'])}',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF777777),
+                                                  fontSize: 10.5,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 150,
-                                        child: TextField(
-                                          controller:
-                                              allocationControllers[invoice['id']
-                                                  .toString()],
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          onChanged: (_) =>
-                                              setDialogState(() {}),
-                                          decoration: const InputDecoration(
-                                            labelText: 'Apply',
-                                            prefixText: '\$',
-                                            isDense: true,
-                                            border: OutlineInputBorder(),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        SizedBox(
+                                          width: 150,
+                                          child: TextField(
+                                            controller:
+                                                allocationControllers[invoice['id']
+                                                    .toString()],
+                                            keyboardType:
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
+                                            onChanged: (_) =>
+                                                setDialogState(() {}),
+                                            decoration: const InputDecoration(
+                                              labelText: 'Apply',
+                                              prefixText: '\$',
+                                              isDense: true,
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   if (invoice != selected.last)
                                     const Divider(height: 18),
@@ -1302,87 +1321,92 @@ class _ButcherSupplierAccountPageState
                           ),
                         ],
                         const SizedBox(height: 18),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.of(dialogContext).pop(),
-                              child: const Text('Cancel'),
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 14,
-                                ),
+                        PhoneRow(
+                          mode: PhoneRowMode.wrap,
+                          desktop: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(dialogContext).pop(),
+                                child: const Text('Cancel'),
                               ),
-                              onPressed: () {
-                                final paymentAmount = double.tryParse(
-                                  amountController.text.trim(),
-                                );
+                              const SizedBox(width: 8),
+                              FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _darkRed,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 14,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  final paymentAmount = double.tryParse(
+                                    amountController.text.trim(),
+                                  );
 
-                                if (paymentAmount == null ||
-                                    paymentAmount <= 0) {
-                                  return;
-                                }
-
-                                final allocations = <Map<String, dynamic>>[];
-
-                                for (final invoice in selected) {
-                                  final invoiceId = invoice['id'].toString();
-                                  final amount =
-                                      double.tryParse(
-                                        allocationControllers[invoiceId]?.text
-                                                .trim() ??
-                                            '',
-                                      ) ??
-                                      0;
-
-                                  if (amount < 0 ||
-                                      amount >
-                                          _asDouble(
-                                            invoice['outstanding_amount'],
-                                          )) {
+                                  if (paymentAmount == null ||
+                                      paymentAmount <= 0) {
                                     return;
                                   }
 
-                                  if (amount > 0) {
-                                    allocations.add({
-                                      'invoice_id': invoiceId,
-                                      'amount': amount,
-                                    });
+                                  final allocations = <Map<String, dynamic>>[];
+
+                                  for (final invoice in selected) {
+                                    final invoiceId = invoice['id'].toString();
+                                    final amount =
+                                        double.tryParse(
+                                          allocationControllers[invoiceId]?.text
+                                                  .trim() ??
+                                              '',
+                                        ) ??
+                                        0;
+
+                                    if (amount < 0 ||
+                                        amount >
+                                            _asDouble(
+                                              invoice['outstanding_amount'],
+                                            )) {
+                                      return;
+                                    }
+
+                                    if (amount > 0) {
+                                      allocations.add({
+                                        'invoice_id': invoiceId,
+                                        'amount': amount,
+                                      });
+                                    }
                                   }
-                                }
 
-                                final allocatedTotal = allocations.fold<double>(
-                                  0,
-                                  (sum, item) =>
-                                      sum + _asDouble(item['amount']),
-                                );
+                                  final allocatedTotal = allocations
+                                      .fold<double>(
+                                        0,
+                                        (sum, item) =>
+                                            sum + _asDouble(item['amount']),
+                                      );
 
-                                if (allocatedTotal > paymentAmount) {
-                                  return;
-                                }
+                                  if (allocatedTotal > paymentAmount) {
+                                    return;
+                                  }
 
-                                Navigator.of(dialogContext).pop({
-                                  'amount': paymentAmount,
-                                  'method': method,
-                                  'date':
-                                      '${paymentDate.year.toString().padLeft(4, '0')}-'
-                                      '${paymentDate.month.toString().padLeft(2, '0')}-'
-                                      '${paymentDate.day.toString().padLeft(2, '0')}',
-                                  'reference': referenceController.text.trim(),
-                                  'notes': notesController.text.trim(),
-                                  'allocations': allocations,
-                                });
-                              },
-                              icon: const Icon(Icons.send_outlined, size: 18),
-                              label: const Text('Submit for Confirmation'),
-                            ),
-                          ],
+                                  Navigator.of(dialogContext).pop({
+                                    'amount': paymentAmount,
+                                    'method': method,
+                                    'date':
+                                        '${paymentDate.year.toString().padLeft(4, '0')}-'
+                                        '${paymentDate.month.toString().padLeft(2, '0')}-'
+                                        '${paymentDate.day.toString().padLeft(2, '0')}',
+                                    'reference': referenceController.text
+                                        .trim(),
+                                    'notes': notesController.text.trim(),
+                                    'allocations': allocations,
+                                  });
+                                },
+                                icon: const Icon(Icons.send_outlined, size: 18),
+                                label: const Text('Submit for Confirmation'),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1460,19 +1484,22 @@ class _ButcherSupplierAccountPageState
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.hourglass_top_rounded,
-                  color: Color(0xFF9A5B00),
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Awaiting Supplier Confirmation',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-                ),
-              ],
+            child: PhoneRow(
+              mode: PhoneRowMode.wrap,
+              desktop: Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Color(0xFF9A5B00),
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Awaiting Supplier Confirmation',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1),
@@ -1507,54 +1534,58 @@ class _ButcherSupplierAccountPageState
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.payments_outlined, color: Color(0xFF9A5B00)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  submission['reference']?.toString().trim().isNotEmpty == true
-                      ? submission['reference'].toString()
-                      : 'Payment Submitted',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_date(submission['payment_date'])} • $allocationText',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
-                    fontSize: 10.5,
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            const Icon(Icons.payments_outlined, color: Color(0xFF9A5B00)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    submission['reference']?.toString().trim().isNotEmpty ==
+                            true
+                        ? submission['reference'].toString()
+                        : 'Payment Submitted',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            _money(submission['amount']),
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(width: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF3DF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              'Pending',
-              style: TextStyle(
-                color: Color(0xFF9A5B00),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w900,
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_date(submission['payment_date'])} • $allocationText',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF777777),
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            Text(
+              _money(submission['amount']),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3DF),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text(
+                'Pending',
+                style: TextStyle(
+                  color: Color(0xFF9A5B00),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1622,33 +1653,36 @@ class _ButcherSupplierAccountPageState
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: const Color(0xFFE1E1DD)),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.checklist_rounded, color: _darkRed, size: 18),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              selected.isEmpty
-                  ? 'Submit a payment with no invoice selected for a general '
-                        'account / statement payment, or tick invoices to propose '
-                        'where the payment should be applied.'
-                  : '${selected.length} invoice'
-                        '${selected.length == 1 ? '' : 's'} selected for proposed allocation.',
-              style: const TextStyle(
-                color: Color(0xFF555555),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            const Icon(Icons.checklist_rounded, color: _darkRed, size: 18),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                selected.isEmpty
+                    ? 'Submit a payment with no invoice selected for a general '
+                          'account / statement payment, or tick invoices to propose '
+                          'where the payment should be applied.'
+                    : '${selected.length} invoice'
+                          '${selected.length == 1 ? '' : 's'} selected for proposed allocation.',
+                style: const TextStyle(
+                  color: Color(0xFF555555),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-          if (selected.isNotEmpty)
-            TextButton(
-              onPressed: () {
-                setState(() => _selectedInvoiceIds.clear());
-              },
-              child: const Text('Clear'),
-            ),
-        ],
+            if (selected.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  setState(() => _selectedInvoiceIds.clear());
+                },
+                child: const Text('Clear'),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1976,51 +2010,54 @@ class _ButcherSupplierAccountPageState
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
-                    fontSize: 11,
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            Icon(icon, color: iconColor),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                ),
-              ],
-            ),
-          ),
-          _ledgerAmount('AMOUNT', amount),
-          const SizedBox(width: 18),
-          _ledgerAmount('ALLOCATED', allocated),
-          const SizedBox(width: 18),
-          _ledgerAmount(remainingLabel, remaining),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF315A8C).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              status,
-              style: const TextStyle(
-                color: Color(0xFF315A8C),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w900,
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF777777),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            _ledgerAmount('AMOUNT', amount),
+            const SizedBox(width: 18),
+            _ledgerAmount('ALLOCATED', allocated),
+            const SizedBox(width: 18),
+            _ledgerAmount(remainingLabel, remaining),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF315A8C).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                status,
+                style: const TextStyle(
+                  color: Color(0xFF315A8C),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2086,14 +2123,14 @@ class _ButcherSupplierAccountPageState
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.supplierName)),
+        appBar: phoneAppBar(context, AppBar(title: Text(widget.supplierName))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.supplierName)),
+        appBar: phoneAppBar(context, AppBar(title: Text(widget.supplierName))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -2115,90 +2152,99 @@ class _ButcherSupplierAccountPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: Row(
-          children: [
-            const Icon(
-              Icons.account_balance_outlined,
-              color: _darkRed,
-              size: 22,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: Row(
+            children: [
+              const Icon(
+                Icons.account_balance_outlined,
+                color: _darkRed,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.supplierName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const Text(
+                      'Supplier Account',
+                      style: TextStyle(
+                        color: Color(0xFF666A70),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton.icon(
+              onPressed: _loading ? null : _submitAccountPayment,
+              style: FilledButton.styleFrom(
+                backgroundColor: _darkRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.payments_outlined, size: 18),
+              label: const Text(
+                'Submit Payment',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _openStatement,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF34383D),
+                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: const Text(
+                'Statement',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _loadPage,
+              icon: const Icon(Icons.refresh),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.supplierName,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const Text(
-                    'Supplier Account',
-                    style: TextStyle(
-                      color: Color(0xFF666A70),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
-        ),
-        actions: [
-          FilledButton.icon(
-            onPressed: _loading ? null : _submitAccountPayment,
-            style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.payments_outlined, size: 18),
-            label: const Text(
-              'Submit Payment',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: _openStatement,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF34383D),
-              side: const BorderSide(color: Color(0xFFD9DDE1)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.description_outlined, size: 18),
-            label: const Text(
-              'Statement',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loadPage,
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
         ),
       ),
       body: RefreshIndicator(
@@ -2212,40 +2258,44 @@ class _ButcherSupplierAccountPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        _metric(
-                          'Outstanding',
-                          _summary?['outstanding_balance'],
-                          color: _asDouble(_summary?['outstanding_balance']) > 0
-                              ? _darkRed
-                              : null,
-                        ),
-                        const SizedBox(width: 10),
-                        _metric(
-                          'Overdue',
-                          _summary?['overdue_amount'],
-                          color: _asDouble(_summary?['overdue_amount']) > 0
-                              ? const Color(0xFFB3261E)
-                              : null,
-                        ),
-                        const SizedBox(width: 10),
-                        _metric(
-                          'Due Soon',
-                          _summary?['due_soon_amount'],
-                          color: _asDouble(_summary?['due_soon_amount']) > 0
-                              ? const Color(0xFF9A5B00)
-                              : null,
-                        ),
-                        const SizedBox(width: 10),
-                        _metric(
-                          'Credit Available',
-                          _summary?['credit_available'],
-                          color: _asDouble(_summary?['credit_available']) > 0
-                              ? const Color(0xFF315A8C)
-                              : null,
-                        ),
-                      ],
+                    PhoneRow(
+                      mode: PhoneRowMode.metrics,
+                      desktop: Row(
+                        children: [
+                          _metric(
+                            'Outstanding',
+                            _summary?['outstanding_balance'],
+                            color:
+                                _asDouble(_summary?['outstanding_balance']) > 0
+                                ? _darkRed
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          _metric(
+                            'Overdue',
+                            _summary?['overdue_amount'],
+                            color: _asDouble(_summary?['overdue_amount']) > 0
+                                ? const Color(0xFFB3261E)
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          _metric(
+                            'Due Soon',
+                            _summary?['due_soon_amount'],
+                            color: _asDouble(_summary?['due_soon_amount']) > 0
+                                ? const Color(0xFF9A5B00)
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          _metric(
+                            'Credit Available',
+                            _summary?['credit_available'],
+                            color: _asDouble(_summary?['credit_available']) > 0
+                                ? const Color(0xFF315A8C)
+                                : null,
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Container(
@@ -2255,45 +2305,48 @@ class _ButcherSupplierAccountPageState
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE3E5E8)),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_month_outlined,
-                            color: _darkRed,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Payment Terms',
-                                  style: TextStyle(
-                                    color: Color(0xFF777777),
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  _terms(),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _termsExplanation(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                    fontSize: 11.5,
-                                  ),
-                                ),
-                              ],
+                      child: PhoneRow(
+                        mode: PhoneRowMode.wrap,
+                        desktop: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_month_outlined,
+                              color: _darkRed,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Payment Terms',
+                                    style: TextStyle(
+                                      color: Color(0xFF777777),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _terms(),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _termsExplanation(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2556,61 +2609,64 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Mark Invoice as Paid'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This tells the supplier you have paid. The invoice will not clear until the supplier confirms the payment was received.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Mark Invoice as Paid'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This tells the supplier you have paid. The invoice will not clear until the supplier confirms the payment was received.',
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Amount paid',
+                  prefixText: r'$',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Payment note / reference (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Amount paid',
-                prefixText: r'$',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Payment note / reference (optional)',
-                border: OutlineInputBorder(),
-              ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () {
+                final amount = double.tryParse(
+                  controller.text.replaceAll(',', '').trim(),
+                );
+
+                if (amount == null || amount <= 0 || amount > _outstanding) {
+                  return;
+                }
+
+                Navigator.of(
+                  dialogContext,
+                ).pop({'amount': amount, 'note': noteController.text.trim()});
+              },
+              child: const Text('Submit Payment'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () {
-              final amount = double.tryParse(
-                controller.text.replaceAll(',', '').trim(),
-              );
-
-              if (amount == null || amount <= 0 || amount > _outstanding) {
-                return;
-              }
-
-              Navigator.of(
-                dialogContext,
-              ).pop({'amount': amount, 'note': noteController.text.trim()});
-            },
-            child: const Text('Submit Payment'),
-          ),
-        ],
       ),
     );
 
@@ -2726,8 +2782,13 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             }
 
             return Scaffold(
-              appBar: AppBar(
-                title: Text(invoice['invoice_number']?.toString() ?? 'Invoice'),
+              appBar: phoneAppBar(
+                context,
+                AppBar(
+                  title: Text(
+                    invoice['invoice_number']?.toString() ?? 'Invoice',
+                  ),
+                ),
               ),
               body: Column(
                 children: [
@@ -2824,8 +2885,12 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               ),
             ),
             const Divider(height: 1),
-            Expanded(
+            PhoneExpanded(
               child: ListView.separated(
+                shrinkWrap: isPhoneLayout(context),
+                physics: isPhoneLayout(context)
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 padding: const EdgeInsets.all(10),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
@@ -2840,62 +2905,67 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                       horizontal: 4,
                       vertical: 9,
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                documentProductTitle(item),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              if (documentProductSpecifications(
-                                item,
-                              ).isNotEmpty)
+                    child: PhoneRow(
+                      mode: PhoneRowMode.wrap,
+                      desktop: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  documentProductSpecifications(item),
+                                  documentProductTitle(item),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF646A70),
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                              if ((item['public_comment']?.toString().trim() ??
-                                      '')
-                                  .isNotEmpty)
+                                if (documentProductSpecifications(
+                                  item,
+                                ).isNotEmpty)
+                                  Text(
+                                    documentProductSpecifications(item),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF646A70),
+                                    ),
+                                  ),
+                                if ((item['public_comment']
+                                            ?.toString()
+                                            .trim() ??
+                                        '')
+                                    .isNotEmpty)
+                                  Text(
+                                    'Note: ${item['public_comment']}',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                if (_asDouble(item['discount_amount']) > 0)
+                                  Text(
+                                    'Discount: -${_money(_asDouble(item['discount_amount']))}',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                const SizedBox(height: 3),
                                 Text(
-                                  'Note: ${item['public_comment']}',
-                                  style: const TextStyle(fontSize: 11),
+                                  actualWeight > 0
+                                      ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
+                                      : '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''} × ${_money(unitPrice)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 11.5,
+                                  ),
                                 ),
-                              if (_asDouble(item['discount_amount']) > 0)
-                                Text(
-                                  'Discount: -${_money(_asDouble(item['discount_amount']))}',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              const SizedBox(height: 3),
-                              Text(
-                                actualWeight > 0
-                                    ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
-                                    : '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''} × ${_money(unitPrice)}',
-                                style: const TextStyle(
-                                  color: Color(0xFF666666),
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          _money(lineAmount),
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Text(
+                            _money(lineAmount),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -2915,6 +2985,10 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: ListView(
+          shrinkWrap: isPhoneLayout(context),
+          physics: isPhoneLayout(context)
+              ? const NeverScrollableScrollPhysics()
+              : null,
           children: [
             if (_supplierLogoBytes != null) ...[
               SizedBox(
@@ -3016,25 +3090,28 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(
-          _invoice['invoice_number']?.toString() ?? 'Invoice',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          if (invoiceIsPaid(_invoice))
-            const Chip(
-              label: Text('PAID'),
-              avatar: Icon(Icons.check_circle, color: Color(0xFF2E7D32)),
-            ),
-          IconButton(
-            tooltip: 'Preview, download or print invoice',
-            onPressed: _pdfBusy ? null : _openInvoicePreview,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text(
+            _invoice['invoice_number']?.toString() ?? 'Invoice',
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
-        ],
+          actions: [
+            if (invoiceIsPaid(_invoice))
+              const Chip(
+                label: Text('PAID'),
+                avatar: Icon(Icons.check_circle, color: Color(0xFF2E7D32)),
+              ),
+            IconButton(
+              tooltip: 'Preview, download or print invoice',
+              onPressed: _pdfBusy ? null : _openInvoicePreview,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+            ),
+          ],
+        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -3044,9 +3121,15 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             return ListView(
               padding: const EdgeInsets.all(14),
               children: [
-                SizedBox(height: 430, child: itemsPanel()),
+                SizedBox(
+                  height: isPhoneLayout(context) ? null : 430,
+                  child: itemsPanel(),
+                ),
                 const SizedBox(height: 12),
-                SizedBox(height: 500, child: summaryPanel()),
+                SizedBox(
+                  height: isPhoneLayout(context) ? null : 500,
+                  child: summaryPanel(),
+                ),
               ],
             );
           }

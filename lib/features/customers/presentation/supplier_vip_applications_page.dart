@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -296,33 +297,36 @@ class _SupplierVipApplicationsPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
-            SizedBox(width: 10),
-            Text(
-              'VIP Applications',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'VIP Applications',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          actions: [
+            IconButton(
+              onPressed: _loading ? null : _load,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: _buildBody(),
@@ -358,37 +362,40 @@ class _SupplierVipApplicationsPageState
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'VIP & Credit Applications',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
+            PhoneRow(
+              mode: PhoneRowMode.wrap,
+              desktop: Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'VIP & Credit Applications',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Review applications made directly to your supplier business. Your decisions, internal notes, credit settings and customer relationship remain private to your business.',
-                        style: TextStyle(
-                          color: Color(0xFF606060),
-                          height: 1.45,
+                        SizedBox(height: 7),
+                        Text(
+                          'Review applications made directly to your supplier business. Your decisions, internal notes, credit settings and customer relationship remain private to your business.',
+                          style: TextStyle(
+                            color: Color(0xFF606060),
+                            height: 1.45,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 18),
-                _countBadge(
-                  'Pending',
-                  _statusCount('pending'),
-                  const Color(0xFF9A6500),
-                ),
-              ],
+                  const SizedBox(width: 18),
+                  _countBadge(
+                    'Pending',
+                    _statusCount('pending'),
+                    const Color(0xFF9A6500),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -526,94 +533,98 @@ class _SupplierVipApplicationsPageState
         onTap: () => _openApplication(application),
         child: Padding(
           padding: const EdgeInsets.all(19),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: _darkRed.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(Icons.storefront_outlined, color: _darkRed),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _butcherName(application),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      _applicationTypeLabel(application),
-                      style: const TextStyle(
-                        color: Color(0xFF555555),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Submitted ${_dateTime(application['submitted_at'])}',
-                      style: const TextStyle(
-                        color: Color(0xFF777777),
-                        fontSize: 13,
-                      ),
-                    ),
-                    if (application['estimated_monthly_purchases'] != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        'Estimated monthly purchases: '
-                        '${_money(application['estimated_monthly_purchases'])}',
-                        style: const TextStyle(color: Color(0xFF555555)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColour.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _statusLabel(status),
-                      style: TextStyle(
-                        color: statusColour,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+          child: PhoneRow(
+            mode: PhoneRowMode.wrap,
+            desktop: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: _darkRed.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(13),
                   ),
-                  const SizedBox(height: 10),
-                  const Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: const Icon(Icons.storefront_outlined, color: _darkRed),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Review',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                        _butcherName(application),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(Icons.chevron_right),
+                      const SizedBox(height: 5),
+                      Text(
+                        _applicationTypeLabel(application),
+                        style: const TextStyle(
+                          color: Color(0xFF555555),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Submitted ${_dateTime(application['submitted_at'])}',
+                        style: const TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (application['estimated_monthly_purchases'] !=
+                          null) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          'Estimated monthly purchases: '
+                          '${_money(application['estimated_monthly_purchases'])}',
+                          style: const TextStyle(color: Color(0xFF555555)),
+                        ),
+                      ],
                     ],
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColour.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _statusLabel(status),
+                        style: TextStyle(
+                          color: statusColour,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Review',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.chevron_right),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -768,44 +779,47 @@ class _SupplierVipApplicationDetailPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Decline ${_name()}?'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'This only declines the VIP application made to your supplier business. It does not affect the butcher’s CutLink account or their relationship with another supplier.',
-                  style: TextStyle(height: 1.4),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: notesController,
-                  minLines: 3,
-                  maxLines: 6,
-                  decoration: const InputDecoration(
-                    labelText: 'Internal decline notes (optional)',
-                    hintText: 'Private to your supplier business',
-                    border: OutlineInputBorder(),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: Text('Decline ${_name()}?'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'This only declines the VIP application made to your supplier business. It does not affect the butcher’s CutLink account or their relationship with another supplier.',
+                    style: TextStyle(height: 1.4),
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF9A3030),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: notesController,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      labelText: 'Internal decline notes (optional)',
+                      hintText: 'Private to your supplier business',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Decline Application'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF9A3030),
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Decline Application'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -870,35 +884,38 @@ class _SupplierVipApplicationDetailPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 8,
-        title: Row(
-          children: [
-            const Icon(
-              Icons.workspace_premium_outlined,
-              color: _darkRed,
-              size: 21,
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                _name(),
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 8,
+          title: Row(
+            children: [
+              const Icon(
+                Icons.workspace_premium_outlined,
+                color: _darkRed,
+                size: 21,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  _name(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            ],
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       bottomNavigationBar: pending
@@ -912,50 +929,55 @@ class _SupplierVipApplicationDetailPageState
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1000),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _processing ? null : _decline,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF9A3030),
-                              side: const BorderSide(color: Color(0xFFD9DDE1)),
-                              minimumSize: const Size.fromHeight(50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                    child: PhoneRow(
+                      mode: PhoneRowMode.stack,
+                      desktop: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _processing ? null : _decline,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF9A3030),
+                                side: const BorderSide(
+                                  color: Color(0xFFD9DDE1),
+                                ),
+                                minimumSize: const Size.fromHeight(50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
+                              icon: const Icon(Icons.close),
+                              label: const Text('Decline'),
                             ),
-                            icon: const Icon(Icons.close),
-                            label: const Text('Decline'),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton.icon(
-                            onPressed: _processing ? null : _approve,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton.icon(
+                              onPressed: _processing ? null : _approve,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
+                              icon: _processing
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.check),
+                              label: const Text('Approve VIP Pricing'),
                             ),
-                            icon: _processing
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.check),
-                            label: const Text('Approve VIP Pricing'),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1199,27 +1221,30 @@ class _SupplierVipApplicationDetailPageState
   Widget _detailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 210,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF666666),
-                fontWeight: FontWeight.w700,
+      child: PhoneRow(
+        mode: PhoneRowMode.stack,
+        desktop: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 210,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF666666),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1302,154 +1327,165 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
   Widget build(BuildContext context) {
     final account = _paymentMethod == 'account';
 
-    return AlertDialog(
-      title: const Text('Approve VIP Application'),
-      content: SizedBox(
-        width: 600,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'VIP pricing will be enabled only for this butcher with your supplier business.',
-                style: TextStyle(height: 1.4),
-              ),
-              const SizedBox(height: 18),
-              DropdownButtonFormField<String>(
-                initialValue: _riskRating,
-                decoration: const InputDecoration(
-                  labelText: 'Internal risk assessment',
-                  border: OutlineInputBorder(),
+    return phoneDialog(
+      context,
+      AlertDialog(
+        title: const Text('Approve VIP Application'),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'VIP pricing will be enabled only for this butcher with your supplier business.',
+                  style: TextStyle(height: 1.4),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'manual_review',
-                    child: Text('Manual review / not rated'),
+                const SizedBox(height: 18),
+                DropdownButtonFormField<String>(
+                  isExpanded: isPhoneLayout(context),
+                  initialValue: _riskRating,
+                  decoration: const InputDecoration(
+                    labelText: 'Internal risk assessment',
+                    border: OutlineInputBorder(),
                   ),
-                  DropdownMenuItem(value: 'low', child: Text('Low risk')),
-                  DropdownMenuItem(value: 'medium', child: Text('Medium risk')),
-                  DropdownMenuItem(value: 'high', child: Text('High risk')),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _riskRating = value);
-                },
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _paymentMethod,
-                decoration: const InputDecoration(
-                  labelText: 'Approved payment method',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'cod', child: Text('COD')),
-                  DropdownMenuItem(value: 'prepaid', child: Text('Prepaid')),
-                  DropdownMenuItem(
-                    value: 'account',
-                    child: Text('Credit account'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _paymentMethod = value);
-                },
-              ),
-              if (account) ...[
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _termsController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Payment terms',
-                          suffixText: 'days',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'manual_review',
+                      child: Text('Manual review / not rated'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _creditLimitController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Credit limit',
-                          prefixText: '\$',
-                          hintText: 'Optional',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                    DropdownMenuItem(value: 'low', child: Text('Low risk')),
+                    DropdownMenuItem(
+                      value: 'medium',
+                      child: Text('Medium risk'),
+                    ),
+                    DropdownMenuItem(value: 'high', child: Text('High risk')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _riskRating = value);
+                  },
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  isExpanded: isPhoneLayout(context),
+                  initialValue: _paymentMethod,
+                  decoration: const InputDecoration(
+                    labelText: 'Approved payment method',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'cod', child: Text('COD')),
+                    DropdownMenuItem(value: 'prepaid', child: Text('Prepaid')),
+                    DropdownMenuItem(
+                      value: 'account',
+                      child: Text('Credit account'),
                     ),
                   ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _paymentMethod = value);
+                  },
                 ),
-              ],
-              const SizedBox(height: 14),
-              TextField(
-                controller: _notesController,
-                minLines: 3,
-                maxLines: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Internal review notes',
-                  hintText:
-                      'Private to your supplier business. Not visible to the butcher or another supplier.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF741C1C),
-          ),
-          onPressed: () {
-            final terms = int.tryParse(_termsController.text.trim());
-            final creditText = _creditLimitController.text.trim();
-            final creditLimit = creditText.isEmpty
-                ? null
-                : double.tryParse(creditText);
-
-            if (account && (terms == null || terms <= 0)) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Enter valid payment terms for a credit account.',
+                if (account) ...[
+                  const SizedBox(height: 14),
+                  PhoneRow(
+                    mode: PhoneRowMode.stack,
+                    desktop: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _termsController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Payment terms',
+                              suffixText: 'days',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _creditLimitController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Credit limit',
+                              prefixText: '\$',
+                              hintText: 'Optional',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _notesController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Internal review notes',
+                    hintText:
+                        'Private to your supplier business. Not visible to the butcher or another supplier.',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              );
-              return;
-            }
-
-            if (creditText.isNotEmpty &&
-                (creditLimit == null || creditLimit < 0)) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Enter a valid credit limit.')),
-              );
-              return;
-            }
-
-            Navigator.of(context).pop({
-              'risk_rating': _riskRating,
-              'payment_method': _paymentMethod,
-              'payment_terms_days': account ? terms : 0,
-              'credit_limit': account ? creditLimit : null,
-              'internal_notes': _notesController.text.trim(),
-            });
-          },
-          child: const Text('Approve VIP'),
+              ],
+            ),
+          ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF741C1C),
+            ),
+            onPressed: () {
+              final terms = int.tryParse(_termsController.text.trim());
+              final creditText = _creditLimitController.text.trim();
+              final creditLimit = creditText.isEmpty
+                  ? null
+                  : double.tryParse(creditText);
+
+              if (account && (terms == null || terms <= 0)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Enter valid payment terms for a credit account.',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              if (creditText.isNotEmpty &&
+                  (creditLimit == null || creditLimit < 0)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid credit limit.')),
+                );
+                return;
+              }
+
+              Navigator.of(context).pop({
+                'risk_rating': _riskRating,
+                'payment_method': _paymentMethod,
+                'payment_terms_days': account ? terms : 0,
+                'credit_limit': account ? creditLimit : null,
+                'internal_notes': _notesController.text.trim(),
+              });
+            },
+            child: const Text('Approve VIP'),
+          ),
+        ],
+      ),
     );
   }
 }

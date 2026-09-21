@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -414,53 +415,57 @@ class _AddProductPageState extends State<AddProductPage> {
 
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Supplier-Specific Cut'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Specification name',
-                  hintText: 'Enter the missing trade specification',
-                  border: OutlineInputBorder(),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Add Supplier-Specific Cut'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Specification name',
+                    hintText: 'Enter the missing trade specification',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: details,
-                minLines: 3,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Specification details (optional)',
-                  hintText: 'Trim, preparation, code or other defining details',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: details,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Specification details (optional)',
+                    hintText:
+                        'Trim, preparation, code or other defining details',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () {
+                if (name.text.trim().isEmpty) return;
+                Navigator.pop(dialogContext, {
+                  'name': name.text.trim(),
+                  'details': details.text.trim(),
+                });
+              },
+              child: const Text('Add Specification'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () {
-              if (name.text.trim().isEmpty) return;
-              Navigator.pop(dialogContext, {
-                'name': name.text.trim(),
-                'details': details.text.trim(),
-              });
-            },
-            child: const Text('Add Specification'),
-          ),
-        ],
       ),
     );
 
@@ -1113,10 +1118,13 @@ class _AddProductPageState extends State<AddProductPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6F3),
-      appBar: AppBar(
-        title: const Text(
-          'Add Product',
-          style: TextStyle(fontWeight: FontWeight.w900),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          title: const Text(
+            'Add Product',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
         ),
       ),
       body: Form(
@@ -1751,45 +1759,52 @@ class _AddProductPageState extends State<AddProductPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: _saving
-                            ? null
-                            : () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        height: 50,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                          ),
-                          onPressed: _saving ? null : _save,
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.add_business_outlined),
-                          label: Text(
-                            _saving
-                                ? 'Saving...'
-                                : _isChicken
-                                ? 'Add Chicken Product'
-                                : 'Add Product',
-                            style: const TextStyle(fontWeight: FontWeight.w900),
+                  PhoneRow(
+                    mode: PhoneRowMode.wrap,
+                    desktop: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: _saving
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 50,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _darkRed,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                            ),
+                            onPressed: _saving ? null : _save,
+                            icon: _saving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.add_business_outlined),
+                            label: Text(
+                              _saving
+                                  ? 'Saving...'
+                                  : _isChicken
+                                  ? 'Add Chicken Product'
+                                  : 'Add Product',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

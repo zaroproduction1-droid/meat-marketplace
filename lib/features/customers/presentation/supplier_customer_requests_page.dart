@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -737,390 +738,402 @@ class _SupplierCustomerRequestsPageState
               );
             }
 
-            return AlertDialog(
-              backgroundColor: const Color(0xFFFAFAF9),
-              surfaceTintColor: Colors.transparent,
-              insetPadding: const EdgeInsets.all(18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 12),
-              title: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: _darkRed,
-                      borderRadius: BorderRadius.circular(11),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                backgroundColor: const Color(0xFFFAFAF9),
+                surfaceTintColor: Colors.transparent,
+                insetPadding: const EdgeInsets.all(18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 12),
+                title: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: _darkRed,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        account == null
+                            ? Icons.person_add_alt_1
+                            : Icons.manage_accounts_outlined,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: Icon(
-                      account == null
-                          ? Icons.person_add_alt_1
-                          : Icons.manage_accounts_outlined,
-                      color: Colors.white,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            account == null
+                                ? 'Add Customer'
+                                : 'Edit Account Settings',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            account == null
+                                ? 'Create a supplier-managed customer account.'
+                                : 'Update contact details and commercial terms.',
+                            style: const TextStyle(
+                              color: Color(0xFF6D6D6D),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(24, 6, 24, 12),
+                content: SizedBox(
+                  width: 820,
+                  child: SingleChildScrollView(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          account == null
-                              ? 'Add Customer'
-                              : 'Edit Account Settings',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                        sectionHeader(Icons.badge_outlined, 'Customer details'),
+                        const SizedBox(height: 10),
+                        fieldGrid([
+                          TextField(
+                            controller: customerNameController,
+                            autofocus: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Business name',
+                              prefixIcon: Icon(Icons.storefront_outlined),
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          account == null
-                              ? 'Create a supplier-managed customer account.'
-                              : 'Update contact details and commercial terms.',
-                          style: const TextStyle(
-                            color: Color(0xFF6D6D6D),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                          TextField(
+                            controller: contactNameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Contact name',
+                              prefixIcon: Icon(Icons.person_outline),
+                              border: OutlineInputBorder(),
+                            ),
                           ),
+                        ]),
+                        const SizedBox(height: 12),
+                        fieldGrid([
+                          TextField(
+                            controller: abnController,
+                            decoration: const InputDecoration(
+                              labelText: 'ABN (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          TextField(
+                            controller: emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          TextField(
+                            controller: phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Phone (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 20),
+                        sectionHeader(
+                          Icons.local_shipping_outlined,
+                          'Delivery address',
                         ),
+                        const SizedBox(height: 10),
+                        fieldGrid([
+                          TextField(
+                            controller: deliveryLine1Controller,
+                            decoration: const InputDecoration(
+                              labelText: 'Address line 1 (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          TextField(
+                            controller: deliveryLine2Controller,
+                            decoration: const InputDecoration(
+                              labelText: 'Address line 2 (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final narrow = constraints.maxWidth < 560;
+
+                            final suburb = TextField(
+                              controller: deliverySuburbController,
+                              decoration: const InputDecoration(
+                                labelText: 'Suburb',
+                                border: OutlineInputBorder(),
+                              ),
+                            );
+                            final state = TextField(
+                              controller: deliveryStateController,
+                              decoration: const InputDecoration(
+                                labelText: 'State',
+                                border: OutlineInputBorder(),
+                              ),
+                            );
+                            final postcode = TextField(
+                              controller: deliveryPostcodeController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Postcode',
+                                border: OutlineInputBorder(),
+                              ),
+                            );
+
+                            if (narrow) {
+                              return Column(
+                                children: [
+                                  suburb,
+                                  const SizedBox(height: 14),
+                                  state,
+                                  const SizedBox(height: 14),
+                                  postcode,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(flex: 2, child: suburb),
+                                const SizedBox(width: 12),
+                                Expanded(child: state),
+                                const SizedBox(width: 12),
+                                Expanded(child: postcode),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        sectionHeader(
+                          Icons.account_balance_wallet_outlined,
+                          'Commercial terms',
+                        ),
+                        const SizedBox(height: 10),
+                        fieldGrid([
+                          DropdownButtonFormField<String>(
+                            isExpanded: isPhoneLayout(context),
+                            initialValue: paymentMethod,
+                            decoration: const InputDecoration(
+                              labelText: 'Payment type',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'cod',
+                                child: Text('COD'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'prepaid',
+                                child: Text('Prepaid'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'account',
+                                child: Text('Account'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() {
+                                paymentMethod = value;
+                                if (value != 'account') {
+                                  paymentTermsController.text = '0';
+                                  creditLimitController.clear();
+                                }
+                              });
+                            },
+                          ),
+                          TextField(
+                            controller: accountReferenceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Account reference (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ]),
+                        if (paymentMethod == 'account') ...[
+                          const SizedBox(height: 12),
+                          fieldGrid([
+                            TextField(
+                              controller: paymentTermsController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Account terms (days)',
+                                hintText: 'Example: 7, 15, 30',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextField(
+                              controller: creditLimitController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Credit limit (optional)',
+                                prefixText: '\$',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            TextField(
+                              controller: issueWindowController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Issue window (hours)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ]),
+                        ] else ...[
+                          const SizedBox(height: 12),
+                          fieldGrid([
+                            TextField(
+                              controller: issueWindowController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Issue reporting window (hours)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox.shrink(),
+                          ]),
+                        ],
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Close',
+                ),
+                actionsPadding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
+                actions: [
+                  TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    icon: const Icon(Icons.close),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final customerName = customerNameController.text.trim();
+
+                      if (customerName.isEmpty) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter a customer name.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      final paymentTermsDays =
+                          int.tryParse(paymentTermsController.text.trim()) ?? 0;
+                      final issueWindowHours = int.tryParse(
+                        issueWindowController.text.trim(),
+                      );
+
+                      final creditLimitText = creditLimitController.text.trim();
+                      final creditLimit = creditLimitText.isEmpty
+                          ? null
+                          : double.tryParse(creditLimitText);
+
+                      if (paymentMethod == 'account' && paymentTermsDays <= 0) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter valid account terms in days.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (issueWindowHours == null ||
+                          issueWindowHours < 1 ||
+                          issueWindowHours > 720) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Issue reporting window must be between 1 and 720 hours.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (creditLimitText.isNotEmpty &&
+                          (creditLimit == null || creditLimit < 0)) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter a valid credit limit.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      String? nullable(String value) {
+                        final trimmed = value.trim();
+                        return trimmed.isEmpty ? null : trimmed;
+                      }
+
+                      Navigator.of(dialogContext).pop({
+                        'customer_name': customerName,
+                        'legal_name': nullable(customerNameController.text),
+                        'abn': nullable(abnController.text),
+                        'contact_name': nullable(contactNameController.text),
+                        'email': nullable(emailController.text),
+                        'phone': nullable(phoneController.text),
+                        'delivery_address_line_1': nullable(
+                          deliveryLine1Controller.text,
+                        ),
+                        'delivery_address_line_2': nullable(
+                          deliveryLine2Controller.text,
+                        ),
+                        'delivery_suburb': nullable(
+                          deliverySuburbController.text,
+                        ),
+                        'delivery_state': nullable(
+                          deliveryStateController.text,
+                        ),
+                        'delivery_postcode': nullable(
+                          deliveryPostcodeController.text,
+                        ),
+                        'account_reference': nullable(
+                          accountReferenceController.text,
+                        ),
+                        'payment_method': paymentMethod,
+                        'payment_terms_days': paymentMethod == 'account'
+                            ? paymentTermsDays
+                            : 0,
+                        'credit_limit': paymentMethod == 'account'
+                            ? creditLimit
+                            : null,
+                        'issue_reporting_window_hours': issueWindowHours,
+                      });
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    child: Text(
+                      account == null ? 'Create Customer' : 'Save Changes',
+                    ),
                   ),
                 ],
               ),
-              contentPadding: const EdgeInsets.fromLTRB(24, 6, 24, 12),
-              content: SizedBox(
-                width: 820,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      sectionHeader(Icons.badge_outlined, 'Customer details'),
-                      const SizedBox(height: 10),
-                      fieldGrid([
-                        TextField(
-                          controller: customerNameController,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Business name',
-                            prefixIcon: Icon(Icons.storefront_outlined),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        TextField(
-                          controller: contactNameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Contact name',
-                            prefixIcon: Icon(Icons.person_outline),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ]),
-                      const SizedBox(height: 12),
-                      fieldGrid([
-                        TextField(
-                          controller: abnController,
-                          decoration: const InputDecoration(
-                            labelText: 'ABN (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        TextField(
-                          controller: phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ]),
-                      const SizedBox(height: 20),
-                      sectionHeader(
-                        Icons.local_shipping_outlined,
-                        'Delivery address',
-                      ),
-                      const SizedBox(height: 10),
-                      fieldGrid([
-                        TextField(
-                          controller: deliveryLine1Controller,
-                          decoration: const InputDecoration(
-                            labelText: 'Address line 1 (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        TextField(
-                          controller: deliveryLine2Controller,
-                          decoration: const InputDecoration(
-                            labelText: 'Address line 2 (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ]),
-                      const SizedBox(height: 12),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 560;
-
-                          final suburb = TextField(
-                            controller: deliverySuburbController,
-                            decoration: const InputDecoration(
-                              labelText: 'Suburb',
-                              border: OutlineInputBorder(),
-                            ),
-                          );
-                          final state = TextField(
-                            controller: deliveryStateController,
-                            decoration: const InputDecoration(
-                              labelText: 'State',
-                              border: OutlineInputBorder(),
-                            ),
-                          );
-                          final postcode = TextField(
-                            controller: deliveryPostcodeController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Postcode',
-                              border: OutlineInputBorder(),
-                            ),
-                          );
-
-                          if (narrow) {
-                            return Column(
-                              children: [
-                                suburb,
-                                const SizedBox(height: 14),
-                                state,
-                                const SizedBox(height: 14),
-                                postcode,
-                              ],
-                            );
-                          }
-
-                          return Row(
-                            children: [
-                              Expanded(flex: 2, child: suburb),
-                              const SizedBox(width: 12),
-                              Expanded(child: state),
-                              const SizedBox(width: 12),
-                              Expanded(child: postcode),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      sectionHeader(
-                        Icons.account_balance_wallet_outlined,
-                        'Commercial terms',
-                      ),
-                      const SizedBox(height: 10),
-                      fieldGrid([
-                        DropdownButtonFormField<String>(
-                          initialValue: paymentMethod,
-                          decoration: const InputDecoration(
-                            labelText: 'Payment type',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'cod', child: Text('COD')),
-                            DropdownMenuItem(
-                              value: 'prepaid',
-                              child: Text('Prepaid'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'account',
-                              child: Text('Account'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setDialogState(() {
-                              paymentMethod = value;
-                              if (value != 'account') {
-                                paymentTermsController.text = '0';
-                                creditLimitController.clear();
-                              }
-                            });
-                          },
-                        ),
-                        TextField(
-                          controller: accountReferenceController,
-                          decoration: const InputDecoration(
-                            labelText: 'Account reference (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ]),
-                      if (paymentMethod == 'account') ...[
-                        const SizedBox(height: 12),
-                        fieldGrid([
-                          TextField(
-                            controller: paymentTermsController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Account terms (days)',
-                              hintText: 'Example: 7, 15, 30',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          TextField(
-                            controller: creditLimitController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Credit limit (optional)',
-                              prefixText: '\$',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          TextField(
-                            controller: issueWindowController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Issue window (hours)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ]),
-                      ] else ...[
-                        const SizedBox(height: 12),
-                        fieldGrid([
-                          TextField(
-                            controller: issueWindowController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Issue reporting window (hours)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox.shrink(),
-                        ]),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              actionsPadding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final customerName = customerNameController.text.trim();
-
-                    if (customerName.isEmpty) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('Enter a customer name.')),
-                      );
-                      return;
-                    }
-
-                    final paymentTermsDays =
-                        int.tryParse(paymentTermsController.text.trim()) ?? 0;
-                    final issueWindowHours = int.tryParse(
-                      issueWindowController.text.trim(),
-                    );
-
-                    final creditLimitText = creditLimitController.text.trim();
-                    final creditLimit = creditLimitText.isEmpty
-                        ? null
-                        : double.tryParse(creditLimitText);
-
-                    if (paymentMethod == 'account' && paymentTermsDays <= 0) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Enter valid account terms in days.'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    if (issueWindowHours == null ||
-                        issueWindowHours < 1 ||
-                        issueWindowHours > 720) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Issue reporting window must be between 1 and 720 hours.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    if (creditLimitText.isNotEmpty &&
-                        (creditLimit == null || creditLimit < 0)) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Enter a valid credit limit.'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    String? nullable(String value) {
-                      final trimmed = value.trim();
-                      return trimmed.isEmpty ? null : trimmed;
-                    }
-
-                    Navigator.of(dialogContext).pop({
-                      'customer_name': customerName,
-                      'legal_name': nullable(customerNameController.text),
-                      'abn': nullable(abnController.text),
-                      'contact_name': nullable(contactNameController.text),
-                      'email': nullable(emailController.text),
-                      'phone': nullable(phoneController.text),
-                      'delivery_address_line_1': nullable(
-                        deliveryLine1Controller.text,
-                      ),
-                      'delivery_address_line_2': nullable(
-                        deliveryLine2Controller.text,
-                      ),
-                      'delivery_suburb': nullable(
-                        deliverySuburbController.text,
-                      ),
-                      'delivery_state': nullable(deliveryStateController.text),
-                      'delivery_postcode': nullable(
-                        deliveryPostcodeController.text,
-                      ),
-                      'account_reference': nullable(
-                        accountReferenceController.text,
-                      ),
-                      'payment_method': paymentMethod,
-                      'payment_terms_days': paymentMethod == 'account'
-                          ? paymentTermsDays
-                          : 0,
-                      'credit_limit': paymentMethod == 'account'
-                          ? creditLimit
-                          : null,
-                      'issue_reporting_window_hours': issueWindowHours,
-                    });
-                  },
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  child: Text(
-                    account == null ? 'Create Customer' : 'Save Changes',
-                  ),
-                ),
-              ],
             );
           },
         );
@@ -1411,55 +1424,58 @@ class _SupplierCustomerRequestsPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.people_alt_outlined, color: _darkRed, size: 22),
-            SizedBox(width: 10),
-            Text(
-              'Customers & Accounts',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(Icons.people_alt_outlined, color: _darkRed, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Customers & Accounts',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: FilledButton.icon(
+                onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.person_add_alt_1, size: 18),
+                label: const Text(
+                  'Add External Customer',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
             ),
+            const SizedBox(width: 6),
+            IconButton(
+              onPressed: _loadPage,
+              tooltip: 'Refresh customers and accounts',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
           ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: FilledButton.icon(
-              onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
-              style: FilledButton.styleFrom(
-                backgroundColor: _darkRed,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 11,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              icon: const Icon(Icons.person_add_alt_1, size: 18),
-              label: const Text(
-                'Add External Customer',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
           ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: _loadPage,
-            tooltip: 'Refresh customers and accounts',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
         ),
       ),
       body: _buildBody(),
@@ -1565,32 +1581,35 @@ class _SupplierCustomerRequestsPageState
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
+                  child: PhoneRow(
+                    mode: PhoneRowMode.wrap,
+                    desktop: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              style: const TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 11.5,
+                              const SizedBox(height: 2),
+                              Text(
+                                subtitle,
+                                style: const TextStyle(
+                                  color: Color(0xFF666666),
+                                  fontSize: 11.5,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      ?action,
-                    ],
+                        ?action,
+                      ],
+                    ),
                   ),
                 ),
                 const Divider(height: 1),
@@ -1871,84 +1890,90 @@ class _SupplierCustomerRequestsPageState
                   color: const Color(0xFFF8F8F6),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _financialCompact(
-                        'Outstanding',
-                        _money(outstanding),
-                        outstanding > 0 ? _darkRed : null,
-                      ),
-                    ),
-                    Expanded(
-                      child: _financialCompact(
-                        'Overdue',
-                        _money(overdue),
-                        overdue > 0 ? const Color(0xFFB3261E) : null,
-                      ),
-                    ),
-                    Expanded(
-                      child: _financialCompact(
-                        'Next Due',
-                        nextDue > 0
-                            ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
-                            : '—',
-                        null,
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 5,
+                child: PhoneRow(
+                  mode: PhoneRowMode.metrics,
+                  desktop: Row(
+                    children: [
+                      Expanded(
+                        child: _financialCompact(
+                          'Outstanding',
+                          _money(outstanding),
+                          outstanding > 0 ? _darkRed : null,
                         ),
-                        decoration: BoxDecoration(
-                          color: _accountStatusColor(
-                            accountStatus,
-                          ).withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(999),
+                      ),
+                      Expanded(
+                        child: _financialCompact(
+                          'Overdue',
+                          _money(overdue),
+                          overdue > 0 ? const Color(0xFFB3261E) : null,
                         ),
-                        child: Text(
-                          _accountStatusLabel(accountStatus),
-                          style: TextStyle(
-                            color: _accountStatusColor(accountStatus),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                      ),
+                      Expanded(
+                        child: _financialCompact(
+                          'Next Due',
+                          nextDue > 0
+                              ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
+                              : '—',
+                          null,
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _accountStatusColor(
+                              accountStatus,
+                            ).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _accountStatusLabel(accountStatus),
+                            style: TextStyle(
+                              color: _accountStatusColor(accountStatus),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
             if (status == 'requested') ...[
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'declined',
+              PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _updateStatus(
+                        relationship: relationship,
+                        status: 'declined',
+                      ),
+                      icon: const Icon(Icons.close, size: 16),
+                      label: const Text('Decline'),
                     ),
-                    icon: const Icon(Icons.close, size: 16),
-                    label: const Text('Decline'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: () => _updateStatus(
-                      relationship: relationship,
-                      status: 'approved',
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => _updateStatus(
+                        relationship: relationship,
+                        status: 'approved',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                      ),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('Approve'),
                     ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                    ),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Approve'),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -2085,52 +2110,55 @@ class _SupplierCustomerRequestsPageState
                   color: const Color(0xFFF8F8F6),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _financialCompact(
-                        'Outstanding',
-                        _money(outstanding),
-                        outstanding > 0 ? _darkRed : null,
-                      ),
-                    ),
-                    Expanded(
-                      child: _financialCompact(
-                        'Overdue',
-                        _money(overdue),
-                        overdue > 0 ? const Color(0xFFB3261E) : null,
-                      ),
-                    ),
-                    Expanded(
-                      child: _financialCompact(
-                        'Next Due',
-                        nextDue > 0
-                            ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
-                            : '—',
-                        null,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _accountStatusColor(
-                          accountStatus,
-                        ).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _accountStatusLabel(accountStatus),
-                        style: TextStyle(
-                          color: _accountStatusColor(accountStatus),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                child: PhoneRow(
+                  mode: PhoneRowMode.metrics,
+                  desktop: Row(
+                    children: [
+                      Expanded(
+                        child: _financialCompact(
+                          'Outstanding',
+                          _money(outstanding),
+                          outstanding > 0 ? _darkRed : null,
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: _financialCompact(
+                          'Overdue',
+                          _money(overdue),
+                          overdue > 0 ? const Color(0xFFB3261E) : null,
+                        ),
+                      ),
+                      Expanded(
+                        child: _financialCompact(
+                          'Next Due',
+                          nextDue > 0
+                              ? '${_money(nextDue)}\n${_shortDate(nextDate)}'
+                              : '—',
+                          null,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _accountStatusColor(
+                            accountStatus,
+                          ).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _accountStatusLabel(accountStatus),
+                          style: TextStyle(
+                            color: _accountStatusColor(accountStatus),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

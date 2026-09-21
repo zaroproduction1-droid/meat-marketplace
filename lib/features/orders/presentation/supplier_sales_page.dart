@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1529,117 +1530,120 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 (!whole || quantity == quantity.roundToDouble());
             final validRate = rate != null && rate >= 0;
 
-            return AlertDialog(
-              title: Text(
-                '${existing == null ? 'Add' : 'Update'} '
-                '${product['product_name']?.toString() ?? 'Product'}',
-              ),
-              content: SizedBox(
-                width: 520,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sale: $_activeSaleCustomerName',
-                        style: const TextStyle(
-                          color: _darkRed,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      if (catchWeight) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F6),
-                            borderRadius: BorderRadius.circular(10),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text(
+                  '${existing == null ? 'Add' : 'Update'} '
+                  '${product['product_name']?.toString() ?? 'Product'}',
+                ),
+                content: SizedBox(
+                  width: 520,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Sale: $_activeSaleCustomerName',
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontWeight: FontWeight.w900,
                           ),
-                          child: const Text(
-                            'Catch-weight product: enter cartons ordered and '
-                            'the agreed \$/kg rate. Final kilograms and total '
-                            'will be confirmed during warehouse weighing.',
-                            style: TextStyle(height: 1.4),
+                        ),
+                        const SizedBox(height: 14),
+                        if (catchWeight) ...[
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F8F6),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'Catch-weight product: enter cartons ordered and '
+                              'the agreed \$/kg rate. Final kilograms and total '
+                              'will be confirmed during warehouse weighing.',
+                              style: TextStyle(height: 1.4),
+                            ),
+                          ),
+                        ],
+                        TextField(
+                          controller: quantityController,
+                          autofocus: true,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: !whole,
+                          ),
+                          onChanged: (_) => setDialogState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Quantity',
+                            suffixText: _saleUnitLabel(quantityUnit),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: rateController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          onChanged: (_) => setDialogState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Agreed rate',
+                            prefixText: r'$ ',
+                            suffixText: '/ ${_saleBasisLabel(priceBasis)}',
+                            helperText: standardPrice == null
+                                ? 'Enter the agreed customer rate.'
+                                : 'Standard price: '
+                                      '${_money(standardPrice['amount'])} / '
+                                      '${_saleBasisLabel(priceBasis)}',
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Line notes (optional)',
+                            border: OutlineInputBorder(),
                           ),
                         ),
                       ],
-                      TextField(
-                        controller: quantityController,
-                        autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: !whole,
-                        ),
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Quantity',
-                          suffixText: _saleUnitLabel(quantityUnit),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: rateController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Agreed rate',
-                          prefixText: r'$ ',
-                          suffixText: '/ ${_saleBasisLabel(priceBasis)}',
-                          helperText: standardPrice == null
-                              ? 'Enter the agreed customer rate.'
-                              : 'Standard price: '
-                                    '${_money(standardPrice['amount'])} / '
-                                    '${_saleBasisLabel(priceBasis)}',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Line notes (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: validQuantity && validRate
+                        ? () => Navigator.of(dialogContext).pop({
+                            'product_id': productId,
+                            'product_name':
+                                product['product_name']?.toString() ??
+                                'Unnamed product',
+                            'sku': product['sku']?.toString(),
+                            'quantity': quantity,
+                            'quantity_unit': quantityUnit,
+                            'unit_price': rate,
+                            'price_basis': priceBasis,
+                            'catch_weight_snapshot': catchWeight,
+                            'notes': notesController.text.trim(),
+                          })
+                        : null,
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    icon: Icon(
+                      existing == null ? Icons.add : Icons.save_outlined,
+                    ),
+                    label: Text(existing == null ? 'Add to Sale' : 'Update'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton.icon(
-                  onPressed: validQuantity && validRate
-                      ? () => Navigator.of(dialogContext).pop({
-                          'product_id': productId,
-                          'product_name':
-                              product['product_name']?.toString() ??
-                              'Unnamed product',
-                          'sku': product['sku']?.toString(),
-                          'quantity': quantity,
-                          'quantity_unit': quantityUnit,
-                          'unit_price': rate,
-                          'price_basis': priceBasis,
-                          'catch_weight_snapshot': catchWeight,
-                          'notes': notesController.text.trim(),
-                        })
-                      : null,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: Icon(
-                    existing == null ? Icons.add : Icons.save_outlined,
-                  ),
-                  label: Text(existing == null ? 'Add to Sale' : 'Update'),
-                ),
-              ],
             );
           },
         );
@@ -2084,39 +2088,42 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      hasCatchWeight
-                          ? 'Estimated fixed-price lines: '
-                                '${_money(estimate)} • Catch-weight totals '
-                                'pending weighing'
-                          : 'Estimated total: ${_money(estimate)}',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+              child: PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasCatchWeight
+                            ? 'Estimated fixed-price lines: '
+                                  '${_money(estimate)} • Catch-weight totals '
+                                  'pending weighing'
+                            : 'Estimated total: ${_money(estimate)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
-                  ),
-                  TextButton.icon(
-                    onPressed: _closeActiveSale,
-                    icon: const Icon(Icons.close),
-                    label: const Text('Close Sale'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed:
-                        _activeSale?['work_order_order_id'] != null &&
-                            _activeSaleRpcItems().isEmpty
-                        ? null
-                        : _reviewActiveSale,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    label: Text(
-                      _activeSale?['work_order_order_id'] != null
-                          ? 'Review Work Order'
-                          : 'Review Sale',
+                    TextButton.icon(
+                      onPressed: _closeActiveSale,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Close Sale'),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed:
+                          _activeSale?['work_order_order_id'] != null &&
+                              _activeSaleRpcItems().isEmpty
+                          ? null
+                          : _reviewActiveSale,
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: const Icon(Icons.receipt_long_outlined),
+                      label: Text(
+                        _activeSale?['work_order_order_id'] != null
+                            ? 'Review Work Order'
+                            : 'Review Sale',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -2807,53 +2814,57 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFE6E6E2)),
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Text(
-                                line['product_name']?.toString() ?? 'Product',
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
+                        child: PhoneRow(
+                          mode: PhoneRowMode.wrap,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  line['product_name']?.toString() ?? 'Product',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                '${line['quantity']} '
-                                '${_saleUnitLabel(line['quantity_unit']?.toString() ?? 'unit')}',
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${line['quantity']} '
+                                  '${_saleUnitLabel(line['quantity_unit']?.toString() ?? 'unit')}',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                '${_money(line['unit_price'])}'
-                                ' / ${_saleBasisLabel(line['price_basis']?.toString() ?? 'unit')}',
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${_money(line['unit_price'])}'
+                                  ' / ${_saleBasisLabel(line['price_basis']?.toString() ?? 'unit')}',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (catchWeight) ...[
-                              const SizedBox(width: 10),
-                              const Tooltip(
-                                message: 'Final total pending warehouse weight',
-                                child: Icon(
-                                  Icons.scale_outlined,
-                                  size: 17,
-                                  color: _darkRed,
+                              if (catchWeight) ...[
+                                const SizedBox(width: 10),
+                                const Tooltip(
+                                  message:
+                                      'Final total pending warehouse weight',
+                                  child: Icon(
+                                    Icons.scale_outlined,
+                                    size: 17,
+                                    color: _darkRed,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       );
                     },
@@ -2942,20 +2953,23 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return Dialog.fullscreen(
           child: Scaffold(
             backgroundColor: const Color(0xFFF7F7F5),
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              leading: IconButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                icon: const Icon(Icons.close),
-              ),
-              title: Text(
-                isQuote
-                    ? 'Quote • $documentLabel'
-                    : isWorkOrderAddition
-                    ? 'Add to Work Order • ${sale['order_number'] ?? ''}'
-                    : 'Review Sale • $_activeSaleCustomerName',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+            appBar: phoneAppBar(
+              context,
+              AppBar(
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.white,
+                leading: IconButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+                title: Text(
+                  isQuote
+                      ? 'Quote • $documentLabel'
+                      : isWorkOrderAddition
+                      ? 'Add to Work Order • ${sale['order_number'] ?? ''}'
+                      : 'Review Sale • $_activeSaleCustomerName',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ),
             body: LayoutBuilder(
@@ -3025,23 +3039,26 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     if (choice == 'quote') {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Save Quote?'),
-          content: Text(
-            'Save this sale as a quote for $_activeSaleCustomerName? '
-            'It will remain editable as a quote and will not enter the warehouse.',
+        builder: (dialogContext) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Save Quote?'),
+            content: Text(
+              'Save this sale as a quote for $_activeSaleCustomerName? '
+              'It will remain editable as a quote and will not enter the warehouse.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                child: const Text('Save Quote'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              child: const Text('Save Quote'),
-            ),
-          ],
         ),
       );
 
@@ -3056,28 +3073,31 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final addingToWorkOrder = sale['work_order_order_id'] != null;
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(
-            addingToWorkOrder ? 'Add Products?' : 'Create Work Order?',
-          ),
-          content: Text(
-            addingToWorkOrder
-                ? 'Add the new products to ${sale['order_number'] ?? 'this work order'}? Existing products and order details will remain unchanged.'
-                : 'Confirm this sale for $_activeSaleCustomerName and send it to the warehouse for picking and weighing? Agreed rates will be locked.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+        builder: (dialogContext) => phoneDialog(
+          context,
+          AlertDialog(
+            title: Text(
+              addingToWorkOrder ? 'Add Products?' : 'Create Work Order?',
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              child: Text(
-                addingToWorkOrder ? 'Add Products' : 'Create Work Order',
+            content: Text(
+              addingToWorkOrder
+                  ? 'Add the new products to ${sale['order_number'] ?? 'this work order'}? Existing products and order details will remain unchanged.'
+                  : 'Confirm this sale for $_activeSaleCustomerName and send it to the warehouse for picking and weighing? Agreed rates will be locked.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
               ),
-            ),
-          ],
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                child: Text(
+                  addingToWorkOrder ? 'Add Products' : 'Create Work Order',
+                ),
+              ),
+            ],
+          ),
         ),
       );
 
@@ -4120,6 +4140,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return RefreshIndicator(
       onRefresh: _loadStock,
       child: CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
@@ -4167,37 +4188,55 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Wrap(
-                          spacing: 7,
-                          runSpacing: 5,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: _openSalesCatalogue,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
-                              ),
-                              icon: const Icon(
-                                Icons.menu_book_outlined,
-                                size: 18,
-                              ),
-                              label: const Text('Browse animal catalogue'),
+                        if (isPhoneLayout(context)) ...[
+                          FilledButton.icon(
+                            onPressed: _openSalesCatalogue,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _darkRed,
                             ),
-                            for (final animal in const [
-                              'BEEF',
-                              'VEAL',
-                              'LAMB',
-                              'MUTTON',
-                              'GOAT',
-                              'CHICKEN',
-                            ])
-                              ChoiceChip(
-                                label: Text(animal),
-                                selected: _selectedAnimalCode == animal,
-                                onSelected: (_) => _selectAnimal(animal),
+                            icon: const Icon(
+                              Icons.menu_book_outlined,
+                              size: 20,
+                            ),
+                            label: const Text('Browse animal catalogue'),
+                          ),
+                          const SizedBox(height: 10),
+                          PhoneAnimalSelector(
+                            selectedCode: _selectedAnimalCode,
+                            onChanged: _selectAnimal,
+                          ),
+                        ] else
+                          Wrap(
+                            spacing: 7,
+                            runSpacing: 5,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: _openSalesCatalogue,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _darkRed,
+                                ),
+                                icon: const Icon(
+                                  Icons.menu_book_outlined,
+                                  size: 18,
+                                ),
+                                label: const Text('Browse animal catalogue'),
                               ),
-                          ],
-                        ),
+                              for (final animal in const [
+                                'BEEF',
+                                'VEAL',
+                                'LAMB',
+                                'MUTTON',
+                                'GOAT',
+                                'CHICKEN',
+                              ])
+                                ChoiceChip(
+                                  label: Text(animal),
+                                  selected: _selectedAnimalCode == animal,
+                                  onSelected: (_) => _selectAnimal(animal),
+                                ),
+                            ],
+                          ),
                         const SizedBox(height: 6),
                         _buildAnimalCutStrip(),
                         if (_selectedAnimalRegionKey != null)
@@ -4330,8 +4369,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   Widget _workspaceHeader() {
     return Container(
-      height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      height: isPhoneLayout(context) ? null : 62,
+      padding: EdgeInsets.symmetric(
+        vertical: isPhoneLayout(context) ? 10 : 0,
+        horizontal: 22,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
@@ -4399,27 +4441,30 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'Sales',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: Color(0xFFE4E6E8)),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loadStock,
-            tooltip: 'Refresh sales workspace',
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text(
+            'Sales',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
-          const SizedBox(width: 8),
-        ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+          ),
+          actions: [
+            IconButton(
+              onPressed: _loadStock,
+              tooltip: 'Refresh sales workspace',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: _buildBody(),
     );

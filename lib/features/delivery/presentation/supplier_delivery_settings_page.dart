@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -381,56 +382,59 @@ class _SupplierDeliverySettingsPageState
     final save = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(existing == null ? 'Add Driver' : 'Edit Driver'),
-          content: SizedBox(
-            width: 500,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(
-                    labelText: 'Driver name',
-                    border: OutlineInputBorder(),
+        builder: (context, setDialogState) => phoneDialog(
+          context,
+          AlertDialog(
+            title: Text(existing == null ? 'Add Driver' : 'Edit Driver'),
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: name,
+                    decoration: const InputDecoration(
+                      labelText: 'Driver name',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notes,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notes,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: active,
-                  title: const Text('Active'),
-                  onChanged: (v) => setDialogState(() => active = v),
-                ),
-              ],
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: active,
+                    title: const Text('Active'),
+                    onChanged: (v) => setDialogState(() => active = v),
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Save'),
-            ),
-          ],
         ),
       ),
     );
@@ -476,64 +480,67 @@ class _SupplierDeliverySettingsPageState
     final save = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(existing == null ? 'Add Vehicle' : 'Edit Vehicle'),
-          content: SizedBox(
-            width: 500,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(
-                    labelText: 'Vehicle name',
-                    border: OutlineInputBorder(),
+        builder: (context, setDialogState) => phoneDialog(
+          context,
+          AlertDialog(
+            title: Text(existing == null ? 'Add Vehicle' : 'Edit Vehicle'),
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: name,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle name',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: rego,
-                  decoration: const InputDecoration(
-                    labelText: 'Registration',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: rego,
+                    decoration: const InputDecoration(
+                      labelText: 'Registration',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: type,
-                  decoration: const InputDecoration(
-                    labelText: 'Vehicle type',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: type,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle type',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notes,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notes,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: active,
-                  title: const Text('Active'),
-                  onChanged: (v) => setDialogState(() => active = v),
-                ),
-              ],
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: active,
+                    title: const Text('Active'),
+                    onChanged: (v) => setDialogState(() => active = v),
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Save'),
-            ),
-          ],
         ),
       ),
     );
@@ -590,142 +597,160 @@ class _SupplierDeliverySettingsPageState
     final create = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Create Delivery Run'),
-          content: SizedBox(
-            width: 720,
-            height: 560,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        builder: (context, setDialogState) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Create Delivery Run'),
+            content: SizedBox(
+              width: 720,
+              height: 560,
+              child: PhoneColumn(
+                desktop: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: dialogContext,
-                            firstDate: DateTime.now().subtract(
-                              const Duration(days: 1),
+                    PhoneRow(
+                      mode: PhoneRowMode.stack,
+                      desktop: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: dialogContext,
+                                  firstDate: DateTime.now().subtract(
+                                    const Duration(days: 1),
+                                  ),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
+                                  initialDate: deliveryDate,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() => deliveryDate = picked);
+                                }
+                              },
+                              icon: const Icon(Icons.calendar_today_outlined),
+                              label: Text(
+                                '${deliveryDate.day}/${deliveryDate.month}/${deliveryDate.year}',
+                              ),
                             ),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              isExpanded: isPhoneLayout(context),
+                              initialValue: driverId,
+                              decoration: const InputDecoration(
+                                labelText: 'Driver',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _drivers
+                                  .where((d) => d['active'] == true)
+                                  .map(
+                                    (d) => DropdownMenuItem(
+                                      value: d['id'].toString(),
+                                      child: Text(
+                                        d['display_name']?.toString() ??
+                                            'Driver',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setDialogState(() => driverId = v),
                             ),
-                            initialDate: deliveryDate,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              isExpanded: isPhoneLayout(context),
+                              initialValue: vehicleId,
+                              decoration: const InputDecoration(
+                                labelText: 'Vehicle',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _vehicles
+                                  .where((v) => v['active'] == true)
+                                  .map(
+                                    (v) => DropdownMenuItem(
+                                      value: v['id'].toString(),
+                                      child: Text(
+                                        v['display_name']?.toString() ??
+                                            'Vehicle',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setDialogState(() => vehicleId = v),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Orders ready for dispatch',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 8),
+                    PhoneExpanded(
+                      child: ListView.builder(
+                        shrinkWrap: isPhoneLayout(context),
+                        physics: isPhoneLayout(context)
+                            ? const NeverScrollableScrollPhysics()
+                            : null,
+                        itemCount: _readyOrders.length,
+                        itemBuilder: (context, index) {
+                          final order = _readyOrders[index];
+                          final id = order['id'].toString();
+                          final redelivery = _isRedeliveryOrder(order);
+
+                          return CheckboxListTile(
+                            value: selected.contains(id),
+                            onChanged: (v) => setDialogState(() {
+                              if (v == true) {
+                                selected.add(id);
+                              } else {
+                                selected.remove(id);
+                              }
+                            }),
+                            title: Text(
+                              order['order_number']?.toString() ?? 'Order',
+                            ),
+                            subtitle: Text(
+                              redelivery
+                                  ? '${_customerName(order)} • Redelivery required'
+                                  : _customerName(order),
+                            ),
+                            secondary: redelivery
+                                ? const Icon(
+                                    Icons.replay_rounded,
+                                    color: Color(0xFFB85C00),
+                                  )
+                                : null,
+                            controlAffinity: ListTileControlAffinity.leading,
                           );
-                          if (picked != null) {
-                            setDialogState(() => deliveryDate = picked);
-                          }
                         },
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        label: Text(
-                          '${deliveryDate.day}/${deliveryDate.month}/${deliveryDate.year}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: driverId,
-                        decoration: const InputDecoration(
-                          labelText: 'Driver',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _drivers
-                            .where((d) => d['active'] == true)
-                            .map(
-                              (d) => DropdownMenuItem(
-                                value: d['id'].toString(),
-                                child: Text(
-                                  d['display_name']?.toString() ?? 'Driver',
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setDialogState(() => driverId = v),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: vehicleId,
-                        decoration: const InputDecoration(
-                          labelText: 'Vehicle',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _vehicles
-                            .where((v) => v['active'] == true)
-                            .map(
-                              (v) => DropdownMenuItem(
-                                value: v['id'].toString(),
-                                child: Text(
-                                  v['display_name']?.toString() ?? 'Vehicle',
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setDialogState(() => vehicleId = v),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Orders ready for dispatch',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _readyOrders.length,
-                    itemBuilder: (context, index) {
-                      final order = _readyOrders[index];
-                      final id = order['id'].toString();
-                      final redelivery = _isRedeliveryOrder(order);
-
-                      return CheckboxListTile(
-                        value: selected.contains(id),
-                        onChanged: (v) => setDialogState(() {
-                          if (v == true) {
-                            selected.add(id);
-                          } else {
-                            selected.remove(id);
-                          }
-                        }),
-                        title: Text(
-                          order['order_number']?.toString() ?? 'Order',
-                        ),
-                        subtitle: Text(
-                          redelivery
-                              ? '${_customerName(order)} • Redelivery required'
-                              : _customerName(order),
-                        ),
-                        secondary: redelivery
-                            ? const Icon(
-                                Icons.replay_rounded,
-                                color: Color(0xFFB85C00),
-                              )
-                            : null,
-                        controlAffinity: ListTileControlAffinity.leading,
-                      );
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: selected.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialogContext, true),
+                child: const Text('Create Run'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: selected.isEmpty
-                  ? null
-                  : () => Navigator.pop(dialogContext, true),
-              child: const Text('Create Run'),
-            ),
-          ],
         ),
       ),
     );
@@ -761,42 +786,45 @@ class _SupplierDeliverySettingsPageState
     final notes = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm Delivery'),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: recipient,
-                decoration: const InputDecoration(
-                  labelText: 'Received by',
-                  border: OutlineInputBorder(),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Confirm Delivery'),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: recipient,
+                  decoration: const InputDecoration(
+                    labelText: 'Received by',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notes,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Driver notes',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notes,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Driver notes',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delivered'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delivered'),
-          ),
-        ],
       ),
     );
     if (confirm == true) {
@@ -823,26 +851,29 @@ class _SupplierDeliverySettingsPageState
     final reason = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Failed Delivery'),
-        content: TextField(
-          controller: reason,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Reason',
-            border: OutlineInputBorder(),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Failed Delivery'),
+          content: TextField(
+            controller: reason,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Reason',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Save Failed Delivery'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Save Failed Delivery'),
-          ),
-        ],
       ),
     );
     if (confirm == true && reason.text.trim().isNotEmpty) {
@@ -868,31 +899,34 @@ class _SupplierDeliverySettingsPageState
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE3E5E8)),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: _darkRed),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+        child: PhoneRow(
+          mode: PhoneRowMode.wrap,
+          desktop: Row(
+            children: [
+              Icon(icon, color: _darkRed),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF6D7177),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Color(0xFF6D7177),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -919,44 +953,54 @@ class _SupplierDeliverySettingsPageState
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Row(
-          children: [
-            _metricCard(
-              'Ready to Dispatch',
-              '${_readyOrders.length}',
-              Icons.inventory_2_outlined,
-            ),
-            const SizedBox(width: 12),
-            _metricCard("Today's Runs", '$todayRuns', Icons.route_outlined),
-            const SizedBox(width: 12),
-            _metricCard(
-              'Out for Delivery',
-              '$inProgress',
-              Icons.local_shipping_outlined,
-            ),
-            const SizedBox(width: 12),
-            _metricCard('Delivered', '$delivered', Icons.check_circle_outline),
-          ],
+        PhoneRow(
+          mode: PhoneRowMode.metrics,
+          desktop: Row(
+            children: [
+              _metricCard(
+                'Ready to Dispatch',
+                '${_readyOrders.length}',
+                Icons.inventory_2_outlined,
+              ),
+              const SizedBox(width: 12),
+              _metricCard("Today's Runs", '$todayRuns', Icons.route_outlined),
+              const SizedBox(width: 12),
+              _metricCard(
+                'Out for Delivery',
+                '$inProgress',
+                Icons.local_shipping_outlined,
+              ),
+              const SizedBox(width: 12),
+              _metricCard(
+                'Delivered',
+                '$delivered',
+                Icons.check_circle_outline,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 18),
         _sectionCard(
           title: 'Delivery Operations',
           subtitle:
               'Create delivery runs from invoiced orders that are ready to leave the warehouse.',
-          child: Row(
-            children: [
-              FilledButton.icon(
-                onPressed: _showCreateRunDialog,
-                icon: const Icon(Icons.add_road),
-                label: const Text('Create Delivery Run'),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: _refreshAll,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
-              ),
-            ],
+          child: PhoneRow(
+            mode: PhoneRowMode.wrap,
+            desktop: Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: _showCreateRunDialog,
+                  icon: const Icon(Icons.add_road),
+                  label: const Text('Create Delivery Run'),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _refreshAll,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh'),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 18),
@@ -1139,86 +1183,90 @@ class _SupplierDeliverySettingsPageState
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _sectionCard(
-                title: 'Drivers',
-                subtitle: 'Manage your supplier delivery drivers.',
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: () => _showDriverDialog(),
-                        icon: const Icon(Icons.person_add_alt),
-                        label: const Text('Add Driver'),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (final driver in _drivers)
-                      ListTile(
-                        leading: const Icon(
-                          Icons.badge_outlined,
-                          color: _darkRed,
-                        ),
-                        title: Text(
-                          driver['display_name']?.toString() ?? 'Driver',
-                        ),
-                        subtitle: Text(driver['phone']?.toString() ?? ''),
-                        trailing: IconButton(
-                          onPressed: () => _showDriverDialog(driver),
-                          icon: const Icon(Icons.edit_outlined),
+        PhoneRow(
+          mode: PhoneRowMode.stack,
+          desktop: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _sectionCard(
+                  title: 'Drivers',
+                  subtitle: 'Manage your supplier delivery drivers.',
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: () => _showDriverDialog(),
+                          icon: const Icon(Icons.person_add_alt),
+                          label: const Text('Add Driver'),
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 10),
+                      for (final driver in _drivers)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.badge_outlined,
+                            color: _darkRed,
+                          ),
+                          title: Text(
+                            driver['display_name']?.toString() ?? 'Driver',
+                          ),
+                          subtitle: Text(driver['phone']?.toString() ?? ''),
+                          trailing: IconButton(
+                            onPressed: () => _showDriverDialog(driver),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _sectionCard(
-                title: 'Vehicles',
-                subtitle: 'Manage delivery trucks and vehicles.',
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: () => _showVehicleDialog(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Vehicle'),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (final vehicle in _vehicles)
-                      ListTile(
-                        leading: const Icon(
-                          Icons.local_shipping_outlined,
-                          color: _darkRed,
-                        ),
-                        title: Text(
-                          vehicle['display_name']?.toString() ?? 'Vehicle',
-                        ),
-                        subtitle: Text(
-                          [vehicle['registration'], vehicle['vehicle_type']]
-                              .where(
-                                (e) =>
-                                    e != null && e.toString().trim().isNotEmpty,
-                              )
-                              .join(' • '),
-                        ),
-                        trailing: IconButton(
-                          onPressed: () => _showVehicleDialog(vehicle),
-                          icon: const Icon(Icons.edit_outlined),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _sectionCard(
+                  title: 'Vehicles',
+                  subtitle: 'Manage delivery trucks and vehicles.',
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: () => _showVehicleDialog(),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Vehicle'),
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 10),
+                      for (final vehicle in _vehicles)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.local_shipping_outlined,
+                            color: _darkRed,
+                          ),
+                          title: Text(
+                            vehicle['display_name']?.toString() ?? 'Vehicle',
+                          ),
+                          subtitle: Text(
+                            [vehicle['registration'], vehicle['vehicle_type']]
+                                .where(
+                                  (e) =>
+                                      e != null &&
+                                      e.toString().trim().isNotEmpty,
+                                )
+                                .join(' • '),
+                          ),
+                          trailing: IconButton(
+                            onPressed: () => _showVehicleDialog(vehicle),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1878,122 +1926,125 @@ class _SupplierDeliverySettingsPageState
                 }
               }
 
-              return AlertDialog(
-                title: Text(
-                  zone == null ? 'Add Delivery Zone' : 'Edit Delivery Zone',
-                ),
-                content: SizedBox(
-                  width: 520,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Zone name',
-                            hintText: 'Example: Sydney Metro',
-                            border: OutlineInputBorder(),
+              return phoneDialog(
+                context,
+                AlertDialog(
+                  title: Text(
+                    zone == null ? 'Add Delivery Zone' : 'Edit Delivery Zone',
+                  ),
+                  content: SizedBox(
+                    width: 520,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Zone name',
+                              hintText: 'Example: Sydney Metro',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: minimumController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: minimumController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Minimum order value for delivery (inc GST)',
+                              prefixText: '\$',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                          decoration: const InputDecoration(
-                            labelText:
-                                'Minimum order value for delivery (inc GST)',
-                            prefixText: '\$',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: feeController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Delivery fee (inc GST)',
+                              prefixText: '\$',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: feeController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: leadController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Lead time in days',
+                              hintText:
+                                  'Leave blank to use the default lead time',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                          decoration: const InputDecoration(
-                            labelText: 'Delivery fee (inc GST)',
-                            prefixText: '\$',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: postcodeController,
+                            minLines: 2,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Postcodes',
+                              hintText: 'Example: 2164, 2165, 2166, 2170',
+                              helperText:
+                                  'Separate postcodes with commas, spaces or new lines.',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: leadController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Lead time in days',
-                            hintText:
-                                'Leave blank to use the default lead time',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: notesController,
+                            minLines: 2,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Zone notes',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: postcodeController,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Postcodes',
-                            hintText: 'Example: 2164, 2165, 2166, 2170',
-                            helperText:
-                                'Separate postcodes with commas, spaces or new lines.',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 8),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: active,
+                            title: const Text('Zone active'),
+                            onChanged: saving
+                                ? null
+                                : (value) {
+                                    setDialogState(() {
+                                      active = value;
+                                    });
+                                  },
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: notesController,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Zone notes',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: active,
-                          title: const Text('Zone active'),
-                          onChanged: saving
-                              ? null
-                              : (value) {
-                                  setDialogState(() {
-                                    active = value;
-                                  });
-                                },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+                  actions: [
+                    TextButton(
+                      onPressed: saving
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: saving ? null : saveZone,
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      child: saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(zone == null ? 'Add Zone' : 'Save Changes'),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: saving ? null : saveZone,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    child: saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(zone == null ? 'Add Zone' : 'Save Changes'),
-                  ),
-                ],
               );
             },
           );
@@ -2013,20 +2064,23 @@ class _SupplierDeliverySettingsPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete Delivery Zone?'),
-          content: Text('Delete "${zone['zone_name'] ?? 'this zone'}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              child: const Text('Delete'),
-            ),
-          ],
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Delete Delivery Zone?'),
+            content: Text('Delete "${zone['zone_name'] ?? 'this zone'}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
         );
       },
     );

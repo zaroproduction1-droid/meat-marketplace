@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -236,33 +237,36 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
-            SizedBox(width: 10),
-            Text(
-              'VIP Supplier Access',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'VIP Supplier Access',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          actions: [
+            IconButton(
+              onPressed: _loading ? null : _load,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: _buildBody(),
@@ -925,35 +929,38 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 8,
-        title: Row(
-          children: [
-            const Icon(
-              Icons.workspace_premium_outlined,
-              color: _darkRed,
-              size: 21,
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                'VIP Application • ${_supplierName()}',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 8,
+          title: Row(
+            children: [
+              const Icon(
+                Icons.workspace_premium_outlined,
+                color: _darkRed,
+                size: 21,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'VIP Application • ${_supplierName()}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            ],
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+          ),
         ),
       ),
       body: Center(
@@ -1615,13 +1622,16 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
           return Column(children: [left, const SizedBox(height: 12), right]);
         }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: left),
-            const SizedBox(width: 12),
-            Expanded(child: right),
-          ],
+        return PhoneRow(
+          mode: PhoneRowMode.stack,
+          desktop: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: left),
+              const SizedBox(width: 12),
+              Expanded(child: right),
+            ],
+          ),
         );
       },
     );

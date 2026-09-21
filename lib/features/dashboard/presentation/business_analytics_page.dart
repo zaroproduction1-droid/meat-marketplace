@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -402,78 +403,84 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
 
   Widget _header() {
     return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      height: isPhoneLayout(context) ? null : 68,
+      padding: EdgeInsets.symmetric(
+        vertical: isPhoneLayout(context) ? 10 : 0,
+        horizontal: 22,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: _border)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
-              borderRadius: BorderRadius.circular(10),
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5EAEA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.bar_chart_rounded,
+                color: _darkRed,
+                size: 20,
+              ),
             ),
-            child: const Icon(
-              Icons.bar_chart_rounded,
-              color: _darkRed,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isSupplier ? 'Business Analytics' : 'Purchasing Analytics',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.2,
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isSupplier ? 'Business Analytics' : 'Purchasing Analytics',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  _isSupplier
-                      ? 'Sales, customers, stock and fulfilment performance'
-                      : 'Spend, suppliers, products and purchasing performance',
-                  style: const TextStyle(
-                    color: Color(0xFF74787E),
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 1),
+                  Text(
+                    _isSupplier
+                        ? 'Sales, customers, stock and fulfilment performance'
+                        : 'Spend, suppliers, products and purchasing performance',
+                    style: const TextStyle(
+                      color: Color(0xFF74787E),
+                      fontSize: 10.8,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: _loading || _exportingPdf ? null : _downloadPdf,
-            icon: _exportingPdf
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.picture_as_pdf_outlined, size: 17),
-            label: const Text('Download PDF'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _darkRed,
-              side: const BorderSide(color: Color(0xFFD7A8AE)),
-              visualDensity: VisualDensity.compact,
+            OutlinedButton.icon(
+              onPressed: _loading || _exportingPdf ? null : _downloadPdf,
+              icon: _exportingPdf
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.picture_as_pdf_outlined, size: 17),
+              label: const Text('Download PDF'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _darkRed,
+                side: const BorderSide(color: Color(0xFFD7A8AE)),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Refresh analytics',
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+            const SizedBox(width: 6),
+            IconButton(
+              tooltip: 'Refresh analytics',
+              onPressed: _loading ? null : _load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1137,16 +1144,19 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(child: _miniStat('Active', '$active', _deepNavy)),
-                const SizedBox(width: 8),
-                Expanded(child: _miniStat('In stock', '$inStock', _positive)),
-                const SizedBox(width: 8),
-                Expanded(child: _miniStat('Limited', '$limited', _warning)),
-                const SizedBox(width: 8),
-                Expanded(child: _miniStat('Out', '$out', _danger)),
-              ],
+            PhoneRow(
+              mode: PhoneRowMode.metrics,
+              desktop: Row(
+                children: [
+                  Expanded(child: _miniStat('Active', '$active', _deepNavy)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _miniStat('In stock', '$inStock', _positive)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _miniStat('Limited', '$limited', _warning)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _miniStat('Out', '$out', _danger)),
+                ],
+              ),
             ),
             const SizedBox(height: 15),
             Row(
@@ -1224,35 +1234,38 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${concentration.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    color: riskColor,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.7,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 5),
-                  child: Text(
-                    concentration >= 60
-                        ? 'High concentration'
-                        : concentration >= 40
-                        ? 'Moderate concentration'
-                        : 'Diversified',
+            PhoneRow(
+              mode: PhoneRowMode.wrap,
+              desktop: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${concentration.toStringAsFixed(1)}%',
                     style: TextStyle(
                       color: riskColor,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.7,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text(
+                      concentration >= 60
+                          ? 'High concentration'
+                          : concentration >= 40
+                          ? 'Moderate concentration'
+                          : 'Diversified',
+                      style: TextStyle(
+                        color: riskColor,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             ClipRRect(
@@ -1551,38 +1564,41 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.businessName,
-                              style: const TextStyle(
-                                color: _deepNavy,
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.4,
+                  PhoneRow(
+                    mode: PhoneRowMode.wrap,
+                    desktop: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.businessName,
+                                style: const TextStyle(
+                                  color: _deepNavy,
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.4,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _isSupplier
-                                  ? 'Track the numbers that drive sales, cash flow, stock availability and service.'
-                                  : 'Understand purchasing spend, supplier dependence, product mix and order performance.',
-                              style: const TextStyle(
-                                color: _muted,
-                                fontSize: 11.5,
+                              const SizedBox(height: 4),
+                              Text(
+                                _isSupplier
+                                    ? 'Track the numbers that drive sales, cash flow, stock availability and service.'
+                                    : 'Understand purchasing spend, supplier dependence, product mix and order performance.',
+                                style: const TextStyle(
+                                  color: _muted,
+                                  fontSize: 11.5,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      _periodSelector(),
-                    ],
+                        const SizedBox(width: 12),
+                        _periodSelector(),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 18),
                   _summaryGrid(),
@@ -2067,26 +2083,29 @@ class _BusinessAnalyticsOverviewPanelState
           ],
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _OverviewMetric(
-                label: _isSupplier ? 'Sales' : 'Purchases',
-                value: _money(value),
+        PhoneRow(
+          mode: PhoneRowMode.metrics,
+          desktop: Row(
+            children: [
+              Expanded(
+                child: _OverviewMetric(
+                  label: _isSupplier ? 'Sales' : 'Purchases',
+                  value: _money(value),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _OverviewMetric(label: 'Orders', value: '$orders'),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _OverviewMetric(
-                label: 'Average order',
-                value: _money(summary['average_order_value']),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _OverviewMetric(label: 'Orders', value: '$orders'),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: _OverviewMetric(
+                  label: 'Average order',
+                  value: _money(summary['average_order_value']),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 14),
         Text(

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -240,25 +241,28 @@ class SupplierSettingsPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.settings_outlined, color: _darkRed, size: 22),
-            SizedBox(width: 10),
-            Text(
-              'Settings',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-            ),
-          ],
-        ),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: _border),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: const Row(
+            children: [
+              Icon(Icons.settings_outlined, color: _darkRed, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Settings',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+            ],
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: _border),
+          ),
         ),
       ),
       body: _body(context),
@@ -596,18 +600,21 @@ class _SupplierProfileSettingsPageState
           _field(_address1, 'Address Line 1'),
           _field(_address2, 'Address Line 2'),
           _field(_suburb, 'Suburb'),
-          Row(
-            children: [
-              Expanded(child: _field(_state, 'State')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  _postcode,
-                  'Postcode',
-                  keyboardType: TextInputType.number,
+          PhoneRow(
+            mode: PhoneRowMode.stack,
+            desktop: Row(
+              children: [
+                Expanded(child: _field(_state, 'State')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(
+                    _postcode,
+                    'Postcode',
+                    keyboardType: TextInputType.number,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -893,69 +900,72 @@ class _SupplierInvoiceConfigurationPageState
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE3E5E8)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 150,
-            height: 82,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFDADDE0)),
+      child: PhoneRow(
+        mode: PhoneRowMode.stack,
+        desktop: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 150,
+              height: 82,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFDADDE0)),
+              ),
+              child: preview,
             ),
-            child: preview,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Company Logo',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Used automatically on your CutLink supplier identity, quotes and invoices. PNG or JPG, up to 5 MB.',
-                  style: TextStyle(
-                    color: Color(0xFF666A70),
-                    fontSize: 11.5,
-                    height: 1.35,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Company Logo',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _uploadingLogo ? null : _pickLogo,
-                      icon: _uploadingLogo
-                          ? const SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.upload_outlined, size: 17),
-                      label: Text(hasLogo ? 'Change Logo' : 'Upload Logo'),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Used automatically on your CutLink supplier identity, quotes and invoices. PNG or JPG, up to 5 MB.',
+                    style: TextStyle(
+                      color: Color(0xFF666A70),
+                      fontSize: 11.5,
+                      height: 1.35,
                     ),
-                    if (hasLogo)
-                      OutlinedButton.icon(
-                        onPressed: _uploadingLogo ? null : _removeLogo,
-                        icon: const Icon(Icons.delete_outline, size: 17),
-                        label: const Text('Remove'),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _uploadingLogo ? null : _pickLogo,
+                        icon: _uploadingLogo
+                            ? const SizedBox(
+                                width: 15,
+                                height: 15,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.upload_outlined, size: 17),
+                        label: Text(hasLogo ? 'Change Logo' : 'Upload Logo'),
                       ),
-                  ],
-                ),
-              ],
+                      if (hasLogo)
+                        OutlinedButton.icon(
+                          onPressed: _uploadingLogo ? null : _removeLogo,
+                          icon: const Icon(Icons.delete_outline, size: 17),
+                          label: const Text('Remove'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1036,18 +1046,21 @@ class _SupplierInvoiceConfigurationPageState
           _field(_address1, 'Address Line 1'),
           _field(_address2, 'Address Line 2'),
           _field(_suburb, 'Suburb'),
-          Row(
-            children: [
-              Expanded(child: _field(_state, 'State')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  _postcode,
-                  'Postcode',
-                  keyboardType: TextInputType.number,
+          PhoneRow(
+            mode: PhoneRowMode.stack,
+            desktop: Row(
+              children: [
+                Expanded(child: _field(_state, 'State')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(
+                    _postcode,
+                    'Postcode',
+                    keyboardType: TextInputType.number,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const Divider(height: 30),
           const _SectionHeading('Banking Details'),
@@ -1377,26 +1390,29 @@ class _SettingsFormScaffold extends StatelessWidget {
     }
   }
 
-  AppBar _appBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      titleSpacing: 8,
-      title: Row(
-        children: [
-          Icon(_pageIcon, color: _darkRed, size: 21),
-          const SizedBox(width: 9),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-          ),
-        ],
-      ),
-      bottom: const PreferredSize(
-        preferredSize: Size.fromHeight(1),
-        child: Divider(height: 1, thickness: 1, color: _border),
+  AppBar _appBar(BuildContext context) {
+    return phoneAppBar(
+      context,
+      AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            Icon(_pageIcon, color: _darkRed, size: 21),
+            const SizedBox(width: 9),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+          ],
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: _border),
+        ),
       ),
     );
   }
@@ -1406,7 +1422,7 @@ class _SettingsFormScaffold extends StatelessWidget {
     if (loading) {
       return Scaffold(
         backgroundColor: _canvas,
-        appBar: _appBar(),
+        appBar: _appBar(context),
         body: const Center(child: CircularProgressIndicator(color: _darkRed)),
       );
     }
@@ -1414,7 +1430,7 @@ class _SettingsFormScaffold extends StatelessWidget {
     if (error != null) {
       return Scaffold(
         backgroundColor: _canvas,
-        appBar: _appBar(),
+        appBar: _appBar(context),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
@@ -1473,7 +1489,7 @@ class _SettingsFormScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: _appBar(),
+      appBar: _appBar(context),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -1603,26 +1619,29 @@ class _SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: const Color(0xFF741C1C),
-              borderRadius: BorderRadius.circular(999),
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xFF741C1C),
+                borderRadius: BorderRadius.circular(999),
+              ),
             ),
-          ),
-          const SizedBox(width: 9),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1E2329),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E2329),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

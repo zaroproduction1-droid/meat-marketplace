@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'phone_layout.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -191,7 +192,10 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
           builder: (context, constraints) {
             final viewportWidth = constraints.maxWidth;
             final pageWidth = (viewportWidth - 40)
-                .clamp(320.0, widget.maxPageWidth)
+                .clamp(
+                  isPhoneLayout(context) ? 1.0 : 320.0,
+                  widget.maxPageWidth,
+                )
                 .toDouble();
 
             if (_needsInitialCentre) {
@@ -326,24 +330,26 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                       ),
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     left: 16,
                     right: 16,
                     bottom: 12,
                     child: IgnorePointer(
                       child: DecoratedBox(
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Color(0xD9000000),
                           borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 6,
                           ),
                           child: Text(
-                            'Wheel over paper to zoom • Outside paper to scroll • Drag to pan',
-                            style: TextStyle(
+                            isPhoneLayout(context)
+                                ? 'Pinch to zoom • Drag to move • Reset to centre'
+                                : 'Wheel over paper to zoom • Outside paper to scroll • Drag to pan',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,

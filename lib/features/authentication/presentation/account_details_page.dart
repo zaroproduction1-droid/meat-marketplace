@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_type_page.dart';
@@ -81,27 +82,30 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
         await showDialog<void>(
           context: context,
           builder: (context) {
-            return AlertDialog(
-              title: const Text('Check your email'),
-              content: Text(
-                'Confirm the email sent to ${_emailController.text.trim()}, '
-                'then return and sign in to finish registration.',
-              ),
-              actions: [
-                FilledButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            SignInPage(businessType: widget.businessType),
-                      ),
-                    );
-                  },
-                  child: const Text('Go to sign in'),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: const Text('Check your email'),
+                content: Text(
+                  'Confirm the email sent to ${_emailController.text.trim()}, '
+                  'then return and sign in to finish registration.',
                 ),
-              ],
+                actions: [
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SignInPage(businessType: widget.businessType),
+                        ),
+                      );
+                    },
+                    child: const Text('Go to sign in'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -220,10 +224,13 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text('$businessTypeName registration'),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text('$businessTypeName registration'),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),

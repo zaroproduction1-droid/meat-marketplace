@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/product_photo_editor.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -591,59 +592,62 @@ class _EditProductPageState extends State<EditProductPage> {
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add Supplier-Specific Cut'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Supplier-specific cut name',
-                    border: OutlineInputBorder(),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Add Supplier-Specific Cut'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Supplier-specific cut name',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: detailsController,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Specification details (optional)',
-                    hintText:
-                        'Trim, preparation, trade code or other defining details',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: detailsController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Specification details (optional)',
+                      hintText:
+                          'Trim, preparation, trade code or other defining details',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
+                ],
               ),
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isEmpty) {
-                  return;
-                }
-
-                Navigator.pop(dialogContext, {
-                  'name': name,
-                  'details': detailsController.text.trim(),
-                });
-              },
-              child: const Text('Add Supplier-Specific Cut'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF741C1C),
+                ),
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) {
+                    return;
+                  }
+
+                  Navigator.pop(dialogContext, {
+                    'name': name,
+                    'details': detailsController.text.trim(),
+                  });
+                },
+                child: const Text('Add Supplier-Specific Cut'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1207,142 +1211,148 @@ class _EditProductPageState extends State<EditProductPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(
-                '${_visibilityLabel(priceList['visibility']?.toString() ?? '')} - ${priceList['name'] ?? ''}',
-              ),
-              content: SizedBox(
-                width: 500,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: amountController,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Price (inc GST)',
-                        prefixText: '\$',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: basis,
-                      decoration: InputDecoration(
-                        labelText: 'Price basis',
-                        helperText: _usesSpecGradeCatalogue
-                            ? 'Marketplace catch-weight products are priced per kilogram.'
-                            : null,
-                        border: const OutlineInputBorder(),
-                      ),
-                      items: _usesSpecGradeCatalogue
-                          ? const [
-                              DropdownMenuItem(
-                                value: 'kilogram',
-                                child: Text('Per kilogram'),
-                              ),
-                            ]
-                          : const [
-                              DropdownMenuItem(
-                                value: 'kilogram',
-                                child: Text('Per kilogram'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'carton',
-                                child: Text('Per carton'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'unit',
-                                child: Text('Per unit'),
-                              ),
-                            ],
-                      onChanged: _usesSpecGradeCatalogue
-                          ? null
-                          : (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  basis = value;
-                                });
-                              }
-                            },
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: minimumController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: _usesSpecGradeCatalogue
-                            ? 'Minimum order'
-                            : 'Minimum quantity',
-                        hintText: 'Optional',
-                        suffixText: _usesSpecGradeCatalogue ? 'cartons' : null,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text(
+                  '${_visibilityLabel(priceList['visibility']?.toString() ?? '')} - ${priceList['name'] ?? ''}',
                 ),
-              ),
-              actions: [
-                if (existingPrice != null)
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop({'remove': true});
-                    },
-                    child: const Text('Remove Price'),
-                  ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final amount = double.tryParse(
-                      amountController.text.trim(),
-                    );
-
-                    if (amount == null || amount < 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Enter a valid price.')),
-                      );
-                      return;
-                    }
-
-                    final minimumText = minimumController.text.trim();
-
-                    final minimum = minimumText.isEmpty
-                        ? null
-                        : double.tryParse(minimumText);
-
-                    if (minimumText.isNotEmpty &&
-                        (minimum == null || minimum <= 0)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Minimum quantity must be greater than 0.',
-                          ),
+                content: SizedBox(
+                  width: 500,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: amountController,
+                        autofocus: true,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
-                      );
-                      return;
-                    }
-
-                    Navigator.of(context).pop({
-                      'amount': amount,
-                      'price_basis': basis,
-                      'minimum_quantity': minimum,
-                      'remove': false,
-                    });
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF741C1C),
+                        decoration: const InputDecoration(
+                          labelText: 'Price (inc GST)',
+                          prefixText: '\$',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        isExpanded: isPhoneLayout(context),
+                        initialValue: basis,
+                        decoration: InputDecoration(
+                          labelText: 'Price basis',
+                          helperText: _usesSpecGradeCatalogue
+                              ? 'Marketplace catch-weight products are priced per kilogram.'
+                              : null,
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: _usesSpecGradeCatalogue
+                            ? const [
+                                DropdownMenuItem(
+                                  value: 'kilogram',
+                                  child: Text('Per kilogram'),
+                                ),
+                              ]
+                            : const [
+                                DropdownMenuItem(
+                                  value: 'kilogram',
+                                  child: Text('Per kilogram'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'carton',
+                                  child: Text('Per carton'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'unit',
+                                  child: Text('Per unit'),
+                                ),
+                              ],
+                        onChanged: _usesSpecGradeCatalogue
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setDialogState(() {
+                                    basis = value;
+                                  });
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: minimumController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: _usesSpecGradeCatalogue
+                              ? 'Minimum order'
+                              : 'Minimum quantity',
+                          hintText: 'Optional',
+                          suffixText: _usesSpecGradeCatalogue
+                              ? 'cartons'
+                              : null,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Save Price'),
                 ),
-              ],
+                actions: [
+                  if (existingPrice != null)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop({'remove': true});
+                      },
+                      child: const Text('Remove Price'),
+                    ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final amount = double.tryParse(
+                        amountController.text.trim(),
+                      );
+
+                      if (amount == null || amount < 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Enter a valid price.')),
+                        );
+                        return;
+                      }
+
+                      final minimumText = minimumController.text.trim();
+
+                      final minimum = minimumText.isEmpty
+                          ? null
+                          : double.tryParse(minimumText);
+
+                      if (minimumText.isNotEmpty &&
+                          (minimum == null || minimum <= 0)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Minimum quantity must be greater than 0.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.of(context).pop({
+                        'amount': amount,
+                        'price_basis': basis,
+                        'minimum_quantity': minimum,
+                        'remove': false,
+                      });
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF741C1C),
+                    ),
+                    child: const Text('Save Price'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -2104,51 +2114,56 @@ class _EditProductPageState extends State<EditProductPage> {
       length: 2,
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FA),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: const Text(
-            'Product workspace',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          actions: [
-            Builder(
-              builder: (context) {
-                final tabs = DefaultTabController.of(context);
-                return AnimatedBuilder(
-                  animation: tabs,
-                  builder: (context, _) => tabs.index != 0
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: FilledButton.icon(
-                            onPressed: _isSaving || _isLoadingPage
-                                ? null
-                                : _saveProduct,
-                            icon: const Icon(Icons.save_outlined, size: 18),
-                            label: Text(_isSaving ? 'Saving…' : 'Save product'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: darkRed,
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: const Text(
+              'Product workspace',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            actions: [
+              Builder(
+                builder: (context) {
+                  final tabs = DefaultTabController.of(context);
+                  return AnimatedBuilder(
+                    animation: tabs,
+                    builder: (context, _) => tabs.index != 0
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: FilledButton.icon(
+                              onPressed: _isSaving || _isLoadingPage
+                                  ? null
+                                  : _saveProduct,
+                              icon: const Icon(Icons.save_outlined, size: 18),
+                              label: Text(
+                                _isSaving ? 'Saving…' : 'Save product',
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: darkRed,
+                              ),
                             ),
                           ),
-                        ),
-                );
-              },
-            ),
-          ],
-          bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            labelColor: darkRed,
-            unselectedLabelColor: Color(0xFF666666),
-            indicatorColor: darkRed,
-            tabs: [
-              Tab(
-                icon: Icon(Icons.inventory_2_outlined),
-                text: 'Product Details',
+                  );
+                },
               ),
-              Tab(icon: Icon(Icons.price_change_outlined), text: 'Pricing'),
             ],
+            bottom: const TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelColor: darkRed,
+              unselectedLabelColor: Color(0xFF666666),
+              indicatorColor: darkRed,
+              tabs: [
+                Tab(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  text: 'Product Details',
+                ),
+                Tab(icon: Icon(Icons.price_change_outlined), text: 'Pricing'),
+              ],
+            ),
           ),
         ),
         body: TabBarView(
@@ -2540,6 +2555,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                             _validateOptionalNonNegativeNumber,
                                       ),
                                       DropdownButtonFormField<String>(
+                                        isExpanded: isPhoneLayout(context),
                                         initialValue: _availabilityStatus,
                                         decoration: const InputDecoration(
                                           labelText: 'Availability',
@@ -2576,6 +2592,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                     const SizedBox(height: 12),
 
                                     DropdownButtonFormField<String>(
+                                      isExpanded: isPhoneLayout(context),
                                       initialValue: _temperatureState,
                                       decoration: const InputDecoration(
                                         labelText: 'Storage condition',
@@ -2709,6 +2726,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                             onChanged: () => setState(() {}),
                                           ),
                                           DropdownButtonFormField<String>(
+                                            isExpanded: isPhoneLayout(context),
                                             initialValue: _halalStatus,
                                             decoration: const InputDecoration(
                                               labelText: 'Halal status',

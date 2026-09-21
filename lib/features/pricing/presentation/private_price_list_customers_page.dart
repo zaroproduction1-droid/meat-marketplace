@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'price_list_products_page.dart';
@@ -161,36 +162,39 @@ class _PrivatePriceListCustomersPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(
-          widget.priceListName,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PriceListProductsPage(
-                    priceListId: widget.priceListId,
-                    priceListName: widget.priceListName,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text(
+            widget.priceListName,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PriceListProductsPage(
+                      priceListId: widget.priceListId,
+                      priceListName: widget.priceListName,
+                    ),
                   ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.price_change_outlined),
-            label: const Text('Product Prices'),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: _loadCustomers,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 8),
-        ],
+                );
+              },
+              icon: const Icon(Icons.price_change_outlined),
+              label: const Text('Product Prices'),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _loadCustomers,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: _buildBody(),
     );

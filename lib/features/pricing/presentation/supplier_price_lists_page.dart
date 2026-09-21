@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -157,87 +158,91 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
               }
             }
 
-            return AlertDialog(
-              title: const Text('Create Price List'),
-              content: SizedBox(
-                width: 480,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Price list name',
-                        hintText: 'Example: Public Marketplace Prices',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      initialValue: visibility,
-                      decoration: const InputDecoration(
-                        labelText: 'Price visibility',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'public',
-                          child: Text('Public marketplace'),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: const Text('Create Price List'),
+                content: SizedBox(
+                  width: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Price list name',
+                          hintText: 'Example: Public Marketplace Prices',
+                          border: OutlineInputBorder(),
                         ),
-                        DropdownMenuItem(
-                          value: 'approved_customers',
-                          child: Text('Approved customers'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'private',
-                          child: Text('Private contract'),
-                        ),
-                      ],
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  visibility = value;
-                                });
-                              }
-                            },
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      _visibilityDescription(visibility),
-                      style: const TextStyle(
-                        color: Color(0xFF5E5E5E),
-                        height: 1.4,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop(false);
-                        },
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: isSaving ? null : savePriceList,
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<String>(
+                        isExpanded: isPhoneLayout(context),
+                        initialValue: visibility,
+                        decoration: const InputDecoration(
+                          labelText: 'Price visibility',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'public',
+                            child: Text('Public marketplace'),
                           ),
-                        )
-                      : const Text('Create'),
+                          DropdownMenuItem(
+                            value: 'approved_customers',
+                            child: Text('Approved customers'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'private',
+                            child: Text('Private contract'),
+                          ),
+                        ],
+                        onChanged: isSaving
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setDialogState(() {
+                                    visibility = value;
+                                  });
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _visibilityDescription(visibility),
+                        style: const TextStyle(
+                          color: Color(0xFF5E5E5E),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+                actions: [
+                  TextButton(
+                    onPressed: isSaving
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop(false);
+                          },
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: isSaving ? null : savePriceList,
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Create'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -281,32 +286,35 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Price Lists',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Price Lists',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SupplierCustomerRequestsPage(),
+                  ),
+                );
+              },
+              tooltip: 'Customer requests',
+              icon: const Icon(Icons.people_outline),
+            ),
+            IconButton(
+              onPressed: _loadPriceLists,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const SupplierCustomerRequestsPage(),
-                ),
-              );
-            },
-            tooltip: 'Customer requests',
-            icon: const Icon(Icons.people_outline),
-          ),
-          IconButton(
-            onPressed: _loadPriceLists,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreatePriceListDialog,

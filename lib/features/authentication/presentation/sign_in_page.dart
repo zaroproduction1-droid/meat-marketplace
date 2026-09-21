@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pending_verification_page.dart';
@@ -176,12 +177,15 @@ class _SignInPageState extends State<SignInPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Sign in',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Sign in',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
       body: SingleChildScrollView(

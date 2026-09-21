@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -252,213 +253,226 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add New Customer'),
-          content: SizedBox(
-            width: 620,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: businessNameController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Business name',
-                      border: OutlineInputBorder(),
+        return phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Add New Customer'),
+            content: SizedBox(
+              width: 620,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: businessNameController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Business name',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: contactNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Contact name',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: contactNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Contact name',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  StatefulBuilder(
-                    builder: (context, setIdentificationState) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                    const SizedBox(height: 12),
+                    StatefulBuilder(
+                      builder: (context, setIdentificationState) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Identification (optional)',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: 'abn',
+                                  label: Text('ABN'),
+                                  icon: Icon(Icons.business_outlined),
+                                ),
+                                ButtonSegment(
+                                  value: 'licence',
+                                  label: Text('Licence Number'),
+                                  icon: Icon(Icons.badge_outlined),
+                                ),
+                              ],
+                              selected: {identificationType},
+                              onSelectionChanged: (selection) {
+                                setIdentificationState(() {
+                                  identificationType = selection.first;
+                                  identificationNumberController.clear();
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: identificationNumberController,
+                              keyboardType: identificationType == 'abn'
+                                  ? TextInputType.number
+                                  : TextInputType.text,
+                              decoration: InputDecoration(
+                                labelText: identificationType == 'abn'
+                                    ? 'ABN'
+                                    : 'Licence number',
+                                hintText: identificationType == 'abn'
+                                    ? 'Enter business ABN'
+                                    : 'Enter licence number',
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    PhoneRow(
+                      mode: PhoneRowMode.stack,
+                      desktop: Row(
                         children: [
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Identification (optional)',
-                              style: TextStyle(fontWeight: FontWeight.w800),
+                          Expanded(
+                            child: TextField(
+                              controller: phoneController,
+                              decoration: const InputDecoration(
+                                labelText: 'Phone (optional)',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(
-                                value: 'abn',
-                                label: Text('ABN'),
-                                icon: Icon(Icons.business_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: emailController,
+                              decoration: const InputDecoration(
+                                labelText: 'Email (optional)',
+                                border: OutlineInputBorder(),
                               ),
-                              ButtonSegment(
-                                value: 'licence',
-                                label: Text('Licence Number'),
-                                icon: Icon(Icons.badge_outlined),
-                              ),
-                            ],
-                            selected: {identificationType},
-                            onSelectionChanged: (selection) {
-                              setIdentificationState(() {
-                                identificationType = selection.first;
-                                identificationNumberController.clear();
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: identificationNumberController,
-                            keyboardType: identificationType == 'abn'
-                                ? TextInputType.number
-                                : TextInputType.text,
-                            decoration: InputDecoration(
-                              labelText: identificationType == 'abn'
-                                  ? 'ABN'
-                                  : 'Licence number',
-                              hintText: identificationType == 'abn'
-                                  ? 'Enter business ABN'
-                                  : 'Enter licence number',
-                              border: const OutlineInputBorder(),
                             ),
                           ),
                         ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Default delivery address',
-                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: address1Controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Address line 1',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 18),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Default delivery address',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: address2Controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Address line 2 (optional)',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: address1Controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Address line 1',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: suburbController,
-                          decoration: const InputDecoration(
-                            labelText: 'Suburb',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: address2Controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Address line 2 (optional)',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: stateController,
-                          decoration: const InputDecoration(
-                            labelText: 'State',
-                            border: OutlineInputBorder(),
+                    ),
+                    const SizedBox(height: 12),
+                    PhoneRow(
+                      mode: PhoneRowMode.stack,
+                      desktop: Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: suburbController,
+                              decoration: const InputDecoration(
+                                labelText: 'Suburb',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: postcodeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Postcode',
-                            border: OutlineInputBorder(),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: stateController,
+                              decoration: const InputDecoration(
+                                labelText: 'State',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: postcodeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Postcode',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              onPressed: () {
-                final customerName = businessNameController.text.trim();
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                onPressed: () {
+                  final customerName = businessNameController.text.trim();
 
-                if (customerName.isEmpty) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter the customer business name.'),
+                  if (customerName.isEmpty) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter the customer business name.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.of(dialogContext).pop({
+                    'customer_name': customerName,
+                    'legal_name': customerName,
+                    'abn': identificationType == 'abn'
+                        ? _nullable(identificationNumberController.text)
+                        : null,
+                    'licence_number': identificationType == 'licence'
+                        ? _nullable(identificationNumberController.text)
+                        : null,
+                    'contact_name': _nullable(contactNameController.text),
+                    'phone': _nullable(phoneController.text),
+                    'email': _nullable(emailController.text),
+                    'delivery_address_line_1': _nullable(
+                      address1Controller.text,
                     ),
-                  );
-                  return;
-                }
-
-                Navigator.of(dialogContext).pop({
-                  'customer_name': customerName,
-                  'legal_name': customerName,
-                  'abn': identificationType == 'abn'
-                      ? _nullable(identificationNumberController.text)
-                      : null,
-                  'licence_number': identificationType == 'licence'
-                      ? _nullable(identificationNumberController.text)
-                      : null,
-                  'contact_name': _nullable(contactNameController.text),
-                  'phone': _nullable(phoneController.text),
-                  'email': _nullable(emailController.text),
-                  'delivery_address_line_1': _nullable(address1Controller.text),
-                  'delivery_address_line_2': _nullable(address2Controller.text),
-                  'delivery_suburb': _nullable(suburbController.text),
-                  'delivery_state': _nullable(stateController.text),
-                  'delivery_postcode': _nullable(postcodeController.text),
-                });
-              },
-              child: const Text('Add Customer'),
-            ),
-          ],
+                    'delivery_address_line_2': _nullable(
+                      address2Controller.text,
+                    ),
+                    'delivery_suburb': _nullable(suburbController.text),
+                    'delivery_state': _nullable(stateController.text),
+                    'delivery_postcode': _nullable(postcodeController.text),
+                  });
+                },
+                child: const Text('Add Customer'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -711,40 +725,43 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _customerSearchController,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _commitCustomerSearch(),
-                  decoration: InputDecoration(
-                    hintText: 'Search customer name, ABN or phone',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      tooltip: 'Search',
-                      onPressed: _commitCustomerSearch,
-                      icon: const Icon(Icons.arrow_forward),
+          PhoneRow(
+            mode: PhoneRowMode.stack,
+            desktop: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _customerSearchController,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _commitCustomerSearch(),
+                    decoration: InputDecoration(
+                      hintText: 'Search customer name, ABN or phone',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: IconButton(
+                        tooltip: 'Search',
+                        onPressed: _commitCustomerSearch,
+                        icon: const Icon(Icons.arrow_forward),
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
-                    border: const OutlineInputBorder(),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
-                onPressed: _isSavingCustomer ? null : _addCustomer,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 17,
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  onPressed: _isSavingCustomer ? null : _addCustomer,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _darkRed,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 17,
+                    ),
                   ),
+                  icon: const Icon(Icons.person_add_alt_1, size: 18),
+                  label: const Text('Add Customer'),
                 ),
-                icon: const Icon(Icons.person_add_alt_1, size: 18),
-                label: const Text('Add Customer'),
-              ),
-            ],
+              ],
+            ),
           ),
           if (_selectedCustomer != null) ...[
             const SizedBox(height: 14),
@@ -1045,12 +1062,15 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 );
               }
 
-              return Row(
-                children: [
-                  Expanded(child: dateButton),
-                  const SizedBox(width: 12),
-                  Expanded(child: timeButton),
-                ],
+              return PhoneRow(
+                mode: PhoneRowMode.stack,
+                desktop: Row(
+                  children: [
+                    Expanded(child: dateButton),
+                    const SizedBox(width: 12),
+                    Expanded(child: timeButton),
+                  ],
+                ),
               );
             },
           ),
@@ -1133,28 +1153,31 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 const SizedBox(height: 16),
                 _saleDetailsSection(),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: _selectedCustomer == null
-                          ? null
-                          : _continueToDraft,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _darkRed,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 16,
-                        ),
+                PhoneRow(
+                  mode: PhoneRowMode.wrap,
+                  desktop: Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
                       ),
-                      icon: const Icon(Icons.arrow_forward),
-                      label: const Text('Continue to Sale'),
-                    ),
-                  ],
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: _selectedCustomer == null
+                            ? null
+                            : _continueToDraft,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _darkRed,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 16,
+                          ),
+                        ),
+                        icon: const Icon(Icons.arrow_forward),
+                        label: const Text('Continue to Sale'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1168,12 +1191,15 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'New Sale',
-          style: TextStyle(fontWeight: FontWeight.w800),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'New Sale',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
         ),
       ),
       body: _buildBody(),

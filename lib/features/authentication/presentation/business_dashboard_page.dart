@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -37,19 +38,22 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        title: const Text(
-          'NSW Meat Marketplace',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: _isSigningOut ? null : _signOut,
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          title: const Text(
+            'NSW Meat Marketplace',
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(width: 16),
-        ],
+          actions: [
+            TextButton.icon(
+              onPressed: _isSigningOut ? null : _signOut,
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
       ),
       body: Center(
         child: ConstrainedBox(

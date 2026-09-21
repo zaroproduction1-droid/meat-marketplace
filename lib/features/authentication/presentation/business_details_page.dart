@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pending_verification_page.dart';
@@ -134,19 +135,22 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
         context: context,
         barrierDismissible: false,
         builder: (context) {
-          return AlertDialog(
-            title: const Text('Business details submitted'),
-            content: const Text(
-              'Your business account has been created and is now pending verification.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Continue'),
+          return phoneDialog(
+            context,
+            AlertDialog(
+              title: const Text('Business details submitted'),
+              content: const Text(
+                'Your business account has been created and is now pending verification.',
               ),
-            ],
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Continue'),
+                ),
+              ],
+            ),
           );
         },
       );
@@ -194,10 +198,13 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text('Business details'),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text('Business details'),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -316,6 +323,7 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                       ),
                       const SizedBox(height: 18),
                       DropdownButtonFormField<String>(
+                        isExpanded: isPhoneLayout(context),
                         initialValue: _state,
                         decoration: const InputDecoration(
                           labelText: 'State',

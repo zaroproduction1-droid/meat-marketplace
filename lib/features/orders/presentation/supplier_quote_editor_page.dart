@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -342,227 +343,244 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Add Customer'),
-              content: SizedBox(
-                width: 620,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Add the caller without leaving the sale.',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: businessNameController,
-                        autofocus: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Business name *',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: contactNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact name',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: abnController,
-                        decoration: const InputDecoration(
-                          labelText: 'ABN (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: phoneController,
-                              decoration: const InputDecoration(
-                                labelText: 'Phone',
-                                border: OutlineInputBorder(),
-                              ),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: const Text('Add Customer'),
+                content: SizedBox(
+                  width: 620,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Add the caller without leaving the sale.',
+                            style: TextStyle(
+                              color: Color(0xFF666666),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: emailController,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: address1Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Delivery address',
-                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: address2Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Address line 2 (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: suburbController,
-                              decoration: const InputDecoration(
-                                labelText: 'Suburb',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: stateController,
-                              decoration: const InputDecoration(
-                                labelText: 'State',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: postcodeController,
-                              decoration: const InputDecoration(
-                                labelText: 'Postcode',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: paymentMethod,
-                        decoration: const InputDecoration(
-                          labelText: 'Default payment method',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'cod', child: Text('COD')),
-                          DropdownMenuItem(
-                            value: 'prepaid',
-                            child: Text('Prepaid'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'account',
-                            child: Text('Account'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setDialogState(() {
-                            paymentMethod = value;
-                            if (value != 'account') {
-                              paymentTermsDays = 0;
-                            } else if (paymentTermsDays == 0) {
-                              paymentTermsDays = 7;
-                            }
-                          });
-                        },
-                      ),
-                      if (paymentMethod == 'account') ...[
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: paymentTermsDays == 0
-                              ? 7
-                              : paymentTermsDays,
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: businessNameController,
+                          autofocus: true,
                           decoration: const InputDecoration(
-                            labelText: 'Payment terms',
+                            labelText: 'Business name *',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: contactNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Contact name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: abnController,
+                          decoration: const InputDecoration(
+                            labelText: 'ABN (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PhoneRow(
+                          mode: PhoneRowMode.stack,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: phoneController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Phone',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: emailController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Email',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: address1Controller,
+                          decoration: const InputDecoration(
+                            labelText: 'Delivery address',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: address2Controller,
+                          decoration: const InputDecoration(
+                            labelText: 'Address line 2 (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PhoneRow(
+                          mode: PhoneRowMode.stack,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: TextField(
+                                  controller: suburbController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Suburb',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: stateController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'State',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: postcodeController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Postcode',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          isExpanded: isPhoneLayout(context),
+                          initialValue: paymentMethod,
+                          decoration: const InputDecoration(
+                            labelText: 'Default payment method',
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 7, child: Text('7 days')),
-                            DropdownMenuItem(value: 14, child: Text('14 days')),
-                            DropdownMenuItem(value: 30, child: Text('30 days')),
+                            DropdownMenuItem(value: 'cod', child: Text('COD')),
+                            DropdownMenuItem(
+                              value: 'prepaid',
+                              child: Text('Prepaid'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'account',
+                              child: Text('Account'),
+                            ),
                           ],
                           onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => paymentTermsDays = value);
+                            if (value == null) {
+                              return;
                             }
+                            setDialogState(() {
+                              paymentMethod = value;
+                              if (value != 'account') {
+                                paymentTermsDays = 0;
+                              } else if (paymentTermsDays == 0) {
+                                paymentTermsDays = 7;
+                              }
+                            });
                           },
                         ),
+                        if (paymentMethod == 'account') ...[
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<int>(
+                            isExpanded: isPhoneLayout(context),
+                            initialValue: paymentTermsDays == 0
+                                ? 7
+                                : paymentTermsDays,
+                            decoration: const InputDecoration(
+                              labelText: 'Payment terms',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 7, child: Text('7 days')),
+                              DropdownMenuItem(
+                                value: 14,
+                                child: Text('14 days'),
+                              ),
+                              DropdownMenuItem(
+                                value: 30,
+                                child: Text('30 days'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setDialogState(() => paymentTermsDays = value);
+                              }
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  onPressed: () {
-                    final businessName = businessNameController.text.trim();
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    onPressed: () {
+                      final businessName = businessNameController.text.trim();
 
-                    if (businessName.isEmpty) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Enter the customer business name.'),
+                      if (businessName.isEmpty) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter the customer business name.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.of(dialogContext).pop({
+                        'customer_name': businessName,
+                        'legal_name': businessName,
+                        'abn': _nullable(abnController.text),
+                        'contact_name': _nullable(contactNameController.text),
+                        'phone': _nullable(phoneController.text),
+                        'email': _nullable(emailController.text),
+                        'delivery_address_line_1': _nullable(
+                          address1Controller.text,
                         ),
-                      );
-                      return;
-                    }
-
-                    Navigator.of(dialogContext).pop({
-                      'customer_name': businessName,
-                      'legal_name': businessName,
-                      'abn': _nullable(abnController.text),
-                      'contact_name': _nullable(contactNameController.text),
-                      'phone': _nullable(phoneController.text),
-                      'email': _nullable(emailController.text),
-                      'delivery_address_line_1': _nullable(
-                        address1Controller.text,
-                      ),
-                      'delivery_address_line_2': _nullable(
-                        address2Controller.text,
-                      ),
-                      'delivery_suburb': _nullable(suburbController.text),
-                      'delivery_state': _nullable(stateController.text),
-                      'delivery_postcode': _nullable(postcodeController.text),
-                      'payment_method': paymentMethod,
-                      'payment_terms_days': paymentMethod == 'account'
-                          ? paymentTermsDays
-                          : 0,
-                      'issue_reporting_window_hours': 24,
-                    });
-                  },
-                  child: const Text('Add Customer'),
-                ),
-              ],
+                        'delivery_address_line_2': _nullable(
+                          address2Controller.text,
+                        ),
+                        'delivery_suburb': _nullable(suburbController.text),
+                        'delivery_state': _nullable(stateController.text),
+                        'delivery_postcode': _nullable(postcodeController.text),
+                        'payment_method': paymentMethod,
+                        'payment_terms_days': paymentMethod == 'account'
+                            ? paymentTermsDays
+                            : 0,
+                        'issue_reporting_window_hours': 24,
+                      });
+                    },
+                    child: const Text('Add Customer'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -815,104 +833,111 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 quantity > 0 &&
                 (!whole || quantity == quantity.roundToDouble());
             final validRate = rate != null && rate >= 0;
-            return AlertDialog(
-              title: Text(product['product_name']?.toString() ?? 'Add product'),
-              content: SizedBox(
-                width: 520,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (catchWeight) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F6),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE3E3DF)),
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text(
+                  product['product_name']?.toString() ?? 'Add product',
+                ),
+                content: SizedBox(
+                  width: 520,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (catchWeight) ...[
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F8F6),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFE3E3DF),
+                              ),
+                            ),
+                            child: const Text(
+                              'Catch-weight product: enter cartons ordered and the agreed \$/kg rate. Final kilograms and product total are confirmed after weighing.',
+                              style: TextStyle(height: 1.4),
+                            ),
                           ),
-                          child: const Text(
-                            'Catch-weight product: enter cartons ordered and the agreed \$/kg rate. Final kilograms and product total are confirmed after weighing.',
-                            style: TextStyle(height: 1.4),
+                        ],
+                        TextField(
+                          controller: quantityController,
+                          autofocus: true,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: !whole,
+                          ),
+                          inputFormatters: whole
+                              ? [FilteringTextInputFormatter.digitsOnly]
+                              : null,
+                          onChanged: (_) => setDialogState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Order quantity',
+                            suffixText: _unitLabel(quantityUnit),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: rateController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          onChanged: (_) => setDialogState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Agreed rate',
+                            prefixText: r'$ ',
+                            suffixText: '/ ${_basisLabel(priceBasis)}',
+                            helperText: standardPrice == null
+                                ? 'Enter the agreed customer rate.'
+                                : 'Standard price: ${_money(standardPrice['amount'])} / ${_basisLabel(priceBasis)}. You may override it for this order.',
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Line notes (optional)',
+                            border: OutlineInputBorder(),
                           ),
                         ),
                       ],
-                      TextField(
-                        controller: quantityController,
-                        autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: !whole,
-                        ),
-                        inputFormatters: whole
-                            ? [FilteringTextInputFormatter.digitsOnly]
-                            : null,
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Order quantity',
-                          suffixText: _unitLabel(quantityUnit),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: rateController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Agreed rate',
-                          prefixText: r'$ ',
-                          suffixText: '/ ${_basisLabel(priceBasis)}',
-                          helperText: standardPrice == null
-                              ? 'Enter the agreed customer rate.'
-                              : 'Standard price: ${_money(standardPrice['amount'])} / ${_basisLabel(priceBasis)}. You may override it for this order.',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Line notes (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: validQuantity && validRate
+                        ? () => Navigator.of(dialogContext).pop({
+                            'product_id': productId,
+                            'product_name':
+                                product['product_name']?.toString() ??
+                                'Unnamed product',
+                            'sku': product['sku']?.toString(),
+                            'quantity': quantity,
+                            'quantity_unit': quantityUnit,
+                            'unit_price': rate,
+                            'price_basis': priceBasis,
+                            'catch_weight_snapshot': catchWeight,
+                            'notes': notesController.text.trim(),
+                          })
+                        : null,
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton.icon(
-                  onPressed: validQuantity && validRate
-                      ? () => Navigator.of(dialogContext).pop({
-                          'product_id': productId,
-                          'product_name':
-                              product['product_name']?.toString() ??
-                              'Unnamed product',
-                          'sku': product['sku']?.toString(),
-                          'quantity': quantity,
-                          'quantity_unit': quantityUnit,
-                          'unit_price': rate,
-                          'price_basis': priceBasis,
-                          'catch_weight_snapshot': catchWeight,
-                          'notes': notesController.text.trim(),
-                        })
-                      : null,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
-                ),
-              ],
             );
           },
         );
@@ -954,85 +979,88 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               quantity > 0 &&
               (!whole || quantity == quantity.roundToDouble());
           final validRate = rate != null && rate >= 0;
-          return AlertDialog(
-            title: Text(line['product_name']?.toString() ?? 'Edit line'),
-            content: SizedBox(
-              width: 500,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (catchWeight) ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Catch-weight: cartons ordered, rate per kg.',
-                        style: TextStyle(
-                          color: Color(0xFF666666),
-                          fontWeight: FontWeight.w700,
+          return phoneDialog(
+            context,
+            AlertDialog(
+              title: Text(line['product_name']?.toString() ?? 'Edit line'),
+              content: SizedBox(
+                width: 500,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (catchWeight) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Catch-weight: cartons ordered, rate per kg.',
+                          style: TextStyle(
+                            color: Color(0xFF666666),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                    ],
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: !whole,
+                      ),
+                      inputFormatters: whole
+                          ? [FilteringTextInputFormatter.digitsOnly]
+                          : null,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        suffixText: _unitLabel(quantityUnit),
+                        border: const OutlineInputBorder(),
+                      ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: rateController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Agreed rate',
+                        prefixText: r'$ ',
+                        suffixText: '/ ${_basisLabel(priceBasis)}',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: notesController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Line notes (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ],
-                  TextField(
-                    controller: quantityController,
-                    keyboardType: TextInputType.numberWithOptions(
-                      decimal: !whole,
-                    ),
-                    inputFormatters: whole
-                        ? [FilteringTextInputFormatter.digitsOnly]
-                        : null,
-                    onChanged: (_) => setDialogState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Quantity',
-                      suffixText: _unitLabel(quantityUnit),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: rateController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onChanged: (_) => setDialogState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Agreed rate',
-                      prefixText: r'$ ',
-                      suffixText: '/ ${_basisLabel(priceBasis)}',
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: notesController,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Line notes (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: validQuantity && validRate
+                      ? () => Navigator.of(dialogContext).pop({
+                          ...line,
+                          'quantity': quantity,
+                          'unit_price': rate,
+                          'notes': notesController.text.trim(),
+                        })
+                      : null,
+                  child: const Text('Save'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: validQuantity && validRate
-                    ? () => Navigator.of(dialogContext).pop({
-                        ...line,
-                        'quantity': quantity,
-                        'unit_price': rate,
-                        'notes': notesController.text.trim(),
-                      })
-                    : null,
-                child: const Text('Save'),
-              ),
-            ],
           );
         },
       ),
@@ -1098,23 +1126,26 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Save Quote?'),
-        content: Text(
-          'Save this quote for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
-          'Catch-weight rates are agreed now. Final supplied kilograms and the final invoice amount are confirmed after fulfilment.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Save Quote?'),
+          content: Text(
+            'Save this quote for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
+            'Catch-weight rates are agreed now. Final supplied kilograms and the final invoice amount are confirmed after fulfilment.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Save Quote'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Save Quote'),
-          ),
-        ],
       ),
     );
 
@@ -1245,23 +1276,26 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Work Order?'),
-        content: Text(
-          'Create the warehouse work order for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
-          'The agreed rates will be locked. Catch-weight final totals remain pending until the warehouse records the actual supplied weight.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Create Work Order?'),
+          content: Text(
+            'Create the warehouse work order for ${customer?['customer_name'] ?? 'this customer'}?\n\n'
+            'The agreed rates will be locked. Catch-weight final totals remain pending until the warehouse records the actual supplied weight.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Create Work Order'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Create Work Order'),
-          ),
-        ],
       ),
     );
 
@@ -1374,12 +1408,15 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Phone Sales Desk',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Phone Sales Desk',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
       body: _buildBody(),
@@ -1421,51 +1458,54 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedCustomerAccountId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Customer',
-                      hintText: 'Select an existing customer',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _customers.map((customer) {
-                      final name =
-                          customer['customer_name']?.toString() ?? 'Customer';
-                      final source = customer['account_source']?.toString();
+            PhoneRow(
+              mode: PhoneRowMode.stack,
+              desktop: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _selectedCustomerAccountId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Customer',
+                        hintText: 'Select an existing customer',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _customers.map((customer) {
+                        final name =
+                            customer['customer_name']?.toString() ?? 'Customer';
+                        final source = customer['account_source']?.toString();
 
-                      return DropdownMenuItem(
-                        value: customer['id']?.toString(),
-                        child: Text(
-                          source == 'manual' ? '$name • External' : name,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: _isSaving
-                        ? null
-                        : (value) {
-                            setState(() => _applyCustomerDefaults(value));
-                          },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _isSaving ? null : _addCustomerInline,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 18,
+                        return DropdownMenuItem(
+                          value: customer['id']?.toString(),
+                          child: Text(
+                            source == 'manual' ? '$name • External' : name,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _isSaving
+                          ? null
+                          : (value) {
+                              setState(() => _applyCustomerDefaults(value));
+                            },
                     ),
                   ),
-                  icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Add Customer'),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _isSaving ? null : _addCustomerInline,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _darkRed,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 18,
+                      ),
+                    ),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Add Customer'),
+                  ),
+                ],
+              ),
             ),
             if (_selectedCustomer() != null) ...[
               const SizedBox(height: 10),
@@ -1495,6 +1535,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             ],
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
+              isExpanded: isPhoneLayout(context),
               initialValue: _orderSource,
               decoration: const InputDecoration(
                 labelText: 'Order source',
@@ -1527,6 +1568,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 SizedBox(
                   width: 260,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: isPhoneLayout(context),
                     initialValue: _paymentMethod,
                     decoration: const InputDecoration(
                       labelText: 'Payment method',
@@ -1565,6 +1607,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   SizedBox(
                     width: 220,
                     child: DropdownButtonFormField<int>(
+                      isExpanded: isPhoneLayout(context),
                       initialValue: _paymentTermsDays == 0
                           ? 7
                           : _paymentTermsDays,
@@ -1589,6 +1632,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 SizedBox(
                   width: 240,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: isPhoneLayout(context),
                     initialValue: _fulfilmentMethod,
                     decoration: const InputDecoration(
                       labelText: 'Pickup / delivery',
@@ -1843,12 +1887,15 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         );
                       }
 
-                      return Row(
-                        children: [
-                          Expanded(child: quoteButton),
-                          const SizedBox(width: 12),
-                          Expanded(child: workOrderButton),
-                        ],
+                      return PhoneRow(
+                        mode: PhoneRowMode.stack,
+                        desktop: Row(
+                          children: [
+                            Expanded(child: quoteButton),
+                            const SizedBox(width: 12),
+                            Expanded(child: workOrderButton),
+                          ],
+                        ),
                       );
                     },
                   ),

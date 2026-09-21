@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
@@ -363,6 +364,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         builder: (context, constraints) {
                           final fields = [
                             DropdownButtonFormField<String>(
+                              isExpanded: isPhoneLayout(context),
                               initialValue: category,
                               decoration: const InputDecoration(
                                 labelText: 'Category',
@@ -383,6 +385,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                               },
                             ),
                             DropdownButtonFormField<String>(
+                              isExpanded: isPhoneLayout(context),
                               initialValue: priority,
                               decoration: const InputDecoration(
                                 labelText: 'Priority',
@@ -448,49 +451,53 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 14,
-                              ),
+                      PhoneRow(
+                        mode: PhoneRowMode.wrap,
+                        desktop: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              child: const Text('Cancel'),
                             ),
-                            onPressed: () {
-                              final subject = subjectController.text.trim();
-                              final description = descriptionController.text
-                                  .trim();
-                              if (subject.length < 4 || description.isEmpty) {
-                                ScaffoldMessenger.of(
-                                  dialogContext,
-                                ).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Enter a subject and describe the issue.',
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _darkRed,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
+                              ),
+                              onPressed: () {
+                                final subject = subjectController.text.trim();
+                                final description = descriptionController.text
+                                    .trim();
+                                if (subject.length < 4 || description.isEmpty) {
+                                  ScaffoldMessenger.of(
+                                    dialogContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Enter a subject and describe the issue.',
+                                      ),
                                     ),
-                                  ),
-                                );
-                                return;
-                              }
-                              Navigator.of(dialogContext).pop({
-                                'subject': subject,
-                                'category': category,
-                                'priority': priority,
-                                'message': description,
-                              });
-                            },
-                            icon: const Icon(Icons.send_outlined, size: 18),
-                            label: const Text('Submit Ticket'),
-                          ),
-                        ],
+                                  );
+                                  return;
+                                }
+                                Navigator.of(dialogContext).pop({
+                                  'subject': subject,
+                                  'category': category,
+                                  'priority': priority,
+                                  'message': description,
+                                });
+                              },
+                              icon: const Icon(Icons.send_outlined, size: 18),
+                              label: const Text('Submit Ticket'),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -795,40 +802,43 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.support_agent, color: _darkRed),
-            const SizedBox(width: 10),
-            Text(
-              widget.adminMode ? 'Support Administration' : 'CutLink Support',
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ],
-        ),
-        actions: [
-          if (!widget.adminMode)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              child: FilledButton.icon(
-                onPressed: _sending ? null : _createTicket,
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New Ticket'),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.support_agent, color: _darkRed),
+              const SizedBox(width: 10),
+              Text(
+                widget.adminMode ? 'Support Administration' : 'CutLink Support',
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
-            ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _loadTickets(),
-            icon: const Icon(Icons.refresh),
+            ],
           ),
-          const SizedBox(width: 8),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+          actions: [
+            if (!widget.adminMode)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                child: FilledButton.icon(
+                  onPressed: _sending ? null : _createTicket,
+                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('New Ticket'),
+                ),
+              ),
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () => _loadTickets(),
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+          ),
         ),
       ),
       body: _buildBody(),
@@ -1069,19 +1079,22 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          ticket['ticket_number']?.toString() ?? 'Ticket',
-                          style: const TextStyle(
-                            color: _darkRed,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
+                    PhoneRow(
+                      mode: PhoneRowMode.wrap,
+                      desktop: Row(
+                        children: [
+                          Text(
+                            ticket['ticket_number']?.toString() ?? 'Ticket',
+                            style: const TextStyle(
+                              color: _darkRed,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        _statusChip(ticket['status']?.toString() ?? 'open'),
-                      ],
+                          const SizedBox(width: 8),
+                          _statusChip(ticket['status']?.toString() ?? 'open'),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
@@ -1225,40 +1238,43 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _adminActionButton(
-                  icon: assigned
-                      ? Icons.person_remove_outlined
-                      : Icons.person_add_alt_outlined,
-                  label: assigned ? 'Unassign' : 'Assign to me',
-                  active: false,
-                  onPressed: _sending
-                      ? null
-                      : () => _adminUpdate(
-                          assignToMe: !assigned,
-                          unassign: assigned,
-                        ),
-                ),
-                const SizedBox(width: 8),
-                _adminActionButton(
-                  icon: Icons.change_circle_outlined,
-                  label: 'Status: ${_adminStatusLabel(status)}',
-                  active: _activeAdminAction == 'status',
-                  onPressed: _sending
-                      ? null
-                      : () => _toggleAdminAction('status'),
-                ),
-                const SizedBox(width: 8),
-                _adminActionButton(
-                  icon: Icons.flag_outlined,
-                  label: 'Priority: ${_titleCase(priority)}',
-                  active: _activeAdminAction == 'priority',
-                  onPressed: _sending
-                      ? null
-                      : () => _toggleAdminAction('priority'),
-                ),
-              ],
+            child: PhoneRow(
+              mode: PhoneRowMode.scroll,
+              desktop: Row(
+                children: [
+                  _adminActionButton(
+                    icon: assigned
+                        ? Icons.person_remove_outlined
+                        : Icons.person_add_alt_outlined,
+                    label: assigned ? 'Unassign' : 'Assign to me',
+                    active: false,
+                    onPressed: _sending
+                        ? null
+                        : () => _adminUpdate(
+                            assignToMe: !assigned,
+                            unassign: assigned,
+                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  _adminActionButton(
+                    icon: Icons.change_circle_outlined,
+                    label: 'Status: ${_adminStatusLabel(status)}',
+                    active: _activeAdminAction == 'status',
+                    onPressed: _sending
+                        ? null
+                        : () => _toggleAdminAction('status'),
+                  ),
+                  const SizedBox(width: 8),
+                  _adminActionButton(
+                    icon: Icons.flag_outlined,
+                    label: 'Priority: ${_titleCase(priority)}',
+                    active: _activeAdminAction == 'priority',
+                    onPressed: _sending
+                        ? null
+                        : () => _toggleAdminAction('priority'),
+                  ),
+                ],
+              ),
             ),
           ),
           if (_activeAdminAction == 'status') ...[
@@ -1419,28 +1435,31 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  fromAdmin
-                      ? 'CutLink Support'
-                      : message['sender_name']?.toString() ?? 'Customer',
-                  style: TextStyle(
-                    color: mine ? Colors.white70 : _darkRed,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
+            PhoneRow(
+              mode: PhoneRowMode.wrap,
+              desktop: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    fromAdmin
+                        ? 'CutLink Support'
+                        : message['sender_name']?.toString() ?? 'Customer',
+                    style: TextStyle(
+                      color: mine ? Colors.white70 : _darkRed,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  _formatMessageTime(message['created_at']),
-                  style: TextStyle(
-                    color: mine ? Colors.white54 : const Color(0xFF888B90),
-                    fontSize: 9.5,
+                  const SizedBox(width: 10),
+                  Text(
+                    _formatMessageTime(message['created_at']),
+                    style: TextStyle(
+                      color: mine ? Colors.white54 : const Color(0xFF888B90),
+                      fontSize: 9.5,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             if (showMessageText) ...[
               const SizedBox(height: 5),

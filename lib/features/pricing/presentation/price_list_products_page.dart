@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -208,108 +209,112 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
               }
             }
 
-            return AlertDialog(
-              title: Text(
-                product['product_name'] as String? ?? 'Set product price',
-              ),
-              content: SizedBox(
-                width: 480,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: amountController,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Price',
-                        prefixText: r'$ ',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    DropdownButtonFormField<String>(
-                      initialValue: priceBasis,
-                      decoration: const InputDecoration(
-                        labelText: 'Price basis',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'kilogram',
-                          child: Text('Per kilogram'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'carton',
-                          child: Text('Per carton'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'unit',
-                          child: Text('Per unit'),
-                        ),
-                      ],
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  priceBasis = value;
-                                });
-                              }
-                            },
-                    ),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: minimumQuantityController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Minimum quantity (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: isActive,
-                      title: const Text('Price active'),
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              setDialogState(() {
-                                isActive = value;
-                              });
-                            },
-                    ),
-                  ],
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text(
+                  product['product_name'] as String? ?? 'Set product price',
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop(false);
-                        },
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: isSaving ? null : savePrice,
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                content: SizedBox(
+                  width: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: amountController,
+                        autofocus: true,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Price',
+                          prefixText: r'$ ',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      DropdownButtonFormField<String>(
+                        isExpanded: isPhoneLayout(context),
+                        initialValue: priceBasis,
+                        decoration: const InputDecoration(
+                          labelText: 'Price basis',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'kilogram',
+                            child: Text('Per kilogram'),
                           ),
-                        )
-                      : const Text('Save Price'),
+                          DropdownMenuItem(
+                            value: 'carton',
+                            child: Text('Per carton'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'unit',
+                            child: Text('Per unit'),
+                          ),
+                        ],
+                        onChanged: isSaving
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setDialogState(() {
+                                    priceBasis = value;
+                                  });
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: minimumQuantityController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Minimum quantity (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: isActive,
+                        title: const Text('Price active'),
+                        onChanged: isSaving
+                            ? null
+                            : (value) {
+                                setDialogState(() {
+                                  isActive = value;
+                                });
+                              },
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+                actions: [
+                  TextButton(
+                    onPressed: isSaving
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop(false);
+                          },
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: isSaving ? null : savePrice,
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Save Price'),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -341,18 +346,21 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(widget.priceListName),
-        actions: [
-          IconButton(
-            onPressed: _loadProductsAndPrices,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 8),
-        ],
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text(widget.priceListName),
+          actions: [
+            IconButton(
+              onPressed: _loadProductsAndPrices,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: _buildBody(),
     );

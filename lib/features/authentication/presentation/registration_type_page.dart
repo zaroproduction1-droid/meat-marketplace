@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 
 import 'account_details_page.dart';
@@ -47,12 +48,15 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Create an account',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Create an account',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
       body: SingleChildScrollView(

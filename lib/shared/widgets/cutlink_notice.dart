@@ -98,7 +98,8 @@ abstract final class CutLinkNotice {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (title != null && title.trim().isNotEmpty) ...[
+                                  if (title != null &&
+                                      title.trim().isNotEmpty) ...[
                                     Text(
                                       title,
                                       style: const TextStyle(

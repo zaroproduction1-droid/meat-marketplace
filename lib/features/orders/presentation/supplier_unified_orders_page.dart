@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -558,63 +559,69 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   Widget _header() {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: isPhoneLayout(context) ? null : 64,
+      padding: EdgeInsets.symmetric(
+        vertical: isPhoneLayout(context) ? 10 : 0,
+        horizontal: 20,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
-              borderRadius: BorderRadius.circular(9),
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5EAEA),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(
+                Icons.receipt_long_outlined,
+                color: _darkRed,
+                size: 20,
+              ),
             ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
-              color: _darkRed,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 11),
-          const Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Invoices',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                ),
-                SizedBox(height: 1),
-                Text(
-                  'Search quotes, work orders and invoices only when you need them',
-                  style: TextStyle(
-                    color: Color(0xFF74787E),
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w600,
+            const SizedBox(width: 11),
+            const Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Invoices',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                   ),
-                ),
-              ],
+                  SizedBox(height: 1),
+                  Text(
+                    'Search quotes, work orders and invoices only when you need them',
+                    style: TextStyle(
+                      color: Color(0xFF74787E),
+                      fontSize: 10.8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SupplierSalesPage()),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupplierSalesPage()),
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('New Sale'),
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('New Sale'),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: _hasSearched ? _loadAllDocuments : null,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+            const SizedBox(width: 6),
+            IconButton(
+              onPressed: _hasSearched ? _loadAllDocuments : null,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -634,30 +641,33 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ],
       ),
       padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _typeButton(
-            SupplierDocumentType.all,
-            'All',
-            Icons.view_list_outlined,
-          ),
-          _typeButton(
-            SupplierDocumentType.quotes,
-            'Quotes',
-            Icons.description_outlined,
-          ),
-          _typeButton(
-            SupplierDocumentType.workOrders,
-            'Work Orders',
-            Icons.assignment_outlined,
-          ),
-          _typeButton(
-            SupplierDocumentType.invoices,
-            'Invoices',
-            Icons.request_quote_outlined,
-          ),
-        ],
+      child: PhoneRow(
+        mode: PhoneRowMode.scroll,
+        desktop: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _typeButton(
+              SupplierDocumentType.all,
+              'All',
+              Icons.view_list_outlined,
+            ),
+            _typeButton(
+              SupplierDocumentType.quotes,
+              'Quotes',
+              Icons.description_outlined,
+            ),
+            _typeButton(
+              SupplierDocumentType.workOrders,
+              'Work Orders',
+              Icons.assignment_outlined,
+            ),
+            _typeButton(
+              SupplierDocumentType.invoices,
+              'Invoices',
+              Icons.request_quote_outlined,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -719,7 +729,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     final documents = _filteredDocuments;
     return Column(
       children: [
-        _filterPanel(),
+        PhoneFilterPanel(
+          label: 'Search & filter documents',
+          child: _filterPanel(),
+        ),
         const SizedBox(height: 10),
         Expanded(
           child: !_hasSearched
@@ -732,7 +745,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   onRefresh: _loadAllDocuments,
                   child: Column(
                     children: [
-                      _resultsHeader(),
+                      if (!isPhoneLayout(context)) _resultsHeader(),
                       const SizedBox(height: 4),
                       Expanded(
                         child: ListView.separated(
@@ -1105,6 +1118,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   );
 
   Widget _dateRangeField() => DropdownButtonFormField<_DocumentDateRange>(
+    isExpanded: isPhoneLayout(context),
     initialValue: _dateRange,
     decoration: _inputDecoration(label: 'Date Range', hint: 'Any'),
     items: const [
@@ -1159,11 +1173,68 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             border: Border.all(color: const Color(0xFFE3E5E8)),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: _selectedType == SupplierDocumentType.invoices
+          child: isPhoneLayout(context)
+              ? _phoneDocument(document)
+              : _selectedType == SupplierDocumentType.invoices
               ? _invoiceRow(document)
               : _standardRow(document),
         ),
       ),
+    );
+  }
+
+  Widget _phoneDocument(_UnifiedDocument document) {
+    final invoice = document.type == _UnifiedDocumentType.invoice;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                document.number,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          document.customer,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 3),
+        Text(document.description, style: const TextStyle(fontSize: 12)),
+        const SizedBox(height: 6),
+        Text(
+          '${document.dateLabel} • ${document.source}',
+          style: const TextStyle(fontSize: 11, color: Color(0xFF666A70)),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 6,
+          children: [
+            Text(
+              'Total ${document.totalLabel}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            if (invoice) Text('Paid ${document.amountPaidLabel}'),
+            if (invoice) Text('Outstanding ${document.outstandingLabel}'),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            Text(document.typeLabel),
+            Text(document.status),
+            if (invoice) Text(document.paymentStatus),
+          ],
+        ),
+      ],
     );
   }
 

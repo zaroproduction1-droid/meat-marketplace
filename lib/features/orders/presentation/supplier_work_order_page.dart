@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
 import 'package:flutter/material.dart';
@@ -288,21 +289,24 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     if (_invoiceId != null || _isSaving) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add more cuts?'),
-        content: const Text(
-          'This opens the same order in Sales with its existing details and products. New products will be added to this work order.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Add more cuts?'),
+          content: const Text(
+            'This opens the same order in Sales with its existing details and products. New products will be added to this work order.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Reopen Order'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Reopen Order'),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -325,29 +329,32 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     );
     final value = await showDialog<String?>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Contact Name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Contact name',
-            border: OutlineInputBorder(),
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Edit Contact Name'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Contact name',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (text) => Navigator.pop(dialogContext, text.trim()),
           ),
-          onSubmitted: (text) => Navigator.pop(dialogContext, text.trim()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
@@ -684,61 +691,64 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Kill Order?'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  marketplace
-                      ? 'This marketplace order will be cancelled and the butcher will be notified. Reserved stock will be restored.'
-                      : 'This removes the warehouse work order, cancels the underlying order and restores any stock reserved for it. This cannot be undone.',
-                ),
-                if (marketplace) ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: reasonController,
-                    autofocus: true,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      labelText: 'Cancellation reason',
-                      hintText:
-                          'Tell the butcher why this order cannot be fulfilled.',
-                      errorText: reasonMissing
-                          ? 'A cancellation reason is required.'
-                          : null,
-                      border: const OutlineInputBorder(),
-                    ),
+        builder: (context, setDialogState) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Kill Order?'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    marketplace
+                        ? 'This marketplace order will be cancelled and the butcher will be notified. Reserved stock will be restored.'
+                        : 'This removes the warehouse work order, cancels the underlying order and restores any stock reserved for it. This cannot be undone.',
                   ),
+                  if (marketplace) ...[
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: reasonController,
+                      autofocus: true,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        labelText: 'Cancellation reason',
+                        hintText:
+                            'Tell the butcher why this order cannot be fulfilled.',
+                        errorText: reasonMissing
+                            ? 'A cancellation reason is required.'
+                            : null,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Keep Order'),
-            ),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.shade800,
               ),
-              onPressed: () {
-                final value = reasonController.text.trim();
-                if (marketplace && value.isEmpty) {
-                  setDialogState(() => reasonMissing = true);
-                  return;
-                }
-                Navigator.of(dialogContext).pop(value);
-              },
-              icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('Kill Order'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Keep Order'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade800,
+                ),
+                onPressed: () {
+                  final value = reasonController.text.trim();
+                  if (marketplace && value.isEmpty) {
+                    setDialogState(() => reasonMissing = true);
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('Kill Order'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -975,24 +985,29 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove this item?'),
-        content: Text(
-          '${item['product_name_snapshot'] ?? 'This item'} will be removed from '
-          'the Work Order and the reserved stock will be restored. It will not '
-          'appear on the invoice.',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Remove this item?'),
+          content: Text(
+            '${item['product_name_snapshot'] ?? 'This item'} will be removed from '
+            'the Work Order and the reserved stock will be restored. It will not '
+            'appear on the invoice.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Remove Item'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove Item'),
-          ),
-        ],
       ),
     );
 
@@ -1056,27 +1071,30 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     final proceed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Credit Limit Warning'),
-        content: Text(
-          'Credit limit: ${_money(check['credit_limit'])}\n'
-          'Current exposure: ${_money(check['current_credit_exposure'])}\n'
-          'This invoice: ${_money(_finalInvoiceAmount)}\n'
-          'Projected exposure: ${_money(check['projected_credit_exposure'])}\n'
-          'Over limit by: ${_money(check['over_limit_by'])}\n\n'
-          'Creating this invoice will make it official immediately. Continue anyway?',
+      builder: (dialogContext) => phoneDialog(
+        context,
+        AlertDialog(
+          title: const Text('Credit Limit Warning'),
+          content: Text(
+            'Credit limit: ${_money(check['credit_limit'])}\n'
+            'Current exposure: ${_money(check['current_credit_exposure'])}\n'
+            'This invoice: ${_money(_finalInvoiceAmount)}\n'
+            'Projected exposure: ${_money(check['projected_credit_exposure'])}\n'
+            'Over limit by: ${_money(check['over_limit_by'])}\n\n'
+            'Creating this invoice will make it official immediately. Continue anyway?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Go Back'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Create Anyway'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Go Back'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Create Anyway'),
-          ),
-        ],
       ),
     );
 
@@ -2000,74 +2018,77 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: Row(
-          children: [
-            const Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _workOrder?['work_order_number']?.toString() ??
-                    'Warehouse Work Order',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 20,
+          title: Row(
+            children: [
+              const Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _workOrder?['work_order_number']?.toString() ??
+                      'Warehouse Work Order',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          if (_invoiceId == null &&
-              _workOrder?['status']?.toString() != 'completed')
-            OutlinedButton.icon(
-              onPressed: _isLoading || _isSaving ? null : _killWorkOrder,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade800,
-                side: BorderSide(color: Colors.red.shade200),
+            ],
+          ),
+          actions: [
+            if (_invoiceId == null &&
+                _workOrder?['status']?.toString() != 'completed')
+              OutlinedButton.icon(
+                onPressed: _isLoading || _isSaving ? null : _killWorkOrder,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade800,
+                  side: BorderSide(color: Colors.red.shade200),
+                ),
+                icon: const Icon(Icons.delete_forever_outlined, size: 17),
+                label: const Text('Kill Order'),
               ),
-              icon: const Icon(Icons.delete_forever_outlined, size: 17),
-              label: const Text('Kill Order'),
+            if (_invoiceId == null &&
+                _workOrder?['status']?.toString() != 'completed')
+              const SizedBox(width: 7),
+            if (_invoiceId == null)
+              TextButton.icon(
+                onPressed: _isLoading || _isSaving ? null : _reopenForCuts,
+                icon: const Icon(Icons.add_box_outlined, size: 17),
+                label: const Text('Add Cuts'),
+              ),
+            if (_invoiceId == null) const SizedBox(width: 7),
+            OutlinedButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _downloadPickSlip,
+              icon: const Icon(Icons.download_outlined, size: 17),
+              label: const Text('Download'),
             ),
-          if (_invoiceId == null &&
-              _workOrder?['status']?.toString() != 'completed')
             const SizedBox(width: 7),
-          if (_invoiceId == null)
-            TextButton.icon(
-              onPressed: _isLoading || _isSaving ? null : _reopenForCuts,
-              icon: const Icon(Icons.add_box_outlined, size: 17),
-              label: const Text('Add Cuts'),
+            FilledButton.icon(
+              onPressed: _isLoading || _isSaving ? null : _printPickSlip,
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              icon: const Icon(Icons.print_outlined, size: 17),
+              label: const Text('Print'),
             ),
-          if (_invoiceId == null) const SizedBox(width: 7),
-          OutlinedButton.icon(
-            onPressed: _isLoading || _isSaving ? null : _downloadPickSlip,
-            icon: const Icon(Icons.download_outlined, size: 17),
-            label: const Text('Download'),
+            const SizedBox(width: 7),
+            IconButton(
+              onPressed: _isLoading ? null : _loadPage,
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 10),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(49),
+            child: _workspaceTabs(),
           ),
-          const SizedBox(width: 7),
-          FilledButton.icon(
-            onPressed: _isLoading || _isSaving ? null : _printPickSlip,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.print_outlined, size: 17),
-            label: const Text('Print'),
-          ),
-          const SizedBox(width: 7),
-          IconButton(
-            onPressed: _isLoading ? null : _loadPage,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 10),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(49),
-          child: _workspaceTabs(),
         ),
       ),
       body: switch (_workspaceTabIndex) {
@@ -2087,12 +2108,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
       ),
-      child: Row(
-        children: [
-          _workspaceTab(0, Icons.assignment_outlined, 'Working Order'),
-          _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
-          _workspaceTab(2, Icons.history, 'Order History'),
-        ],
+      child: PhoneRow(
+        mode: PhoneRowMode.scroll,
+        desktop: Row(
+          children: [
+            _workspaceTab(0, Icons.assignment_outlined, 'Working Order'),
+            _workspaceTab(1, Icons.picture_as_pdf_outlined, 'Preview'),
+            _workspaceTab(2, Icons.history, 'Order History'),
+          ],
+        ),
       ),
     );
   }
@@ -2132,29 +2156,32 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         Container(
           color: Colors.white,
           padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Work Order PDF',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          child: PhoneRow(
+            mode: PhoneRowMode.wrap,
+            desktop: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Work Order PDF',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
                 ),
-              ),
-              const Text(
-                'Scroll wheel to zoom',
-                style: TextStyle(
-                  color: Color(0xFF6D7177),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                const Text(
+                  'Scroll wheel to zoom',
+                  style: TextStyle(
+                    color: Color(0xFF6D7177),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: _downloadPickSlip,
-                icon: const Icon(Icons.download_outlined, size: 17),
-                label: const Text('Download'),
-              ),
-            ],
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _downloadPickSlip,
+                  icon: const Icon(Icons.download_outlined, size: 17),
+                  label: const Text('Download'),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -2597,79 +2624,82 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _workOrder?['work_order_number']?.toString() ??
-                            'Work Order',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
+      child: PhoneRow(
+        mode: PhoneRowMode.wrap,
+        desktop: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _workOrder?['work_order_number']?.toString() ??
+                              'Work Order',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF4E5E5),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        _workOrderStatusLabel(status),
-                        style: const TextStyle(
-                          color: _darkRed,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4E5E5),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          _workOrderStatusLabel(status),
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_customerName()} • ${_order?['order_number'] ?? 'Order'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontWeight: FontWeight.w700,
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_customerName()} • ${_order?['order_number'] ?? 'Order'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          _headerMetric(
-            pickup ? 'PICKUP' : 'DELIVERY',
-            pickup ? 'Collection' : _requestedFulfilmentDateLabel(),
-            pickup
-                ? Icons.shopping_bag_outlined
-                : Icons.local_shipping_outlined,
-          ),
-          _headerMetric(
-            'LINES',
-            '${_items.where((item) => item['fulfilment_status']?.toString() == 'finalised').length}/${_items.length}',
-            Icons.checklist_outlined,
-          ),
-          _headerMetric(
-            _allLinesFinalised ? 'FINAL TOTAL' : 'RUNNING TOTAL',
-            _money(_finalInvoiceAmount),
-            Icons.payments_outlined,
-          ),
-        ],
+            const SizedBox(width: 16),
+            _headerMetric(
+              pickup ? 'PICKUP' : 'DELIVERY',
+              pickup ? 'Collection' : _requestedFulfilmentDateLabel(),
+              pickup
+                  ? Icons.shopping_bag_outlined
+                  : Icons.local_shipping_outlined,
+            ),
+            _headerMetric(
+              'LINES',
+              '${_items.where((item) => item['fulfilment_status']?.toString() == 'finalised').length}/${_items.length}',
+              Icons.checklist_outlined,
+            ),
+            _headerMetric(
+              _allLinesFinalised ? 'FINAL TOTAL' : 'RUNNING TOTAL',
+              _money(_finalInvoiceAmount),
+              Icons.payments_outlined,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2774,32 +2804,39 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: const Color(0xFFE5E7EA)),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.calculate_outlined, size: 18, color: _darkRed),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _allLinesFinalised
-                        ? 'Final invoice total before invoice creation'
-                        : 'Running total - updates as actual weights are finalised',
-                    style: const TextStyle(
-                      color: Color(0xFF60646A),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
+            child: PhoneRow(
+              mode: PhoneRowMode.wrap,
+              desktop: Row(
+                children: [
+                  const Icon(
+                    Icons.calculate_outlined,
+                    size: 18,
+                    color: _darkRed,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _allLinesFinalised
+                          ? 'Final invoice total before invoice creation'
+                          : 'Running total - updates as actual weights are finalised',
+                      style: const TextStyle(
+                        color: Color(0xFF60646A),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  _money(_finalInvoiceAmount),
-                  style: const TextStyle(
-                    color: _darkRed,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                  const SizedBox(width: 12),
+                  Text(
+                    _money(_finalInvoiceAmount),
+                    style: const TextStyle(
+                      color: _darkRed,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const Divider(height: 1),
@@ -3024,53 +3061,59 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
 
     if (action == 'delivery') {
-      return Row(
+      return PhoneRow(
+        mode: PhoneRowMode.stack,
+        desktop: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _lineEditorController,
+                enabled: !_isSaving,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Delivery charge for this order',
+                  prefixText: r'$',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            saveButton(),
+          ],
+        ),
+      );
+    }
+
+    final isPrivate = action == 'private';
+    return PhoneRow(
+      mode: PhoneRowMode.stack,
+      desktop: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _lineEditorController,
               enabled: !_isSaving,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Delivery charge for this order',
-                prefixText: r'$',
+              minLines: 1,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: isPrivate
+                    ? 'Private supplier comment'
+                    : 'Public comment',
+                helperText: isPrivate
+                    ? 'Supplier only. Never prints or shows to the customer.'
+                    : 'Flows through to the invoice and customer PDF.',
                 isDense: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ),
           const SizedBox(width: 8),
           saveButton(),
         ],
-      );
-    }
-
-    final isPrivate = action == 'private';
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _lineEditorController,
-            enabled: !_isSaving,
-            minLines: 1,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: isPrivate
-                  ? 'Private supplier comment'
-                  : 'Public comment',
-              helperText: isPrivate
-                  ? 'Supplier only. Never prints or shows to the customer.'
-                  : 'Flows through to the invoice and customer PDF.',
-              isDense: true,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        saveButton(),
-      ],
+      ),
     );
   }
 
@@ -3103,6 +3146,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             const SizedBox(height: 7),
             if (!pickup) ...[
               DropdownButtonFormField<String>(
+                isExpanded: isPhoneLayout(context),
                 initialValue:
                     _deliveryDrivers.any(
                       (driver) =>
@@ -3354,109 +3398,112 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    finalised
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 20,
-                    color: finalised
-                        ? const Color(0xFF2E7D32)
-                        : const Color(0xFF999999),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          productName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        if (documentProductSpecifications(item).isNotEmpty)
+              PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  children: [
+                    Icon(
+                      finalised
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 20,
+                      color: finalised
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFF999999),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            documentProductSpecifications(item),
+                            productName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 10.5,
-                              color: Color(0xFF646A70),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
-                        if ((item['sku_snapshot']?.toString().trim() ?? '')
-                            .isNotEmpty)
-                          Text(
-                            'SKU ${item['sku_snapshot']}',
-                            style: const TextStyle(
-                              color: Color(0xFF777777),
-                              fontSize: 10.5,
+                          if (documentProductSpecifications(item).isNotEmpty)
+                            Text(
+                              documentProductSpecifications(item),
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: Color(0xFF646A70),
+                              ),
                             ),
-                          ),
-                      ],
+                          if ((item['sku_snapshot']?.toString().trim() ?? '')
+                              .isNotEmpty)
+                            Text(
+                              'SKU ${item['sku_snapshot']}',
+                              style: const TextStyle(
+                                color: Color(0xFF777777),
+                                fontSize: 10.5,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: _lineMetric(
-                      'ORDERED',
-                      '${_formatNumber(item['quantity'])} '
-                          '${_unitLabel(item['quantity_unit']?.toString())}',
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: _lineMetric(
-                      'SUPPLIED',
-                      item['supplied_quantity'] == null
-                          ? 'Pending'
-                          : '${_formatNumber(item['supplied_quantity'])} '
-                                '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
-                    ),
-                  ),
-                  if (catchWeight)
+                    const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
                       child: _lineMetric(
-                        'ACTUAL KG',
-                        item['actual_weight'] == null
-                            ? 'Pending'
-                            : '${_formatNumber(item['actual_weight'])} kg',
+                        'ORDERED',
+                        '${_formatNumber(item['quantity'])} '
+                            '${_unitLabel(item['quantity_unit']?.toString())}',
                       ),
                     ),
-                  Expanded(
-                    flex: 2,
-                    child: _lineMetric(
-                      'FINAL',
-                      item['final_line_amount'] == null
-                          ? (catchWeight ? 'Pending' : '—')
-                          : _money(_lineNetAmount(item)),
+                    Expanded(
+                      flex: 2,
+                      child: _lineMetric(
+                        'SUPPLIED',
+                        item['supplied_quantity'] == null
+                            ? 'Pending'
+                            : '${_formatNumber(item['supplied_quantity'])} '
+                                  '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (_lineDiscountAmount(item) > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: Text(
-                        '-${_money(_lineDiscountAmount(item))}',
-                        style: const TextStyle(
-                          color: _darkRed,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                    if (catchWeight)
+                      Expanded(
+                        flex: 2,
+                        child: _lineMetric(
+                          'ACTUAL KG',
+                          item['actual_weight'] == null
+                              ? 'Pending'
+                              : '${_formatNumber(item['actual_weight'])} kg',
                         ),
                       ),
+                    Expanded(
+                      flex: 2,
+                      child: _lineMetric(
+                        'FINAL',
+                        item['final_line_amount'] == null
+                            ? (catchWeight ? 'Pending' : '—')
+                            : _money(_lineNetAmount(item)),
+                      ),
                     ),
-                  Icon(
-                    selected ? Icons.check_circle : Icons.more_horiz,
-                    size: 19,
-                    color: _darkRed,
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    if (_lineDiscountAmount(item) > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          '-${_money(_lineDiscountAmount(item))}',
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    Icon(
+                      selected ? Icons.check_circle : Icons.more_horiz,
+                      size: 19,
+                      color: _darkRed,
+                    ),
+                  ],
+                ),
               ),
               if (publicComment.isNotEmpty) ...[
                 const SizedBox(height: 6),

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -981,31 +982,34 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Account Statement',
-              style: TextStyle(fontWeight: FontWeight.w900),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Account Statement',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              Text(
+                widget.supplierView ? widget.customerName : widget.supplierName,
+                style: const TextStyle(color: Color(0xFF777777), fontSize: 11),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton.icon(
+              onPressed: _loading || _error != null ? null : _downloadPdf,
+              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Download Statement'),
             ),
-            Text(
-              widget.supplierView ? widget.customerName : widget.supplierName,
-              style: const TextStyle(color: Color(0xFF777777), fontSize: 11),
-            ),
+            const SizedBox(width: 10),
           ],
         ),
-        actions: [
-          FilledButton.icon(
-            onPressed: _loading || _error != null ? null : _downloadPdf,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('Download Statement'),
-          ),
-          const SizedBox(width: 10),
-        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -1039,120 +1043,129 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: const Color(0xFFE0E0DD),
+                        PhoneRow(
+                          mode: PhoneRowMode.stack,
+                          desktop: Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFFE0E0DD),
+                                    ),
+                                  ),
+                                  child: PhoneRow(
+                                    mode: PhoneRowMode.stack,
+                                    desktop: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'SUPPLIER',
+                                                style: TextStyle(
+                                                  color: Color(0xFF777777),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                widget.supplierName,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 18),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'CUSTOMER',
+                                                style: TextStyle(
+                                                  color: Color(0xFF777777),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                widget.customerName,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'SUPPLIER',
-                                            style: TextStyle(
-                                              color: Color(0xFF777777),
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            widget.supplierName,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 18),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'CUSTOMER',
-                                            style: TextStyle(
-                                              color: Color(0xFF777777),
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            widget.customerName,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            _dateSelector(
-                              label: 'FROM',
-                              value: _fromDate,
-                              onTap: _selectFromDate,
-                            ),
-                            const SizedBox(width: 8),
-                            _dateSelector(
-                              label: 'TO',
-                              value: _toDate,
-                              onTap: _selectToDate,
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              _dateSelector(
+                                label: 'FROM',
+                                value: _fromDate,
+                                onTap: _selectFromDate,
+                              ),
+                              const SizedBox(width: 8),
+                              _dateSelector(
+                                label: 'TO',
+                                value: _toDate,
+                                onTap: _selectToDate,
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            _metric('Opening Balance', _openingBalance),
-                            const SizedBox(width: 10),
-                            _metric(
-                              'Invoices',
-                              _periodInvoices,
-                              color: _periodInvoices > 0 ? _darkRed : null,
-                            ),
-                            const SizedBox(width: 10),
-                            _metric(
-                              'Payments',
-                              _periodPayments,
-                              color: _periodPayments > 0
-                                  ? const Color(0xFF2E7D32)
-                                  : null,
-                            ),
-                            const SizedBox(width: 10),
-                            _metric(
-                              'Credits / Adjustments',
-                              _periodCredits,
-                              color: _periodCredits > 0
-                                  ? const Color(0xFF315A8C)
-                                  : null,
-                            ),
-                            const SizedBox(width: 10),
-                            _metric(
-                              'Closing Balance',
-                              _closingBalance,
-                              color: _closingBalance > 0 ? _darkRed : null,
-                            ),
-                          ],
+                        PhoneRow(
+                          mode: PhoneRowMode.metrics,
+                          desktop: Row(
+                            children: [
+                              _metric('Opening Balance', _openingBalance),
+                              const SizedBox(width: 10),
+                              _metric(
+                                'Invoices',
+                                _periodInvoices,
+                                color: _periodInvoices > 0 ? _darkRed : null,
+                              ),
+                              const SizedBox(width: 10),
+                              _metric(
+                                'Payments',
+                                _periodPayments,
+                                color: _periodPayments > 0
+                                    ? const Color(0xFF2E7D32)
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              _metric(
+                                'Credits / Adjustments',
+                                _periodCredits,
+                                color: _periodCredits > 0
+                                    ? const Color(0xFF315A8C)
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              _metric(
+                                'Closing Balance',
+                                _closingBalance,
+                                color: _closingBalance > 0 ? _darkRed : null,
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         _transactionsTable(),

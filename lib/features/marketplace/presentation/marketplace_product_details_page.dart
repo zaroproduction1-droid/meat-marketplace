@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1306,18 +1307,21 @@ class _MarketplaceProductDetailsPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: const Color(0xFF741C1C), size: 18),
-              const SizedBox(width: 7),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
+          PhoneRow(
+            mode: PhoneRowMode.wrap,
+            desktop: Row(
+              children: [
+                Icon(icon, color: const Color(0xFF741C1C), size: 18),
+                const SizedBox(width: 7),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           child,
@@ -1404,30 +1408,33 @@ class _MarketplaceProductDetailsPageState
                 color: const Color(0xFFF7F7F5),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      catchWeightKgPricing
-                          ? 'Final total after weighing'
-                          : 'Order total',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+              child: PhoneRow(
+                mode: PhoneRowMode.wrap,
+                desktop: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        catchWeightKgPricing
+                            ? 'Final total after weighing'
+                            : 'Order total',
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  Text(
-                    catchWeightKgPricing
-                        ? 'Pending weight'
-                        : _formatMoney(estimatedTotal ?? 0),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF741C1C),
+                    Text(
+                      catchWeightKgPricing
+                          ? 'Pending weight'
+                          : _formatMoney(estimatedTotal ?? 0),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF741C1C),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (catchWeightKgPricing) ...[
@@ -1759,22 +1766,25 @@ class _MarketplaceProductDetailsPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6F4),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Product Details',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          ProductFavouriteHeart(store: _favourites, product: widget.product),
-          IconButton(
-            onPressed: _openDraftOrdersPage,
-            tooltip: 'Draft orders',
-            icon: const Icon(Icons.shopping_cart_outlined),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Product Details',
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(width: 8),
-        ],
+          actions: [
+            ProductFavouriteHeart(store: _favourites, product: widget.product),
+            IconButton(
+              onPressed: _openDraftOrdersPage,
+              tooltip: 'Draft orders',
+              icon: const Icon(Icons.shopping_cart_outlined),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

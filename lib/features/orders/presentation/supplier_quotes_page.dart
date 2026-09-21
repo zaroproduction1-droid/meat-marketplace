@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -610,12 +611,15 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Quotes',
-          style: TextStyle(fontWeight: FontWeight.w900),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Quotes',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
         ),
       ),
       body: _buildBody(),

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -250,32 +251,35 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, update) => AlertDialog(
-          title: const Text('Browse animal cuts'),
-          content: SizedBox(
-            width: 650,
-            child: SingleChildScrollView(
-              child: InteractiveAnimalBrowser(
-                selectedAnimalCode: _selectedAnimalCode,
-                selectedRegionKey: _selectedAnimalRegionKey,
-                onAnimalChanged: (code) {
-                  _selectAnimal(code);
-                  update(() {});
-                },
-                onRegionSelected: (region) {
-                  _selectAnimalRegion(region);
-                  update(() {});
-                },
-                maxWidth: 650,
+        builder: (dialogContext, update) => phoneDialog(
+          context,
+          AlertDialog(
+            title: const Text('Browse animal cuts'),
+            content: SizedBox(
+              width: 650,
+              child: SingleChildScrollView(
+                child: InteractiveAnimalBrowser(
+                  selectedAnimalCode: _selectedAnimalCode,
+                  selectedRegionKey: _selectedAnimalRegionKey,
+                  onAnimalChanged: (code) {
+                    _selectAnimal(code);
+                    update(() {});
+                  },
+                  onRegionSelected: (region) {
+                    _selectAnimalRegion(region);
+                    update(() {});
+                  },
+                  maxWidth: 650,
+                ),
               ),
             ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Show products'),
+              ),
+            ],
           ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Show products'),
-            ),
-          ],
         ),
       ),
     );
@@ -1179,117 +1183,124 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
               }
             }
 
-            return AlertDialog(
-              title: Text('$title • ${product['product_name'] ?? 'Product'}'),
-              content: SizedBox(
-                width: 500,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8F6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        switch (priceList['visibility']?.toString()) {
-                          'public' =>
-                            'Standard Price: normal marketplace price.',
-                          'approved_customers' =>
-                            'Trade Price: shown to approved supplier customers.',
-                          'private' =>
-                            'Customer-Specific Price: only for this selected customer.',
-                          _ => '',
-                        },
-                        style: const TextStyle(
-                          color: Color(0xFF555555),
-                          height: 1.35,
+            return phoneDialog(
+              context,
+              AlertDialog(
+                title: Text('$title • ${product['product_name'] ?? 'Product'}'),
+                content: SizedBox(
+                  width: 500,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F8F6),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          switch (priceList['visibility']?.toString()) {
+                            'public' =>
+                              'Standard Price: normal marketplace price.',
+                            'approved_customers' =>
+                              'Trade Price: shown to approved supplier customers.',
+                            'private' =>
+                              'Customer-Specific Price: only for this selected customer.',
+                            _ => '',
+                          },
+                          style: const TextStyle(
+                            color: Color(0xFF555555),
+                            height: 1.35,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: amountController,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Price inc GST',
-                        prefixText: '\$ ',
-                        suffixText:
-                            '/ ${catchWeight ? 'kg' : _basisLabel(basis)}',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (!catchWeight)
-                      DropdownButtonFormField<String>(
-                        initialValue: basis,
-                        decoration: const InputDecoration(
-                          labelText: 'Price basis',
-                          border: OutlineInputBorder(),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: amountController,
+                        autofocus: true,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'kilogram',
-                            child: Text('Per kilogram'),
+                        decoration: InputDecoration(
+                          labelText: 'Price inc GST',
+                          prefixText: '\$ ',
+                          suffixText:
+                              '/ ${catchWeight ? 'kg' : _basisLabel(basis)}',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (!catchWeight)
+                        DropdownButtonFormField<String>(
+                          isExpanded: isPhoneLayout(context),
+                          initialValue: basis,
+                          decoration: const InputDecoration(
+                            labelText: 'Price basis',
+                            border: OutlineInputBorder(),
                           ),
-                          DropdownMenuItem(
-                            value: 'carton',
-                            child: Text('Per carton'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'kilogram',
+                              child: Text('Per kilogram'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'carton',
+                              child: Text('Per carton'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'unit',
+                              child: Text('Per unit'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setDialogState(() => basis = value);
+                            }
+                          },
+                        ),
+                      if (!catchWeight) const SizedBox(height: 16),
+                      TextField(
+                        controller: minimumController,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: !catchWeight,
+                        ),
+                        inputFormatters: catchWeight
+                            ? [FilteringTextInputFormatter.digitsOnly]
+                            : null,
+                        decoration: InputDecoration(
+                          labelText: catchWeight
+                              ? 'Minimum order (optional)'
+                              : 'Minimum quantity (optional)',
+                          suffixText: catchWeight ? 'cartons' : null,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      if (catchWeight) ...[
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Catch-weight products are ordered by whole cartons and charged per kg after the actual weight is known.',
+                          style: TextStyle(
+                            color: Color(0xFF666666),
+                            height: 1.4,
                           ),
-                          DropdownMenuItem(
-                            value: 'unit',
-                            child: Text('Per unit'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() => basis = value);
-                          }
-                        },
-                      ),
-                    if (!catchWeight) const SizedBox(height: 16),
-                    TextField(
-                      controller: minimumController,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: !catchWeight,
-                      ),
-                      inputFormatters: catchWeight
-                          ? [FilteringTextInputFormatter.digitsOnly]
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: catchWeight
-                            ? 'Minimum order (optional)'
-                            : 'Minimum quantity (optional)',
-                        suffixText: catchWeight ? 'cartons' : null,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    if (catchWeight) ...[
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Catch-weight products are ordered by whole cartons and charged per kg after the actual weight is known.',
-                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
-                      ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    onPressed: save,
+                    child: const Text('Add to changes'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  onPressed: save,
-                  child: const Text('Add to changes'),
-                ),
-              ],
             );
           },
         );
@@ -2002,43 +2013,46 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     super.build(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: const Text(
-          'Inventory & Pricing',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Browse animal diagram',
-            icon: const Icon(Icons.grid_view_outlined),
-            onPressed: _isLoading ? null : _browseDiagram,
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text(
+            'Inventory & Pricing',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilledButton.icon(
-              onPressed: _isLoading || _isSavingChanges ? null : _addProduct,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add product'),
+          actions: [
+            IconButton(
+              tooltip: 'Browse animal catalogue',
+              icon: const Icon(Icons.menu_book_outlined),
+              onPressed: _isLoading ? null : _browseDiagram,
             ),
-          ),
-          IconButton(
-            onPressed: _isLoading || _isSavingChanges
-                ? null
-                : () {
-                    if (_supplierBusinessId != null) {
-                      SupplierStockCatalogue.invalidate(_supplierBusinessId!);
-                    }
-                    _loadPage();
-                  },
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 8),
-        ],
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilledButton.icon(
+                onPressed: _isLoading || _isSavingChanges ? null : _addProduct,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add product'),
+              ),
+            ),
+            IconButton(
+              onPressed: _isLoading || _isSavingChanges
+                  ? null
+                  : () {
+                      if (_supplierBusinessId != null) {
+                        SupplierStockCatalogue.invalidate(_supplierBusinessId!);
+                      }
+                      _loadPage();
+                    },
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
       body: AbsorbPointer(absorbing: _isSavingChanges, child: _buildBody()),
       bottomNavigationBar: _pendingChanges.isEmpty
@@ -2053,21 +2067,26 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   color: Colors.white,
                   border: Border(top: BorderSide(color: Color(0xFFE3E5E8))),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${_pendingChanges.length} unsaved price changes',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                child: PhoneRow(
+                  mode: PhoneRowMode.wrap,
+                  desktop: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_pendingChanges.length} unsaved price changes',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _isSavingChanges ? null : _saveAllChanges,
-                      icon: const Icon(Icons.save_outlined, size: 18),
-                      label: Text(_isSavingChanges ? 'Saving…' : 'Save prices'),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _isSavingChanges ? null : _saveAllChanges,
+                        icon: const Icon(Icons.save_outlined, size: 18),
+                        label: Text(
+                          _isSavingChanges ? 'Saving…' : 'Save prices',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -2101,7 +2120,259 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       );
     }
 
+    final phone = isPhoneLayout(context);
     final products = _filteredProducts;
+    final header = <Widget>[
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, box) {
+                Widget search(
+                  TextEditingController controller,
+                  String label,
+                  IconData icon,
+                ) => TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: label,
+                    prefixIcon: Icon(icon),
+                    suffixIcon: controller.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: controller.clear,
+                            icon: const Icon(Icons.close),
+                          ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+                final query = search(
+                  _searchController,
+                  'Search products, brand or specification',
+                  Icons.search,
+                );
+                final sku = search(
+                  _skuController,
+                  'Search SKU',
+                  Icons.qr_code_2,
+                );
+                if (box.maxWidth < 600) {
+                  return Column(
+                    children: [query, const SizedBox(height: 10), sku],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(flex: 3, child: query),
+                    const SizedBox(width: 10),
+                    Expanded(flex: 2, child: sku),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            if (phone) ...[
+              FilledButton.icon(
+                onPressed: _browseDiagram,
+                icon: const Icon(Icons.menu_book_outlined, size: 20),
+                label: const Text('Browse animal catalogue'),
+                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              ),
+              const SizedBox(height: 10),
+              PhoneAnimalSelector(
+                selectedCode: _selectedAnimalCode,
+                onChanged: _selectAnimal,
+              ),
+            ] else
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final animal in const [
+                      'BEEF',
+                      'VEAL',
+                      'LAMB',
+                      'MUTTON',
+                      'GOAT',
+                      'CHICKEN',
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(animal),
+                          selected: _selectedAnimalCode == animal,
+                          onSelected: (_) => _selectAnimal(animal),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            _buildSectionStrip(),
+            if (_selectedSectionId != null ||
+                _selectedAnimalRegionKey != null) ...[
+              const SizedBox(height: 8),
+              _buildSpecificationStrip(),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (phone)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: SupplierStockFilterBar(
+            rows: _scopedStockOptions,
+            filters: _stockFilters,
+            showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
+            onChanged: () => setState(() {}),
+          ),
+        )
+      else
+        SizedBox(
+          height: MediaQuery.sizeOf(context).width < 700 ? 110 : 118,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: SupplierStockFilterBar(
+                rows: _scopedStockOptions,
+                filters: _stockFilters,
+                showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
+                onChanged: () => setState(() {}),
+              ),
+            ),
+          ),
+        ),
+      const SizedBox(height: 6),
+      if (_loadingStock) const LinearProgressIndicator(minHeight: 2),
+      if (_stockError != null)
+        Row(
+          children: [
+            Expanded(child: Text(_stockError!)),
+            TextButton(onPressed: _loadStock, child: const Text('Retry')),
+          ],
+        ),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 880) {
+            return const SizedBox.shrink();
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'PRODUCT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF666A70),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 155,
+                  child: _priceHeader(
+                    title: 'Standard',
+                    subtitle: 'Marketplace',
+                    icon: Icons.public,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 155,
+                  child: _priceHeader(
+                    title: 'Trade',
+                    subtitle: 'Approved customers',
+                    icon: Icons.handshake_outlined,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 190,
+                  child: _priceHeader(
+                    title: 'Customer specific',
+                    subtitle: 'Private pricing',
+                    icon: Icons.person_outline,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ];
+    final pager = SupplierStockPager(
+      offset: _stockOffset,
+      total: _stockTotal,
+      loading: _loadingStock,
+      onPage: (offset) {
+        _stockOffset = offset;
+        unawaited(_loadStock());
+      },
+    );
+    if (phone) {
+      final waiting =
+          _loadingStock ||
+          (_stockError == null && _loadedScope != _selectionSignature);
+      return CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: header,
+              ),
+            ),
+          ),
+          if (waiting || _stockError != null || products.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: waiting
+                      ? const CircularProgressIndicator()
+                      : Text(
+                          _stockError != null
+                              ? 'Use Retry to reload your prices.'
+                              : 'No products match these filters.',
+                        ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => Padding(
+                    key: ValueKey(products[index]['id']),
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _buildQuickPriceProductCard(products[index]),
+                  ),
+                  childCount: products.length,
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(child: pager),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        ],
+      );
+    }
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1440),
@@ -2110,178 +2381,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    LayoutBuilder(
-                      builder: (context, box) {
-                        Widget search(
-                          TextEditingController controller,
-                          String label,
-                          IconData icon,
-                        ) => TextField(
-                          controller: controller,
-                          decoration: InputDecoration(
-                            labelText: label,
-                            prefixIcon: Icon(icon),
-                            suffixIcon: controller.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    onPressed: controller.clear,
-                                    icon: const Icon(Icons.close),
-                                  ),
-                            isDense: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                        final query = search(
-                          _searchController,
-                          'Search products, brand or specification',
-                          Icons.search,
-                        );
-                        final sku = search(
-                          _skuController,
-                          'Search SKU',
-                          Icons.qr_code_2,
-                        );
-                        if (box.maxWidth < 600) {
-                          return Column(
-                            children: [query, const SizedBox(height: 10), sku],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(flex: 3, child: query),
-                            const SizedBox(width: 10),
-                            Expanded(flex: 2, child: sku),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 36,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          for (final animal in const [
-                            'BEEF',
-                            'VEAL',
-                            'LAMB',
-                            'MUTTON',
-                            'GOAT',
-                            'CHICKEN',
-                          ])
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: ChoiceChip(
-                                label: Text(animal),
-                                selected: _selectedAnimalCode == animal,
-                                onSelected: (_) => _selectAnimal(animal),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSectionStrip(),
-                    if (_selectedSectionId != null ||
-                        _selectedAnimalRegionKey != null) ...[
-                      const SizedBox(height: 8),
-                      _buildSpecificationStrip(),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: MediaQuery.sizeOf(context).width < 700 ? 110 : 118,
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: SupplierStockFilterBar(
-                      rows: _scopedStockOptions,
-                      filters: _stockFilters,
-                      showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
-                      onChanged: () => setState(() {}),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              if (_loadingStock) const LinearProgressIndicator(minHeight: 2),
-              if (_stockError != null)
-                Row(
-                  children: [
-                    Expanded(child: Text(_stockError!)),
-                    TextButton(
-                      onPressed: _loadStock,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 880) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'PRODUCT',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF666A70),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 155,
-                          child: _priceHeader(
-                            title: 'Standard',
-                            subtitle: 'Marketplace',
-                            icon: Icons.public,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 155,
-                          child: _priceHeader(
-                            title: 'Trade',
-                            subtitle: 'Approved customers',
-                            icon: Icons.handshake_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 190,
-                          child: _priceHeader(
-                            title: 'Customer specific',
-                            subtitle: 'Private pricing',
-                            icon: Icons.person_outline,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              ...header,
               Expanded(
                 child:
                     _loadingStock ||
@@ -2307,15 +2407,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                         ),
                       ),
               ),
-              SupplierStockPager(
-                offset: _stockOffset,
-                total: _stockTotal,
-                loading: _loadingStock,
-                onPage: (offset) {
-                  _stockOffset = offset;
-                  unawaited(_loadStock());
-                },
-              ),
+              pager,
             ],
           ),
         ),
