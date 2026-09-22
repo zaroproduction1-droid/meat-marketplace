@@ -9,9 +9,9 @@
     <desc>Includes Neck, Boneless Neck.</desc>
     <path id="lamb-neck-shape" d="M 392 147 L 350 280 L 363.31641 327.875 C 364.04957 328.43972 364.81615 329.00083 365.9707 330.32031 C 368.7807 333.51031 368.88961 333.98008 368.34961 340.58008 C 368.18268 342.6576 368.49236 344.87889 368.6543 347.06641 L 373.91602 365.98438 C 375.85299 369.39183 377.97377 372 380.16016 372 C 381.33016 372 382.15 372.96 382.5 374.75 C 382.79 376.26 383.7907 379.52 384.7207 382 C 385.8707 385.04 386.35094 388.93002 386.21094 394 C 385.83616 407.18686 389.27163 420.55429 394.98828 430.20898 L 528 395 C 532.66666 390.58334 537.02605 385.9427 541.07812 381.07812 C 545.1302 376.21355 548.875 371.125 552.3125 365.8125 C 555.75 360.5 558.88021 354.96354 561.70312 349.20312 C 564.52604 343.44271 567.04167 337.45833 569.25 331.25 C 571.45833 325.04167 573.35938 318.60937 574.95312 311.95312 C 576.54687 305.29688 577.83333 298.41666 578.8125 291.3125 C 579.79167 284.20834 580.46354 276.8802 580.82812 269.32812 C 581.19271 261.77605 581.25 253.99998 581 246 L 529 192 L 392 147 z " fill="#E9D8CA" stroke="white" stroke-width="3" pointer-events="visibleFill" class="surface" data-hit-shape="true"/>
   </g>
-  <g id="lamb-shoulder" class="cut shoulder" data-animal="Lamb" data-cut="Shoulder" data-subcuts="Shoulder,Square-Cut Shoulder,Boneless Shoulder,Rolled &amp; Netted Shoulder" role="button" tabindex="0" aria-pressed="false">
+  <g id="lamb-shoulder" class="cut shoulder" data-animal="Lamb" data-cut="Shoulder" data-subcuts="Shoulder,Square-Cut Shoulder,Boneless Shoulder,Rolled &amp; Netted Shoulder,Eye of Shoulder / Chuck Roll,Oyster Shoulder" role="button" tabindex="0" aria-pressed="false">
     <title>Shoulder</title>
-    <desc>Includes Shoulder, Square-Cut Shoulder, Boneless Shoulder, Rolled &amp; Netted Shoulder.</desc>
+    <desc>Includes Shoulder, Square-Cut Shoulder, Boneless Shoulder, Rolled &amp; Netted Shoulder, Eye of Shoulder / Chuck Roll, Oyster Shoulder.</desc>
     <path id="lamb-shoulder-shape" d="M 581 246 C 583 309.99988 565.33326 359.66674 528 395 L 599 483 L 721 443 L 710.56055 259.8457 L 709.26953 260.25 L 701.24023 257.15039 C 690.21027 252.90039 681.00912 251.49047 672.36914 252.73047 C 666.57916 253.56047 664.88047 253.45023 661.48047 251.99023 C 652.08049 247.96025 634.72912 246.66986 625.86914 249.33984 C 623.36914 250.08984 620.57094 250.34016 619.46094 249.91016 C 618.38094 249.49016 616.42914 249.11031 615.11914 249.07031 C 614.20092 249.04228 612.53079 248.09796 610.84766 246.92578 L 581 246 z " fill="#FED2BF" stroke="white" stroke-width="3" pointer-events="visibleFill" class="surface" data-hit-shape="true"/>
   </g>
   <g id="lamb-forequarter" class="cut forequarter" data-animal="Lamb" data-cut="Forequarter" data-subcuts="Forequarter,Boneless Forequarter" role="button" tabindex="0" aria-pressed="false">
@@ -83,9 +83,9 @@
     <rect x="536" y="1042" width="465" height="76" rx="15" fill="white" stroke="#082A54" stroke-width="2" pointer-events="visibleFill" class="surface" data-hit-shape="true"/>
     <text x="768.5" y="1090" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" text-anchor="middle" fill="#082A54" pointer-events="none">Trim / Manufacturing</text>
   </g>
-  <g id="lamb-offal" class="cut offal" data-animal="Lamb" data-cut="Offal / Other" data-subcuts="Liver / Fry,Kidney,Heart,Tongue,Tail,Tripe,Bones" role="button" tabindex="0" aria-pressed="false">
+  <g id="lamb-offal" class="cut offal" data-animal="Lamb" data-cut="Offal / Other" data-subcuts="Liver / Fry,Kidney,Heart,Tongue,Tail,Tripe,Bones,Neck Bones" role="button" tabindex="0" aria-pressed="false">
     <title>Offal / Other</title>
-    <desc>Includes Liver / Fry, Kidney, Heart, Tongue, Tail, Tripe, Bones.</desc>
+    <desc>Includes Liver / Fry, Kidney, Heart, Tongue, Tail, Tripe, Bones, Neck Bones.</desc>
     <rect x="1028" y="1042" width="286" height="76" rx="15" fill="white" stroke="#082A54" stroke-width="2" pointer-events="visibleFill" class="surface" data-hit-shape="true"/>
     <text x="1171.0" y="1090" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" text-anchor="middle" fill="#082A54" pointer-events="none">Offal / Other</text>
   </g>

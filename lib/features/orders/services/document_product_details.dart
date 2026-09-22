@@ -13,10 +13,11 @@ String documentProductTitle(Map<String, dynamic> item) {
       (details['grade_code'] ?? item['grade_code'])?.toString().trim() ?? '';
   final grade =
       (details['grade_name'] ?? item['grade_name'])?.toString().trim() ?? '';
+  final isLamb = details['animal_code']?.toString().toUpperCase() == 'LAMB';
   return [
     name,
-    if (code.isNotEmpty) code,
-    if (grade.isNotEmpty && grade != code) grade,
+    if (code.isNotEmpty && !(isLamb && code == 'LAMB')) code,
+    if (grade.isNotEmpty && grade != code && !isLamb) grade,
   ].join(' - ');
 }
 
@@ -44,6 +45,10 @@ String documentProductSpecifications(Map<String, dynamic> item) {
   add('Piece size', productSizeLabel(details));
   add('Brand', details['brand']);
   add('Program', details['breed_program']);
+  add('Commercial description', details['commercial_description']);
+  if (details['fat_class'] != null) {
+    add('Fat Class', details['fat_class']);
+  }
   add('Marbling', details['marbling_score']);
   add('Feeding days', details['feeding_days']);
   add('Production', details['production_claim']);
@@ -76,6 +81,9 @@ String documentProductSpecifications(Map<String, dynamic> item) {
   add('Carton size', details['chicken_carton_size']);
   add('Halal', details['halal_status']);
   add('Specification', details['supplier_specification']);
+  add('Lot / Batch', details['lot_batch']);
+  add('Slaughter date', details['slaughter_date']);
+  add('Expiry / Use-by', details['use_by_date']);
   final result = parts.join(' | ');
   return result.isNotEmpty && item['_product_details_current'] == true
       ? 'Current product specifications: $result'

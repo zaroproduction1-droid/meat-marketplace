@@ -79,6 +79,9 @@ class LambCatalogue extends AnimalCatalogue {
 
   @override
   List<String> get attributeKeys => const [
+    'breed_program',
+    'commercial_description',
+    'fat_class',
     'bone_state',
     'temperature_state',
     'halal_status',
@@ -91,6 +94,11 @@ class LambCatalogue extends AnimalCatalogue {
     'packaging_type',
     'brand',
     'supplier_specification',
+    'origin_country',
+    'origin_state',
+    'lot_batch',
+    'slaughter_date',
+    'use_by_date',
   ];
 
   static Map<String, dynamic>? _nestedMap(dynamic raw) {

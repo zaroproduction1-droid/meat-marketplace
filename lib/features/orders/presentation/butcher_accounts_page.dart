@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
 
 import '../services/invoice_pdf_service.dart';
+import '../services/invoice_commercial_details.dart';
 import '../services/invoice_account_balance.dart';
 import 'account_statement_page.dart';
 
@@ -2466,7 +2467,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         .from('invoices')
         .select('''
           *,
-          orders(fulfilment_method,delivery_contact_name_snapshot,
+          orders(order_number,fulfilment_method,delivery_contact_name_snapshot,
             delivery_contact_phone_snapshot,delivery_address_line_1_snapshot,
             delivery_address_line_2_snapshot,delivery_suburb_snapshot,
             delivery_state_snapshot,delivery_address_postcode_snapshot,
@@ -3010,6 +3011,31 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               ),
             ),
             const SizedBox(height: 12),
+            for (final entry in invoiceCommercialReferences(_invoice).entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _DetailValue(label: entry.key, value: entry.value),
+              ),
+            if (invoiceSupplySummary(
+              (_invoice['invoice_items'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList(),
+            ).isNotEmpty)
+              _DetailValue(
+                label: 'Supply totals',
+                value: invoiceSupplySummary(
+                  (_invoice['invoice_items'] as List? ?? const [])
+                      .whereType<Map>()
+                      .map((item) => Map<String, dynamic>.from(item))
+                      .toList(),
+                ),
+              ),
+            for (final entry in invoiceCommercialNotices(_invoice).entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _DetailValue(label: entry.key, value: entry.value),
+              ),
             _DetailValue(
               label: 'Invoice date',
               value: _date(_invoice['invoice_date']),

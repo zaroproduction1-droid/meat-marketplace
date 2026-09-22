@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../orders/presentation/draft_orders_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
 import '../services/butcher_favourites_store.dart';
@@ -779,7 +780,7 @@ class _MarketplaceProductDetailsPageState
     final specification = _newSpecificationName();
     final grade = _newGradeCode();
 
-    if (grade == 'N/A') {
+    if (grade == 'N/A' || grade == 'LAMB') {
       return specification;
     }
 
@@ -789,6 +790,10 @@ class _MarketplaceProductDetailsPageState
   Widget _gradeIdentityBadge() {
     final code = _newGradeCode();
     final name = _newGradeName();
+
+    if (code == 'LAMB') {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       width: 104,
@@ -1486,7 +1491,10 @@ class _MarketplaceProductDetailsPageState
       MapEntry('Animal', _speciesName()),
       MapEntry('Section', _newSectionName()),
       MapEntry('Specification', _currentCatalogueProductName()),
-      MapEntry('Grade', _variantName()),
+      MapEntry(
+        LambProductDetails.isLamb(product) ? 'Sheepmeat Category' : 'Grade',
+        _variantName(),
+      ),
       MapEntry(
         'Temperature',
         _formatTemperature(product['temperature_state'] as String?),
@@ -1498,7 +1506,19 @@ class _MarketplaceProductDetailsPageState
     ];
 
     final meatFields = <MapEntry<String, String>>[
-      MapEntry('Grade / category', _variantName()),
+      MapEntry(
+        LambProductDetails.isLamb(product)
+            ? 'Commercial Type / Program'
+            : 'Grade / category',
+        LambProductDetails.isLamb(product)
+            ? LambProductDetails.program(product)
+            : _variantName(),
+      ),
+      MapEntry(
+        'Commercial description',
+        LambProductDetails.commercialDescription(product),
+      ),
+      MapEntry('Fat Class', LambProductDetails.fatClass(product)),
       MapEntry(
         'Temperature',
         _formatTemperature(product['temperature_state'] as String?),
@@ -1519,6 +1539,12 @@ class _MarketplaceProductDetailsPageState
             )
             .join(' • '),
       ),
+    ];
+
+    final traceabilityFields = <MapEntry<String, String>>[
+      MapEntry('Lot / Batch', _textValue('lot_batch')),
+      MapEntry('Slaughter date', _textValue('slaughter_date')),
+      MapEntry('Expiry / Use-by', _textValue('use_by_date')),
     ];
 
     Widget fields(
@@ -1576,7 +1602,10 @@ class _MarketplaceProductDetailsPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _newSpecificationName(),
+                          LambProductDetails.title(
+                            product,
+                            _newSpecificationName(),
+                          ),
                           style: const TextStyle(
                             fontSize: 25,
                             height: 1.05,
@@ -1695,35 +1724,55 @@ class _MarketplaceProductDetailsPageState
           icon: Icons.tune_outlined,
           child: fields(meatFields, prominent: true),
         ),
-        const SizedBox(height: 10),
-        _compactCard(
-          title: 'Halal',
-          icon: Icons.verified_outlined,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _halalLabel(),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: product['halal_status'] == 'halal'
-                      ? const Color(0xFF246342)
-                      : const Color(0xFF555B61),
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                product['halal_status'] == 'halal'
-                    ? 'Declared Halal by the supplier. Contact the supplier for certification details.'
-                    : product['halal_status'] == 'not_halal'
-                    ? 'The supplier has marked this product as not Halal.'
-                    : 'The supplier has not specified Halal status for this product.',
-                style: const TextStyle(color: Color(0xFF5E6469), height: 1.35),
-              ),
-            ],
+        if (LambProductDetails.isLamb(product) &&
+            traceabilityFields.any(
+              (entry) =>
+                  entry.value.isNotEmpty &&
+                  entry.value != 'Not specified' &&
+                  entry.value != 'Not provided',
+            )) ...[
+          const SizedBox(height: 10),
+          _compactCard(
+            title: 'Traceability',
+            icon: Icons.manage_search_outlined,
+            child: fields(traceabilityFields),
           ),
-        ),
+        ],
+        if (product['halal_status'] == 'halal' ||
+            product['halal_status'] == 'not_halal') ...[
+          const SizedBox(height: 10),
+          _compactCard(
+            title: 'Halal',
+            icon: Icons.verified_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _halalLabel(),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: product['halal_status'] == 'halal'
+                        ? const Color(0xFF246342)
+                        : const Color(0xFF555B61),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  product['halal_status'] == 'halal'
+                      ? 'Declared Halal by the supplier. Contact the supplier for certification details.'
+                      : product['halal_status'] == 'not_halal'
+                      ? 'The supplier has marked this product as not Halal.'
+                      : 'The supplier has not specified Halal status for this product.',
+                  style: const TextStyle(
+                    color: Color(0xFF5E6469),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (supplierSpecification.isNotEmpty) ...[
           const SizedBox(height: 10),
           _compactCard(

@@ -1,4 +1,5 @@
 import '../../../shared/widgets/phone_layout.dart';
+import 'order_sales_contact.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
 import 'dart:typed_data';
@@ -522,6 +523,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       child: PhoneColumn(
         desktop: Column(
           children: [
+            OrderSalesContact(orderId: widget.orderId),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

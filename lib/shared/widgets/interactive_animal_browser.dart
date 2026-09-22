@@ -313,7 +313,7 @@ class _AnimalTab extends StatelessWidget {
   }
 }
 
-/// Equal-width choices shared by the phone catalogue and Browse controls.
+/// Equal-width choices shared across catalogue, Browse, Sales and Inventory.
 class PhoneAnimalSelector extends StatelessWidget {
   const PhoneAnimalSelector({
     super.key,
@@ -328,7 +328,11 @@ class PhoneAnimalSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final columns = box.maxWidth < 250 ? 2 : 3;
+        final columns = box.maxWidth >= 660
+            ? 6
+            : box.maxWidth < 250
+            ? 2
+            : 3;
         final width = (box.maxWidth - (columns - 1) * 8) / columns;
         return Wrap(
           spacing: 8,
@@ -351,6 +355,60 @@ class PhoneAnimalSelector extends StatelessWidget {
       },
     );
   }
+}
+
+/// A consistent catalogue entry point with readable, evenly sized animal tabs.
+class AnimalCatalogueControls extends StatelessWidget {
+  const AnimalCatalogueControls({
+    super.key,
+    required this.selectedCode,
+    required this.onChanged,
+    required this.onBrowse,
+  });
+  final String selectedCode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onBrowse;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final button = FilledButton.icon(
+        onPressed: onBrowse,
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF741C1C)),
+        icon: const Icon(Icons.menu_book_outlined, size: 20),
+        label: const Text('Browse animal catalogue'),
+      );
+      final selector = PhoneAnimalSelector(
+        selectedCode: selectedCode,
+        onChanged: onChanged,
+      );
+      if (box.maxWidth >= 960) {
+        return Row(
+          children: [
+            button,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 780),
+                  child: selector,
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(alignment: Alignment.centerLeft, child: button),
+          const SizedBox(height: 10),
+          selector,
+        ],
+      );
+    },
+  );
 }
 
 /// Transform the entire map, including its hit targets, as a single surface.

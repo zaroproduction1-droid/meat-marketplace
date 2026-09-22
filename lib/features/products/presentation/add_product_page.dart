@@ -49,6 +49,10 @@ class _AddProductPageState extends State<AddProductPage> {
   final _goatWeightMin = TextEditingController();
   final _goatWeightMax = TextEditingController();
   final _goatCartonWeight = TextEditingController();
+  final _commercialDescription = TextEditingController();
+  final _lotBatch = TextEditingController();
+  final _slaughterDate = TextEditingController();
+  final _useByDate = TextEditingController();
 
   String? _supplierBusinessId;
   String? _animalId;
@@ -62,6 +66,8 @@ class _AddProductPageState extends State<AddProductPage> {
   String _availability = 'in_stock';
   String _halal = 'not_specified';
   String _goatBoneState = 'bone_in';
+  String _lambBoneState = 'not_specified';
+  String _lambFatClass = 'not_specified';
 
   String _chickenSkin = 'not_applicable';
   String _chickenBone = 'not_applicable';
@@ -109,6 +115,10 @@ class _AddProductPageState extends State<AddProductPage> {
       _goatWeightMin,
       _goatWeightMax,
       _goatCartonWeight,
+      _commercialDescription,
+      _lotBatch,
+      _slaughterDate,
+      _useByDate,
     ]) {
       controller.dispose();
     }
@@ -238,6 +248,17 @@ class _AddProductPageState extends State<AddProductPage> {
 
   bool get _isChicken => _selectedAnimalCode == 'CHICKEN';
   bool get _isGoat => _selectedAnimalCode == 'GOAT';
+  bool get _isLamb => _selectedAnimalCode == 'LAMB';
+
+  bool get _isWholeLamb {
+    if (!_isLamb || _sectionId == null) return false;
+    for (final section in _sections) {
+      if (section['id']?.toString() == _sectionId) {
+        return section['code']?.toString().toUpperCase() == 'WHOLE_CARCASE';
+      }
+    }
+    return false;
+  }
 
   Future<void> _selectAnimal(String? id) async {
     if (id == null) return;
@@ -544,7 +565,9 @@ class _AddProductPageState extends State<AddProductPage> {
 
     final minimum = double.tryParse(_minimumCartons.text.trim());
     if (minimum == null || minimum < 1) {
-      _message('Minimum order must be at least 1 carton.');
+      _message(
+        'Minimum order must be at least 1 ${_isWholeLamb ? 'carcase' : 'carton'}.',
+      );
       return;
     }
 
@@ -566,7 +589,7 @@ class _AddProductPageState extends State<AddProductPage> {
       return;
     }
     final cartonWeight = double.tryParse(_goatCartonWeight.text.trim());
-    if (_isGoat &&
+    if ((_isGoat || _isLamb) &&
         _goatCartonWeight.text.trim().isNotEmpty &&
         (cartonWeight == null || !cartonWeight.isFinite || cartonWeight < 0)) {
       _message('Enter a valid carton weight.');
@@ -628,10 +651,28 @@ class _AddProductPageState extends State<AddProductPage> {
           params: {
             'p_details': {
               ...size.fields,
-              if (_isGoat) ...{
-                'bone_state': _goatBoneState,
+              if (_isGoat || _isLamb) ...{
+                'bone_state': _isLamb ? _lambBoneState : _goatBoneState,
                 'carton_weight': cartonWeight,
                 'carton_weight_unit': cartonWeight == null ? null : 'kg',
+              },
+              if (_isLamb) ...{
+                'fat_class': _lambFatClass == 'not_specified'
+                    ? null
+                    : int.parse(_lambFatClass),
+                'commercial_description':
+                    _commercialDescription.text.trim().isEmpty
+                    ? null
+                    : _commercialDescription.text.trim(),
+                'lot_batch': _lotBatch.text.trim().isEmpty
+                    ? null
+                    : _lotBatch.text.trim(),
+                'slaughter_date': _slaughterDate.text.trim().isEmpty
+                    ? null
+                    : _slaughterDate.text.trim(),
+                'use_by_date': _useByDate.text.trim().isEmpty
+                    ? null
+                    : _useByDate.text.trim(),
               },
               'p_supplier_business_id': _supplierBusinessId,
               'p_animal_id': _animalId,
@@ -1110,6 +1151,179 @@ class _AddProductPageState extends State<AddProductPage> {
     );
   }
 
+  Future<void> _pickDate(TextEditingController controller) async {
+    final parsed = DateTime.tryParse(controller.text.trim());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parsed ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+    controller.text = picked.toIso8601String().split('T').first;
+  }
+
+  Widget _lambSpecifications() {
+    const fatClasses = [
+      CutLinkPickerOption(value: 'not_specified', label: 'Not specified'),
+      CutLinkPickerOption(value: '1', label: 'Fat Class 1'),
+      CutLinkPickerOption(value: '2', label: 'Fat Class 2'),
+      CutLinkPickerOption(value: '3', label: 'Fat Class 3'),
+      CutLinkPickerOption(value: '4', label: 'Fat Class 4'),
+      CutLinkPickerOption(value: '5', label: 'Fat Class 5'),
+    ];
+
+    Widget dateField(String label, TextEditingController controller) {
+      return TextFormField(
+        controller: controller,
+        readOnly: true,
+        onTap: _saving ? null : () => _pickDate(controller),
+        decoration: InputDecoration(
+          labelText: '$label (optional)',
+          suffixIcon: controller.text.isEmpty
+              ? const Icon(Icons.calendar_month_outlined)
+              : IconButton(
+                  tooltip: 'Clear',
+                  onPressed: _saving ? null : () => setState(controller.clear),
+                  icon: const Icon(Icons.close),
+                ),
+          border: const OutlineInputBorder(),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        _twoFields(
+          TextFormField(
+            controller: _breed,
+            decoration: const InputDecoration(
+              labelText: 'Commercial Type / Program (optional)',
+              hintText: 'Example: ANZAC Lamb',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          TextFormField(
+            controller: _commercialDescription,
+            decoration: const InputDecoration(
+              labelText: 'Commercial Description (optional)',
+              hintText: 'Example: Big & Lean',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          CutLinkPickerField<String>(
+            label: 'Fat Class',
+            value: _lambFatClass,
+            options: fatClasses,
+            enabled: !_saving,
+            onChanged: (value) {
+              if (value != null) setState(() => _lambFatClass = value);
+            },
+          ),
+          CutLinkPickerField<String>(
+            label: 'Bone',
+            value: _lambBoneState,
+            options: const [
+              CutLinkPickerOption(
+                value: 'not_specified',
+                label: 'Not specified',
+              ),
+              CutLinkPickerOption(value: 'bone_in', label: 'Bone-In'),
+              CutLinkPickerOption(value: 'boneless', label: 'Boneless'),
+            ],
+            enabled: !_saving,
+            onChanged: (value) {
+              if (value != null) setState(() => _lambBoneState = value);
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          CutLinkPickerField<String>(
+            label: 'Storage Condition',
+            value: _temperature,
+            options: const [
+              CutLinkPickerOption(value: 'fresh', label: 'Fresh'),
+              CutLinkPickerOption(value: 'chilled', label: 'Chilled'),
+              CutLinkPickerOption(value: 'frozen', label: 'Frozen'),
+            ],
+            enabled: !_saving,
+            onChanged: (value) {
+              if (value != null) setState(() => _temperature = value);
+            },
+          ),
+          CutLinkPickerField<String>(
+            label: 'Halal Status',
+            value: _halal,
+            options: const [
+              CutLinkPickerOption(
+                value: 'not_specified',
+                label: 'Not specified',
+              ),
+              CutLinkPickerOption(value: 'halal', label: 'Halal'),
+              CutLinkPickerOption(value: 'not_halal', label: 'Not halal'),
+            ],
+            enabled: !_saving,
+            onChanged: (value) {
+              if (value != null) setState(() => _halal = value);
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        _twoFields(
+          TextFormField(
+            controller: _goatCartonWeight,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Carton / Pack Weight (optional)',
+              suffixText: 'kg',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          TextFormField(
+            controller: _originCountry,
+            decoration: const InputDecoration(
+              labelText: 'Country of Origin',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        if (_isWholeLamb) ...[
+          const SizedBox(height: 14),
+          _twoFields(
+            TextFormField(
+              controller: _lotBatch,
+              decoration: const InputDecoration(
+                labelText: 'Lot / Batch (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            dateField('Slaughter Date', _slaughterDate),
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: dateField('Expiry / Use-by', _useByDate),
+            ),
+          ),
+        ],
+        const SizedBox(height: 10),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Fat Class describes fat cover only; it is not a quality ranking.',
+            style: TextStyle(color: Color(0xFF6B6B6B), fontSize: 11.5),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -1334,6 +1548,19 @@ class _AddProductPageState extends State<AddProductPage> {
                       child: _chickenSpecifications(),
                     ),
                   ],
+                  if (_isLamb) ...[
+                    const SizedBox(height: 14),
+                    _sectionCard(
+                      title: _isWholeLamb
+                          ? 'Whole Lamb / Carcase Specifications'
+                          : 'Lamb Commercial Specifications',
+                      subtitle: _isWholeLamb
+                          ? 'Record only the carcase, program and traceability details supplied for this product.'
+                          : 'Add only the commercial details relevant to this Lamb cut.',
+                      icon: Icons.fact_check_outlined,
+                      child: _lambSpecifications(),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   _sectionCard(
                     title: 'Product Details',
@@ -1433,9 +1660,11 @@ class _AddProductPageState extends State<AddProductPage> {
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
                                     ),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Current Stock',
-                                  suffixText: 'cartons',
+                                  suffixText: _isWholeLamb
+                                      ? 'carcases'
+                                      : 'cartons',
                                   border: OutlineInputBorder(),
                                 ),
                                 validator: _optionalPositive,
@@ -1443,9 +1672,11 @@ class _AddProductPageState extends State<AddProductPage> {
                               TextFormField(
                                 controller: _minimumCartons,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Minimum Order',
-                                  suffixText: 'cartons',
+                                  suffixText: _isWholeLamb
+                                      ? 'carcases'
+                                      : 'cartons',
                                   border: OutlineInputBorder(),
                                 ),
                                 validator: _optionalPositive,

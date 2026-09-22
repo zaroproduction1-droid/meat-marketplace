@@ -39,6 +39,10 @@ class _EditProductPageState extends State<EditProductPage> {
   late final TextEditingController _trimSpecificationController;
   late final TextEditingController _fatSpecificationController;
   late final TextEditingController _supplierSpecificationController;
+  late final TextEditingController _commercialDescriptionController;
+  late final TextEditingController _lotBatchController;
+  late final TextEditingController _slaughterDateController;
+  late final TextEditingController _useByDateController;
 
   bool _isLoadingPage = true;
   bool _isSaving = false;
@@ -107,6 +111,20 @@ class _EditProductPageState extends State<EditProductPage> {
   String _pieceSizeKind = 'none';
   String _cartonWeightUnit = 'kg';
   String _halalStatus = 'not_specified';
+  String _boneState = 'not_specified';
+  String _lambFatClass = 'not_specified';
+
+  bool get _isLamb => _selectedAnimalCode == 'LAMB';
+
+  bool get _isWholeLamb {
+    if (!_isLamb || _selectedSectionId == null) return false;
+    for (final section in _sections) {
+      if (section['id']?.toString() == _selectedSectionId) {
+        return section['code']?.toString().toUpperCase() == 'WHOLE_CARCASE';
+      }
+    }
+    return false;
+  }
 
   bool _isLoadingPricing = true;
   bool _isSavingPrice = false;
@@ -140,6 +158,10 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController = TextEditingController();
     _fatSpecificationController = TextEditingController();
     _supplierSpecificationController = TextEditingController();
+    _commercialDescriptionController = TextEditingController();
+    _lotBatchController = TextEditingController();
+    _slaughterDateController = TextEditingController();
+    _useByDateController = TextEditingController();
 
     _applyProductData(widget.product);
     _loadInitialData();
@@ -168,6 +190,10 @@ class _EditProductPageState extends State<EditProductPage> {
     _trimSpecificationController.dispose();
     _fatSpecificationController.dispose();
     _supplierSpecificationController.dispose();
+    _commercialDescriptionController.dispose();
+    _lotBatchController.dispose();
+    _slaughterDateController.dispose();
+    _useByDateController.dispose();
 
     super.dispose();
   }
@@ -207,6 +233,20 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _supplierSpecificationController.text =
         product['supplier_specification']?.toString() ?? '';
+    _commercialDescriptionController.text =
+        product['commercial_description']?.toString() ?? '';
+    _lotBatchController.text = product['lot_batch']?.toString() ?? '';
+    _slaughterDateController.text = product['slaughter_date']?.toString() ?? '';
+    _useByDateController.text = product['use_by_date']?.toString() ?? '';
+    final fatClass = int.tryParse('${product['fat_class'] ?? ''}');
+    _lambFatClass = fatClass != null && fatClass >= 1 && fatClass <= 5
+        ? '$fatClass'
+        : 'not_specified';
+    final boneState = product['bone_state']?.toString();
+    _boneState =
+        const {'bone_in', 'boneless', 'not_specified'}.contains(boneState)
+        ? boneState!
+        : 'not_specified';
 
     final temperature = product['temperature_state']?.toString();
 
@@ -744,6 +784,20 @@ class _EditProductPageState extends State<EditProductPage> {
     return int.parse(value);
   }
 
+  Future<void> _pickDate(TextEditingController controller) async {
+    final parsed = DateTime.tryParse(controller.text.trim());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parsed ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+    setState(() {
+      controller.text = picked.toIso8601String().split('T').first;
+    });
+  }
+
   Future<void> _saveProduct() async {
     FocusScope.of(context).unfocus();
 
@@ -787,14 +841,17 @@ class _EditProductPageState extends State<EditProductPage> {
     try {
       String? catalogueGradeId = _selectedGradeId;
       if (_usesSpecGradeCatalogue && !_usesGradeStage) {
-        final generalGrade = await Supabase.instance.client
+        final automaticGrade = await Supabase.instance.client
             .from('meat_grades')
             .select('id, meat_grade_systems!inner(code)')
-            .eq('code', 'NA')
-            .eq('meat_grade_systems.code', 'CUTLINK_GENERAL')
+            .eq('code', _isLamb ? 'LAMB' : 'NA')
+            .eq(
+              'meat_grade_systems.code',
+              _isLamb ? 'AUSMEAT_SHEEPMEAT_CATEGORY' : 'CUTLINK_GENERAL',
+            )
             .eq('is_active', true)
             .single();
-        catalogueGradeId = generalGrade['id'].toString();
+        catalogueGradeId = automaticGrade['id'].toString();
       }
       final quantityText = _quantityController.text.trim();
 
@@ -866,6 +923,28 @@ class _EditProductPageState extends State<EditProductPage> {
           _supplierSpecificationController.text,
         ),
 
+        'commercial_description': _isLamb
+            ? _emptyToNull(_commercialDescriptionController.text)
+            : widget.product['commercial_description'],
+
+        'fat_class': _isLamb && _lambFatClass != 'not_specified'
+            ? int.parse(_lambFatClass)
+            : null,
+
+        'bone_state': _isLamb ? _boneState : widget.product['bone_state'],
+
+        'lot_batch': _isLamb
+            ? _emptyToNull(_lotBatchController.text)
+            : widget.product['lot_batch'],
+
+        'slaughter_date': _isLamb
+            ? _emptyToNull(_slaughterDateController.text)
+            : widget.product['slaughter_date'],
+
+        'use_by_date': _isLamb
+            ? _emptyToNull(_useByDateController.text)
+            : widget.product['use_by_date'],
+
         'active': _active,
 
         'updated_at': DateTime.now().toIso8601String(),
@@ -878,10 +957,10 @@ class _EditProductPageState extends State<EditProductPage> {
         updateData['meat_grade_id'] = catalogueGradeId;
 
         updateData['price_basis'] = 'kilogram';
-        updateData['order_unit'] = 'carton';
+        updateData['order_unit'] = _isWholeLamb ? 'unit' : 'carton';
         updateData['weight_type'] = 'catch_weight';
         updateData['catch_weight'] = true;
-        updateData['quantity_unit'] = 'carton';
+        updateData['quantity_unit'] = _isWholeLamb ? 'unit' : 'carton';
       }
 
       await Supabase.instance.client
@@ -912,6 +991,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   'supplier_product_name': _productNameController.text.trim(),
                   'is_available': _availabilityStatus != 'out_of_stock',
                   'is_active': _active,
+                  'order_unit': _isWholeLamb ? 'item' : 'carton',
                   'updated_at': DateTime.now().toUtc().toIso8601String(),
                 })
                 .eq('id', existingOffer['id']);
@@ -2543,10 +2623,14 @@ class _EditProductPageState extends State<EditProductPage> {
                                               decimal: true,
                                             ),
                                         decoration: InputDecoration(
-                                          labelText: _usesSpecGradeCatalogue
+                                          labelText: _isWholeLamb
+                                              ? 'Available carcases'
+                                              : _usesSpecGradeCatalogue
                                               ? 'Available cartons'
                                               : 'Available quantity',
-                                          suffixText: _usesSpecGradeCatalogue
+                                          suffixText: _isWholeLamb
+                                              ? 'carcases'
+                                              : _usesSpecGradeCatalogue
                                               ? 'cartons'
                                               : null,
                                           border: const OutlineInputBorder(),
@@ -2692,10 +2776,152 @@ class _EditProductPageState extends State<EditProductPage> {
                                         ),
                                       ),
                                       subtitle: const Text(
-                                        'Marbling, trim, origin and supplier notes.',
+                                        'Commercial program, preparation, origin and supplier notes.',
                                       ),
                                       children: [
                                         const SizedBox(height: 12),
+
+                                        if (_isLamb) ...[
+                                          _twoColumnFields(
+                                            TextFormField(
+                                              controller:
+                                                  _commercialDescriptionController,
+                                              decoration: const InputDecoration(
+                                                labelText:
+                                                    'Commercial description (optional)',
+                                                hintText: 'Example: Big & Lean',
+                                                border: OutlineInputBorder(),
+                                              ),
+                                            ),
+                                            DropdownButtonFormField<String>(
+                                              isExpanded: isPhoneLayout(
+                                                context,
+                                              ),
+                                              initialValue: _lambFatClass,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Fat Class',
+                                                helperText:
+                                                    'Fat cover only — not a quality ranking.',
+                                                border: OutlineInputBorder(),
+                                              ),
+                                              items: const [
+                                                DropdownMenuItem(
+                                                  value: 'not_specified',
+                                                  child: Text('Not specified'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: '1',
+                                                  child: Text('Fat Class 1'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: '2',
+                                                  child: Text('Fat Class 2'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: '3',
+                                                  child: Text('Fat Class 3'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: '4',
+                                                  child: Text('Fat Class 4'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: '5',
+                                                  child: Text('Fat Class 5'),
+                                                ),
+                                              ],
+                                              onChanged: (value) {
+                                                if (value != null) {
+                                                  setState(() {
+                                                    _lambFatClass = value;
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _twoColumnFields(
+                                            DropdownButtonFormField<String>(
+                                              isExpanded: isPhoneLayout(
+                                                context,
+                                              ),
+                                              initialValue: _boneState,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Bone',
+                                                border: OutlineInputBorder(),
+                                              ),
+                                              items: const [
+                                                DropdownMenuItem(
+                                                  value: 'not_specified',
+                                                  child: Text('Not specified'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 'bone_in',
+                                                  child: Text('Bone-In'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 'boneless',
+                                                  child: Text('Boneless'),
+                                                ),
+                                              ],
+                                              onChanged: (value) {
+                                                if (value != null) {
+                                                  setState(() {
+                                                    _boneState = value;
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                            TextFormField(
+                                              controller: _lotBatchController,
+                                              decoration: const InputDecoration(
+                                                labelText:
+                                                    'Lot / batch (optional)',
+                                                border: OutlineInputBorder(),
+                                              ),
+                                            ),
+                                          ),
+                                          if (_isWholeLamb) ...[
+                                            const SizedBox(height: 12),
+                                            _twoColumnFields(
+                                              TextFormField(
+                                                controller:
+                                                    _slaughterDateController,
+                                                readOnly: true,
+                                                onTap: () => _pickDate(
+                                                  _slaughterDateController,
+                                                ),
+                                                decoration: const InputDecoration(
+                                                  labelText:
+                                                      'Slaughter date (optional)',
+                                                  suffixIcon: Icon(
+                                                    Icons
+                                                        .calendar_month_outlined,
+                                                  ),
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                              ),
+                                              TextFormField(
+                                                controller:
+                                                    _useByDateController,
+                                                readOnly: true,
+                                                onTap: () => _pickDate(
+                                                  _useByDateController,
+                                                ),
+                                                decoration: const InputDecoration(
+                                                  labelText:
+                                                      'Expiry / use-by (optional)',
+                                                  suffixIcon: Icon(
+                                                    Icons
+                                                        .calendar_month_outlined,
+                                                  ),
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 12),
+                                        ],
 
                                         _twoColumnFields(
                                           const Text(
@@ -2718,13 +2944,28 @@ class _EditProductPageState extends State<EditProductPage> {
                                         const SizedBox(height: 12),
 
                                         _twoColumnFields(
-                                          ProductAttributeField(
-                                            controller: _breedProgramController,
-                                            label: 'Breed / program',
-                                            choices: productPrograms,
-                                            enabled: !_isSaving,
-                                            onChanged: () => setState(() {}),
-                                          ),
+                                          _isLamb
+                                              ? TextFormField(
+                                                  controller:
+                                                      _breedProgramController,
+                                                  decoration: const InputDecoration(
+                                                    labelText:
+                                                        'Commercial Type / Program',
+                                                    hintText:
+                                                        'Example: ANZAC Lamb',
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                  ),
+                                                )
+                                              : ProductAttributeField(
+                                                  controller:
+                                                      _breedProgramController,
+                                                  label: 'Breed / program',
+                                                  choices: productPrograms,
+                                                  enabled: !_isSaving,
+                                                  onChanged: () =>
+                                                      setState(() {}),
+                                                ),
                                           DropdownButtonFormField<String>(
                                             isExpanded: isPhoneLayout(context),
                                             initialValue: _halalStatus,

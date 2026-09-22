@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import '../../../shared/widgets/supplier_stock_filters.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../products/presentation/edit_product_page.dart';
 import '../../products/presentation/add_product_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
@@ -1684,6 +1685,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     final gradeCode = _gradeCode(product);
     final gradeName = _gradeName(product);
     final specification = _specificationName(product);
+    final lambSummary = LambProductDetails.secondaryLine(product);
+    final lambTitle = LambProductDetails.title(product, specification);
 
     return Card(
       elevation: 0,
@@ -1706,7 +1709,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   child: Column(
                     children: [
                       CatalogueProductImage(product: product, thumbnail: true),
-                      if (gradeCode != 'NA' && gradeCode != 'N/A')
+                      if (gradeCode != 'NA' &&
+                          gradeCode != 'N/A' &&
+                          gradeCode != 'LAMB')
                         Tooltip(
                           message: gradeName,
                           child: Text(
@@ -1726,7 +1731,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        specification,
+                        lambTitle,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -1760,6 +1765,17 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                             color: _darkRed,
+                          ),
+                        ),
+                      ],
+                      if (lambSummary.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          lambSummary,
+                          style: const TextStyle(
+                            color: Color(0xFF4E5357),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -2181,43 +2197,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
               },
             ),
             const SizedBox(height: 10),
-            if (phone) ...[
-              FilledButton.icon(
-                onPressed: _browseDiagram,
-                icon: const Icon(Icons.menu_book_outlined, size: 20),
-                label: const Text('Browse animal catalogue'),
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
-              ),
-              const SizedBox(height: 10),
-              PhoneAnimalSelector(
-                selectedCode: _selectedAnimalCode,
-                onChanged: _selectAnimal,
-              ),
-            ] else
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    for (final animal in const [
-                      'BEEF',
-                      'VEAL',
-                      'LAMB',
-                      'MUTTON',
-                      'GOAT',
-                      'CHICKEN',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text(animal),
-                          selected: _selectedAnimalCode == animal,
-                          onSelected: (_) => _selectAnimal(animal),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+            AnimalCatalogueControls(
+              selectedCode: _selectedAnimalCode,
+              onChanged: _selectAnimal,
+              onBrowse: _browseDiagram,
+            ),
             const SizedBox(height: 8),
             _buildSectionStrip(),
             if (_selectedSectionId != null ||

@@ -1,9 +1,11 @@
 import '../../../shared/widgets/phone_layout.dart';
+import '../../../shared/widgets/sales_loading_progress.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -189,6 +191,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   bool _isLoading = true;
+  int _loadStage = 0;
+  int _loadedStockCount = 0;
+  int? _totalStockCount;
+  int _stockLoadRequest = 0;
   String? _errorMessage;
   String _selectedAnimalCode = CutLinkAnimals.beef;
   String? _selectedAnimalRegionKey;
@@ -449,18 +455,38 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   Future<void> _loadStock() async {
+    final request = ++_stockLoadRequest;
+    void progress(int stage, {int? loaded, int? total}) {
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
+      setState(() {
+        _loadStage = stage;
+        if (loaded != null) _loadedStockCount = loaded;
+        if (total != null) _totalStockCount = total;
+      });
+    }
+
     setState(() {
       _isLoading = true;
+      _loadStage = 0;
+      _loadedStockCount = 0;
+      _totalStockCount = null;
       _errorMessage = null;
     });
 
     try {
       final client = Supabase.instance.client;
-      final supplierBusinessId = await _resolveSupplierBusinessId();
-
+      final supplierBusinessId = await _resolveSupplierBusinessId().timeout(
+        const Duration(seconds: 45),
+      );
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
+      progress(1);
       final productResponse = <Map<String, dynamic>>[];
       for (var offset = 0; ; offset += 500) {
-        final batch = await client
+        final query = client
             .from('products')
             .select('''
             id,
@@ -470,6 +496,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             hide_catalogue_photo,
             brand,
             breed_program,
+            commercial_description,
+            fat_class,
+            lot_batch,
+            slaughter_date,
+            use_by_date,
             marbling_score,
             production_claim,
             feeding_days,
@@ -544,25 +575,41 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             .order('product_name')
             .order('id')
             .range(offset, offset + 499);
-        if (!mounted) {
+        final List<Map<String, dynamic>> batch;
+        if (offset == 0) {
+          final response = await query
+              .count(CountOption.exact)
+              .timeout(const Duration(seconds: 60));
+          batch = List<Map<String, dynamic>>.from(response.data);
+          progress(1, total: response.count);
+        } else {
+          batch = List<Map<String, dynamic>>.from(
+            await query.timeout(const Duration(seconds: 60)),
+          );
+        }
+        if (!mounted || request != _stockLoadRequest) {
           return;
         }
         productResponse.addAll(List<Map<String, dynamic>>.from(batch));
+        progress(1, loaded: productResponse.length);
         if (batch.length < 500) {
           break;
         }
       }
 
+      progress(2);
       final catalogueAnimalResponse = await client
           .from('meat_animals')
           .select('id, code, name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .timeout(const Duration(seconds: 60));
 
       final catalogueSectionResponse = await client
           .from('meat_sections')
           .select('id, animal_id, code, name, slug, hotspot_key, display_order')
           .eq('is_active', true)
-          .order('display_order');
+          .order('display_order')
+          .timeout(const Duration(seconds: 60));
 
       final catalogueSpecificationResponse = await client
           .from('meat_specifications')
@@ -571,8 +618,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             'specification_type, approval_status',
           )
           .eq('is_active', true)
-          .order('display_order');
+          .order('display_order')
+          .timeout(const Duration(seconds: 60));
 
+      progress(3);
       final marketplaceResponse = await client
           .from('orders')
           .select('''
@@ -581,7 +630,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           ''')
           .eq('supplier_business_id', supplierBusinessId)
           .eq('order_source', 'marketplace')
-          .eq('status', 'submitted');
+          .eq('status', 'submitted')
+          .timeout(const Duration(seconds: 60));
 
       var marketplaceItemCount = 0;
 
@@ -592,10 +642,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         }
       }
 
-      if (!mounted) {
+      if (!mounted || request != _stockLoadRequest) {
         return;
       }
 
+      progress(4);
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
       setState(() {
         _products = (productResponse as List)
             .whereType<Map>()
@@ -614,7 +669,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) {
+      if (!mounted || request != _stockLoadRequest) {
         return;
       }
 
@@ -623,12 +678,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) {
+      if (!mounted || request != _stockLoadRequest) {
         return;
       }
 
       setState(() {
-        _errorMessage = error.toString();
+        _errorMessage = error is TimeoutException
+            ? 'Loading took too long. Check your connection and try again.'
+            : error.toString();
         _isLoading = false;
       });
     }
@@ -882,6 +939,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         product['marbling_score']?.toString() ?? '',
         _commercialSpecificationLabel(product),
         _salesProductSummary(product),
+        LambProductDetails.searchableText(product),
       ].join(' ').toLowerCase();
 
       return query.split(RegExp(r'\s+')).every(searchable.contains);
@@ -3605,6 +3663,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     if (_isChickenProduct(product)) _chickenVariationLabel(product),
     product['bone_state']?.toString().replaceAll('_', ' ') ?? '',
     product['packaging_type']?.toString().replaceAll('_', ' ') ?? '',
+    LambProductDetails.fatClass(product),
+    LambProductDetails.commercialDescription(product),
   ].where((value) => value.trim().isNotEmpty).toSet().join(' • ');
 
   Future<void> _openSalesProductInfo(Map<String, dynamic> product) async {
@@ -3621,6 +3681,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       'Brand': product['brand']?.toString() ?? '',
       'Size per piece': productSizeLabel(product),
       'Program': productProgram(product),
+      'Commercial description': LambProductDetails.commercialDescription(
+        product,
+      ),
+      'Fat Class': LambProductDetails.fatClass(product),
       'Marbling': product['marbling_score']?.toString() ?? '',
       'Feeding / production':
           product['production_claim']?.toString().replaceAll('_', ' ') ?? '',
@@ -3671,7 +3735,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        _specificationName(product),
+                        LambProductDetails.title(
+                          product,
+                          _specificationName(product),
+                        ),
                         style: const TextStyle(
                           fontSize: 21,
                           fontWeight: FontWeight.w900,
@@ -3768,10 +3835,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final available =
         product['availability_status']?.toString() != 'out_of_stock';
     final summary = _salesProductSummary(product);
-    final grade = [
-      _gradeCode(product),
-      _gradeName(product),
-    ].where((value) => value.isNotEmpty && value != '—').toSet().join(' • ');
+    final grade = [_gradeCode(product), _gradeName(product)]
+        .where((value) => value.isNotEmpty && value != '—' && value != 'LAMB')
+        .toSet()
+        .join(' • ');
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 6),
@@ -3806,7 +3873,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            _specificationName(product),
+                            LambProductDetails.title(
+                              product,
+                              _specificationName(product),
+                            ),
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
@@ -4113,7 +4183,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return SalesLoadingProgress(
+        key: ValueKey(_stockLoadRequest),
+        stage: _loadStage,
+        loaded: _loadedStockCount,
+        total: _totalStockCount,
+      );
     }
     if (_errorMessage != null) {
       return Center(
@@ -4188,55 +4263,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (isPhoneLayout(context)) ...[
-                          FilledButton.icon(
-                            onPressed: _openSalesCatalogue,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
-                            ),
-                            icon: const Icon(
-                              Icons.menu_book_outlined,
-                              size: 20,
-                            ),
-                            label: const Text('Browse animal catalogue'),
-                          ),
-                          const SizedBox(height: 10),
-                          PhoneAnimalSelector(
-                            selectedCode: _selectedAnimalCode,
-                            onChanged: _selectAnimal,
-                          ),
-                        ] else
-                          Wrap(
-                            spacing: 7,
-                            runSpacing: 5,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              FilledButton.icon(
-                                onPressed: _openSalesCatalogue,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: _darkRed,
-                                ),
-                                icon: const Icon(
-                                  Icons.menu_book_outlined,
-                                  size: 18,
-                                ),
-                                label: const Text('Browse animal catalogue'),
-                              ),
-                              for (final animal in const [
-                                'BEEF',
-                                'VEAL',
-                                'LAMB',
-                                'MUTTON',
-                                'GOAT',
-                                'CHICKEN',
-                              ])
-                                ChoiceChip(
-                                  label: Text(animal),
-                                  selected: _selectedAnimalCode == animal,
-                                  onSelected: (_) => _selectAnimal(animal),
-                                ),
-                            ],
-                          ),
+                        AnimalCatalogueControls(
+                          selectedCode: _selectedAnimalCode,
+                          onChanged: _selectAnimal,
+                          onBrowse: _openSalesCatalogue,
+                        ),
                         const SizedBox(height: 6),
                         _buildAnimalCutStrip(),
                         if (_selectedAnimalRegionKey != null)

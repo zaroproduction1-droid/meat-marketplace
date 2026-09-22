@@ -22,6 +22,7 @@ Future<List<Map<String, dynamic>>> loadDocumentProductDetails(
           'breed_program,piece_size_kind,piece_weight_min,piece_weight_max,piece_weight_unit,'
           'carton_weight,carton_weight_unit,pieces_per_carton,packaging_type,'
           'trim_specification,fat_specification,halal_status,supplier_specification,'
+          'commercial_description,fat_class,lot_batch,slaughter_date,use_by_date,'
           'chicken_skin,chicken_bone,chicken_production_type,chicken_preparation,'
           'chicken_size_weight,chicken_carton_size,feeding_days,bone_state,rib_count,'
           'production_claim,hgp_free,meat_grades(code,name),meat_animals(code,name),'

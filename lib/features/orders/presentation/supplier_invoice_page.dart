@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/invoice_pdf_service.dart';
+import '../services/invoice_commercial_details.dart';
 import '../services/invoice_account_balance.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 
@@ -109,6 +110,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           .select('''
             id,
             invoice_number,
+            commercial_details_snapshot,
             order_id,
             supplier_business_id,
             butcher_business_id,
@@ -1361,18 +1363,14 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             sectionTitle('Invoice Summary', icon: Icons.receipt_long_outlined),
-            fact('Invoice', clean(_invoice?['invoice_number'])),
+            fact('Tax Invoice No.', clean(_invoice?['invoice_number'])),
+            for (final entry in invoiceCommercialReferences(_invoice!).entries)
+              fact(entry.key, entry.value),
+            if (invoiceSupplySummary(_items).isNotEmpty)
+              fact('Supply totals', invoiceSupplySummary(_items)),
             fact('Invoice date', clean(_invoice?['invoice_date'])),
             fact('Due date', clean(_invoice?['due_date'])),
             fact('Payment', _paymentText()),
-            if (clean(
-              _invoice?['customer_reference_snapshot'],
-              fallback: '',
-            ).isNotEmpty)
-              fact(
-                'Customer ref',
-                clean(_invoice?['customer_reference_snapshot']),
-              ),
           ],
         ),
       );
@@ -1687,6 +1685,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               const Divider(height: 1),
               const SizedBox(height: 10),
               sectionTitle('Invoice Notes', icon: Icons.notes_outlined),
+              for (final entry in invoiceCommercialNotices(_invoice!).entries)
+                fact(entry.key, entry.value),
               TextField(
                 controller: _notesController,
                 minLines: 2,

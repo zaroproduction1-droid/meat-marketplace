@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import 'marketplace_product_details_page.dart';
 import '../services/butcher_favourites_store.dart';
@@ -2243,6 +2244,22 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           : chickenValues.join(' • ');
     }
 
+    if (LambProductDetails.isLamb(product)) {
+      final lambValues = <String>[
+        LambProductDetails.program(product),
+        LambProductDetails.fatClass(product),
+        productSizeLabel(product),
+        _prettyChickenValue(product['bone_state']),
+        _prettyChickenValue(product['temperature_state']),
+        _prettyChickenValue(product['halal_status']),
+        product['brand']?.toString().trim() ?? '',
+        _prettyChickenValue(product['packaging_type']),
+      ].where((value) => value.isNotEmpty).toSet().toList();
+      return lambValues.isEmpty
+          ? 'Standard Lamb specification'
+          : lambValues.join(' • ');
+    }
+
     final values = <String>[
       _prettyChickenValue(product['bone_state']),
       _prettyChickenValue(product['temperature_state']),
@@ -2604,6 +2621,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Widget _gradeBadge(Map<String, dynamic> product) {
     final code = _gradeCode(product);
+    if (code == 'LAMB') return const SizedBox.shrink();
     final name = _gradeName(product);
     final label = [
       code,
@@ -2770,6 +2788,17 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _mainCommercialSummary(Map<String, dynamic> product) {
     final parts = <String>[];
 
+    final commercialDescription = LambProductDetails.commercialDescription(
+      product,
+    );
+    if (commercialDescription.isNotEmpty) {
+      parts.add(commercialDescription);
+    }
+    final fatClass = LambProductDetails.fatClass(product);
+    if (fatClass.isNotEmpty) {
+      parts.add(fatClass);
+    }
+
     final pieceSize = productSizeLabel(product);
     if (pieceSize.isNotEmpty) {
       parts.add(pieceSize);
@@ -2929,7 +2958,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          _specificationName(product),
+                          LambProductDetails.title(
+                            product,
+                            _specificationName(product),
+                          ),
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
@@ -4213,49 +4245,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (phone) ...[
-            FilledButton.icon(
-              onPressed: _openAnimalCatalogue,
-              icon: const Icon(Icons.menu_book_outlined, size: 20),
-              label: const Text('Browse animal catalogue'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
-              ),
-            ),
-            const SizedBox(height: 10),
-            PhoneAnimalSelector(
-              selectedCode: _selectedAnimalCode,
-              onChanged: _selectAnimal,
-            ),
-          ] else
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                FilledButton.icon(
-                  onPressed: _openAnimalCatalogue,
-                  icon: const Icon(Icons.menu_book_outlined, size: 20),
-                  label: const Text('Browse animal catalogue'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF741C1C),
-                  ),
-                ),
-                for (final animal in const [
-                  'BEEF',
-                  'VEAL',
-                  'LAMB',
-                  'MUTTON',
-                  'GOAT',
-                  'CHICKEN',
-                ])
-                  ChoiceChip(
-                    label: Text(animal),
-                    selected: _selectedAnimalCode == animal,
-                    onSelected: (_) => _selectAnimal(animal),
-                  ),
-              ],
-            ),
+          AnimalCatalogueControls(
+            selectedCode: _selectedAnimalCode,
+            onChanged: _selectAnimal,
+            onBrowse: _openAnimalCatalogue,
+          ),
           const SizedBox(height: 6),
           _buildSectionStrip(),
           if (cutSelected) ...[

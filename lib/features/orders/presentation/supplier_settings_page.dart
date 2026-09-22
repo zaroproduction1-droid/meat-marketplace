@@ -656,6 +656,11 @@ class _SupplierInvoiceConfigurationPageState
   final _bsb = TextEditingController();
   final _accountNumber = TextEditingController();
   final _instructions = TextEditingController();
+  final _salesName = TextEditingController();
+  final _salesPhone = TextEditingController();
+  final _accreditations = TextEditingController();
+  final _invoiceTerms = TextEditingController();
+  final _labellingNotice = TextEditingController();
 
   @override
   void initState() {
@@ -680,6 +685,11 @@ class _SupplierInvoiceConfigurationPageState
       _bsb,
       _accountNumber,
       _instructions,
+      _salesName,
+      _salesPhone,
+      _accreditations,
+      _invoiceTerms,
+      _labellingNotice,
     ]) {
       c.dispose();
     }
@@ -718,6 +728,14 @@ class _SupplierInvoiceConfigurationPageState
         _bsb.text = profile['bank_bsb']?.toString() ?? '';
         _accountNumber.text = profile['bank_account_number']?.toString() ?? '';
         _instructions.text = profile['payment_instructions']?.toString() ?? '';
+        _salesName.text = profile['default_salesperson_name']?.toString() ?? '';
+        _salesPhone.text =
+            profile['default_salesperson_phone']?.toString() ?? '';
+        _accreditations.text =
+            profile['accreditation_details']?.toString() ?? '';
+        _invoiceTerms.text = profile['invoice_terms']?.toString() ?? '';
+        _labellingNotice.text =
+            profile['retail_labelling_notice']?.toString() ?? '';
       }
 
       if (!mounted) return;
@@ -993,6 +1011,11 @@ class _SupplierInvoiceConfigurationPageState
             'bank_bsb': _bsb.text.trim(),
             'bank_account_number': _accountNumber.text.trim(),
             'payment_instructions': _instructions.text.trim(),
+            'default_salesperson_name': _salesName.text.trim(),
+            'default_salesperson_phone': _salesPhone.text.trim(),
+            'accreditation_details': _accreditations.text.trim(),
+            'invoice_terms': _invoiceTerms.text.trim(),
+            'retail_labelling_notice': _labellingNotice.text.trim(),
           })
           .select()
           .single();
@@ -1073,6 +1096,36 @@ class _SupplierInvoiceConfigurationPageState
             keyboardType: TextInputType.number,
           ),
           _field(_instructions, 'Payment Instructions', maxLines: 3),
+          const Divider(height: 30),
+          const _SectionHeading('Sales Contact & Invoice Notices'),
+          const Text(
+            'These defaults apply to new invoices only. Override the sales contact on a Quote or Work Order before invoicing. Account numbers use each customer’s Account Reference.',
+          ),
+          const SizedBox(height: 12),
+          _field(_salesName, 'Default salesperson name'),
+          _field(
+            _salesPhone,
+            'Salesperson phone',
+            keyboardType: TextInputType.phone,
+          ),
+          _field(
+            _accreditations,
+            'Accreditations / MSA licence details',
+            maxLines: 3,
+          ),
+          _field(
+            _labellingNotice,
+            'Retail labelling notice (optional)',
+            maxLines: 3,
+          ),
+          _field(
+            _invoiceTerms,
+            'Supplier terms / claims / payment notices (optional)',
+            maxLines: 5,
+          ),
+          const Text(
+            'Enter only your own verified accreditations and applicable terms. Issue-reporting hours come from the customer/order terms. Notices do not change prices, GST, fees or the issue-reporting workflow.',
+          ),
         ],
       ),
     );

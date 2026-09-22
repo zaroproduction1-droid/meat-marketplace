@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../animal_catalogues/product_variant.dart';
+import '../animal_catalogues/lamb_product_details.dart';
 
 /// Supplier-only filter metadata, shared by Inventory and Pricing. Never caches
 /// prices, and never shares a cache across signed-in users or businesses.
@@ -81,6 +82,7 @@ class SupplierStockFilters {
       switch (field) {
         'size' => productSizeLabel(row),
         'program' => productProgram(row),
+        'fat_class' => LambProductDetails.fatClass(row),
         'grade' => row['meat_grade_id']?.toString() ?? '',
         _ => row[field]?.toString().trim() ?? '',
       };
@@ -172,6 +174,8 @@ class SupplierStockFilterBar extends StatelessWidget {
       'brand': 'Brand',
       'size': 'Piece size',
       'program': 'Program',
+      'fat_class': 'Fat Class',
+      'bone_state': 'Bone',
       'marbling_score': 'Marbling',
       if (showGrade) 'grade': 'Category / grade',
       'halal_status': 'Halal',

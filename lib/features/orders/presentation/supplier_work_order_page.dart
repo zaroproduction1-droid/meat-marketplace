@@ -1,4 +1,5 @@
 import '../../../shared/widgets/phone_layout.dart';
+import 'order_sales_contact.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
 import 'package:flutter/material.dart';
@@ -2473,6 +2474,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       cell('Address', _deliveryAddress(), fullWidth: true),
                   ],
                 ),
+                if (_invoiceId == null)
+                  OrderSalesContact(orderId: widget.orderId),
               ],
             );
           },

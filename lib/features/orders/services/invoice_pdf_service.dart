@@ -1,4 +1,6 @@
 import 'document_product_details.dart';
+import 'invoice_commercial_details.dart';
+import '../../../shared/animal_catalogues/product_variant.dart';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -153,8 +155,11 @@ class CutLinkInvoicePdf {
   }
 
   static pw.Widget _infoCell(String label, String value) {
+    if (value.trim().isEmpty || value.trim() == '-') {
+      return pw.SizedBox();
+    }
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -187,7 +192,7 @@ class CutLinkInvoicePdf {
         value,
         textAlign: align,
         style: pw.TextStyle(
-          fontSize: 7.8,
+          fontSize: 9,
           fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
       ),
@@ -195,21 +200,83 @@ class CutLinkInvoicePdf {
   }
 
   static String _itemDescription(Map<String, dynamic> item) {
-    final details = <String>[
-      documentProductTitle(item),
-      if (documentProductSpecifications(item).isNotEmpty)
-        documentProductSpecifications(item),
-    ];
-    final specification = _clean(item['specification_name'], fallback: '');
-    final hamCode = _clean(item['ham_code'], fallback: '');
-    final sku = _clean(item['sku_snapshot'], fallback: '');
+    final product = documentProductDetails(item);
+    String optional(dynamic value) {
+      final text = _clean(
+        value,
+        fallback: '',
+      ).replaceAll('_', ' ').replaceAll(RegExp('[\u2010-\u2015]'), '-');
+      return const {
+            'unknown',
+            'none',
+            'n/a',
+            'not specified',
+            'not included',
+            'not set',
+            'unspecified',
+            '-',
+          }.contains(text.toLowerCase())
+          ? ''
+          : text;
+    }
 
+    final name = optional(item['product_name_snapshot']);
+    final gradeCode = optional(product['grade_code'] ?? item['grade_code']);
+    final grade = gradeCode.isNotEmpty
+        ? gradeCode
+        : optional(product['grade_name'] ?? item['grade_name']);
+    final title = [
+      name,
+      if (grade.isNotEmpty && !name.toLowerCase().contains(grade.toLowerCase()))
+        grade,
+    ].where((value) => value.isNotEmpty).join(' - ');
+    final attributes = <String>[];
+    void add(dynamic value) {
+      final text = optional(value);
+      if (text.isNotEmpty &&
+          !title.toLowerCase().contains(text.toLowerCase()) &&
+          !attributes.any(
+            (value) => value.toLowerCase() == text.toLowerCase(),
+          )) {
+        attributes.add(text);
+      }
+    }
+
+    add(productSizeLabel(product));
+    add(product['breed_program']);
+    final marbling = optional(product['marbling_score']);
+    if (marbling.isNotEmpty) {
+      add(
+        RegExp(r'^(MB|BMS)', caseSensitive: false).hasMatch(marbling)
+            ? marbling
+            : 'MB $marbling',
+      );
+    }
+    add(product['brand']);
+    add(product['production_claim']);
+    add(product['bone_state'] ?? product['chicken_bone']);
+    add(product['chicken_skin']);
+    add(product['chicken_preparation']);
+    add(product['packaging_type']);
+    if (optional(product['halal_status']).toLowerCase() == 'halal') {
+      add('Halal');
+    }
+    final details = <String>[
+      if (title.isNotEmpty) title,
+      if (attributes.isNotEmpty) attributes.join(' / '),
+    ];
+    final specification = optional(item['specification_name']);
     if (specification.isNotEmpty &&
-        specification != item['product_name_snapshot']) {
+        !details
+            .join(' ')
+            .toLowerCase()
+            .contains(specification.toLowerCase())) {
       details.add(specification);
     }
-    if (hamCode.isNotEmpty) details.add('HAM $hamCode');
-    if (sku.isNotEmpty) details.add('SKU: $sku');
+    final sku = optional(item['sku_snapshot']);
+    if (sku.isNotEmpty) {
+      details.add('Code: $sku');
+    }
 
     final discountAmount = _asDouble(item['discount_amount']);
     if (discountAmount > 0) {
@@ -236,7 +303,7 @@ class CutLinkInvoicePdf {
       fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
     );
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
       child: pw.Row(
         children: [
           pw.Expanded(child: pw.Text(label, style: style)),
@@ -428,6 +495,10 @@ class CutLinkInvoicePdf {
                       ),
                     pw.SizedBox(height: 8),
                     pw.Text(
+                      'Tax Invoice No.',
+                      style: pw.TextStyle(fontSize: 8, color: _muted),
+                    ),
+                    pw.Text(
                       _clean(invoice['invoice_number'], fallback: 'Invoice'),
                       style: pw.TextStyle(
                         fontSize: 12,
@@ -526,15 +597,25 @@ class CutLinkInvoicePdf {
             ),
             child: pw.Row(
               children: [
-                pw.Expanded(
-                  child: _infoCell(
-                    'Customer Reference',
-                    _clean(invoice['customer_reference_snapshot']),
+                if (_clean(
+                  invoice['customer_reference_snapshot'],
+                  fallback: '',
+                ).isNotEmpty) ...[
+                  pw.Expanded(
+                    child: _infoCell(
+                      'Customer PO No.',
+                      _clean(invoice['customer_reference_snapshot']),
+                    ),
                   ),
-                ),
-                pw.Container(width: .6, height: 42, color: _border),
-                pw.Expanded(child: _infoCell('Payment', _paymentText(invoice))),
-                pw.Container(width: .6, height: 42, color: _border),
+                  pw.Container(width: .6, height: 42, color: _border),
+                ],
+                if (_paymentText(invoice) != '-' &&
+                    _paymentText(invoice).isNotEmpty) ...[
+                  pw.Expanded(
+                    child: _infoCell('Payment', _paymentText(invoice)),
+                  ),
+                  pw.Container(width: .6, height: 42, color: _border),
+                ],
                 pw.Expanded(
                   child: _infoCell(
                     'Fulfilment',
@@ -545,6 +626,22 @@ class CutLinkInvoicePdf {
             ),
           ),
           pw.SizedBox(height: 16),
+          if (invoiceCommercialReferences(
+            invoice,
+          ).entries.any((entry) => entry.key != 'Customer PO No.')) ...[
+            pw.Wrap(
+              children: [
+                for (final entry in invoiceCommercialReferences(
+                  invoice,
+                ).entries.where((entry) => entry.key != 'Customer PO No.'))
+                  pw.SizedBox(
+                    width: 178,
+                    child: _infoCell(entry.key, entry.value),
+                  ),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+          ],
           pw.Table(
             border: pw.TableBorder(
               horizontalInside: pw.BorderSide(color: _border, width: .5),
@@ -605,12 +702,12 @@ class CutLinkInvoicePdf {
                     ),
                     _tableCell(
                       item['actual_weight'] == null
-                          ? '-'
+                          ? ''
                           : _asDouble(item['actual_weight']).toStringAsFixed(2),
                       align: pw.TextAlign.center,
                     ),
                     _tableCell(
-                      '${_money(item['locked_unit_price'])} / ${_clean(item['price_basis'], fallback: 'unit')}',
+                      '${_money(item['locked_unit_price'])} / ${item['price_basis'] == 'kilogram' ? 'kg' : _clean(item['price_basis'], fallback: 'unit')}',
                       align: pw.TextAlign.right,
                     ),
                     _tableCell(
@@ -621,6 +718,17 @@ class CutLinkInvoicePdf {
                 ),
             ],
           ),
+          if (invoiceSupplySummary(items).isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 8),
+              child: pw.Text(
+                invoiceSupplySummary(items),
+                style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
           pw.SizedBox(height: 16),
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -630,6 +738,14 @@ class CutLinkInvoicePdf {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     if (_clean(
+                          invoice['payment_instructions_snapshot'],
+                          fallback: '',
+                        ).isNotEmpty ||
+                        _clean(
+                          invoice['bank_name_snapshot'],
+                          fallback: '',
+                        ).isNotEmpty ||
+                        _clean(
                           invoice['bank_account_name_snapshot'],
                           fallback: '',
                         ).isNotEmpty ||
@@ -747,6 +863,10 @@ class CutLinkInvoicePdf {
                     if (totalDiscount > 0)
                       _totalRow('Discount', -totalDiscount),
                     _totalRow('Delivery inc GST', invoice['delivery_fee']),
+                    _totalRow(
+                      'Total excl GST',
+                      total - _asDouble(invoice['tax_amount']),
+                    ),
                     _totalRow('GST included', invoice['tax_amount']),
                     pw.Divider(color: _border),
                     _totalRow('Total inc GST', total, bold: true),
@@ -822,6 +942,13 @@ class CutLinkInvoicePdf {
               ),
             ],
           ),
+          for (final entry in invoiceCommercialNotices(invoice).entries) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '${entry.key}: ${entry.value}',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ],
         ],
       ),
     );
