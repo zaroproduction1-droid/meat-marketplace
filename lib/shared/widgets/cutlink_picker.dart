@@ -285,6 +285,7 @@ class CutLinkPickerField<T> extends StatelessWidget {
     this.searchHint = 'Search',
     this.enableSearch = true,
     this.dense = false,
+    this.showLabelWhenDense = false,
   });
 
   final String label;
@@ -299,6 +300,7 @@ class CutLinkPickerField<T> extends StatelessWidget {
   final String searchHint;
   final bool enableSearch;
   final bool dense;
+  final bool showLabelWhenDense;
 
   CutLinkPickerOption<T>? get _selected {
     for (final option in options) {
@@ -394,16 +396,19 @@ class CutLinkPickerField<T> extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          if (!dense)
+                          if (!dense || showLabelWhenDense)
                             Text(
                               label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Color(0xFF777777),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          if (!dense) const SizedBox(height: 2),
+                          if (!dense || showLabelWhenDense)
+                            const SizedBox(height: 2),
                           Text(
                             selected?.label ?? (loading ? 'Loading...' : hint),
                             maxLines: 1,

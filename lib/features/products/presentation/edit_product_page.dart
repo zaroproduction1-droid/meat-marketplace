@@ -4,6 +4,7 @@ import '../../../shared/widgets/product_photo_editor.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
+import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/product_variant_fields.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 
@@ -2730,6 +2731,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                       supplierBusinessId: widget
                                           .product['supplier_business_id']
                                           ?.toString(),
+                                      animalCode: _selectedAnimalCode,
                                       enabled: !_isSaving,
                                     ),
                                     const SizedBox(height: 12),
@@ -2793,41 +2795,33 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 border: OutlineInputBorder(),
                                               ),
                                             ),
-                                            DropdownButtonFormField<String>(
-                                              isExpanded: isPhoneLayout(
-                                                context,
-                                              ),
-                                              initialValue: _lambFatClass,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Fat Class',
-                                                helperText:
-                                                    'Fat cover only — not a quality ranking.',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                              items: const [
-                                                DropdownMenuItem(
+                                            CutLinkPickerField<String>(
+                                              label: 'Fat Class',
+                                              value: _lambFatClass,
+                                              options: const [
+                                                CutLinkPickerOption(
                                                   value: 'not_specified',
-                                                  child: Text('Not specified'),
+                                                  label: 'Not specified',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: '1',
-                                                  child: Text('Fat Class 1'),
+                                                  label: 'Fat Class 1',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: '2',
-                                                  child: Text('Fat Class 2'),
+                                                  label: 'Fat Class 2',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: '3',
-                                                  child: Text('Fat Class 3'),
+                                                  label: 'Fat Class 3',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: '4',
-                                                  child: Text('Fat Class 4'),
+                                                  label: 'Fat Class 4',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: '5',
-                                                  child: Text('Fat Class 5'),
+                                                  label: 'Fat Class 5',
                                                 ),
                                               ],
                                               onChanged: (value) {
@@ -2841,27 +2835,21 @@ class _EditProductPageState extends State<EditProductPage> {
                                           ),
                                           const SizedBox(height: 12),
                                           _twoColumnFields(
-                                            DropdownButtonFormField<String>(
-                                              isExpanded: isPhoneLayout(
-                                                context,
-                                              ),
-                                              initialValue: _boneState,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Bone',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                              items: const [
-                                                DropdownMenuItem(
+                                            CutLinkPickerField<String>(
+                                              label: 'Bone',
+                                              value: _boneState,
+                                              options: const [
+                                                CutLinkPickerOption(
                                                   value: 'not_specified',
-                                                  child: Text('Not specified'),
+                                                  label: 'Not specified',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: 'bone_in',
-                                                  child: Text('Bone-In'),
+                                                  label: 'Bone In',
                                                 ),
-                                                DropdownMenuItem(
+                                                CutLinkPickerOption(
                                                   value: 'boneless',
-                                                  child: Text('Boneless'),
+                                                  label: 'Boneless',
                                                 ),
                                               ],
                                               onChanged: (value) {
@@ -2923,39 +2911,36 @@ class _EditProductPageState extends State<EditProductPage> {
                                           const SizedBox(height: 12),
                                         ],
 
-                                        _twoColumnFields(
-                                          const Text(
-                                            'Wagyu and Angus are product programs. Select the applicable AUS-MEAT category separately.',
+                                        if (_selectedAnimalCode == 'BEEF') ...[
+                                          _twoColumnFields(
+                                            const Text(
+                                              'Wagyu and Angus are product programs. Select the applicable AUS-MEAT category separately.',
+                                            ),
+                                            ProductAttributeField(
+                                              controller:
+                                                  _marblingScoreController,
+                                              label:
+                                                  _breedProgramController.text
+                                                      .toLowerCase()
+                                                      .contains('wagyu')
+                                                  ? 'Wagyu marbling / MB score'
+                                                  : 'Marbling / MB score',
+                                              choices: productMarblingScores,
+                                              enabled: !_isSaving,
+                                            ),
                                           ),
-                                          ProductAttributeField(
-                                            controller:
-                                                _marblingScoreController,
-                                            label:
-                                                _breedProgramController.text
-                                                    .toLowerCase()
-                                                    .contains('wagyu')
-                                                ? 'Wagyu marbling / MB score'
-                                                : 'Marbling / MB score',
-                                            choices: productMarblingScores,
-                                            enabled: !_isSaving,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 12),
+                                          const SizedBox(height: 12),
+                                        ],
 
                                         _twoColumnFields(
                                           _isLamb
-                                              ? TextFormField(
+                                              ? ProductAttributeField(
                                                   controller:
                                                       _breedProgramController,
-                                                  decoration: const InputDecoration(
-                                                    labelText:
-                                                        'Commercial Type / Program',
-                                                    hintText:
-                                                        'Example: ANZAC Lamb',
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                  ),
+                                                  label:
+                                                      'Commercial Type / Program',
+                                                  choices: productLambPrograms,
+                                                  enabled: !_isSaving,
                                                 )
                                               : ProductAttributeField(
                                                   controller:
@@ -2966,25 +2951,21 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   onChanged: () =>
                                                       setState(() {}),
                                                 ),
-                                          DropdownButtonFormField<String>(
-                                            isExpanded: isPhoneLayout(context),
-                                            initialValue: _halalStatus,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Halal status',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                            items: const [
-                                              DropdownMenuItem(
+                                          CutLinkPickerField<String>(
+                                            label: 'Halal status',
+                                            value: _halalStatus,
+                                            options: const [
+                                              CutLinkPickerOption(
                                                 value: 'not_specified',
-                                                child: Text('Not specified'),
+                                                label: 'Not specified',
                                               ),
-                                              DropdownMenuItem(
+                                              CutLinkPickerOption(
                                                 value: 'halal',
-                                                child: Text('Halal'),
+                                                label: 'Halal',
                                               ),
-                                              DropdownMenuItem(
+                                              CutLinkPickerOption(
                                                 value: 'not_halal',
-                                                child: Text('Not halal'),
+                                                label: 'Not halal',
                                               ),
                                             ],
                                             onChanged: (value) {

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -56,9 +57,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _facetProducts = [];
+  int _facetLoadVersion = 0;
+  String? _requestedFacetScope;
+  bool _loadingFacets = false;
+  bool _compactFacets = false;
+  String? _facetError;
+
   String? _facetScope;
   DateTime? _facetsLoadedAt;
-  static const _stockPageSize = 60;
+  static const _stockPageSize = 40;
   int _stockPageOffset = 0;
   int _stockTotal = 0;
   List<Map<String, dynamic>> _filteredProducts = [];
@@ -76,6 +83,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _selectedProgram = '';
   String _selectedMarbling = '';
   String _selectedBrand = '';
+  String _selectedBone = '';
+  String _selectedFatClass = '';
+  String _selectedTemperature = '';
   bool _stockViewActive = false;
   bool _filtersExpanded = false;
 
@@ -85,6 +95,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _selectedProgram = '';
     _selectedMarbling = '';
     _selectedBrand = '';
+    _selectedBone = '';
+    _selectedFatClass = '';
+    _selectedTemperature = '';
   }
 
   bool _matchesVariants(
@@ -104,12 +117,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         (!brand ||
             _selectedBrand.isEmpty ||
             (p['brand']?.toString().trim() ?? '') == _selectedBrand) &&
+        (_selectedBone.isEmpty ||
+            (p['bone_state']?.toString().trim() ?? '') == _selectedBone) &&
+        (_selectedFatClass.isEmpty ||
+            '${p['fat_class'] ?? ''}' == _selectedFatClass) &&
+        (_selectedTemperature.isEmpty ||
+            (p['temperature_state']?.toString().trim() ?? '') ==
+                _selectedTemperature) &&
         (!grade ||
             _selectedGradeId == null ||
             _matchesGrade(p, _selectedGradeId!));
   }
 
   List<Map<String, dynamic>> get _variantScope => _facetProducts.where((p) {
+    if (_compactFacets) return true;
     final hasCut =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     if (hasCut &&
@@ -130,7 +151,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }).toList();
 
   List<String> get _pieceSizes =>
-      _variantScope.map(productSizeLabel).toSet().toList()..sort();
+      _variantScope.map(productSizeLabel).toSet().toList()
+        ..sort(compareProductSizeLabels);
 
   Widget _variantFilters() {
     final scope = _variantScope;
@@ -138,6 +160,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final sized = scope
         .where(
           (p) =>
+              _compactFacets ||
               _selectedPieceSize == null ||
               _selectedPieceSize!.isEmpty ||
               productSizeLabel(p) == _selectedPieceSize,
@@ -150,6 +173,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         sized
             .where(
               (p) =>
+                  _compactFacets ||
                   _selectedProgram.isEmpty ||
                   productProgram(p) == _selectedProgram,
             )
@@ -160,8 +184,33 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ..sort();
     final brands =
         scope
-            .where((p) => _matchesVariants(p, grade: true, brand: false))
+            .where(
+              (p) =>
+                  _compactFacets ||
+                  _matchesVariants(p, grade: true, brand: false),
+            )
             .map((p) => p['brand']?.toString().trim() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final bones =
+        scope
+            .map((p) => p['bone_state']?.toString().trim() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final fatClasses =
+        scope
+            .map((p) => '${p['fat_class'] ?? ''}')
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final temperatures =
+        scope
+            .map((p) => p['temperature_state']?.toString().trim() ?? '')
             .where((v) => v.isNotEmpty)
             .toSet()
             .toList()
@@ -177,10 +226,25 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         label: label,
         value: selected,
         dense: true,
+        showLabelWhenDense: true,
         options: [
           CutLinkPickerOption(value: '', label: 'Any ${label.toLowerCase()}'),
           for (final v in {...values, if (selected.isNotEmpty) selected})
-            CutLinkPickerOption(value: v, label: v),
+            CutLinkPickerOption(
+              value: v,
+              label: productSpecificationLabel(
+                label == 'Bone'
+                    ? 'bone_state'
+                    : label.contains('Marbling') || label.contains('Wagyu')
+                    ? 'marbling_score'
+                    : label == 'Temperature'
+                    ? 'temperature_state'
+                    : label == 'Fat Class'
+                    ? 'fat_class'
+                    : '',
+                v,
+              ),
+            ),
         ],
         onChanged: (v) {
           if (v == null) {
@@ -227,6 +291,21 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               _selectedBrand = v;
               _selectedCommercialSpecificationKey = null;
             }),
+          if (bones.isNotEmpty || _selectedBone.isNotEmpty)
+            picker('Bone', _selectedBone, bones, (v) {
+              _selectedBone = v;
+              _selectedCommercialSpecificationKey = null;
+            }),
+          if (fatClasses.isNotEmpty || _selectedFatClass.isNotEmpty)
+            picker('Fat Class', _selectedFatClass, fatClasses, (v) {
+              _selectedFatClass = v;
+              _selectedCommercialSpecificationKey = null;
+            }),
+          if (temperatures.isNotEmpty || _selectedTemperature.isNotEmpty)
+            picker('Temperature', _selectedTemperature, temperatures, (v) {
+              _selectedTemperature = v;
+              _selectedCommercialSpecificationKey = null;
+            }),
         ],
       ),
     );
@@ -266,6 +345,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     'program': _selectedProgram,
     'marbling': _selectedMarbling,
     'brand': _selectedBrand,
+    'bone': _selectedBone,
+    'fat_class': _selectedFatClass,
+    'temperature': _selectedTemperature,
     'query': _searchController.text,
     'supplier_query': _supplierSearchController.text,
     'sort': _sortMode,
@@ -292,6 +374,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _selectedProgram = value('program') ?? '';
     _selectedMarbling = value('marbling') ?? '';
     _selectedBrand = value('brand') ?? '';
+    _selectedBone = value('bone') ?? '';
+    _selectedFatClass = value('fat_class') ?? '';
+    _selectedTemperature = value('temperature') ?? '';
     _searchController.text = value('query') ?? '';
     _supplierSearchController.text = value('supplier_query') ?? '';
     final sort = value('sort');
@@ -377,6 +462,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedProgram,
       _selectedMarbling,
       _selectedBrand,
+      _selectedBone,
+      _selectedFatClass,
+      _selectedTemperature,
+      if (_selectedBone.isNotEmpty)
+        productSpecificationLabel('bone_state', _selectedBone),
+      if (_selectedFatClass.isNotEmpty) 'Fat Class $_selectedFatClass',
+      if (_selectedTemperature.isNotEmpty)
+        productSpecificationLabel('temperature_state', _selectedTemperature),
       if (_searchController.text.trim().isNotEmpty)
         'Search: ${_searchController.text.trim()}',
       if (_supplierSearchController.text.trim().isNotEmpty)
@@ -887,6 +980,107 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
   }
 
+  Future<void> _loadBrowseOptions({
+    required String scope,
+    required String userId,
+    String? animalId,
+    String? sectionId,
+    String? specificationId,
+    required bool compact,
+    bool force = false,
+  }) async {
+    if (!force &&
+        (_requestedFacetScope == scope ||
+            (_facetScope == scope &&
+                _facetsLoadedAt != null &&
+                DateTime.now().difference(_facetsLoadedAt!) <
+                    const Duration(minutes: 2)))) {
+      return;
+    }
+    final version = ++_facetLoadVersion;
+    _requestedFacetScope = scope;
+    setState(() {
+      _loadingFacets = true;
+      _facetError = null;
+    });
+    try {
+      final raw = await Supabase.instance.client
+          .rpc(
+            'marketplace_catalogue_index_v2',
+            params: {
+              'p_animal_id': animalId,
+              'p_section_id': sectionId,
+              'p_specification_id': specificationId,
+              'p_compact': compact,
+            },
+          )
+          .timeout(const Duration(seconds: 25));
+      if (!mounted ||
+          version != _facetLoadVersion ||
+          Supabase.instance.client.auth.currentUser?.id != userId) {
+        return;
+      }
+      final result = Map<String, dynamic>.from(raw as Map);
+      final animals = {
+        for (final row in _catalogueAnimals) row['id'].toString(): row,
+      };
+      final sections = {
+        for (final row in _catalogueSections) row['id'].toString(): row,
+      };
+      final specifications = {
+        for (final row in _catalogueSpecifications) row['id'].toString(): row,
+      };
+      final grades = {
+        for (final rawGrade in result['grades'] as List)
+          (rawGrade as Map)['id'].toString(): Map<String, dynamic>.from(
+            rawGrade,
+          ),
+      };
+      _facetProducts =
+          [
+            for (final rawVariant in result['variants'] as List)
+              Map<String, dynamic>.from(rawVariant as Map),
+          ].map((row) {
+            final animal = row['meat_animal_id'] ?? (compact ? animalId : null);
+            final specification =
+                row['meat_specification_id'] ??
+                (compact ? specificationId : null);
+            final section =
+                row['meat_section_id'] ??
+                (compact
+                    ? (specifications[specification] ??
+                          const <String, dynamic>{})['section_id']
+                    : null);
+            return <String, dynamic>{
+              ...row,
+              'meat_animal_id': animal,
+              'meat_section_id': section,
+              'meat_specification_id': specification,
+              'meat_animals': animals[animal],
+              'meat_sections': sections[section],
+              'meat_specifications': specifications[specification],
+              'meat_grades': grades[row['meat_grade_id']],
+            };
+          }).toList();
+
+      setState(() {
+        _facetScope = scope;
+        _facetsLoadedAt = DateTime.now();
+        _compactFacets = compact;
+      });
+    } catch (_) {
+      if (!mounted || version != _facetLoadVersion) return;
+      setState(() => _facetError = 'Filter options could not load.');
+    } finally {
+      if (mounted && version == _facetLoadVersion) {
+        setState(() {
+          _loadingFacets = false;
+          _requestedFacetScope = null;
+        });
+      }
+    }
+  }
+
   Future<void> _loadStock({bool force = false, int offset = 0}) async {
     if (_isLoading || !mounted) {
       return;
@@ -907,7 +1101,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final sectionId = globalSearch || _selectedAnimalCode != CutLinkAnimals.beef
         ? null
         : _selectedCatalogueSectionId;
-    final facetScope = jsonEncode([userId, animalId, sectionId]);
+    final facetScope = jsonEncode([
+      userId,
+      animalId,
+      sectionId,
+      _selectedSpecificationId,
+    ]);
     final scope = jsonEncode([
       facetScope,
       _selectedAnimalRegionKey,
@@ -919,6 +1118,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedMarbling,
       _selectedBrand,
       _halalOnly,
+      _selectedBone,
+      _selectedFatClass,
+      _selectedTemperature,
       _availableOnly,
       _chickenAttributeFilters,
       _goatAttributeFilters,
@@ -930,6 +1132,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     if (!force && _stockScope == scope) {
       return;
     }
+    final commercialKeys =
+        !_usesGradeStage && _selectedCommercialSpecificationKey != null
+        ? _facetProducts
+              .where(_matchesCommercialSpecification)
+              .map((p) => p['_variant_key'].toString())
+              .toList()
+        : null;
     _stockScope = scope;
     final version = ++_stockLoadVersion;
     setState(() {
@@ -939,7 +1148,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _stockPageOffset = offset;
       _stockError = null;
       _loadingStock = cutSelected || directSearch;
-      if (_facetScope != facetScope || force) {
+      if ((_facetScope != facetScope && _requestedFacetScope != facetScope) ||
+          force) {
         _facetProducts = [];
       }
     });
@@ -960,113 +1170,70 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           'This cut could not be matched. Please refresh the catalogue.',
         );
       }
-      final refreshIndex =
-          force ||
-          _facetScope != facetScope ||
-          _facetsLoadedAt == null ||
-          DateTime.now().difference(_facetsLoadedAt!) >
-              const Duration(minutes: 1);
-      if (refreshIndex) {
-        final raw = await Supabase.instance.client
-            .rpc(
-              'marketplace_catalogue_index',
-              params: {'p_animal_id': animalId, 'p_section_id': sectionId},
-            )
-            .timeout(const Duration(seconds: 20));
-        if (!mounted ||
-            version != _stockLoadVersion ||
-            Supabase.instance.client.auth.currentUser?.id != userId) {
-          return;
-        }
-        final result = Map<String, dynamic>.from(raw as Map);
-        final animals = {
-          for (final row in _catalogueAnimals) row['id'].toString(): row,
-        };
-        final sections = {
-          for (final row in _catalogueSections) row['id'].toString(): row,
-        };
-        final specifications = {
-          for (final row in _catalogueSpecifications) row['id'].toString(): row,
-        };
-        final grades = {
-          for (final rawGrade in result['grades'] as List)
-            (rawGrade as Map)['id'].toString(): Map<String, dynamic>.from(
-              rawGrade,
-            ),
-        };
-        _facetProducts =
-            [
-                  for (final rawVariant in result['variants'] as List)
-                    Map<String, dynamic>.from(rawVariant as Map),
-                ]
-                .map(
-                  (row) => <String, dynamic>{
-                    ...row,
-                    'meat_animals': animals[row['meat_animal_id']],
-                    'meat_sections': sections[row['meat_section_id']],
-                    'meat_specifications':
-                        specifications[row['meat_specification_id']],
-                    'meat_grades': grades[row['meat_grade_id']],
-                  },
-                )
-                .toList();
-        _facetScope = facetScope;
-        _facetsLoadedAt = DateTime.now();
-      }
-      final sizeReady = _selectedPieceSize != null || _pieceSizes.length <= 1;
-      final specificationReady = _usesGradeStage
-          ? _selectedGradeId != null || _availableGrades.length == 1
-          : _selectedCommercialSpecificationKey != null ||
-                _availableCommercialSpecifications.length == 1;
-      // Browsing choices needs no prices, supplier joins or full product rows.
-      if (!_stockViewActive &&
+      // A cut's subcategories already come from the small taxonomy catalogue.
+      // Load detailed variants only after a sub-cut is selected; broad search
+      // needs distinct choices, not every supplier's variant combination.
+      if (_selectedSpecificationId == null &&
           !directSearch &&
-          !(_selectedSpecificationId != null &&
-              sizeReady &&
-              specificationReady)) {
+          !_stockViewActive) {
         return;
+      }
+      final optionLoad = _loadBrowseOptions(
+        scope: facetScope,
+        userId: userId,
+        animalId: animalId,
+        sectionId: sectionId,
+        specificationId: _selectedSpecificationId,
+        compact: _selectedSpecificationId == null || _usesGradeStage,
+        force: force,
+      );
+      if (commercialKeys?.isEmpty == true) {
+        await optionLoad;
+        if (!mounted || version != _stockLoadVersion) return;
+      } else {
+        unawaited(optionLoad);
       }
       _stockViewActive = true;
-      final keys = _facetProducts
-          .where((product) {
-            if (!globalSearch &&
-                (_animalCode(product) != _selectedAnimalCode ||
-                    !_matchesSelectedCut(product))) {
-              return false;
-            }
-            if (_selectedSpecificationId != null &&
-                !_matchesSpecification(product, _selectedSpecificationId!)) {
-              return false;
-            }
-            if (_usesGradeStage &&
-                _selectedGradeId != null &&
-                !_matchesGrade(product, _selectedGradeId!)) {
-              return false;
-            }
-            if (_halalOnly && product['halal_status'] != 'halal') {
-              return false;
-            }
-            if (_availableOnly &&
-                product['availability_status'] == 'out_of_stock') {
-              return false;
-            }
-            return _matchesVariants(product) &&
-                _matchesCommercialSpecification(product) &&
-                _matchesChickenAttributeFilters(product) &&
-                _matchesGoatAttributeFilters(product);
-          })
-          .map((p) => p['_variant_key'].toString())
-          .toList();
-      if (keys.isEmpty) {
-        return;
-      }
+      final values = <String, String>{
+        if (_selectedPieceSize?.isNotEmpty == true) 'size': _selectedPieceSize!,
+        if (_selectedProgram.isNotEmpty) 'program': _selectedProgram,
+        if (_selectedMarbling.isNotEmpty) 'marbling_score': _selectedMarbling,
+        if (_selectedBrand.isNotEmpty) 'brand': _selectedBrand,
+        if (_selectedBone.isNotEmpty) 'bone_state': _selectedBone,
+        if (_selectedFatClass.isNotEmpty) 'fat_class': _selectedFatClass,
+        if (_selectedTemperature.isNotEmpty)
+          'temperature_state': _selectedTemperature,
+        if (_usesGradeStage && _selectedGradeId != null)
+          'grade': _selectedGradeId!,
+        if (_halalOnly) 'halal_status': 'halal',
+        ..._chickenAttributeFilters,
+        ..._goatAttributeFilters,
+      }..removeWhere((key, value) => value.isEmpty);
+      // Preserve exact non-beef commercial combinations selected by the buyer.
+      final keys = commercialKeys?.isEmpty == true
+          ? _facetProducts
+                .where(_matchesCommercialSpecification)
+                .map((p) => p['_variant_key'].toString())
+                .toList()
+          : commercialKeys;
+      final filters = <String, dynamic>{
+        'values': values,
+        'available': _availableOnly,
+        if (_selectedSpecificationId != null)
+          'specifications': [_selectedSpecificationId]
+        else if (!globalSearch && cutSelected)
+          'specifications': _availableSpecifications
+              .map((s) => s['id'])
+              .toList(),
+      };
       final raw = await Supabase.instance.client
           .rpc(
-            'marketplace_stock_page',
+            'marketplace_stock_page_v2',
             params: {
               'p_animal_id': animalId,
               'p_section_id': sectionId,
               'p_variant_keys': keys,
+              'p_filters': filters,
               'p_search': _searchController.text.trim(),
               'p_supplier_search': _supplierSearchController.text.trim(),
               'p_sort': _sortMode,
@@ -1119,7 +1286,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       );
     }
     if (!_loadingStock) {
-      return const SizedBox.shrink();
+      if (_facetError != null) {
+        return TextButton.icon(
+          onPressed: () => _loadStock(force: true, offset: _stockPageOffset),
+          icon: const Icon(Icons.refresh),
+          label: Text('$_facetError Retry'),
+        );
+      }
+      return _loadingFacets
+          ? const Padding(
+              padding: EdgeInsets.all(8),
+              child: Text('Loading filter options…'),
+            )
+          : const SizedBox.shrink();
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1136,30 +1315,34 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Future<void> _loadProducts() async {
     final catalogueVersion = ++_catalogueLoadVersion;
+    ++_facetLoadVersion;
+    _requestedFacetScope = null;
     ++_stockLoadVersion;
     _stockScope = null;
     _facetScope = null;
     _facetsLoadedAt = null;
     setState(() {
+      _loadingFacets = false;
+      _facetError = null;
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final catalogueAnimalResponse = await Supabase.instance.client
+      final animalFuture = Supabase.instance.client
           .from('meat_animals')
           .select('id, code, name')
           .eq('is_active', true)
           .timeout(const Duration(seconds: 20));
 
-      final catalogueSectionResponse = await Supabase.instance.client
+      final sectionFuture = Supabase.instance.client
           .from('meat_sections')
           .select('id, animal_id, code, name, slug, hotspot_key, display_order')
           .eq('is_active', true)
           .order('display_order')
           .timeout(const Duration(seconds: 20));
 
-      final catalogueSpecificationResponse = await Supabase.instance.client
+      final specificationFuture = Supabase.instance.client
           .from('meat_specifications')
           .select(
             'id, animal_id, section_id, name, slug, display_order, '
@@ -1169,6 +1352,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           .order('display_order')
           .timeout(const Duration(seconds: 20));
 
+      final catalogue = await Future.wait([
+        animalFuture,
+        sectionFuture,
+        specificationFuture,
+      ]);
+      final catalogueAnimalResponse = catalogue[0];
+      final catalogueSectionResponse = catalogue[1];
+      final catalogueSpecificationResponse = catalogue[2];
       if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
       }
@@ -1594,7 +1785,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         continue;
       }
 
-      if (!_matchesVariants(product)) {
+      if (!_compactFacets && !_matchesVariants(product)) {
         continue;
       }
       final grade = _nestedMap(product['meat_grades']);
@@ -1657,8 +1848,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return null;
   }
 
-  bool get _isChickenSelection => _selectedAnimalCode == CutLinkAnimals.chicken;
-
   String _prettyChickenValue(dynamic raw) {
     final value = raw?.toString().trim() ?? '';
     if (value.isEmpty) {
@@ -1674,35 +1863,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
         )
         .join(' ');
-  }
-
-  bool _matchesChickenAttributeFilters(Map<String, dynamic> product) {
-    if (!_isChickenSelection || _chickenAttributeFilters.isEmpty) {
-      return true;
-    }
-
-    for (final entry in _chickenAttributeFilters.entries) {
-      if (product[entry.key]?.toString() != entry.value) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  bool get _isGoatSelection => _selectedAnimalCode == CutLinkAnimals.goat;
-
-  bool _matchesGoatAttributeFilters(Map<String, dynamic> product) {
-    if (!_isGoatSelection || _goatAttributeFilters.isEmpty) {
-      return true;
-    }
-
-    for (final entry in _goatAttributeFilters.entries) {
-      if (product[entry.key]?.toString() != entry.value) {
-        return false;
-      }
-    }
-    return true;
   }
 
   void _selectAnimal(String animalCode) {
@@ -2085,12 +2245,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     if (marbling != null && marbling.trim().isNotEmpty) {
-      final clean = marbling.trim().replaceFirst(
-        RegExp(r'^mb\s*', caseSensitive: false),
-        '',
-      );
       chips.add(
-        _specChip(icon: Icons.auto_awesome_outlined, label: 'MB $clean'),
+        _specChip(
+          icon: Icons.auto_awesome_outlined,
+          label: productMarblingLabel(marbling),
+        ),
       );
     }
 
@@ -2649,7 +2808,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PhoneStockScaffold(
+      ready: !_isLoading && _errorMessage == null,
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
@@ -2820,11 +2980,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     if (marbling.isNotEmpty) {
-      final clean = marbling.replaceFirst(
-        RegExp(r'^mb\s*', caseSensitive: false),
-        '',
-      );
-      parts.add('MB $clean');
+      parts.add(productMarblingLabel(marbling));
     }
 
     if (productionClaim == 'grass_fed') {
@@ -2872,11 +3028,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Row(
       children: [
         Container(
-          width: 34,
-          height: 34,
-          padding: const EdgeInsets.all(2),
+          width: 64,
+          height: 56,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F5F3),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: const Color(0xFFE3E5E8)),
           ),
@@ -2897,11 +3053,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         Expanded(
           child: Text(
             name,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF741C1C),
-              fontSize: 11.5,
+              fontSize: 12.5,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -3733,8 +3889,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
-        shrinkWrap: phone,
-        physics: phone ? const NeverScrollableScrollPhysics() : null,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3768,8 +3924,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
       final sizes = _pieceSizes;
       return ListView(
-        shrinkWrap: phone,
-        physics: phone ? const NeverScrollableScrollPhysics() : null,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         children: [
           rightChoiceCard(
@@ -3835,8 +3991,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
-        shrinkWrap: phone,
-        physics: phone ? const NeverScrollableScrollPhysics() : null,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: grades.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -3883,8 +4039,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
 
       return ListView.separated(
-        shrinkWrap: phone,
-        physics: phone ? const NeverScrollableScrollPhysics() : null,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
         separatorBuilder: (_, _) => const SizedBox(height: 7),
@@ -4031,7 +4187,42 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ? (_usesGradeStage ? gradeStage() : commercialSpecificationStage())
         : supplierStockStage();
 
-    Widget resultsPanel() {
+    Widget filters() => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              ChoiceChip(
+                label: const Text('All products'),
+                selected: !_halalOnly,
+                onSelected: (_) {
+                  setState(() => _halalOnly = false);
+                  _applySearch();
+                },
+              ),
+              ChoiceChip(
+                avatar: const Icon(Icons.verified_outlined, size: 18),
+                label: const Text('Halal only'),
+                selected: _halalOnly,
+                onSelected: (selected) {
+                  setState(() => _halalOnly = selected);
+                  _applySearch();
+                },
+              ),
+            ],
+          ),
+        ),
+        if (subcategorySelected || (directSearch && !cutSelected))
+          _variantFilters(),
+        if (showingStock) resultsToolbar(),
+      ],
+    );
+
+    Widget resultsPanel({required bool sideFilters}) {
       final directSearch =
           _searchController.text.trim().isNotEmpty || _halalOnly;
       final globalSearch = directSearch && !cutSelected;
@@ -4071,40 +4262,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 : 'Choose the product specification for this sub-cut.')
           : 'Compare matching supplier offers and pricing.';
 
-      Widget filters() => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                ChoiceChip(
-                  label: const Text('All products'),
-                  selected: !_halalOnly,
-                  onSelected: (_) {
-                    setState(() => _halalOnly = false);
-                    _applySearch();
-                  },
-                ),
-                ChoiceChip(
-                  avatar: const Icon(Icons.verified_outlined, size: 18),
-                  label: const Text('Halal only'),
-                  selected: _halalOnly,
-                  onSelected: (selected) {
-                    setState(() => _halalOnly = selected);
-                    _applySearch();
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (subcategorySelected || globalSearch) _variantFilters(),
-          if (showingStock) resultsToolbar(),
-        ],
-      );
-
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -4113,7 +4270,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ),
         child: LayoutBuilder(
           builder: (context, panel) {
-            final sideFilters = !phone && panel.maxWidth >= 780;
             final mainPanel = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -4179,57 +4335,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                           : 'Filters & sorting',
                     ),
                   ),
-                  if (_filtersExpanded)
-                    if (phone)
-                      filters()
-                    else
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: panel.maxHeight * 0.38,
-                        ),
-                        child: SingleChildScrollView(
-                          child: SizedBox(
-                            width: panel.maxWidth,
-                            child: filters(),
-                          ),
-                        ),
-                      ),
+                  if (_filtersExpanded) filters(),
                 ],
                 _stockLoadingStatus(),
-                if (!phone) Expanded(child: stageContent()),
               ],
             );
-            if (phone) {
-              return mainPanel;
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: mainPanel),
-                if (sideFilters) ...[
-                  const VerticalDivider(width: 1, color: Color(0xFFE3E5E8)),
-                  SizedBox(
-                    width: 234,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(top: 14, bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(12, 0, 12, 14),
-                            child: Text(
-                              'Filters & sorting',
-                              style: TextStyle(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                          filters(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            );
+            return mainPanel;
           },
         ),
       );
@@ -4266,71 +4377,86 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       ),
     );
 
-    if (phone) {
-      // One page scroll: controls leave the viewport as products are browsed.
-      // SliverList keeps the existing paged product results lazily built.
-      final hasProducts =
-          showingStock && !_loadingStock && _filteredProducts.isNotEmpty;
-      return CustomScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        slivers: [
+    // One page scroll: controls leave the viewport as products are browsed.
+    // SliverList keeps the existing paged product results lazily built.
+    final hasProducts =
+        showingStock && !_loadingStock && _filteredProducts.isNotEmpty;
+    Widget productScroll({required bool sideFilters}) => PhoneStockScrollView(
+      maxContentWidth: 1740,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                catalogueControls(),
+                const SizedBox(height: 10),
+                resultsPanel(sideFilters: sideFilters),
+              ],
+            ),
+          ),
+        ),
+        if (hasProducts) ...[
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  catalogueControls(),
-                  const SizedBox(height: 10),
-                  resultsPanel(),
-                ],
+            padding: const EdgeInsets.all(10),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: _buildMarketplaceProductCard(_filteredProducts[index]),
+                ),
+                childCount: _filteredProducts.length,
               ),
             ),
           ),
-          if (hasProducts) ...[
-            SliverPadding(
+          SliverToBoxAdapter(child: stockPagination()),
+        ] else
+          SliverToBoxAdapter(
+            child: Padding(
               padding: const EdgeInsets.all(10),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: _buildMarketplaceProductCard(
-                      _filteredProducts[index],
+              child: stageContent(),
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (phone || constraints.maxWidth < 780) {
+          return productScroll(sideFilters: false);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: productScroll(sideFilters: true)),
+            Container(
+              width: 234,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(left: BorderSide(color: Color(0xFFE3E5E8))),
+              ),
+              child: SingleChildScrollView(
+                primary: false,
+                padding: const EdgeInsets.only(top: 16, bottom: 80),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 0, 12, 14),
+                      child: Text(
+                        'Filters & sorting',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
-                  ),
-                  childCount: _filteredProducts.length,
+                    filters(),
+                  ],
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: stockPagination()),
-          ] else
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: stageContent(),
-              ),
-            ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-        ],
-      );
-    }
-
-    return Align(
-      alignment: Alignment.topLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1740),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              catalogueControls(),
-              const SizedBox(height: 10),
-              Expanded(child: resultsPanel()),
-            ],
-          ),
-        ),
-      ),
+          ],
+        );
+      },
     );
   }
 }

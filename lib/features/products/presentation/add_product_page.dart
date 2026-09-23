@@ -1195,13 +1195,11 @@ class _AddProductPageState extends State<AddProductPage> {
     return Column(
       children: [
         _twoFields(
-          TextFormField(
+          ProductAttributeField(
             controller: _breed,
-            decoration: const InputDecoration(
-              labelText: 'Commercial Type / Program (optional)',
-              hintText: 'Example: ANZAC Lamb',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Commercial Type / Program',
+            choices: productLambPrograms,
+            enabled: !_saving,
           ),
           TextFormField(
             controller: _commercialDescription,
@@ -1596,6 +1594,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           ProductBrandField(
                             controller: _brand,
                             supplierBusinessId: _supplierBusinessId,
+                            animalCode: _selectedAnimalCode,
                             enabled: !_saving,
                           ),
                           TextFormField(

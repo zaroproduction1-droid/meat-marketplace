@@ -91,9 +91,69 @@ String productSizeLabel(Map<String, dynamic> product) {
   return product['chicken_size_weight']?.toString().trim() ?? '';
 }
 
+/// Compare physical weights numerically, normalising grams to kilograms.
+/// Fall back to text for non-weight specifications.
+int compareProductSizeLabels(String a, String b) {
+  List<double>? weights(String label) {
+    final unit = RegExp(r'\b(kg|g)\b', caseSensitive: false).firstMatch(label);
+    if (unit == null) return null;
+    final scale = unit.group(1)!.toLowerCase() == 'g' ? 0.001 : 1.0;
+    final numbers = RegExp(r'\d+(?:\.\d+)?')
+        .allMatches(label)
+        .map((match) => double.parse(match.group(0)!) * scale)
+        .toList();
+    return numbers.isEmpty ? null : numbers;
+  }
+
+  final left = weights(a);
+  final right = weights(b);
+  if (left != null && right != null) {
+    final lower = left.first.compareTo(right.first);
+    if (lower != 0) return lower;
+    final upper = left.last.compareTo(right.last);
+    if (upper != 0) return upper;
+  }
+  return a.toLowerCase().compareTo(b.toLowerCase());
+}
+
 String productProgram(Map<String, dynamic> product) {
   final text = product['breed_program']?.toString().trim() ?? '';
   if (text.toLowerCase().contains('wagyu')) return 'Wagyu';
   if (text.toLowerCase().contains('angus')) return 'Angus';
   return text;
+}
+
+const noMarblingClassification = 'No marbling classification';
+
+String productMarblingLabel(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+  if (text.isEmpty) return '';
+  if (text.toLowerCase() == noMarblingClassification.toLowerCase()) {
+    return noMarblingClassification;
+  }
+  if (text.toLowerCase().startsWith('mb')) return text.toUpperCase();
+  return 'MB $text';
+}
+
+String productSpecificationLabel(String field, String value) {
+  if (value.isEmpty) return value;
+  if (field == 'marbling_score') return productMarblingLabel(value);
+  if (field == 'size') return value;
+  const labels = {
+    'bone_in': 'Bone In',
+    'boneless': 'Boneless',
+    'not_specified': 'Not specified',
+    'halal': 'Halal',
+    'not_halal': 'Not Halal',
+    'chilled': 'Chilled',
+    'frozen': 'Frozen',
+    'fresh': 'Fresh',
+  };
+  return labels[value.toLowerCase()] ??
+      value
+          .replaceAll('_', ' ')
+          .split(' ')
+          .where((part) => part.isNotEmpty)
+          .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+          .join(' ');
 }

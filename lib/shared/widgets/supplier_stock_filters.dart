@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../animal_catalogues/product_variant.dart';
 import '../animal_catalogues/lamb_product_details.dart';
+import 'cutlink_picker.dart';
 
 /// Supplier-only filter metadata, shared by Inventory and Pricing. Never caches
 /// prices, and never shares a cache across signed-in users or businesses.
@@ -106,11 +107,13 @@ class SupplierStockFilterBar extends StatelessWidget {
     required this.filters,
     required this.onChanged,
     this.showGrade = true,
+    this.options,
   });
   final List<Map<String, dynamic>> rows;
   final SupplierStockFilters filters;
   final VoidCallback onChanged;
   final bool showGrade;
+  final Map<String, Map<String, String>>? options;
 
   @override
   Widget build(BuildContext context) {
@@ -128,41 +131,40 @@ class SupplierStockFilterBar extends StatelessWidget {
       }
       final entries = options.entries.toList()
         ..sort(
-          (a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()),
+          (a, b) => field == 'size'
+              ? compareProductSizeLabels(a.value, b.value)
+              : a.value.toLowerCase().compareTo(b.value.toLowerCase()),
         );
       return SizedBox(
-        width: 174,
-        child: DropdownButtonFormField<String>(
+        width: 190,
+        child: CutLinkPickerField<String>(
           key: ValueKey('$field:$current:${entries.length}'),
-          initialValue: current,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: label,
-            isDense: true,
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
-          ),
-          items: [
-            const DropdownMenuItem<String>(value: null, child: Text('All')),
+          label: label,
+          value: current ?? '',
+          dense: true,
+          showLabelWhenDense: true,
+          searchHint: 'Search ${label.toLowerCase()}',
+          options: [
+            if (field != 'sort')
+              CutLinkPickerOption(
+                value: '',
+                label: 'Any ${label.toLowerCase()}',
+              ),
             ...entries.map(
-              (e) => DropdownMenuItem(
+              (e) => CutLinkPickerOption(
                 value: e.key,
-                child: Text(
-                  e.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                label: productSpecificationLabel(field, e.value),
               ),
             ),
           ],
           onChanged: (value) {
+            final selectedValue = value == null || value.isEmpty ? null : value;
             if (update != null) {
-              update(value);
-            } else if (value == null) {
+              update(selectedValue);
+            } else if (selectedValue == null) {
               filters.values.remove(field);
             } else {
-              filters.values[field] = value;
+              filters.values[field] = selectedValue;
             }
             onChanged();
           },
@@ -187,25 +189,33 @@ class SupplierStockFilterBar extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final field in fields.entries)
-          if (rows.any(
+          if (options?[field.key]?.isNotEmpty == true ||
+              rows.any(
                 (r) => SupplierStockFilters.value(r, field.key).isNotEmpty,
               ) ||
               filters.values.containsKey(field.key))
-            choice(field.key, field.value, {
-              for (final row in rows)
-                if (SupplierStockFilters.value(row, field.key).isNotEmpty)
-                  SupplierStockFilters.value(
-                    row,
-                    field.key,
-                  ): field.key == 'grade'
-                      ? [
-                              row['meat_grades']?['code'],
-                              row['meat_grades']?['name'],
-                            ]
-                            .where((v) => v != null && v.toString().isNotEmpty)
-                            .join(' – ')
-                      : SupplierStockFilters.value(row, field.key),
-            }),
+            choice(
+              field.key,
+              field.value,
+              options?[field.key] ??
+                  {
+                    for (final row in rows)
+                      if (SupplierStockFilters.value(row, field.key).isNotEmpty)
+                        SupplierStockFilters.value(
+                          row,
+                          field.key,
+                        ): field.key == 'grade'
+                            ? [
+                                    row['meat_grades']?['code'],
+                                    row['meat_grades']?['name'],
+                                  ]
+                                  .where(
+                                    (v) => v != null && v.toString().isNotEmpty,
+                                  )
+                                  .join(' – ')
+                            : SupplierStockFilters.value(row, field.key),
+                  },
+            ),
         choice(
           'status',
           'Stock / visibility',

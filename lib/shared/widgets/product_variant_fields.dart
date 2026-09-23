@@ -9,10 +9,12 @@ class ProductBrandField extends StatefulWidget {
     super.key,
     required this.controller,
     this.supplierBusinessId,
+    this.animalCode,
     this.enabled = true,
   });
   final TextEditingController controller;
   final String? supplierBusinessId;
+  final String? animalCode;
   final bool enabled;
   @override
   State<ProductBrandField> createState() => _ProductBrandFieldState();
@@ -32,7 +34,10 @@ class _ProductBrandFieldState extends State<ProductBrandField> {
     try {
       final List<dynamic> rows = await Supabase.instance.client.rpc(
         'list_supplier_product_brands',
-        params: {'p_supplier_business_id': widget.supplierBusinessId},
+        params: {
+          'p_supplier_business_id': widget.supplierBusinessId,
+          'p_animal_code': widget.animalCode,
+        },
       );
       if (mounted) {
         setState(() {
@@ -45,6 +50,16 @@ class _ProductBrandFieldState extends State<ProductBrandField> {
       }
     } catch (_) {
       if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductBrandField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animalCode != widget.animalCode ||
+        oldWidget.supplierBusinessId != widget.supplierBusinessId) {
+      _brands = ['Unbranded', 'Mixed brands'];
+      _load();
     }
   }
 
@@ -182,7 +197,16 @@ const productPrograms = [
   'Grass Fed',
   'Grain Fed',
 ];
+const productLambPrograms = [
+  'ANZAC Lamb',
+  'Gundagai Lamb GLQ5+',
+  'Thomas Foods Signature',
+  'Thomas Foods Supreme',
+  'Thomas Foods Classic',
+  'Grass Fed Lamb',
+];
 const productMarblingScores = [
+  noMarblingClassification,
   'MB1+',
   'MB2+',
   'MB3+',

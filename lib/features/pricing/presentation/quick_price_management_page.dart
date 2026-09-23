@@ -1,3 +1,4 @@
+import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -89,6 +90,59 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
   int _stockTotal = 0;
   int _stockVersion = 0;
   int _pageVersion = 0;
+  Map<String, Map<String, String>> _filterChoices = {};
+  String? _filterChoiceScope;
+  int _filterChoiceVersion = 0;
+  String? _filterChoiceError;
+  bool _loadingFilterChoices = false;
+
+  List<String> get _scopeSpecificationIds =>
+      _scopedStockOptions
+          .map((p) => p['meat_specification_id']?.toString())
+          .whereType<String>()
+          .toSet()
+          .toList()
+        ..sort();
+
+  Future<void> _loadFilterChoices(List<String> ids) async {
+    final scope = '$_supplierBusinessId:${ids.join(',')}';
+    if (_filterChoiceScope == scope) return;
+    _filterChoiceScope = scope;
+    final version = ++_filterChoiceVersion;
+    setState(() {
+      _filterChoices = {};
+      _loadingFilterChoices = true;
+      _filterChoiceError = null;
+    });
+    try {
+      final raw = await Supabase.instance.client
+          .rpc(
+            'supplier_inventory_facets',
+            params: {
+              'p_supplier_business_id': _supplierBusinessId,
+              'p_specification_ids': ids,
+            },
+          )
+          .timeout(const Duration(seconds: 25));
+      if (!mounted || version != _filterChoiceVersion) return;
+      setState(
+        () => _filterChoices = {
+          for (final entry in Map<String, dynamic>.from(raw as Map).entries)
+            entry.key: Map<String, String>.from(entry.value as Map),
+        },
+      );
+    } catch (_) {
+      if (!mounted || version != _filterChoiceVersion) return;
+      setState(() {
+        _filterChoiceScope = null;
+        _filterChoiceError = 'Filter options could not load.';
+      });
+    } finally {
+      if (mounted && version == _filterChoiceVersion) {
+        setState(() => _loadingFilterChoices = false);
+      }
+    }
+  }
 
   String get _selectionSignature => jsonEncode([
     _selectedAnimalCode,
@@ -133,11 +187,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     final scope = _selectionSignature;
     _scheduledScope = scope;
     _stockDebounce?.cancel();
-    final keys = _scopedStockOptions
-        .where(_stockFilters.matches)
-        .map((p) => p['_variant_key'].toString())
-        .toSet()
-        .toList();
+    final specificationIds = _scopeSpecificationIds;
+    unawaited(_loadFilterChoices(specificationIds));
     setState(() {
       _loadingStock = true;
       _stockError = null;
@@ -145,10 +196,13 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     try {
       final response = await Supabase.instance.client
           .rpc(
-            'supplier_inventory_page',
+            'supplier_inventory_page_v2',
             params: {
               'p_supplier_business_id': _supplierBusinessId,
-              'p_variant_keys': keys,
+              'p_filters': {
+                'specifications': specificationIds,
+                'values': _stockFilters.values,
+              },
               'p_search': _searchController.text.trim(),
               'p_sku': _skuController.text.trim(),
               'p_status': _stockFilters.status,
@@ -543,11 +597,14 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         throw Exception('No active supplier business membership was found.');
       }
 
-      final stockOptions = await SupplierStockCatalogue.load(
-        supplierBusinessId,
+      _filterChoiceScope = null;
+      ++_filterChoiceVersion;
+      final catalogueFuture = client.rpc(
+        'supplier_inventory_catalogue',
+        params: {'p_supplier_business_id': supplierBusinessId},
       );
 
-      final priceListResponse = await client
+      final priceListFuture = client
           .from('price_lists')
           .select('''
             id,
@@ -563,7 +620,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           .eq('active', true)
           .order('name');
 
-      final customerResponse = await client
+      final customerFuture = client
           .from('supplier_customer_relationships')
           .select('''
             butcher_business_id,
@@ -575,6 +632,15 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           .eq('supplier_business_id', supplierBusinessId)
           .eq('status', 'approved')
           .order('created_at');
+
+      final loaded = await Future.wait<dynamic>([
+        catalogueFuture,
+        priceListFuture,
+        customerFuture,
+      ]).timeout(const Duration(seconds: 25));
+      final stockOptions = List<Map<String, dynamic>>.from(loaded[0] as List);
+      final priceListResponse = loaded[1] as List;
+      final customerResponse = loaded[2] as List;
 
       if (!mounted || version != _pageVersion) {
         return;
@@ -2027,7 +2093,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
+    return PhoneStockScaffold(
+      ready: !_isLoading && _errorMessage == null,
       backgroundColor: const Color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
@@ -2136,7 +2203,6 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       );
     }
 
-    final phone = isPhoneLayout(context);
     final products = _filteredProducts;
     final header = <Widget>[
       Container(
@@ -2213,30 +2279,22 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         ),
       ),
       const SizedBox(height: 8),
-      if (phone)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: SupplierStockFilterBar(
-            rows: _scopedStockOptions,
-            filters: _stockFilters,
-            showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
-            onChanged: () => setState(() {}),
-          ),
-        )
-      else
-        SizedBox(
-          height: MediaQuery.sizeOf(context).width < 700 ? 110 : 118,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: SupplierStockFilterBar(
-                rows: _scopedStockOptions,
-                filters: _stockFilters,
-                showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
-                onChanged: () => setState(() {}),
-              ),
-            ),
-          ),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: SupplierStockFilterBar(
+          rows: const [],
+          options: _filterChoices,
+          filters: _stockFilters,
+          showGrade: _selectedAnimalCode == CutLinkAnimals.beef,
+          onChanged: () => setState(() {}),
+        ),
+      ),
+      if (_loadingFilterChoices) const LinearProgressIndicator(minHeight: 2),
+      if (_filterChoiceError != null)
+        TextButton.icon(
+          onPressed: () => _loadFilterChoices(_scopeSpecificationIds),
+          icon: const Icon(Icons.refresh),
+          label: Text('$_filterChoiceError Retry'),
         ),
       const SizedBox(height: 6),
       if (_loadingStock) const LinearProgressIndicator(minHeight: 2),
@@ -2307,95 +2365,53 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         unawaited(_loadStock());
       },
     );
-    if (phone) {
-      final waiting =
-          _loadingStock ||
-          (_stockError == null && _loadedScope != _selectionSignature);
-      return CustomScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: header,
-              ),
+    final waiting =
+        _loadingStock ||
+        (_stockError == null && _loadedScope != _selectionSignature);
+    return PhoneStockScrollView(
+      maxContentWidth: 1440,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: header,
             ),
-          ),
-          if (waiting || _stockError != null || products.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Center(
-                  child: waiting
-                      ? const CircularProgressIndicator()
-                      : Text(
-                          _stockError != null
-                              ? 'Use Retry to reload your prices.'
-                              : 'No products match these filters.',
-                        ),
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                    key: ValueKey(products[index]['id']),
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: _buildQuickPriceProductCard(products[index]),
-                  ),
-                  childCount: products.length,
-                ),
-              ),
-            ),
-          SliverToBoxAdapter(child: pager),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        ],
-      );
-    }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1440),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ...header,
-              Expanded(
-                child:
-                    _loadingStock ||
-                        (_stockError == null &&
-                            _loadedScope != _selectionSignature)
-                    ? const Center(child: CircularProgressIndicator())
-                    : _stockError != null
-                    ? const Center(
-                        child: Text('Use Retry to reload your prices.'),
-                      )
-                    : products.isEmpty
-                    ? const Center(
-                        child: Text('No products match these filters.'),
-                      )
-                    : ListView.separated(
-                        key: ValueKey('$_loadedScope:$_stockOffset'),
-                        padding: const EdgeInsets.only(bottom: 8),
-                        itemCount: products.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 6),
-                        itemBuilder: (_, index) => KeyedSubtree(
-                          key: ValueKey(products[index]['id']),
-                          child: _buildQuickPriceProductCard(products[index]),
-                        ),
-                      ),
-              ),
-              pager,
-            ],
           ),
         ),
-      ),
+        if (waiting || _stockError != null || products.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: waiting
+                    ? const CircularProgressIndicator()
+                    : Text(
+                        _stockError != null
+                            ? 'Use Retry to reload your prices.'
+                            : 'No products match these filters.',
+                      ),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  key: ValueKey(products[index]['id']),
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _buildQuickPriceProductCard(products[index]),
+                ),
+                childCount: products.length,
+              ),
+            ),
+          ),
+        SliverToBoxAdapter(child: pager),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+      ],
     );
   }
 }
