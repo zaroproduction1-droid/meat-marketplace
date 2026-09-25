@@ -1,3 +1,4 @@
+import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -869,6 +870,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               runSpacing: 9,
               crossAxisAlignment: WrapCrossAlignment.end,
               children: [
+                const WorkspaceBackButton(),
                 SizedBox(width: fieldWidth, child: _customerLookup()),
                 SizedBox(
                   width: fieldWidth,

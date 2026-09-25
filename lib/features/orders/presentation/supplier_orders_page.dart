@@ -1,3 +1,5 @@
+import '../../../shared/widgets/order_issue_chat.dart';
+import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1409,6 +1411,26 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
   }
 
+  Future<void> _openIssueChat(
+    Map<String, dynamic> order,
+    Map<String, dynamic> issue,
+  ) async {
+    final businessId = _supplierBusinessId;
+    if (businessId == null || issue['id'] == null) return;
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => OrderIssueChat(
+        issue: issue,
+        businessId: businessId,
+        role: 'supplier',
+        orderReference: cutLinkOrderReference(order['order_number']),
+        otherParty: _customerName(order),
+      ),
+    );
+    if (mounted) await _loadOrders();
+  }
+
   Future<void> _respondToIssue(
     Map<String, dynamic> order,
     Map<String, dynamic> issue,
@@ -1424,9 +1446,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       text: issue['credit_amount']?.toString() ?? '',
     );
 
-    String action = issue['status']?.toString() == 'approved'
-        ? 'approve'
-        : 'approve';
+    String action = 'approve';
     String resolutionType =
         issue['resolution_type']?.toString() ?? 'replacement';
     bool pickupRequired = issue['pickup_required'] == true;
@@ -1496,7 +1516,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   await Supabase.instance.client
                       .from('order_issues')
                       .update(update)
-                      .eq('id', issueId);
+                      .eq('id', issueId)
+                      .select('id')
+                      .single();
 
                   await Supabase.instance.client
                       .from('order_issue_messages')
@@ -1555,7 +1577,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Process Issue',
+                                    'Review resolution',
                                     style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w900,
@@ -1611,7 +1633,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                   items: const [
                                     DropdownMenuItem(
                                       value: 'approve',
-                                      child: Text('Approve / resolve'),
+                                      child: Text(
+                                        'Approve proposed resolution',
+                                      ),
                                     ),
                                     DropdownMenuItem(
                                       value: 'reject',
@@ -2686,6 +2710,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           spacing: 7,
                           runSpacing: 7,
                           children: [
+                            OutlinedButton.icon(
+                              onPressed: () => runAndRefresh(
+                                () => _openIssueChat(order, issue),
+                              ),
+                              icon: const Icon(Icons.forum_outlined, size: 17),
+                              label: const Text('Conversation'),
+                            ),
                             if (replacementOrderId == null &&
                                 resolutionType == 'replacement' &&
                                 status != 'rejected')
@@ -2731,8 +2762,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                               icon: const Icon(Icons.reply_outlined, size: 17),
                               label: Text(
                                 status == 'requested'
-                                    ? 'Process & Reply'
-                                    : 'Reply / Update',
+                                    ? 'Review resolution'
+                                    : 'Review resolution',
                               ),
                             ),
                           ],
@@ -3006,6 +3037,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       ),
       child: Row(
         children: [
+          const WorkspaceBackButton(),
           Container(
             width: 34,
             height: 34,
@@ -3020,24 +3052,25 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             ),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Orders',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
                 ),
-                SizedBox(height: 1),
-                Text(
-                  'Marketplace orders, work orders, invoices and fulfilment',
-                  style: TextStyle(
-                    color: Color(0xFF74787E),
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w600,
+                if (!isPhoneLayout(context)) const SizedBox(height: 1),
+                if (!isPhoneLayout(context))
+                  const Text(
+                    'Marketplace orders, work orders, invoices and fulfilment',
+                    style: TextStyle(
+                      color: Color(0xFF74787E),
+                      fontSize: 10.8,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -4385,6 +4418,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ),
           ],
           const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () => _openIssueChat(order, issue),
+              icon: const Icon(Icons.forum_outlined),
+              label: const Text('Open conversation'),
+            ),
+          ),
           if (closed)
             Align(
               alignment: Alignment.centerRight,
@@ -4438,8 +4479,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   icon: const Icon(Icons.forum_outlined),
                   label: Text(
                     status == 'approved'
-                        ? 'Reply / Update'
-                        : 'Reply / Process Issue',
+                        ? 'Review resolution'
+                        : 'Review resolution',
                   ),
                 ),
               ],

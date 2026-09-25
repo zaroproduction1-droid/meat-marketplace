@@ -1,3 +1,5 @@
+import '../../../shared/widgets/order_issue_chat.dart';
+import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1251,290 +1253,28 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     Map<String, dynamic> order,
     Map<String, dynamic> issue,
   ) async {
-    final issueId = issue['id']?.toString();
-
-    if (issueId == null ||
-        issueId.isEmpty ||
-        _butcherBusinessId == null ||
+    final businessId = _butcherBusinessId;
+    if (businessId == null ||
+        issue['id'] == null ||
         _sendingFollowUpIssueId != null) {
       return;
     }
-
-    final controller = TextEditingController();
-    bool sending = false;
-    bool messageSent = false;
-
+    setState(() => _sendingFollowUpIssueId = issue['id'].toString());
     try {
-      await showDialog<void>(
+      await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              Future<void> send() async {
-                if (sending) return;
-
-                final message = controller.text.trim();
-
-                if (message.isEmpty) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('Enter a message first.')),
-                  );
-                  return;
-                }
-
-                setDialogState(() => sending = true);
-
-                if (mounted) {
-                  setState(() => _sendingFollowUpIssueId = issueId);
-                }
-
-                try {
-                  await Supabase.instance.client
-                      .from('order_issue_messages')
-                      .insert({
-                        'order_issue_id': issueId,
-                        'sender_business_id': _butcherBusinessId,
-                        'sender_role': 'butcher',
-                        'message': message,
-                      });
-
-                  final currentStatus = issue['status']?.toString();
-
-                  if (currentStatus == 'resolved' ||
-                      currentStatus == 'rejected') {
-                    await Supabase.instance.client
-                        .from('order_issues')
-                        .update({
-                          'status': 'requested',
-                          'resolved_at': null,
-                          'rejected_at': null,
-                        })
-                        .eq('id', issueId);
-                  }
-
-                  if (!mounted || !dialogContext.mounted) return;
-
-                  messageSent = true;
-                  Navigator.of(dialogContext).pop();
-                } on PostgrestException catch (error) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
-                    setDialogState(() => sending = false);
-                  }
-                }
-              }
-
-              final messages = _issueMessages(issue);
-
-              return Dialog(
-                backgroundColor: const Color(0xFFF7F8FA),
-                insetPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 24,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: SizedBox(
-                  width: 720,
-                  height: 650,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(14),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5EAEA),
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: const Icon(
-                                Icons.forum_outlined,
-                                size: 19,
-                                color: Color(0xFF741C1C),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _issueReasonLabel(
-                                      issue['issue_reason']?.toString(),
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${order['order_number'] ?? 'Order'} • ${_supplierName(order)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 10.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: sending
-                                  ? null
-                                  : () => Navigator.of(dialogContext).pop(),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: messages.isEmpty
-                            ? const Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline,
-                                      size: 42,
-                                      color: Color(0xFFAAAAAA),
-                                    ),
-                                    SizedBox(height: 9),
-                                    Text(
-                                      'No messages yet',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  14,
-                                  14,
-                                  14,
-                                  8,
-                                ),
-                                children: [
-                                  for (final message in messages)
-                                    _issueChatBubble(message),
-                                ],
-                              ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          border: Border(
-                            top: BorderSide(color: Color(0xFFE0E0DD)),
-                          ),
-                          borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(14),
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: controller,
-                                minLines: 1,
-                                maxLines: 4,
-                                enabled: !sending,
-                                decoration: InputDecoration(
-                                  hintText: 'Message supplier...',
-                                  filled: true,
-                                  fillColor: const Color(0xFFFAFAFB),
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFDADAD6),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFDADAD6),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              height: 44,
-                              child: FilledButton(
-                                onPressed: sending ? null : send,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF741C1C),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: sending
-                                    ? const SizedBox(
-                                        width: 17,
-                                        height: 17,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_outlined),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
+        builder: (_) => OrderIssueChat(
+          issue: issue,
+          businessId: businessId,
+          role: 'butcher',
+          orderReference: order['order_number']?.toString() ?? 'Order',
+          otherParty: _supplierName(order),
+        ),
       );
-
-      if (messageSent && mounted) {
-        await Future<void>.delayed(const Duration(milliseconds: 150));
-
-        if (!mounted) return;
-
-        await _loadOrders();
-
-        if (!mounted) return;
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Message sent to supplier.')),
-          );
-        });
-      }
+      if (mounted) await _loadOrders();
     } finally {
-      controller.dispose();
-
-      if (mounted) {
-        setState(() => _sendingFollowUpIssueId = null);
-      }
+      if (mounted) setState(() => _sendingFollowUpIssueId = null);
     }
   }
 
@@ -3274,6 +3014,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       appBar: phoneAppBar(
         context,
         AppBar(
+          leading: const WorkspaceBackButton(),
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           elevation: 0,

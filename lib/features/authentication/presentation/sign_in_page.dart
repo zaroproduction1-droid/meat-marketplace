@@ -7,9 +7,10 @@ import 'registration_type_page.dart';
 import '../../dashboard/presentation/business_dashboard_page.dart';
 
 class SignInPage extends StatefulWidget {
-  const SignInPage({super.key, this.businessType});
+  const SignInPage({super.key, this.businessType, this.restoreSession = false});
 
   final BusinessType? businessType;
+  final bool restoreSession;
 
   @override
   State<SignInPage> createState() => _SignInPageState();
@@ -23,6 +24,45 @@ class _SignInPageState extends State<SignInPage> {
 
   bool _hidePassword = true;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.restoreSession) {
+      _isLoading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
+    }
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final auth = Supabase.instance.client.auth;
+      if (auth.currentSession == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+      if (auth.currentSession!.isExpired) await auth.refreshSession();
+      if (!mounted) return;
+      await _openAccount();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Could not restore your session. Check your connection and retry.',
+          ),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _restoreSession();
+            },
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -74,70 +114,7 @@ class _SignInPageState extends State<SignInPage> {
         return;
       }
 
-      final user = Supabase.instance.client.auth.currentUser;
-
-      if (user == null) {
-        throw Exception('Unable to find the signed-in user.');
-      }
-
-      final memberships = await Supabase.instance.client
-          .from('business_memberships')
-          .select('business_id, businesses(verification_status)')
-          .eq('user_id', user.id)
-          .limit(1);
-
-      if (!mounted) {
-        return;
-      }
-
-      if (memberships.isEmpty) {
-        BusinessType? selectedBusinessType = widget.businessType;
-
-        final metadataType = user.userMetadata?['business_type'] as String?;
-
-        if (selectedBusinessType == null) {
-          if (metadataType == 'supplier') {
-            selectedBusinessType = BusinessType.supplier;
-          } else if (metadataType == 'butcher') {
-            selectedBusinessType = BusinessType.butcher;
-          }
-        }
-
-        if (selectedBusinessType == null) {
-          throw Exception('The business type could not be identified.');
-        }
-
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) =>
-                BusinessDetailsPage(businessType: selectedBusinessType!),
-          ),
-        );
-
-        return;
-      }
-
-      final membership = Map<String, dynamic>.from(memberships.first);
-
-      final businessData = Map<String, dynamic>.from(membership['businesses']);
-
-      final verificationStatus = businessData['verification_status'] as String?;
-
-      if (verificationStatus == 'pending') {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const PendingVerificationPage(),
-          ),
-          (route) => route.isFirst,
-        );
-
-        return;
-      }
-
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const BusinessDashboardPage()),
-        (route) => route.isFirst,
-      );
+      await _openAccount();
     } on AuthException catch (error) {
       if (!mounted) {
         return;
@@ -171,10 +148,91 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
+  Future<void> _openAccount() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception('Unable to find the signed-in user.');
+    }
+
+    final memberships = await Supabase.instance.client
+        .from('business_memberships')
+        .select('business_id, businesses(verification_status)')
+        .eq('user_id', user.id)
+        .limit(1);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (memberships.isEmpty) {
+      BusinessType? selectedBusinessType = widget.businessType;
+
+      final metadataType = user.userMetadata?['business_type'] as String?;
+
+      if (selectedBusinessType == null) {
+        if (metadataType == 'supplier') {
+          selectedBusinessType = BusinessType.supplier;
+        } else if (metadataType == 'butcher') {
+          selectedBusinessType = BusinessType.butcher;
+        }
+      }
+
+      if (selectedBusinessType == null) {
+        throw Exception('The business type could not be identified.');
+      }
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) =>
+              BusinessDetailsPage(businessType: selectedBusinessType!),
+        ),
+      );
+
+      return;
+    }
+
+    final membership = Map<String, dynamic>.from(memberships.first);
+
+    final businessData = Map<String, dynamic>.from(membership['businesses']);
+
+    final verificationStatus = businessData['verification_status'] as String?;
+
+    if (verificationStatus == 'pending') {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const PendingVerificationPage(),
+        ),
+        (route) => route.isFirst,
+      );
+
+      return;
+    }
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const BusinessDashboardPage()),
+      (route) => route.isFirst,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkRed = Color(0xFF741C1C);
 
+    if (widget.restoreSession && _isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 18),
+              Text('Opening your CutLink account…'),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
       appBar: phoneAppBar(

@@ -67,12 +67,34 @@ class MeatMarketplaceApp extends StatelessWidget {
   }
 }
 
-class LandingPage extends StatelessWidget {
+class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
 
   static const Color darkRed = Color(0xFF741C1C);
   static const Color darkText = Color(0xFF1D1D1D);
   static const Color softBackground = Color(0xFFF7F7F5);
+
+  @override
+  State<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
+  static const softBackground = LandingPage.softBackground;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Supabase.instance.client.auth.currentSession != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SignInPage(restoreSession: true),
+          ),
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

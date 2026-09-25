@@ -1,3 +1,4 @@
+import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1036,6 +1037,8 @@ class _SupplierDeliverySettingsPageState
         );
         final status = run['status']?.toString() ?? 'draft';
         return Card(
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
@@ -1441,6 +1444,7 @@ class _SupplierDeliverySettingsPageState
             children: [
               Row(
                 children: [
+                  const WorkspaceBackButton(),
                   const Icon(
                     Icons.local_shipping_outlined,
                     color: _darkRed,
@@ -1475,18 +1479,51 @@ class _SupplierDeliverySettingsPageState
                 ],
               ),
               const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 4,
-                  children: List.generate(
-                    labels.length,
-                    (i) => ChoiceChip(
-                      label: Text(labels[i]),
-                      selected: _workspaceIndex == i,
-                      onSelected: (_) => setState(() => _workspaceIndex = i),
-                    ),
-                  ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(labels.length, (i) {
+                    const icons = [
+                      Icons.space_dashboard_outlined,
+                      Icons.route_outlined,
+                      Icons.badge_outlined,
+                      Icons.map_outlined,
+                      Icons.tune_rounded,
+                    ];
+                    final selected = _workspaceIndex == i;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        avatar: Icon(
+                          icons[i],
+                          size: 18,
+                          color: selected ? Colors.white : _darkRed,
+                        ),
+                        label: Text(labels[i]),
+                        showCheckmark: false,
+                        selected: selected,
+                        selectedColor: _darkRed,
+                        backgroundColor: const Color(0xFFF7F7F5),
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF30363D),
+                          fontWeight: FontWeight.w700,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(
+                          color: selected ? _darkRed : const Color(0xFFE1E3E5),
+                        ),
+                        onSelected: (_) => setState(() => _workspaceIndex = i),
+                      ),
+                    );
+                  }),
                 ),
               ),
               const SizedBox(height: 10),
@@ -2126,19 +2163,21 @@ class _SupplierDeliverySettingsPageState
     required Widget child,
   }) {
     return Card(
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
             Text(
@@ -2317,30 +2356,76 @@ class _SupplierDeliverySettingsPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 56, color: _darkRed),
-                    const SizedBox(height: 14),
-                    Text(_errorMessage!, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _refreshAll,
-                      child: const Text('Try Again'),
-                    ),
-                  ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFDDE0E4)),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: _darkRed,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _darkRed,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 56,
+                        color: _darkRed,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(_errorMessage!, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _refreshAll,
+                        child: const Text('Try Again'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1440),
+                  child: _workspaceShell(),
                 ),
               ),
-            )
-          : _workspaceShell(),
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -1063,7 +1064,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 child: _workspacePage != null
                     ? KeyedSubtree(
                         key: ValueKey(_workspaceKey),
-                        child: _workspacePage!,
+                        child: WorkspaceBackScope(
+                          onBack: () => _openDashboard(),
+                          child: _workspacePage!,
+                        ),
                       )
                     : Column(
                         children: [
@@ -3382,7 +3386,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 child: _workspacePage != null
                     ? KeyedSubtree(
                         key: ValueKey(_workspaceKey),
-                        child: _workspacePage!,
+                        child: WorkspaceBackScope(
+                          onBack: () => _openDashboard(),
+                          child: _workspacePage!,
+                        ),
                       )
                     : Column(
                         children: [
