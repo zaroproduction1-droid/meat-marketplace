@@ -1,3 +1,13 @@
+import '../../notifications/presentation/today_notifications_bell.dart';
+import '../../notifications/presentation/activity_notifications_page.dart';
+import '../../../shared/widgets/order_issue_chat.dart';
+import '../../../shared/navigation/page_location.dart';
+import '../../credits/presentation/credit_notes_page.dart';
+import '../../customers/presentation/supplier_customer_account_page.dart';
+import '../../orders/presentation/supplier_invoice_page.dart';
+import '../../orders/presentation/supplier_quote_page.dart';
+import '../../orders/presentation/supplier_work_order_page.dart';
+import '../../orders/presentation/supplier_marketplace_order_detail_page.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
@@ -44,6 +54,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   static const Color _deepNavy = Color(0xFF081625);
   static const Color _canvas = Color(0xFFF7F8FA);
 
+  bool _restoredLocation = false;
   bool _isLoading = true;
   bool _isAdmin = false;
   bool _sidebarCollapsed = false;
@@ -56,6 +67,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   int _newSupplierOrderCount = 0;
   int _butcherCartItemCount = 0;
   int _supportUnreadCount = 0;
+  int _notificationUnreadCount = 0;
+  int _notificationRevision = 0;
+  Timer? _notificationRefresh;
 
   String? _errorMessage;
   String? _businessId;
@@ -89,6 +103,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   void dispose() {
+    _notificationRefresh?.cancel();
     _mobileNavigationScroll.dispose();
     _realtimeRefreshTimer?.cancel();
     final channel = _realtimeChannel;
@@ -485,6 +500,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       });
 
       _ensureRealtimeSubscription(businessId, businessType ?? '');
+      _loadNotificationCount();
+      if (!_restoredLocation) {
+        _restoredLocation = true;
+        _restoreLocation();
+      }
     } on PostgrestException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -592,10 +612,80 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           );
     }
 
+    channel = channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'business_notifications',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'business_id',
+        value: businessId,
+      ),
+      callback: (_) {
+        _notificationRefresh?.cancel();
+        _notificationRefresh = Timer(
+          const Duration(milliseconds: 400),
+          _loadNotificationCount,
+        );
+      },
+    );
     _realtimeChannel = channel.subscribe();
   }
 
+  Future<void> _loadNotificationCount() async {
+    final id = _businessId;
+    if (id == null) {
+      return;
+    }
+    try {
+      final count = await Supabase.instance.client.rpc(
+        'business_notification_unread_count',
+        params: {'p_business_id': id},
+      );
+      if (mounted && id == _businessId) {
+        setState(() {
+          _notificationUnreadCount = (count as num).toInt();
+          _notificationRevision++;
+        });
+      }
+    } catch (_) {
+      /* The activity inbox shows its own connection errors. */
+    }
+  }
+
+  Widget _todayBell() {
+    final id = _businessId;
+    if (id == null) {
+      return const SizedBox.shrink();
+    }
+    return TodayNotificationsBell(
+      key: ValueKey('today-notifications-$id'),
+      businessId: id,
+      revision: _notificationRevision,
+      onRead: _loadNotificationCount,
+      onOpenAll: () =>
+          _openPage(_notificationsPage(), workspaceKey: 'notifications'),
+      onOpenNotification: (row) => _openPage(
+        ActivityNotificationsPage(
+          key: UniqueKey(),
+          businessId: id,
+          supplierView: _businessType == 'supplier',
+          initialNotification: row,
+          onRead: _loadNotificationCount,
+        ),
+        workspaceKey: 'notifications',
+      ),
+    );
+  }
+
+  Widget _notificationsPage() => ActivityNotificationsPage(
+    businessId: _businessId!,
+    supplierView: _businessType == 'supplier',
+    onRead: () => _loadNotificationCount(),
+  );
+
   Future<void> _signOut() async {
+    PageLocation.clear();
     await Supabase.instance.client.auth.signOut();
 
     if (!mounted) return;
@@ -603,6 +693,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   void _openDashboard({String workspaceKey = 'dashboard'}) {
+    PageLocation.workspace({'page': workspaceKey});
     if (_workspacePage == null && _workspaceKey == workspaceKey) return;
 
     setState(() {
@@ -612,6 +703,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   String _workspaceKeyForPage(Widget page) {
+    if (page is ActivityNotificationsPage) return 'notifications';
+    if (page is CreditNotesPage) return 'credits';
+    if (page is ButcherFavouritesPage) return 'favourites';
     if (page is MarketplaceProductsPage) return 'browse';
     if (page is ButcherVipSuppliersPage) return 'suppliers';
     if (page is SubmittedOrdersPage) return 'orders';
@@ -637,9 +731,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   void _openPage(Widget page, {String? workspaceKey}) {
     final nextKey = workspaceKey ?? _workspaceKeyForPage(page);
-    if (_workspacePage != null &&
+    PageLocation.workspace({'page': nextKey});
+    final currentPage = _workspacePage;
+    if (currentPage != null &&
         _workspaceKey == nextKey &&
-        _workspacePage.runtimeType == page.runtimeType) {
+        currentPage.runtimeType == page.runtimeType &&
+        currentPage.key == page.key) {
       return;
     }
 
@@ -647,6 +744,198 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       _workspaceKey = nextKey;
       _workspacePage = page;
     });
+  }
+
+  Future<void> _restoreLocation() async {
+    final saved = PageLocation.saved();
+    if (saved == null) return;
+    final base = saved['workspace'] is Map
+        ? Map<String, dynamic>.from(saved['workspace'] as Map)
+        : saved;
+    final supplier = _businessType == 'supplier';
+    Widget? workspace(String? page) {
+      switch (page) {
+        case 'orders':
+          return supplier
+              ? const SupplierOrdersPage(embedded: true)
+              : const SubmittedOrdersPage();
+        case 'browse':
+          return supplier
+              ? const SupplierSalesPage(embedded: true)
+              : MarketplaceProductsPage(onBack: () => _openDashboard());
+        case 'sales':
+          return supplier ? const SupplierSalesPage(embedded: true) : null;
+        case 'inventory':
+          return supplier ? const SupplierInventoryPage(embedded: true) : null;
+        case 'invoices':
+          return supplier
+              ? SupplierUnifiedOrdersPage(
+                  embedded: true,
+                  initialShowCredits: base['credit_notes'] == true,
+                )
+              : const ButcherAccountsPage();
+        case 'delivery':
+          return supplier
+              ? SupplierDeliverySettingsPage(
+                  initialTab: (base['tab'] as num?)?.toInt() ?? 0,
+                )
+              : null;
+        case 'customers':
+          return supplier ? const SupplierCustomerRequestsPage() : null;
+        case 'suppliers':
+          return supplier ? null : const ButcherVipSuppliersPage();
+        case 'accounts':
+          return supplier
+              ? const SupplierCustomerRequestsPage()
+              : const ButcherAccountsPage();
+        case 'credits':
+          return supplier
+              ? const SupplierUnifiedOrdersPage(
+                  embedded: true,
+                  initialShowCredits: true,
+                )
+              : const ButcherAccountsPage();
+        case 'favourites':
+          return _businessId == null
+              ? null
+              : ButcherFavouritesPage(businessId: _businessId!);
+        case 'settings':
+          return supplier
+              ? const SupplierSettingsPage(embedded: true)
+              : const ButcherSettingsPage();
+        case 'support':
+          return _businessId == null
+              ? null
+              : SupportCenterPage(
+                  businessId: _businessId!,
+                  adminMode: _isAdmin,
+                );
+        case 'notifications':
+          return supplier ? _notificationsPage() : _notificationsPage();
+        case 'work_orders':
+          return supplier ? const SupplierWorkOrdersPage() : null;
+        case 'analytics':
+          return _businessId == null
+              ? null
+              : BusinessAnalyticsPage(
+                  businessId: _businessId!,
+                  businessType: _businessType!,
+                  businessName: _businessName ?? 'Business',
+                );
+        default:
+          return null;
+      }
+    }
+
+    final page = workspace(base['page']?.toString());
+    if (page != null) _openPage(page, workspaceKey: base['page']?.toString());
+    final id = saved['id']?.toString();
+    final invoice = saved['invoice']?.toString();
+    Widget? detail;
+    switch (saved['page']) {
+      case 'issue':
+        if (id != null) {
+          try {
+            final issue = await Supabase.instance.client
+                .from('order_issues')
+                .select()
+                .eq('id', id)
+                .single();
+            if (!mounted || _businessId == null) return;
+            await showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => OrderIssueChat(
+                issue: Map<String, dynamic>.from(issue),
+                businessId: _businessId!,
+                role: supplier ? 'supplier' : 'butcher',
+                orderReference: saved['reference']?.toString() ?? 'Order',
+                otherParty:
+                    saved['other']?.toString() ??
+                    (supplier ? 'Butcher' : 'Supplier'),
+              ),
+            );
+          } catch (_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'This issue could not be reopened. Please select it from Orders.',
+                  ),
+                ),
+              );
+            }
+          }
+          return;
+        }
+
+      case 'invoice':
+        if (supplier && (id != null || saved['order'] != null)) {
+          detail = SupplierInvoicePage(
+            invoiceId: id,
+            orderId: saved['order']?.toString(),
+          );
+        }
+      case 'work_order':
+        if (supplier && id != null) detail = SupplierWorkOrderPage(orderId: id);
+      case 'quote':
+        if (supplier && id != null) detail = SupplierQuotePage(orderId: id);
+      case 'supplier_order':
+        if (supplier && id != null) {
+          detail = SupplierMarketplaceOrderDetailPage(orderId: id);
+        }
+      case 'customer_account':
+        if (supplier && id != null) {
+          detail = SupplierCustomerAccountPage(supplierCustomerAccountId: id);
+        }
+      case 'butcher_account':
+        if (!supplier && id != null) {
+          detail = ButcherSupplierAccountPage(
+            supplierBusinessId: id,
+            supplierName: saved['name']?.toString() ?? 'Supplier',
+          );
+        }
+      case 'butcher_invoice':
+        if (!supplier && id != null) {
+          detail = ButcherInvoiceDetailPage(
+            invoiceId: id,
+            initialInvoice: const {},
+            supplierName: saved['name']?.toString() ?? 'Supplier',
+            onChanged: () async {},
+          );
+        }
+      case 'credit_note':
+        if (id != null) {
+          detail = CreditNoteDetail(noteId: id, supplierView: supplier);
+        }
+      case 'credit_editor':
+        if (supplier) {
+          detail = CreditNoteEditor(
+            invoiceId: invoice,
+            issueId: saved['issue']?.toString(),
+            accountId: saved['account']?.toString(),
+          );
+        }
+      case 'credits':
+        if (invoice != null || saved['account'] != null) {
+          detail = CreditNotesPage(
+            supplierView: supplier,
+            invoiceId: invoice,
+            accountId: saved['account']?.toString(),
+          );
+        }
+      case 'cart':
+        if (!supplier) detail = const DraftOrdersPage();
+    }
+    if (detail != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => detail!));
+        }
+      });
+    }
   }
 
   Future<void> _openButcherCart() async {
@@ -2548,10 +2837,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       Icons.notifications_none_rounded,
       'Notifications',
       selected: _workspaceKey == 'notifications',
-      onTap: () => _openPage(
-        const ButcherNotificationSettingsPage(),
-        workspaceKey: 'notifications',
-      ),
+      badgeCount: _notificationUnreadCount,
+      onTap: () =>
+          _openPage(_notificationsPage(), workspaceKey: 'notifications'),
     ),
     _sideItem(
       Icons.support_agent_outlined,
@@ -2734,16 +3022,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Notifications',
-                onPressed: () => _openPage(
-                  supplier
-                      ? const SupplierNotificationSettingsPage()
-                      : const ButcherNotificationSettingsPage(),
-                  workspaceKey: 'notifications',
-                ),
-                icon: const Icon(Icons.notifications_none_rounded),
-              ),
+              _todayBell(),
               IconButton(
                 tooltip: supplier ? 'New sale' : 'My cart',
                 onPressed: supplier
@@ -2964,14 +3243,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       child: Row(
         children: [
           const Spacer(),
-          IconButton(
-            onPressed: () => _openPage(
-              const ButcherNotificationSettingsPage(),
-              workspaceKey: 'notifications',
-            ),
-            tooltip: 'Notifications',
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
+          _todayBell(),
           if (cartVisible) ...[
             const SizedBox(width: 6),
             OutlinedButton(
@@ -4071,10 +4343,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       Icons.notifications_none_rounded,
       'Notifications',
       selected: _workspaceKey == 'notifications',
-      onTap: () => _openPage(
-        const SupplierNotificationSettingsPage(),
-        workspaceKey: 'notifications',
-      ),
+      badgeCount: _notificationUnreadCount,
+      onTap: () =>
+          _openPage(_notificationsPage(), workspaceKey: 'notifications'),
     ),
     _sideItem(
       Icons.support_agent_outlined,
@@ -4192,14 +4463,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       child: Row(
         children: [
           const Spacer(),
-          IconButton(
-            onPressed: () => _openPage(
-              const SupplierNotificationSettingsPage(),
-              workspaceKey: 'notifications',
-            ),
-            tooltip: 'Notifications',
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
+          _todayBell(),
           const SizedBox(width: 8),
           OutlinedButton(
             onPressed: () =>

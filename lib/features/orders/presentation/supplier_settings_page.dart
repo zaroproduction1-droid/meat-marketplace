@@ -1,3 +1,4 @@
+import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:typed_data';
 
@@ -76,6 +77,19 @@ class SupplierSettingsPage extends StatelessWidget {
                 final twoColumns = constraints.maxWidth >= 760;
 
                 final cards = [
+                  _SettingsTile(
+                    icon: Icons.local_shipping_outlined,
+                    title: 'Delivery settings',
+                    subtitle:
+                        'Delivery availability, lead times, cut-off and delivery defaults.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SupplierDeliverySettingsPage(
+                          settingsOnly: true,
+                        ),
+                      ),
+                    ),
+                  ),
                   _SettingsTile(
                     icon: Icons.business_outlined,
                     title: 'Business Profile',
@@ -1263,6 +1277,12 @@ class SupplierNotificationSettingsPage extends StatefulWidget {
 
 class _SupplierNotificationSettingsPageState
     extends State<SupplierNotificationSettingsPage> {
+  final Map<String, bool> _activityPreferences = {
+    'notify_messages': true,
+    'notify_credit_updates': true,
+    'notify_delivery_updates': true,
+    'notify_support_updates': true,
+  };
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1289,6 +1309,9 @@ class _SupplierNotificationSettingsPageState
           .maybeSingle();
 
       if (settings != null) {
+        for (final key in _activityPreferences.keys) {
+          _activityPreferences[key] = settings[key] != false;
+        }
         _newOrders = settings['notify_new_orders'] != false;
         _quoteActivity = settings['notify_quote_activity'] != false;
         _paymentClaims = settings['notify_payment_claims'] != false;
@@ -1318,6 +1341,7 @@ class _SupplierNotificationSettingsPageState
           .from('business_app_settings')
           .upsert({
             'business_id': _businessId,
+            ..._activityPreferences,
             'notify_new_orders': _newOrders,
             'notify_quote_activity': _quoteActivity,
             'notify_payment_claims': _paymentClaims,
@@ -1343,7 +1367,7 @@ class _SupplierNotificationSettingsPageState
   @override
   Widget build(BuildContext context) {
     return _SettingsFormScaffold(
-      title: 'Notifications',
+      title: 'Notification settings',
       loading: _loading,
       error: _error,
       saving: _saving,
@@ -1351,6 +1375,22 @@ class _SupplierNotificationSettingsPageState
       onSave: _save,
       child: Column(
         children: [
+          const Text(
+            'These preferences control unread alert badges. All activity remains available in Notifications.',
+          ),
+          for (final entry in const {
+            'notify_messages': 'Marketplace messages & issues',
+            'notify_credit_updates': 'Credits & refunds',
+            'notify_delivery_updates': 'Delivery and pickup updates',
+            'notify_support_updates': 'CutLink Support replies',
+          }.entries)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(entry.value),
+              value: _activityPreferences[entry.key]!,
+              onChanged: (v) =>
+                  setState(() => _activityPreferences[entry.key] = v),
+            ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('New marketplace orders'),

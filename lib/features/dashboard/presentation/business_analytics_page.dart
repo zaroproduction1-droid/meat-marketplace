@@ -450,7 +450,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         : 'Spend, suppliers, products and purchasing performance',
                     style: const TextStyle(
                       color: Color(0xFF74787E),
-                      fontSize: 10.8,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -636,7 +636,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             label,
             style: const TextStyle(
               color: _muted,
-              fontSize: 10.8,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -660,12 +660,170 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Color(0xFF8A8E94),
-                fontSize: 9.8,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _creditInsights() {
+    final leaders = _list('top_returns');
+    final maxCases = leaders.fold<double>(
+      1,
+      (m, r) => math.max(m, _number(r['cases'])),
+    );
+    return _sectionCard(
+      title: 'Credits, refunds & returns',
+      subtitle:
+          'Selected period • refunds are part of credits, not an additional deduction.',
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 900
+                ? 4
+                : constraints.maxWidth >= 480
+                ? 2
+                : 1;
+            final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+            final metrics = [
+              _kpiCard(
+                label: 'Credit notes',
+                value: _moneyFull(_summary['credit_total']),
+                icon: Icons.receipt_long_outlined,
+                caption:
+                    '${_integer(_summary['credit_count'])} credit notes issued',
+              ),
+              _kpiCard(
+                label: 'Money refunded',
+                value: _moneyFull(_summary['refund_total']),
+                icon: Icons.payments_outlined,
+                caption: 'Refunds recorded during this period',
+              ),
+              _kpiCard(
+                label: 'Return cases',
+                value: '${_integer(_summary['return_count'])}',
+                icon: Icons.assignment_return_outlined,
+                caption: 'Goods returned, excluding price-only credits',
+              ),
+              _kpiCard(
+                label: 'Returned weight',
+                value:
+                    '${_number(_summary['returned_kg']).toStringAsFixed(2)} kg',
+                icon: Icons.scale_outlined,
+                caption: 'Recorded weight of returned goods',
+              ),
+            ];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final metric in metrics)
+                      SizedBox(width: width, child: metric),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  _isSupplier
+                      ? 'Customers with the most returns'
+                      : 'Suppliers with the most returns',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: _deepNavy,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Ranked by return cases. Values show associated credit notes.',
+                  style: TextStyle(fontSize: 12, color: _muted),
+                ),
+                if (leaders.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text(
+                      'No returned goods recorded in this period.',
+                      style: TextStyle(color: _muted),
+                    ),
+                  ),
+                for (var i = 0; i < leaders.length; i++) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F0F1),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                            color: _darkRed,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              leaders[i]['name']?.toString() ?? 'Customer',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${_integer(leaders[i]['cases'])} returns • ${_number(leaders[i]['kg']).toStringAsFixed(2)} kg',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _moneyFull(leaders[i]['value']),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: _deepNavy,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (_number(leaders[i]['cases']) / maxCases).clamp(
+                        0.0,
+                        1.0,
+                      ),
+                      minHeight: 4,
+                      color: _darkRed,
+                      backgroundColor: const Color(0xFFF0F1F3),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -801,7 +959,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         subtitle,
                         style: const TextStyle(
                           color: _muted,
-                          fontSize: 10.2,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -970,7 +1128,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 10.8,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -1060,7 +1218,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           child: Text(
                             _statusLabel(rows[i]['label']?.toString()),
                             style: const TextStyle(
-                              fontSize: 10.8,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1280,7 +1438,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             const SizedBox(height: 12),
             const Text(
               'A very high share can increase exposure to price changes, stock shortages or service disruption from one supplier.',
-              style: TextStyle(color: _muted, fontSize: 10.2, height: 1.45),
+              style: TextStyle(color: _muted, fontSize: 12, height: 1.45),
             ),
           ],
         ),
@@ -1603,6 +1761,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   const SizedBox(height: 18),
                   _summaryGrid(),
                   const SizedBox(height: 14),
+                  _creditInsights(),
+                  const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {
                       if (constraints.maxWidth < 980) {
@@ -1712,7 +1872,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             'Analytics are calculated from CutLink order, invoice, product, stock and issue records. Profit and gross margin are intentionally not shown until reliable cost-of-goods data is available.',
                             style: TextStyle(
                               color: _muted,
-                              fontSize: 9.8,
+                              fontSize: 11,
                               height: 1.4,
                             ),
                           ),
@@ -2106,6 +2266,25 @@ class _BusinessAnalyticsOverviewPanelState
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 14,
+          runSpacing: 6,
+          children: [
+            Text(
+              'Credits ${_money(summary['credit_total'])}',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+            Text(
+              'Refunded ${_money(summary['refund_total'])}',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+            Text(
+              '${_integer(summary['return_count'])} returns',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+          ],
         ),
         const SizedBox(height: 14),
         Text(

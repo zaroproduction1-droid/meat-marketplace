@@ -3914,6 +3914,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final diagram = InteractiveAnimalBrowser(
+                          fitToHeight: true,
                           selectedAnimalCode: _selectedAnimalCode,
                           selectedRegionKey: _selectedAnimalRegionKey,
                           onAnimalChanged: (animal) {
@@ -3977,35 +3978,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               ),
                           ],
                         );
-                        if (constraints.maxWidth < 800) {
-                          return ListView(
-                            padding: const EdgeInsets.all(12),
-                            children: [
-                              diagram,
-                              const SizedBox(height: 12),
-                              choices,
-                            ],
-                          );
-                        }
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 7,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(12),
-                                child: diagram,
-                              ),
-                            ),
-                            const VerticalDivider(width: 1),
-                            Expanded(
-                              flex: 4,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(14),
-                                child: choices,
-                              ),
-                            ),
-                          ],
+                        return AnimalCatalogueLayout(
+                          diagram: diagram,
+                          choices: choices,
                         );
                       },
                     ),

@@ -1,3 +1,4 @@
+import 'shared/navigation/page_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -35,6 +36,7 @@ class MeatMarketplaceApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'NSW Meat Marketplace',
+      navigatorObservers: [PageLocation.instance],
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

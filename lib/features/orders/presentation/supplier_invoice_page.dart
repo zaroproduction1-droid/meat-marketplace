@@ -1,3 +1,5 @@
+import '../../credits/presentation/credit_notes_page.dart';
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
@@ -111,6 +113,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             id,
             invoice_number,
             commercial_details_snapshot,
+            credited_total,
+            refunded_total,
             order_id,
             supplier_business_id,
             butcher_business_id,
@@ -818,6 +822,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {
+      'page': 'invoice',
+      'id': widget.invoiceId,
+      'order': widget.orderId,
+    });
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: phoneAppBar(
@@ -849,6 +858,43 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             ],
           ),
           actions: [
+            FilledButton.icon(
+              icon: const Icon(Icons.assignment_return_outlined, size: 18),
+              label: const Text('Credit'),
+              onPressed: _invoice == null
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CreditNoteEditor(
+                            invoiceId: _invoice!['id'].toString(),
+                          ),
+                        ),
+                      );
+                      if (mounted) {
+                        await _loadPage();
+                      }
+                    },
+            ),
+            TextButton(
+              onPressed: _invoice == null
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CreditNotesPage(
+                            supplierView: true,
+                            invoiceId: _invoice!['id'].toString(),
+                          ),
+                        ),
+                      );
+                      if (mounted) {
+                        await _loadPage();
+                      }
+                    },
+              child: const Text('Credit notes'),
+            ),
+
             OutlinedButton.icon(
               onPressed: _isLoading || _isSaving ? null : _downloadInvoice,
               icon: const Icon(Icons.download_outlined, size: 17),
@@ -1793,6 +1839,18 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             visualDensity: VisualDensity.compact,
             label: Text(_statusLabel(status)),
           ),
+          if (creditNumber(_invoice?['credited_total']) > 0)
+            Chip(
+              label: Text(
+                'Credited ${creditMoney(_invoice?['credited_total'])}',
+              ),
+            ),
+          if (creditNumber(_invoice?['refunded_total']) > 0)
+            Chip(
+              label: Text(
+                '${creditNumber(_invoice?['refunded_total']) >= creditNumber(_invoice?['total_amount']) ? 'Refunded' : 'Partially refunded'} ${creditMoney(_invoice?['refunded_total'])}',
+              ),
+            ),
           const SizedBox(width: 6),
           const Chip(
             visualDensity: VisualDensity.compact,

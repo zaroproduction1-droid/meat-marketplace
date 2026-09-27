@@ -1,3 +1,4 @@
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 
@@ -11,10 +12,12 @@ class SupportCenterPage extends StatefulWidget {
     super.key,
     required this.businessId,
     required this.adminMode,
+    this.initialTicketId,
   });
 
   final String businessId;
   final bool adminMode;
+  final String? initialTicketId;
 
   @override
   State<SupportCenterPage> createState() => _SupportCenterPageState();
@@ -25,6 +28,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   static const _navy = Color(0xFF081625);
 
   bool _loading = true;
+  bool _initialTicketOpened = false;
   bool _sending = false;
   bool _uploading = false;
   String? _error;
@@ -155,6 +159,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         requester_last_read_at,
         admin_last_read_at,
         resolved_at,
+        messages_delete_after,
+        messages_purged_at,
         closed_at,
         created_at,
         updated_at
@@ -186,6 +192,13 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         _loading = false;
         _error = null;
       });
+      if (!_initialTicketOpened && widget.initialTicketId != null) {
+        _initialTicketOpened = true;
+        final match = tickets.where((t) => t['id'] == widget.initialTicketId);
+        if (match.isNotEmpty) {
+          await _openTicket(match.first);
+        }
+      }
     } on PostgrestException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -800,48 +813,52 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: Row(
-            children: [
-              const Icon(Icons.support_agent, color: _darkRed),
-              const SizedBox(width: 10),
-              Text(
-                widget.adminMode ? 'Support Administration' : 'CutLink Support',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-          actions: [
-            if (!widget.adminMode)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                child: FilledButton.icon(
-                  onPressed: _sending ? null : _createTicket,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('New Ticket'),
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: Row(
+              children: [
+                const Icon(Icons.support_agent, color: _darkRed),
+                const SizedBox(width: 10),
+                Text(
+                  widget.adminMode
+                      ? 'Support Administration'
+                      : 'CutLink Support',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
-              ),
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => _loadTickets(),
-              icon: const Icon(Icons.refresh),
+              ],
             ),
-            const SizedBox(width: 8),
-          ],
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+            actions: [
+              if (!widget.adminMode)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  child: FilledButton.icon(
+                    onPressed: _sending ? null : _createTicket,
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('New Ticket'),
+                  ),
+                ),
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: () => _loadTickets(),
+                icon: const Icon(Icons.refresh),
+              ),
+              const SizedBox(width: 8),
+            ],
+            bottom: const PreferredSize(
+              preferredSize: Size.fromHeight(1),
+              child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+            ),
           ),
         ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -1054,6 +1071,32 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     );
   }
 
+  Future<void> _reopenTicket() async {
+    final id = _selectedTicket?['id'];
+    if (id == null || _sending) {
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'reopen_support_ticket',
+        params: {'p_ticket_id': id},
+      );
+      if (mounted) {
+        await _loadTickets(showLoading: false);
+        await _loadMessages(id.toString(), markRead: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
+
   Widget _ticketDetail({required bool showBack}) {
     final ticket = _selectedTicket;
     if (ticket == null) return _emptySelection();
@@ -1131,6 +1174,37 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   itemCount: _messages.length,
                   itemBuilder: (_, index) => _messageBubble(_messages[index]),
                 ),
+        ),
+        Container(
+          width: double.infinity,
+          color: const Color(0xFFF2F4F7),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'Messages and files are deleted 30 days after resolution. Reopening cancels the countdown; resolving again starts a new 30 days.',
+                style: TextStyle(fontSize: 11),
+              ),
+              if (ticket['messages_delete_after'] != null)
+                Text(
+                  'Scheduled deletion: ${DateTime.tryParse(ticket['messages_delete_after'].toString())?.toLocal().toString().split(' ').first ?? ''}',
+                  style: const TextStyle(fontSize: 11),
+                ),
+              if (ticket['messages_purged_at'] != null)
+                const Text(
+                  'Earlier resolved conversation was deleted. The ticket summary is retained.',
+                  style: TextStyle(fontSize: 11),
+                ),
+              if (['resolved', 'closed'].contains(ticket['status']))
+                TextButton(
+                  onPressed: _sending ? null : _reopenTicket,
+                  child: const Text('Reopen ticket'),
+                ),
+            ],
+          ),
         ),
         if (widget.adminMode) _adminActionBar(ticket),
         Container(

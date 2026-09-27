@@ -67,6 +67,7 @@ class InteractiveAnimalBrowser extends StatelessWidget {
     required this.onRegionSelected,
     this.selectedRegionKey,
     this.maxWidth = 760,
+    this.fitToHeight = false,
   });
 
   final String selectedAnimalCode;
@@ -74,6 +75,7 @@ class InteractiveAnimalBrowser extends StatelessWidget {
   final ValueChanged<String> onRegionSelected;
   final String? selectedRegionKey;
   final double maxWidth;
+  final bool fitToHeight;
 
   CutLinkAnimalOption get _selectedAnimal {
     final animals = CutLinkAnimals.all;
@@ -217,46 +219,55 @@ class InteractiveAnimalBrowser extends StatelessWidget {
               ],
             ),
           ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Previous animal',
-              onPressed: () => _moveAnimal(-1),
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  Text(
-                    animal.name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_selectedIndex + 1} of ${CutLinkAnimals.all.length}',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+        if (!fitToHeight) ...[
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Previous animal',
+                onPressed: () => _moveAnimal(-1),
+                icon: const Icon(Icons.chevron_left),
               ),
-            ),
-            IconButton(
-              tooltip: 'Next animal',
-              onPressed: () => _moveAnimal(1),
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      animal.name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_selectedIndex + 1} of ${CutLinkAnimals.all.length}',
+                      style: const TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Next animal',
+                onPressed: () => _moveAnimal(1),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 10),
-        if (isPhoneLayout(context))
+        if (fitToHeight)
+          Expanded(
+            child: _CatalogueViewport(
+              key: ValueKey(animal.code),
+              child: diagram,
+            ),
+          )
+        else if (isPhoneLayout(context))
           _PhoneCatalogueZoom(key: ValueKey(animal.code), child: diagram)
         else
           diagram,
@@ -507,4 +518,94 @@ class _PhoneCatalogueZoomState extends State<_PhoneCatalogueZoom> {
       },
     );
   }
+}
+
+/// The diagram always fits; only the separate cut/sub-cut choices scroll.
+class AnimalCatalogueLayout extends StatelessWidget {
+  const AnimalCatalogueLayout({
+    super.key,
+    required this.diagram,
+    required this.choices,
+  });
+  final Widget diagram, choices;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final map = Padding(padding: const EdgeInsets.all(10), child: diagram);
+      final options = SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
+        child: choices,
+      );
+      if (box.maxWidth < 800) {
+        return Column(
+          children: [
+            SizedBox(
+              height: (box.maxHeight * 0.56).clamp(140.0, 440.0),
+              child: map,
+            ),
+            const Divider(height: 1),
+            Expanded(child: options),
+          ],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 7, child: map),
+          const VerticalDivider(width: 1),
+          Expanded(flex: 4, child: options),
+        ],
+      );
+    },
+  );
+}
+
+class _CatalogueViewport extends StatefulWidget {
+  const _CatalogueViewport({super.key, required this.child});
+  final Widget child;
+  @override
+  State<_CatalogueViewport> createState() => _CatalogueViewportState();
+}
+
+class _CatalogueViewportState extends State<_CatalogueViewport> {
+  final _controller = TransformationController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Expanded(
+        child: ClipRect(
+          child: InteractiveViewer(
+            transformationController: _controller,
+            minScale: 1,
+            maxScale: 5,
+            child: SizedBox.expand(child: widget.child),
+          ),
+        ),
+      ),
+      SizedBox(
+        height: 32,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Flexible(
+              child: Text(
+                'Pinch or use trackpad to zoom',
+                style: TextStyle(fontSize: 11),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _controller.value = Matrix4.identity(),
+              child: const Text('Reset'),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }

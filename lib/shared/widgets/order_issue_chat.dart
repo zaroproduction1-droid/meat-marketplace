@@ -1,3 +1,5 @@
+import '../navigation/page_location.dart';
+import '../../features/credits/presentation/credit_notes_page.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,12 +13,14 @@ class OrderIssueChat extends StatefulWidget {
     required this.role,
     required this.orderReference,
     required this.otherParty,
+    this.onReplacement,
   });
   final Map<String, dynamic> issue;
   final String businessId;
   final String role;
   final String orderReference;
   final String otherParty;
+  final Future<void> Function()? onReplacement;
 
   @override
   State<OrderIssueChat> createState() => _OrderIssueChatState();
@@ -157,6 +161,271 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
     }
   }
 
+  Future<void> _action(String action) async {
+    final note = TextEditingController();
+    String resolution = 'other';
+    final title = switch (action) {
+      'resolve' => 'Mark issue resolved',
+      'reject' => 'Decline issue',
+      'reopen' => 'Reopen issue',
+      'confirm' => 'Confirm the issue is fixed',
+      _ => 'Start reviewing',
+    };
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, change) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (action == 'resolve') ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: resolution,
+                    decoration: const InputDecoration(
+                      labelText: 'Completed outcome',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'other',
+                        child: Text('Fixed / agreed solution'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'replacement',
+                        child: Text('Replacement delivered'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'credit_note',
+                        child: Text('Credit note issued'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'refund',
+                        child: Text('Refund recorded'),
+                      ),
+                    ],
+                    onChanged: (v) => change(() => resolution = v!),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (action == 'confirm')
+                  const Text(
+                    'Confirm that the supplier’s resolution has fixed your issue.',
+                  )
+                else if (action != 'review')
+                  TextField(
+                    controller: note,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason / outcome',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (action != 'review' &&
+                    action != 'confirm' &&
+                    note.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Enter a reason or outcome.')),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: Text(title),
+            ),
+          ],
+        ),
+      ),
+    );
+    final body = note.text.trim();
+    note.dispose();
+    if (accepted != true || !mounted) return;
+    setState(() => _sending = true);
+    bool success = false;
+    try {
+      await Supabase.instance.client.rpc(
+        'transition_marketplace_issue',
+        params: {
+          'p_issue_id': widget.issue['id'],
+          'p_action': action,
+          'p_note': body,
+          'p_resolution': action == 'resolve' ? resolution : null,
+        },
+      );
+      _sent = true;
+      success = true;
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+    if (mounted && success) await _reload();
+  }
+
+  Future<void> _credits({bool create = false}) async {
+    setState(() => _sending = true);
+    var success = false;
+    try {
+      final invoice = await Supabase.instance.client
+          .from('invoices')
+          .select('id')
+          .eq('order_id', _issue['order_id'].toString())
+          .inFilter('status', ['issued', 'part_paid', 'paid'])
+          .limit(1)
+          .maybeSingle();
+      if (!mounted) return;
+      if (invoice == null) {
+        setState(
+          () => _error = 'No issued invoice is available for this order yet.',
+        );
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => create
+              ? CreditNoteEditor(
+                  invoiceId: invoice['id'].toString(),
+                  issueId: _issue['id'].toString(),
+                )
+              : CreditNotesPage(
+                  supplierView: widget.role == 'supplier',
+                  invoiceId: invoice['id'].toString(),
+                ),
+        ),
+      );
+      success = true;
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+    if (mounted && success) await _reload();
+  }
+
+  Future<void> _replacement() async {
+    if (widget.onReplacement != null) {
+      await widget.onReplacement!();
+      if (mounted) {
+        await _reload();
+      }
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Arrange replacement'),
+        content: const Text(
+          'Create a no-charge replacement order for the affected products? It will appear in supplier Work Orders.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Create replacement'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    setState(() => _sending = true);
+    var success = false;
+    try {
+      await Supabase.instance.client.rpc(
+        'create_replacement_order',
+        params: {'target_issue_id': _issue['id']},
+      );
+      _sent = true;
+      success = true;
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+    if (mounted && success) {
+      await _reload();
+    }
+  }
+
+  Widget _resolutionActions() {
+    final closed = [
+      'resolved',
+      'rejected',
+      'cancelled',
+    ].contains(_issue['status']);
+    final supplier = widget.role == 'supplier';
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          if (supplier && !closed) ...[
+            if (_issue['status'] == 'requested')
+              TextButton(
+                onPressed: _sending ? null : () => _action('review'),
+                child: const Text('Start review'),
+              ),
+            if (_issue['replacement_order_id'] == null)
+              TextButton(
+                onPressed: _sending ? null : _replacement,
+                child: const Text('Arrange replacement'),
+              ),
+            TextButton(
+              onPressed: _sending ? null : () => _credits(create: true),
+              child: const Text('Issue credit / refund'),
+            ),
+            FilledButton.icon(
+              onPressed: _sending ? null : () => _action('resolve'),
+              icon: const Icon(Icons.task_alt),
+              label: const Text('Mark resolved'),
+            ),
+            TextButton(
+              onPressed: _sending ? null : () => _action('reject'),
+              child: const Text('Decline'),
+            ),
+          ],
+          TextButton(
+            onPressed: _sending ? null : () => _credits(),
+            child: const Text('Credit notes'),
+          ),
+          if (closed && _issue['status'] != 'cancelled')
+            TextButton(
+              onPressed: _sending ? null : () => _action('reopen'),
+              child: const Text('Still unresolved? Reopen'),
+            ),
+          if (!supplier &&
+              _issue['status'] == 'resolved' &&
+              _issue['butcher_confirmed_at'] == null)
+            FilledButton.icon(
+              onPressed: _sending ? null : () => _action('confirm'),
+              icon: const Icon(Icons.check),
+              label: const Text('Confirm fixed'),
+            ),
+          if (_issue['butcher_confirmed_at'] != null)
+            const Chip(label: Text('Confirmed fixed by butcher')),
+        ],
+      ),
+    );
+  }
+
   String _date(dynamic value) {
     final d = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
     if (d == null) return '';
@@ -205,6 +474,12 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {
+      'page': 'issue',
+      'id': widget.issue['id'],
+      'reference': widget.orderReference,
+      'other': widget.otherParty,
+    });
     final status = switch (_issue['status']?.toString()) {
       'approved' => 'Resolution proposed',
       'under_review' => 'Under review',
@@ -331,8 +606,10 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
+                    _resolutionActions(),
+                    const SizedBox(height: 8),
                     const Text(
-                      'Messages do not approve, reject or close the issue.',
+                      'Use this conversation for messages. Use the actions below to complete the issue.',
                       style: TextStyle(fontSize: 11, color: Color(0xFF656970)),
                     ),
                     const SizedBox(height: 8),

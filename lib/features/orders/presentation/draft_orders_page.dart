@@ -1,3 +1,4 @@
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1662,6 +1663,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {'page': 'cart'});
     return Scaffold(
       backgroundColor: _canvas,
       appBar: phoneAppBar(

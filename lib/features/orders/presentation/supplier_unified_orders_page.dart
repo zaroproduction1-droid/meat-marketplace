@@ -1,3 +1,5 @@
+import '../../../shared/navigation/page_location.dart';
+import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +23,12 @@ class SupplierUnifiedOrdersPage extends StatefulWidget {
     super.key,
     this.embedded = false,
     this.initialType = SupplierDocumentType.all,
+    this.initialShowCredits = false,
   });
 
   final bool embedded;
   final SupplierDocumentType initialType;
+  final bool initialShowCredits;
 
   @override
   State<SupplierUnifiedOrdersPage> createState() =>
@@ -40,6 +44,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   final _customerFocusNode = FocusNode();
   final _documentNumberController = TextEditingController();
   late SupplierDocumentType _selectedType;
+  bool _showCredits = false;
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = false;
@@ -58,6 +63,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
+    _showCredits = widget.initialShowCredits;
     _searchController.addListener(_refreshView);
     _documentNumberController.addListener(_refreshView);
     _loadCustomerOptions();
@@ -667,6 +673,23 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               'Invoices',
               Icons.request_quote_outlined,
             ),
+            TextButton.icon(
+              onPressed: () {
+                setState(() => _showCredits = true);
+                if (widget.embedded) {
+                  PageLocation.workspace({
+                    'page': 'invoices',
+                    'credit_notes': true,
+                  });
+                }
+              },
+              icon: const Icon(Icons.assignment_return_outlined, size: 16),
+              label: const Text('Credit notes'),
+              style: TextButton.styleFrom(
+                foregroundColor: _showCredits ? Colors.white : _darkRed,
+                backgroundColor: _showCredits ? _darkRed : null,
+              ),
+            ),
           ],
         ),
       ),
@@ -674,12 +697,16 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   Widget _typeButton(SupplierDocumentType type, String label, IconData icon) {
-    final selected = _selectedType == type;
+    final selected = !_showCredits && _selectedType == type;
     return Padding(
       padding: const EdgeInsets.only(right: 2),
       child: TextButton.icon(
         onPressed: () {
           setState(() {
+            _showCredits = false;
+            if (widget.embedded) {
+              PageLocation.workspace({'page': 'invoices'});
+            }
             _selectedType = type;
             _selectedStatus = null;
           });
@@ -1378,7 +1405,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         Expanded(
           child: KeyedSubtree(
             key: ValueKey(_selectedType),
-            child: _managementView(),
+            child: _showCredits
+                ? const CreditNotesPage(supplierView: true, embedded: true)
+                : _managementView(),
           ),
         ),
       ],

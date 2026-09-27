@@ -1,3 +1,5 @@
+import '../../../shared/navigation/page_location.dart';
+import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/document_product_details.dart';
@@ -410,6 +412,15 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             ],
           ),
           actions: [
+            TextButton.icon(
+              label: const Text('Credit notes'),
+              icon: const Icon(Icons.assignment_return_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CreditNotesPage(supplierView: false),
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Refresh',
               onPressed: _loadAccounts,
@@ -801,7 +812,7 @@ class _ButcherSupplierAccountPageState
           .select('''
             id,
             credit_date,
-            amount,
+            amount:net_amount,
             credit_type,
             reference,
             reason,
@@ -2122,6 +2133,11 @@ class _ButcherSupplierAccountPageState
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {
+      'page': 'butcher_account',
+      'id': widget.supplierBusinessId,
+      'name': widget.supplierName,
+    });
     if (_loading) {
       return Scaffold(
         appBar: phoneAppBar(context, AppBar(title: Text(widget.supplierName))),
@@ -2854,6 +2870,11 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {
+      'page': 'butcher_invoice',
+      'id': widget.invoiceId,
+      'name': widget.supplierName,
+    });
     final items = _invoice['invoice_items'] is List
         ? List<dynamic>.from(_invoice['invoice_items'] as List)
               .whereType<Map>()
@@ -3064,6 +3085,18 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               _asDouble(_invoice['credit_applied']),
             ),
             _amountRow('Outstanding', _outstanding, strong: true),
+            if (_asDouble(_invoice['credited_total']) > 0)
+              _amountRow(
+                'Credit notes issued',
+                _asDouble(_invoice['credited_total']),
+              ),
+            if (_asDouble(_invoice['refunded_total']) > 0)
+              _amountRow(
+                _asDouble(_invoice['refunded_total']) >= _total
+                    ? 'Refunded'
+                    : 'Partially refunded',
+                _asDouble(_invoice['refunded_total']),
+              ),
             InvoiceAccountBalancePanel(
               balance:
                   _invoice['account_balance_summary'] as Map<String, dynamic>?,
@@ -3126,6 +3159,18 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           actions: [
+            TextButton.icon(
+              label: const Text('Credit notes'),
+              icon: const Icon(Icons.assignment_return_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CreditNotesPage(
+                    supplierView: false,
+                    invoiceId: widget.invoiceId,
+                  ),
+                ),
+              ),
+            ),
             if (invoiceIsPaid(_invoice))
               const Chip(
                 label: Text('PAID'),

@@ -1,3 +1,4 @@
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'order_sales_contact.dart';
 import '../services/document_product_details.dart';
@@ -2017,6 +2018,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {'page': 'work_order', 'id': widget.orderId});
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: phoneAppBar(

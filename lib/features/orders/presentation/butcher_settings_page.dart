@@ -1137,6 +1137,12 @@ class ButcherNotificationSettingsPage extends StatefulWidget {
 
 class _ButcherNotificationSettingsPageState
     extends State<ButcherNotificationSettingsPage> {
+  final Map<String, bool> _activityPreferences = {
+    'notify_messages': true,
+    'notify_credit_updates': true,
+    'notify_delivery_updates': true,
+    'notify_support_updates': true,
+  };
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1163,6 +1169,9 @@ class _ButcherNotificationSettingsPageState
           .maybeSingle();
 
       if (row != null) {
+        for (final key in _activityPreferences.keys) {
+          _activityPreferences[key] = row[key] != false;
+        }
         _orders = row['notify_new_orders'] != false;
         _quotes = row['notify_quote_activity'] != false;
         _payments = row['notify_payment_claims'] != false;
@@ -1192,6 +1201,7 @@ class _ButcherNotificationSettingsPageState
           .from('business_app_settings')
           .upsert({
             'business_id': _businessId,
+            ..._activityPreferences,
             'notify_new_orders': _orders,
             'notify_quote_activity': _quotes,
             'notify_payment_claims': _payments,
@@ -1217,7 +1227,7 @@ class _ButcherNotificationSettingsPageState
   @override
   Widget build(BuildContext context) {
     return _SettingsFormScaffold(
-      title: 'Notifications',
+      title: 'Notification settings',
       loading: _loading,
       error: _error,
       saving: _saving,
@@ -1225,6 +1235,22 @@ class _ButcherNotificationSettingsPageState
       onSave: _save,
       child: Column(
         children: [
+          const Text(
+            'These preferences control unread alert badges. All activity remains available in Notifications.',
+          ),
+          for (final entry in const {
+            'notify_messages': 'Marketplace messages & issues',
+            'notify_credit_updates': 'Credits & refunds',
+            'notify_delivery_updates': 'Delivery and pickup updates',
+            'notify_support_updates': 'CutLink Support replies',
+          }.entries)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(entry.value),
+              value: _activityPreferences[entry.key]!,
+              onChanged: (v) =>
+                  setState(() => _activityPreferences[entry.key] = v),
+            ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Order status updates'),

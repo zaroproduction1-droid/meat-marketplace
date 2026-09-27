@@ -1,3 +1,5 @@
+import '../../credits/presentation/credit_notes_page.dart';
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -218,7 +220,7 @@ class _SupplierCustomerAccountPageState
             butcher_business_id,
             supplier_customer_account_id,
             credit_date,
-            amount,
+            amount:net_amount,
             credit_type,
             reference,
             reason,
@@ -3608,6 +3610,10 @@ class _SupplierCustomerAccountPageState
 
   @override
   Widget build(BuildContext context) {
+    PageLocation.track(context, {
+      'page': 'customer_account',
+      'id': widget.supplierCustomerAccountId,
+    });
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: phoneAppBar(
@@ -3653,6 +3659,24 @@ class _SupplierCustomerAccountPageState
             ],
           ),
           actions: [
+            TextButton.icon(
+              label: const Text('Credit notes'),
+              icon: const Icon(Icons.assignment_return_outlined),
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => CreditNotesPage(
+                      supplierView: true,
+                      accountId: widget.supplierCustomerAccountId,
+                    ),
+                  ),
+                );
+                if (mounted) {
+                  await _loadPage();
+                }
+              },
+            ),
+
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _openStatement,
               style: OutlinedButton.styleFrom(

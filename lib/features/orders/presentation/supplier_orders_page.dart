@@ -1298,102 +1298,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         status == 'cancelled';
   }
 
-  Future<void> _confirmResolutionCompleted(
-    Map<String, dynamic> order,
-    Map<String, dynamic> issue,
-  ) async {
-    final issueId = issue['id']?.toString();
-    final supplierBusinessId = _supplierBusinessId;
-
-    if (issueId == null ||
-        issueId.isEmpty ||
-        supplierBusinessId == null ||
-        _updatingIssueId != null ||
-        _isIssueClosed(issue)) {
-      return;
-    }
-
-    final resolution = _resolutionLabel(issue['resolution_type']?.toString());
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return phoneDialog(
-          context,
-          AlertDialog(
-            title: const Text('Confirm Resolution Completed?'),
-            content: Text(
-              'Confirm that the agreed resolution has actually been completed.\n\n'
-              'Resolution: $resolution\n\n'
-              'This closes the issue for both businesses but keeps the full '
-              'complaint and resolution history.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Not Yet'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                ),
-                child: const Text('Confirm Completed'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (confirmed != true) {
-      return;
-    }
-
-    setState(() {
-      _updatingIssueId = issueId;
-    });
-
-    try {
-      final now = DateTime.now().toUtc().toIso8601String();
-
-      await Supabase.instance.client
-          .from('order_issues')
-          .update({'status': 'resolved', 'resolved_at': now})
-          .eq('id', issueId);
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Issue resolved for ${order['order_number'] ?? 'this order'}.',
-          ),
-        ),
-      );
-
-      await _loadOrders();
-
-      // Issues now live in the dedicated Issues page.
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _updatingIssueId = null;
-        });
-      }
-    }
-  }
-
   String _resolutionLabel(String? value) {
     switch (value) {
       case 'replacement':
@@ -1426,394 +1330,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         role: 'supplier',
         orderReference: cutLinkOrderReference(order['order_number']),
         otherParty: _customerName(order),
+        onReplacement: () => _createReplacementFulfilment(order, issue),
       ),
     );
     if (mounted) await _loadOrders();
-  }
-
-  Future<void> _respondToIssue(
-    Map<String, dynamic> order,
-    Map<String, dynamic> issue,
-  ) async {
-    final issueId = issue['id']?.toString();
-
-    if (issueId == null || issueId.isEmpty || _updatingIssueId != null) {
-      return;
-    }
-
-    final responseController = TextEditingController();
-    final creditController = TextEditingController(
-      text: issue['credit_amount']?.toString() ?? '',
-    );
-
-    String action = 'approve';
-    String resolutionType =
-        issue['resolution_type']?.toString() ?? 'replacement';
-    bool pickupRequired = issue['pickup_required'] == true;
-    bool replacementRequired = issue['replacement_required'] == true;
-    bool saving = false;
-    bool saved = false;
-
-    try {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              Future<void> save() async {
-                if (saving) return;
-
-                final response = responseController.text.trim();
-                final creditText = creditController.text.trim();
-                final credit = creditText.isEmpty
-                    ? null
-                    : double.tryParse(creditText);
-
-                if (response.isEmpty) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a message for the butcher.'),
-                    ),
-                  );
-                  return;
-                }
-
-                if (creditText.isNotEmpty && (credit == null || credit < 0)) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a valid credit amount.'),
-                    ),
-                  );
-                  return;
-                }
-
-                setDialogState(() => saving = true);
-                if (mounted) setState(() => _updatingIssueId = issueId);
-
-                try {
-                  final now = DateTime.now().toUtc().toIso8601String();
-                  final update = <String, dynamic>{
-                    'supplier_response': response,
-                    'resolution_type': resolutionType,
-                    'pickup_required': pickupRequired,
-                    'replacement_required': replacementRequired,
-                    'credit_amount': credit,
-                  };
-
-                  if (action == 'approve') {
-                    update['status'] = 'approved';
-                    update['approved_at'] = now;
-                    update['rejected_at'] = null;
-                    update['resolved_at'] = null;
-                  } else {
-                    update['status'] = 'rejected';
-                    update['rejected_at'] = now;
-                    update['approved_at'] = null;
-                    update['resolved_at'] = null;
-                  }
-
-                  await Supabase.instance.client
-                      .from('order_issues')
-                      .update(update)
-                      .eq('id', issueId)
-                      .select('id')
-                      .single();
-
-                  await Supabase.instance.client
-                      .from('order_issue_messages')
-                      .insert({
-                        'order_issue_id': issueId,
-                        'sender_business_id': _supplierBusinessId,
-                        'sender_role': 'supplier',
-                        'message': response,
-                      });
-
-                  if (!dialogContext.mounted) return;
-                  saved = true;
-                  Navigator.of(dialogContext).pop();
-                } on PostgrestException catch (error) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
-                    setDialogState(() => saving = false);
-                  }
-                }
-              }
-
-              return Dialog(
-                backgroundColor: const Color(0xFFF7F7F5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: SizedBox(
-                  width: 650,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5EAEA),
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                              child: const Icon(
-                                Icons.rule_folder_outlined,
-                                color: Color(0xFF741C1C),
-                                size: 19,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Review resolution',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 10.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: saving
-                                  ? null
-                                  : () => Navigator.of(dialogContext).pop(),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(11),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE0E0DD)),
-                          ),
-                          child: Text(
-                            _issueReasonLabel(
-                              issue['issue_reason']?.toString(),
-                            ),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        PhoneRow(
-                          mode: PhoneRowMode.stack,
-                          desktop: Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  isExpanded: isPhoneLayout(context),
-                                  initialValue: action,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Decision',
-                                    isDense: true,
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'approve',
-                                      child: Text(
-                                        'Approve proposed resolution',
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'reject',
-                                      child: Text('Reject issue'),
-                                    ),
-                                  ],
-                                  onChanged: saving
-                                      ? null
-                                      : (value) {
-                                          if (value != null) {
-                                            setDialogState(
-                                              () => action = value,
-                                            );
-                                          }
-                                        },
-                                ),
-                              ),
-                              const SizedBox(width: 9),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  isExpanded: isPhoneLayout(context),
-                                  initialValue: resolutionType,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Resolution',
-                                    isDense: true,
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'replacement',
-                                      child: Text('Replacement / exchange'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'credit',
-                                      child: Text('Account credit'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'refund',
-                                      child: Text('Refund'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'collection',
-                                      child: Text('Supplier collection'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'other',
-                                      child: Text('Other'),
-                                    ),
-                                  ],
-                                  onChanged: saving
-                                      ? null
-                                      : (value) {
-                                          if (value != null) {
-                                            setDialogState(
-                                              () => resolutionType = value,
-                                            );
-                                          }
-                                        },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        if (resolutionType == 'credit' ||
-                            resolutionType == 'refund') ...[
-                          TextField(
-                            controller: creditController,
-                            enabled: !saving,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Credit / refund amount inc GST',
-                              prefixText: r'$ ',
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            FilterChip(
-                              selected: pickupRequired,
-                              label: const Text('Supplier pickup required'),
-                              onSelected: saving
-                                  ? null
-                                  : (value) => setDialogState(
-                                      () => pickupRequired = value,
-                                    ),
-                            ),
-                            FilterChip(
-                              selected: replacementRequired,
-                              label: const Text('Replacement required'),
-                              onSelected: saving
-                                  ? null
-                                  : (value) => setDialogState(
-                                      () => replacementRequired = value,
-                                    ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: responseController,
-                          minLines: 3,
-                          maxLines: 5,
-                          enabled: !saving,
-                          decoration: const InputDecoration(
-                            labelText: 'Message to butcher',
-                            hintText:
-                                'Explain what you are doing and what happens next.',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        PhoneRow(
-                          mode: PhoneRowMode.wrap,
-                          desktop: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: saving
-                                    ? null
-                                    : () => Navigator.of(dialogContext).pop(),
-                                child: const Text('Cancel'),
-                              ),
-                              const SizedBox(width: 7),
-                              FilledButton.icon(
-                                onPressed: saving ? null : save,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF741C1C),
-                                ),
-                                icon: saving
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_outlined, size: 17),
-                                label: Text(saving ? 'Saving' : 'Save & Send'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-
-      if (saved && mounted) {
-        await Future<void>.delayed(const Duration(milliseconds: 150));
-        if (!mounted) return;
-        await _loadOrders();
-        if (!mounted) return;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Issue updated and message sent.')),
-          );
-        });
-      }
-    } finally {
-      responseController.dispose();
-      creditController.dispose();
-      if (mounted) setState(() => _updatingIssueId = null);
-    }
   }
 
   Future<void> _editFulfilment(
@@ -2430,6 +1950,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
   Future<void> _openIssuesPanel() async {
     String? selectedIssueId;
+    bool showClosed = false;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2437,9 +1958,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           return StatefulBuilder(
             builder: (issuesContext, setIssuesState) {
               final entries = <Map<String, dynamic>>[];
-              for (final order in _ordersForTab('issues')) {
+              for (final order in _orders) {
                 for (final issue in _issues(order)) {
-                  if (_isIssueClosed(issue)) continue;
+                  if (_isIssueClosed(issue) != showClosed) continue;
                   entries.add({'order': order, 'issue': issue});
                 }
               }
@@ -2591,11 +2112,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 final issue = Map<String, dynamic>.from(
                   selectedEntry['issue'] as Map,
                 );
-                final issueId = issue['id']?.toString() ?? '';
                 final status = issue['status']?.toString() ?? 'requested';
-                final resolutionType = issue['resolution_type']?.toString();
-                final replacementOrderId = issue['replacement_order_id']
-                    ?.toString();
                 final conversation = _issueConversationEntries(issue);
 
                 return Container(
@@ -2705,68 +2222,15 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             top: BorderSide(color: Color(0xFFE0E0DD)),
                           ),
                         ),
-                        child: Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 7,
-                          runSpacing: 7,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () => runAndRefresh(
-                                () => _openIssueChat(order, issue),
-                              ),
-                              icon: const Icon(Icons.forum_outlined, size: 17),
-                              label: const Text('Conversation'),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton.icon(
+                            onPressed: () => runAndRefresh(
+                              () => _openIssueChat(order, issue),
                             ),
-                            if (replacementOrderId == null &&
-                                resolutionType == 'replacement' &&
-                                status != 'rejected')
-                              OutlinedButton.icon(
-                                onPressed: _updatingIssueId == issueId
-                                    ? null
-                                    : () => runAndRefresh(
-                                        () => _createReplacementFulfilment(
-                                          order,
-                                          issue,
-                                        ),
-                                      ),
-                                icon: const Icon(Icons.autorenew, size: 17),
-                                label: const Text('Start Replacement'),
-                              ),
-                            if (status == 'approved' &&
-                                resolutionType != 'replacement' &&
-                                replacementOrderId == null)
-                              FilledButton.icon(
-                                onPressed: _updatingIssueId == issueId
-                                    ? null
-                                    : () => runAndRefresh(
-                                        () => _confirmResolutionCompleted(
-                                          order,
-                                          issue,
-                                        ),
-                                      ),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF2E7D32),
-                                ),
-                                icon: const Icon(Icons.task_alt, size: 17),
-                                label: const Text('Mark Resolved'),
-                              ),
-                            FilledButton.icon(
-                              onPressed: _updatingIssueId == issueId
-                                  ? null
-                                  : () => runAndRefresh(
-                                      () => _respondToIssue(order, issue),
-                                    ),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF741C1C),
-                              ),
-                              icon: const Icon(Icons.reply_outlined, size: 17),
-                              label: Text(
-                                status == 'requested'
-                                    ? 'Review resolution'
-                                    : 'Review resolution',
-                              ),
-                            ),
-                          ],
+                            icon: const Icon(Icons.forum_outlined),
+                            label: const Text('Open issue & resolve'),
+                          ),
                         ),
                       ),
                     ],
@@ -2786,11 +2250,19 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     actions: [
+                      FilterChip(
+                        label: const Text('Closed issues'),
+                        selected: showClosed,
+                        onSelected: (v) => setIssuesState(() {
+                          showClosed = v;
+                          selectedIssueId = null;
+                        }),
+                      ),
                       Padding(
                         padding: const EdgeInsets.only(right: 12),
                         child: Center(
                           child: Text(
-                            '${entries.length} open',
+                            '${entries.length} ${showClosed ? 'closed' : 'open'}',
                             style: const TextStyle(
                               color: Color(0xFF741C1C),
                               fontWeight: FontWeight.w900,
@@ -4238,10 +3710,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   ) {
     final status = issue['status']?.toString() ?? 'requested';
     final withinWindow = issue['within_reporting_window'] == true;
-    final issueId = issue['id']?.toString();
     final closed = _isIssueClosed(issue);
     final resolutionType = issue['resolution_type']?.toString();
-    final replacementOrderId = issue['replacement_order_id']?.toString();
 
     return Container(
       width: double.infinity,
@@ -4426,65 +3896,6 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               label: const Text('Open conversation'),
             ),
           ),
-          if (closed)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Chip(
-                avatar: const Icon(Icons.task_alt, size: 16),
-                label: Text(
-                  status == 'rejected'
-                      ? 'Rejected and closed'
-                      : 'Resolution completed',
-                ),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.end,
-              children: [
-                if (replacementOrderId == null &&
-                    resolutionType == 'replacement' &&
-                    status != 'rejected')
-                  OutlinedButton.icon(
-                    onPressed: _updatingIssueId == issueId
-                        ? null
-                        : () => _createReplacementFulfilment(order, issue),
-                    icon: const Icon(Icons.autorenew),
-                    label: const Text('Start Replacement Fulfilment'),
-                  )
-                else if (replacementOrderId != null)
-                  const Chip(
-                    avatar: Icon(Icons.autorenew, size: 16),
-                    label: Text('Replacement fulfilment in progress'),
-                  ),
-                if (status == 'approved' &&
-                    resolutionType != 'replacement' &&
-                    replacementOrderId == null)
-                  FilledButton.icon(
-                    onPressed: _updatingIssueId == issueId
-                        ? null
-                        : () => _confirmResolutionCompleted(order, issue),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                    ),
-                    icon: const Icon(Icons.task_alt),
-                    label: const Text('Confirm Resolution Completed'),
-                  ),
-                OutlinedButton.icon(
-                  onPressed: _updatingIssueId == issueId
-                      ? null
-                      : () => _respondToIssue(order, issue),
-                  icon: const Icon(Icons.forum_outlined),
-                  label: Text(
-                    status == 'approved'
-                        ? 'Review resolution'
-                        : 'Review resolution',
-                  ),
-                ),
-              ],
-            ),
         ],
       ),
     );

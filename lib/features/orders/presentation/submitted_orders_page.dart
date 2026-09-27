@@ -7,7 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'butcher_accounts_page.dart';
 
 class SubmittedOrdersPage extends StatefulWidget {
-  const SubmittedOrdersPage({super.key});
+  const SubmittedOrdersPage({super.key, this.initialOrderId});
+  final String? initialOrderId;
 
   @override
   State<SubmittedOrdersPage> createState() => _SubmittedOrdersPageState();
@@ -16,6 +17,7 @@ class SubmittedOrdersPage extends StatefulWidget {
 class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     with SingleTickerProviderStateMixin {
   bool _isLoading = true;
+  bool _initialOrderOpened = false;
   String? _errorMessage;
   String? _butcherBusinessId;
   String? _updatingOrderId;
@@ -238,6 +240,22 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         _orders = visibleOrders;
         _isLoading = false;
       });
+      if (!_initialOrderOpened && widget.initialOrderId != null) {
+        _initialOrderOpened = true;
+        final selected = _orders.where((o) => o['id'] == widget.initialOrderId);
+        if (selected.isNotEmpty) {
+          _searchController.text =
+              selected.first['order_number']?.toString() ?? '';
+          final index = _tabs.indexWhere(
+            (t) => _ordersForTab(
+              t.key,
+            ).any((o) => o['id'] == widget.initialOrderId),
+          );
+          if (index >= 0) {
+            _tabController.index = index;
+          }
+        }
+      }
     } on PostgrestException catch (error) {
       if (!mounted) {
         return;
@@ -643,7 +661,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     switch (status) {
       case 'requested':
         return 'Reported';
-      case 'reviewing':
+      case 'under_review':
         return 'Supplier reviewing';
       case 'approved':
         return 'Approved';
@@ -666,7 +684,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'rejected':
       case 'cancelled':
         return const Color(0xFFFDECEC);
-      case 'reviewing':
+      case 'under_review':
         return const Color(0xFFFFF4E5);
       case 'requested':
       default:
@@ -682,7 +700,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       case 'rejected':
       case 'cancelled':
         return const Color(0xFFB3261E);
-      case 'reviewing':
+      case 'under_review':
         return const Color(0xFF9A5B00);
       case 'requested':
       default:
@@ -730,8 +748,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       {'label': 'Reported', 'complete': true, 'active': status == 'requested'},
       {
         'label': 'Supplier reviewing',
-        'complete': supplierUpdated || status == 'reviewing',
-        'active': status == 'reviewing',
+        'complete': supplierUpdated || status == 'under_review',
+        'active': status == 'under_review',
       },
       {
         'label': status == 'rejected' ? 'Rejected' : 'Resolution arranged',
@@ -809,7 +827,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
           // New orders and supplier-declined orders awaiting acknowledgement
           // stay in Pending so the butcher cannot miss the cancellation reason.
-          return status == 'submitted' || status == 'declined';
+          return status == 'submitted' ||
+              status == 'declined' ||
+              (order['id'] == widget.initialOrderId && status == 'cancelled');
         }).toList();
 
       case 'preparing':

@@ -161,6 +161,7 @@ class BusinessAnalyticsPdfService {
       supplier ? 'top_customers' : 'top_suppliers',
     );
     final topProducts = _list(analytics, 'top_products');
+    final returns = _list(analytics, 'top_returns');
     final animalMix = _list(analytics, 'animal_mix');
     final statusMix = _list(analytics, 'status_mix');
 
@@ -259,6 +260,18 @@ class BusinessAnalyticsPdfService {
                 _money(summary[supplier ? 'order_value' : 'purchase_value']),
               ),
               _kpi('Orders', '${_integer(summary['order_count'])}'),
+              _kpi('Credit notes', _money(summary['credit_total'])),
+              _kpi(
+                'Money refunded',
+                _money(summary['refund_total']),
+                note: 'Part of credit notes, not an additional deduction',
+              ),
+              _kpi(
+                'Return cases',
+                '${_integer(summary['return_count'])}',
+                note:
+                    '${_number(summary['returned_kg']).toStringAsFixed(2)} kg returned',
+              ),
               _kpi(
                 'Average order value',
                 _money(summary['average_order_value']),
@@ -275,6 +288,29 @@ class BusinessAnalyticsPdfService {
                 _kpi('On-time rate', _percent(summary['on_time_rate'])),
             ],
           ),
+          if (returns.isNotEmpty) ...[
+            pw.SizedBox(height: 16),
+            _sectionTitle(
+              supplier
+                  ? 'Customers with the most returns'
+                  : 'Suppliers with the most returns',
+            ),
+            pw.TableHelper.fromTextArray(
+              headers: ['Name', 'Return cases', 'KG', 'Credit value'],
+              data: [
+                for (final row in returns)
+                  [
+                    row['name'] ?? '',
+                    '${_integer(row['cases'])}',
+                    _number(row['kg']).toStringAsFixed(2),
+                    _money(row['value']),
+                  ],
+              ],
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey200,
+              ),
+            ),
+          ],
           pw.SizedBox(height: 18),
           _sectionTitle(
             supplier ? 'Daily sales activity' : 'Daily purchasing activity',

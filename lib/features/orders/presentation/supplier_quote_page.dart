@@ -1,3 +1,4 @@
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'order_sales_contact.dart';
 import '../services/document_product_details.dart';
@@ -1247,89 +1248,95 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF7F7F5),
-    appBar: phoneAppBar(
-      context,
-      AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(
-          _loading ? 'Quote' : _number,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        actions: _loading || _error != null
-            ? null
-            : [
-                if (_quote?['status']?.toString() == 'draft') ...[
-                  FilledButton.icon(
-                    onPressed: _convertingToWorkOrder
-                        ? null
-                        : _convertToWorkOrder,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    icon: _convertingToWorkOrder
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.inventory_2_outlined, size: 17),
-                    label: Text(
-                      _convertingToWorkOrder
-                          ? 'Converting...'
-                          : 'Convert to Work Order',
+  Widget build(BuildContext context) {
+    PageLocation.track(context, {'page': 'quote', 'id': widget.orderId});
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F5),
+      appBar: phoneAppBar(
+        context,
+        AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text(
+            _loading ? 'Quote' : _number,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          actions: _loading || _error != null
+              ? null
+              : [
+                  if (_quote?['status']?.toString() == 'draft') ...[
+                    FilledButton.icon(
+                      onPressed: _convertingToWorkOrder
+                          ? null
+                          : _convertToWorkOrder,
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: _convertingToWorkOrder
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.inventory_2_outlined, size: 17),
+                      label: Text(
+                        _convertingToWorkOrder
+                            ? 'Converting...'
+                            : 'Convert to Work Order',
+                      ),
                     ),
+                    const SizedBox(width: 7),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: _download,
+                    icon: const Icon(Icons.download_outlined, size: 17),
+                    label: const Text('Download'),
                   ),
                   const SizedBox(width: 7),
+                  FilledButton.icon(
+                    onPressed: _print,
+                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    icon: const Icon(Icons.print_outlined, size: 17),
+                    label: const Text('Print'),
+                  ),
+                  const SizedBox(width: 7),
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit Quote'),
+                  ),
+                  const SizedBox(width: 8),
                 ],
-                OutlinedButton.icon(
-                  onPressed: _download,
-                  icon: const Icon(Icons.download_outlined, size: 17),
-                  label: const Text('Download'),
+          bottom: _loading || _error != null
+              ? null
+              : PreferredSize(
+                  preferredSize: const Size.fromHeight(49),
+                  child: _tabs(),
                 ),
-                const SizedBox(width: 7),
-                FilledButton.icon(
-                  onPressed: _print,
-                  style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                  icon: const Icon(Icons.print_outlined, size: 17),
-                  label: const Text('Print'),
-                ),
-                const SizedBox(width: 7),
-                TextButton.icon(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit Quote'),
-                ),
-                const SizedBox(width: 8),
-              ],
-        bottom: _loading || _error != null
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(49),
-                child: _tabs(),
-              ),
+        ),
       ),
-    ),
-    body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
-        ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_error!, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton(onPressed: _load, child: const Text('Try Again')),
-              ],
-            ),
-          )
-        : switch (_tab) {
-            1 => _preview(),
-            2 => _history(),
-            _ => _details(),
-          },
-  );
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            )
+          : switch (_tab) {
+              1 => _preview(),
+              2 => _history(),
+              _ => _details(),
+            },
+    );
+  }
 }

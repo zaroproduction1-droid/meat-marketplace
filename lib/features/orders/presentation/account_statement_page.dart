@@ -41,6 +41,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
   List<Map<String, dynamic>> _invoices = [];
   List<Map<String, dynamic>> _payments = [];
   List<Map<String, dynamic>> _credits = [];
+  List<Map<String, dynamic>> _refunds = [];
 
   @override
   void initState() {
@@ -197,6 +198,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
             butcher_business_id,
             supplier_customer_account_id,
             credit_date,
+            supplier_credit_notes(credit_number,supplier_credit_refunds(*)),
             amount,
             credit_type,
             reference,
@@ -241,6 +243,19 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         _invoices = List<Map<String, dynamic>>.from(invoicesResponse);
         _payments = List<Map<String, dynamic>>.from(paymentsResponse);
         _credits = List<Map<String, dynamic>>.from(creditsResponse);
+        _refunds = [
+          for (final c in _credits)
+            for (final n
+                in (c['supplier_credit_notes'] is Map
+                    ? [c['supplier_credit_notes']]
+                    : (c['supplier_credit_notes'] as List? ?? [])))
+              for (final refund
+                  in (n['supplier_credit_refunds'] as List? ?? []))
+                {
+                  ...Map<String, dynamic>.from(refund as Map),
+                  'credit_number': n['credit_number'],
+                },
+        ];
         _loading = false;
       });
     } on PostgrestException catch (error) {
@@ -323,6 +338,20 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
             : _creditTypeLabel(type),
         'debit': 0.0,
         'credit': _asDouble(credit['amount']),
+      });
+    }
+
+    for (final refund in _refunds) {
+      final date = _parseDate(refund['refunded_at']);
+      if (date == null) continue;
+      rows.add({
+        'date': _dateOnly(date),
+        'type': 'refund',
+        'reference': refund['credit_number'],
+        'description':
+            'Refund via ${refund['method'].toString().replaceAll('_', ' ')} ${refund['reference'] ?? ''}',
+        'debit': _asDouble(refund['amount']),
+        'credit': 0.0,
       });
     }
 
@@ -418,6 +447,8 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         return 'Invoice';
       case 'payment':
         return 'Payment';
+      case 'refund':
+        return 'Refund';
       case 'adjustment':
         return 'Adjustment';
       default:

@@ -311,21 +311,21 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           AlertDialog(
             title: const Text('Browse animal cuts'),
             content: SizedBox(
-              width: 650,
-              child: SingleChildScrollView(
-                child: InteractiveAnimalBrowser(
-                  selectedAnimalCode: _selectedAnimalCode,
-                  selectedRegionKey: _selectedAnimalRegionKey,
-                  onAnimalChanged: (code) {
-                    _selectAnimal(code);
-                    update(() {});
-                  },
-                  onRegionSelected: (region) {
-                    _selectAnimalRegion(region);
-                    update(() {});
-                  },
-                  maxWidth: 650,
-                ),
+              width: 850,
+              height: MediaQuery.sizeOf(dialogContext).height * 0.65,
+              child: InteractiveAnimalBrowser(
+                fitToHeight: true,
+                selectedAnimalCode: _selectedAnimalCode,
+                selectedRegionKey: _selectedAnimalRegionKey,
+                onAnimalChanged: (code) {
+                  _selectAnimal(code);
+                  update(() {});
+                },
+                onRegionSelected: (region) {
+                  _selectAnimalRegion(region);
+                  update(() {});
+                },
+                maxWidth: 850,
               ),
             ),
             actions: [

@@ -1,10 +1,18 @@
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
+import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupplierDeliverySettingsPage extends StatefulWidget {
-  const SupplierDeliverySettingsPage({super.key});
+  const SupplierDeliverySettingsPage({
+    super.key,
+    this.initialTab = 0,
+    this.settingsOnly = false,
+  });
+  final int initialTab;
+  final bool settingsOnly;
 
   @override
   State<SupplierDeliverySettingsPage> createState() =>
@@ -43,6 +51,7 @@ class _SupplierDeliverySettingsPageState
   @override
   void initState() {
     super.initState();
+    _workspaceIndex = widget.initialTab.clamp(0, 3);
     _loadPage();
   }
 
@@ -1428,12 +1437,19 @@ class _SupplierDeliverySettingsPageState
         ],
       ),
     ];
+    if (widget.settingsOnly) {
+      return CutLinkWorkspaceTheme(
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Delivery settings')),
+          body: pages.last,
+        ),
+      );
+    }
     const labels = [
       'Overview',
       'Delivery Runs',
       'Drivers & Vehicles',
       'Areas & Schedule',
-      'Settings',
     ];
     return Column(
       children: [
@@ -1520,7 +1536,13 @@ class _SupplierDeliverySettingsPageState
                         side: BorderSide(
                           color: selected ? _darkRed : const Color(0xFFE1E3E5),
                         ),
-                        onSelected: (_) => setState(() => _workspaceIndex = i),
+                        onSelected: (_) {
+                          setState(() => _workspaceIndex = i);
+                          PageLocation.workspace({
+                            'page': 'delivery',
+                            'tab': i,
+                          });
+                        },
                       ),
                     );
                   }),
