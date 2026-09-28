@@ -1,3 +1,4 @@
+import '../../authentication/presentation/restricted_account_page.dart';
 import '../../notifications/presentation/today_notifications_bell.dart';
 import '../../notifications/presentation/activity_notifications_page.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
@@ -18,7 +19,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/formatters/order_reference.dart';
 
-import '../../admin/presentation/pending_businesses_page.dart';
+import '../../admin/presentation/admin_console_page.dart';
+import '../../admin/presentation/admin_business_page.dart';
+import '../../admin/presentation/platform_invoice_page.dart';
+import '../../admin/presentation/platform_announcement_banner.dart';
 import 'business_analytics_page.dart';
 import 'butcher_favourite_products_panel.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
@@ -73,6 +77,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   String? _errorMessage;
   String? _businessId;
+  Map<String, dynamic>? _restrictedAccess;
   String? _businessName;
   String? _businessType;
   String? _businessLogoUrl;
@@ -129,6 +134,24 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         throw Exception('No signed-in user was found.');
       }
 
+      final accessResponse = await client.rpc('get_my_cutlink_access');
+      final access = accessResponse is Map
+          ? Map<String, dynamic>.from(accessResponse)
+          : <String, dynamic>{};
+      if (access['is_admin'] != true &&
+          access['can_enter'] != true &&
+          access['restrictions'] is List &&
+          (access['restrictions'] as List).isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _restrictedAccess = access;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
+        return;
+      }
+      _restrictedAccess = null;
       final profileRows = await client
           .from('profiles')
           .select('is_admin')
@@ -151,6 +174,17 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       ];
 
       if (businessIds.isEmpty) {
+        if (isAdmin) {
+          if (mounted) {
+            setState(() {
+              _isAdmin = true;
+              _businessId = null;
+              _isLoading = false;
+              _errorMessage = null;
+            });
+          }
+          return;
+        }
         throw Exception('No active business membership was found.');
       }
 
@@ -166,9 +200,21 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             logo_path
           ''')
           .inFilter('id', businessIds)
-          .eq('active', true);
+          .eq('active', true)
+          .eq('verification_status', 'approved');
 
       if (businesses.isEmpty) {
+        if (isAdmin) {
+          if (mounted) {
+            setState(() {
+              _isAdmin = true;
+              _businessId = null;
+              _isLoading = false;
+              _errorMessage = null;
+            });
+          }
+          return;
+        }
         throw Exception('No active business was found for this user.');
       }
 
@@ -724,7 +770,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (page is SupplierInvoicesPage) return 'invoices';
     if (page is SupplierSettingsPage) return 'settings';
 
-    if (page is PendingBusinessesPage) return 'admin';
+    if (page is AdminConsolePage) return 'admin';
 
     return page.runtimeType.toString();
   }
@@ -803,6 +849,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           return supplier
               ? const SupplierSettingsPage(embedded: true)
               : const ButcherSettingsPage();
+        case 'admin':
+          return _isAdmin
+              ? AdminConsolePage(
+                  initialTab: base['tab']?.toString() ?? 'overview',
+                )
+              : null;
         case 'support':
           return _businessId == null
               ? null
@@ -833,6 +885,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     final invoice = saved['invoice']?.toString();
     Widget? detail;
     switch (saved['page']) {
+      case 'admin_business':
+        if (_isAdmin && id != null) {
+          detail = AdminBusinessPage(businessId: id);
+        }
+      case 'platform_invoice':
+        if (_isAdmin && id != null) {
+          detail = PlatformInvoicePage(invoiceId: id);
+        }
       case 'issue':
         if (id != null) {
           try {
@@ -1292,6 +1352,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_restrictedAccess != null) {
+      return RestrictedAccountPage(access: _restrictedAccess!);
+    }
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: _canvas,
@@ -1326,15 +1389,23 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       );
     }
 
-    if (_businessType == 'butcher') {
-      return _buildButcherDashboard();
+    if (_isAdmin && _businessId == null) {
+      return const AdminConsolePage();
     }
-
-    if (_businessType == 'supplier') {
-      return _buildSupplierDashboard();
+    final dashboard = _businessType == 'butcher'
+        ? _buildButcherDashboard()
+        : _businessType == 'supplier'
+        ? _buildSupplierDashboard()
+        : _buildSupplierLegacyDashboard();
+    if (_businessId == null) {
+      return dashboard;
     }
-
-    return _buildSupplierLegacyDashboard();
+    return Column(
+      children: [
+        PlatformAnnouncementBanner(businessId: _businessId!),
+        Expanded(child: dashboard),
+      ],
+    );
   }
 
   Widget _buildButcherDashboard() {
@@ -2859,7 +2930,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         Icons.admin_panel_settings_outlined,
         'Admin',
         selected: _workspaceKey == 'admin',
-        onTap: () => _openPage(const PendingBusinessesPage()),
+        onTap: () => _openPage(const AdminConsolePage()),
       ),
   ];
 
@@ -4365,7 +4436,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         Icons.admin_panel_settings_outlined,
         'Admin',
         selected: _workspaceKey == 'admin',
-        onTap: () => _openPage(const PendingBusinessesPage()),
+        onTap: () => _openPage(const AdminConsolePage()),
       ),
   ];
 
@@ -4723,7 +4794,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           icon: Icons.admin_panel_settings_outlined,
                           title: 'Admin',
                           description: 'Review pending business applications.',
-                          onTap: () => _openPage(const PendingBusinessesPage()),
+                          onTap: () => _openPage(const AdminConsolePage()),
                         ),
                     ],
                   );

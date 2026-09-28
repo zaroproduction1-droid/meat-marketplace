@@ -1,3 +1,4 @@
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -36,6 +37,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   static const Color _warning = Color(0xFF9A5B00);
   static const Color _danger = Color(0xFFB3261E);
 
+  bool _layoutLoaded = false;
+  bool _savingLayout = false;
+  late List<Map<String, dynamic>> _analyticsLayout = _defaultAnalyticsLayout();
   int _days = 30;
   DateTime? _customStartDate;
   DateTime? _customEndDate;
@@ -52,6 +56,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   void initState() {
     super.initState();
     _subscribeRealtime();
+    _loadLayout();
     _load();
   }
 
@@ -66,6 +71,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         Supabase.instance.client.removeChannel(channel);
       }
       _realtimeChannel = null;
+      _analyticsLayout = _defaultAnalyticsLayout();
+      _layoutLoaded = false;
+      _loadLayout();
       _subscribeRealtime();
       _load();
     }
@@ -401,6 +409,253 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     }
   }
 
+  List<Map<String, dynamic>> _defaultAnalyticsLayout() => [
+    for (final id in [
+      'summary',
+      'credits',
+      'trend',
+      'insights',
+      'partners',
+      'products',
+      'animals',
+      'status',
+      'operations',
+    ])
+      {'id': id, 'visible': true, 'wide': id == 'summary' || id == 'credits'},
+  ];
+  String _analyticsTitle(String id) => switch (id) {
+    'summary' => 'Key figures',
+    'credits' => 'Credits, refunds & returns',
+    'trend' => 'Activity trend',
+    'insights' => 'Business insights',
+    'partners' => _isSupplier ? 'Top customers' : 'Top suppliers',
+    'products' => 'Top products',
+    'animals' => 'Animal mix',
+    'status' => 'Order status',
+    _ => _isSupplier ? 'Operations' : 'Supplier risk',
+  };
+  Future<void> _loadLayout() async {
+    final business = widget.businessId;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    try {
+      final rows = await Supabase.instance.client
+          .from('user_dashboard_preferences')
+          .select('analytics_layout')
+          .eq('user_id', user.id)
+          .eq('business_id', business)
+          .limit(1);
+      final saved = rows.isEmpty
+          ? <dynamic>[]
+          : rows.first['analytics_layout'] as List? ?? <dynamic>[];
+      final defaults = _defaultAnalyticsLayout();
+      final valid = defaults.map((e) => e['id']).toSet();
+      final result = <Map<String, dynamic>>[];
+      for (final row in saved.whereType<Map>()) {
+        if (valid.contains(row['id']) &&
+            !result.any((e) => e['id'] == row['id'])) {
+          result.add({
+            'id': row['id'],
+            'visible': row['visible'] != false,
+            'wide': row['wide'] == true,
+          });
+        }
+      }
+      for (final row in defaults) {
+        if (!result.any((e) => e['id'] == row['id'])) {
+          result.add(row);
+        }
+      }
+      if (mounted && business == widget.businessId) {
+        setState(() => _analyticsLayout = result);
+      }
+    } catch (_) {
+      // Analytics remains usable with the default layout if preferences cannot load.
+    } finally {
+      if (mounted && business == widget.businessId) {
+        setState(() => _layoutLoaded = true);
+      }
+    }
+  }
+
+  Future<void> _customiseAnalytics() async {
+    var local = _analyticsLayout
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    final result = await showDialog<List<Map<String, dynamic>>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, change) => CutLinkWorkspaceTheme(
+          child: AlertDialog(
+            title: const Text('Customise analytics'),
+            content: SizedBox(
+              width: 620,
+              height: math.min(500.0, MediaQuery.sizeOf(ctx).height * .6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Drag sections into order, choose their width or hide them. Your PDF export remains the complete report.',
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: ReorderableListView.builder(
+                      buildDefaultDragHandles: false,
+                      itemCount: local.length,
+                      onReorderItem: (oldIndex, newIndex) => change(() {
+                        final item = local.removeAt(oldIndex);
+                        local.insert(newIndex, item);
+                      }),
+                      itemBuilder: (_, i) {
+                        final item = local[i];
+                        return Card(
+                          key: ValueKey(item['id']),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Row(
+                              children: [
+                                ReorderableDragStartListener(
+                                  index: i,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: Icon(Icons.drag_indicator_rounded),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _analyticsTitle(item['id'] as String),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: item['wide'] == true
+                                      ? 'Full width — switch to normal'
+                                      : 'Normal width — switch to full',
+                                  onPressed: () => change(
+                                    () => item['wide'] = item['wide'] != true,
+                                  ),
+                                  icon: Icon(
+                                    item['wide'] == true
+                                        ? Icons.view_agenda_outlined
+                                        : Icons.view_column_outlined,
+                                  ),
+                                ),
+                                Switch(
+                                  value: item['visible'] == true,
+                                  onChanged: (v) =>
+                                      change(() => item['visible'] = v),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    change(() => local = _defaultAnalyticsLayout()),
+                child: const Text('Restore defaults'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, local),
+                child: const Text('Save layout'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    setState(() => _savingLayout = true);
+    try {
+      await Supabase.instance.client.from('user_dashboard_preferences').upsert({
+        'user_id': user.id,
+        'business_id': widget.businessId,
+        'analytics_layout': result,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'user_id,business_id');
+      if (mounted) {
+        setState(() => _analyticsLayout = result);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Layout could not be saved: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingLayout = false);
+      }
+    }
+  }
+
+  Widget _analyticsSection(String id) => switch (id) {
+    'summary' => _summaryGrid(),
+    'credits' => _creditInsights(),
+    'trend' => _trendCard(),
+    'insights' => _insightsCard(),
+    'partners' => _rankingCard(
+      title: _isSupplier ? 'Top customers' : 'Top suppliers',
+      subtitle: 'Ranked by order value',
+      data: _list(_isSupplier ? 'top_customers' : 'top_suppliers'),
+    ),
+    'products' => _rankingCard(
+      title: 'Top products',
+      subtitle: 'Products ranked by order value',
+      data: _list('top_products'),
+    ),
+    'animals' => _animalMixCard(),
+    'status' => _statusCard(),
+    _ => _isSupplier ? _supplierOperationsCard() : _butcherSupplierRiskCard(),
+  };
+  Widget _customisedSections() => LayoutBuilder(
+    builder: (context, constraints) {
+      final visible = _analyticsLayout
+          .where((e) => e['visible'] == true)
+          .toList();
+      if (visible.isEmpty) {
+        return OutlinedButton.icon(
+          onPressed: _customiseAnalytics,
+          icon: const Icon(Icons.dashboard_customize_outlined),
+          label: const Text('Choose analytics sections'),
+        );
+      }
+      return Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        children: [
+          for (final item in visible)
+            SizedBox(
+              width: constraints.maxWidth < 900 || item['wide'] == true
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 14) / 2,
+              child: _analyticsSection(item['id'] as String),
+            ),
+        ],
+      );
+    },
+  );
+
   Widget _header() {
     return Container(
       height: isPhoneLayout(context) ? null : 68,
@@ -457,6 +712,14 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ],
               ),
             ),
+            OutlinedButton.icon(
+              onPressed: !_layoutLoaded || _savingLayout
+                  ? null
+                  : _customiseAnalytics,
+              icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+              label: const Text('Customise'),
+            ),
+            const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: _loading || _exportingPdf ? null : _downloadPdf,
               icon: _exportingPdf
@@ -1759,98 +2022,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  _summaryGrid(),
-                  const SizedBox(height: 14),
-                  _creditInsights(),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth < 980) {
-                        return Column(
-                          children: [
-                            _trendCard(),
-                            const SizedBox(height: 14),
-                            _insightsCard(),
-                          ],
-                        );
-                      }
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 2, child: _trendCard()),
-                          const SizedBox(width: 14),
-                          Expanded(child: _insightsCard()),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final primaryRanking = _rankingCard(
-                        title: _isSupplier ? 'Top customers' : 'Top suppliers',
-                        subtitle: _isSupplier
-                            ? 'Customers ranked by order value'
-                            : 'Suppliers ranked by purchasing spend',
-                        data: _list(
-                          _isSupplier ? 'top_customers' : 'top_suppliers',
-                        ),
-                      );
-                      final productRanking = _rankingCard(
-                        title: _isSupplier
-                            ? 'Top products'
-                            : 'Top purchased products',
-                        subtitle: 'Products ranked by order value',
-                        data: _list('top_products'),
-                      );
-                      if (constraints.maxWidth < 900) {
-                        return Column(
-                          children: [
-                            primaryRanking,
-                            const SizedBox(height: 14),
-                            productRanking,
-                          ],
-                        );
-                      }
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: primaryRanking),
-                          const SizedBox(width: 14),
-                          Expanded(child: productRanking),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final operational = _isSupplier
-                          ? _supplierOperationsCard()
-                          : _butcherSupplierRiskCard();
-                      if (constraints.maxWidth < 900) {
-                        return Column(
-                          children: [
-                            _animalMixCard(),
-                            const SizedBox(height: 14),
-                            _statusCard(),
-                            const SizedBox(height: 14),
-                            operational,
-                          ],
-                        );
-                      }
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _animalMixCard()),
-                          const SizedBox(width: 14),
-                          Expanded(child: _statusCard()),
-                          const SizedBox(width: 14),
-                          Expanded(child: operational),
-                        ],
-                      );
-                    },
-                  ),
+                  _customisedSections(),
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(12),

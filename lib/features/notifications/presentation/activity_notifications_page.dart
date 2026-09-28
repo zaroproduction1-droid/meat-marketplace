@@ -139,6 +139,38 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
     }
   }
 
+  Future<void> _deleteNotification(
+    Map<String, dynamic> row, {
+    bool undo = false,
+  }) async {
+    try {
+      await _client.rpc(
+        'dismiss_business_notification',
+        params: {'p_id': row['id'], 'p_deleted': !undo},
+      );
+      if (!mounted) {
+        return;
+      }
+      widget.onRead?.call();
+      if (!undo) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Notification deleted.'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => _deleteNotification(row, undo: true),
+            ),
+          ),
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    }
+  }
+
   Future<void> _open(Map<String, dynamic> row) async {
     if (_opening) {
       return;
@@ -152,6 +184,25 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
       final id = row['reference_id'].toString();
       Widget? page;
       switch (row['reference_type']) {
+        case 'announcement':
+          await showDialog<void>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: Text(row['title']?.toString() ?? 'CutLink announcement'),
+              content: SizedBox(
+                width: 560,
+                child: SingleChildScrollView(
+                  child: SelectableText(row['detail']?.toString() ?? ''),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
         case 'invoice':
           page = widget.supplierView
               ? SupplierInvoicePage(invoiceId: id)
@@ -322,6 +373,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                       'credits',
                                       'delivery',
                                       'support',
+                                      'platform',
                                     ])
                                       Padding(
                                         padding: const EdgeInsets.only(
@@ -331,6 +383,8 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                           label: Text(
                                             cat == null
                                                 ? 'All activity'
+                                                : cat == 'platform'
+                                                ? 'CutLink'
                                                 : '${cat[0].toUpperCase()}${cat.substring(1)}',
                                           ),
                                           selected: _category == cat,
@@ -400,6 +454,9 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                         padding: const EdgeInsets.only(bottom: 9),
                         child: NotificationActivityTile(
                           row: _rows[i],
+                          onDelete: _opening
+                              ? null
+                              : () => _deleteNotification(_rows[i]),
                           onTap: _opening ? null : () => _open(_rows[i]),
                         ),
                       ),

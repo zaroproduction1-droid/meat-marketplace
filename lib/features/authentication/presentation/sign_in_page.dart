@@ -1,3 +1,4 @@
+import 'restricted_account_page.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -155,17 +156,43 @@ class _SignInPageState extends State<SignInPage> {
       throw Exception('Unable to find the signed-in user.');
     }
 
-    final memberships = await Supabase.instance.client
-        .from('business_memberships')
-        .select('business_id, businesses(verification_status)')
-        .eq('user_id', user.id)
-        .limit(1);
-
+    final response = await Supabase.instance.client.rpc(
+      'get_my_cutlink_access',
+    );
+    final access = response is Map
+        ? Map<String, dynamic>.from(response)
+        : <String, dynamic>{};
     if (!mounted) {
       return;
     }
-
-    if (memberships.isEmpty) {
+    if (access.isEmpty) {
+      throw StateError('Unable to check account access. Please try again.');
+    }
+    if (access['is_admin'] == true || access['can_enter'] == true) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const BusinessDashboardPage()),
+        (route) => route.isFirst,
+      );
+      return;
+    }
+    if (access['pending'] == true) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const PendingVerificationPage()),
+        (route) => route.isFirst,
+      );
+      return;
+    }
+    if (access['restrictions'] is List &&
+        (access['restrictions'] as List).isNotEmpty) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => RestrictedAccountPage(access: access),
+        ),
+        (_) => false,
+      );
+      return;
+    }
+    if (access['has_membership'] != true) {
       BusinessType? selectedBusinessType = widget.businessType;
 
       final metadataType = user.userMetadata?['business_type'] as String?;
@@ -192,26 +219,8 @@ class _SignInPageState extends State<SignInPage> {
       return;
     }
 
-    final membership = Map<String, dynamic>.from(memberships.first);
-
-    final businessData = Map<String, dynamic>.from(membership['businesses']);
-
-    final verificationStatus = businessData['verification_status'] as String?;
-
-    if (verificationStatus == 'pending') {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const PendingVerificationPage(),
-        ),
-        (route) => route.isFirst,
-      );
-
-      return;
-    }
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const BusinessDashboardPage()),
-      (route) => route.isFirst,
+    throw StateError(
+      'Your business access is not active yet. Please contact the person who invited you.',
     );
   }
 

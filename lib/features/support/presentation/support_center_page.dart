@@ -1,3 +1,4 @@
+import '../../admin/presentation/admin_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
@@ -158,6 +159,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         last_message_by_user_id,
         requester_last_read_at,
         admin_last_read_at,
+        reopen_requested_at,
+        reopen_reason,
+        reopen_decision,
+        reopen_reviewed_at,
         resolved_at,
         messages_delete_after,
         messages_purged_at,
@@ -784,7 +789,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     return _tickets.where((ticket) {
       final status = ticket['status']?.toString() ?? '';
       final statusMatches = switch (_statusFilter) {
-        'active' => status != 'resolved' && status != 'closed',
+        'active' =>
+          ticket['reopen_decision'] == 'pending' ||
+              (status != 'resolved' && status != 'closed'),
+        'reopen' => ticket['reopen_decision'] == 'pending',
         'resolved' => status == 'resolved',
         'closed' => status == 'closed',
         _ => true,
@@ -813,9 +821,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return CutLinkWorkspaceTheme(
+    return AdminTheme(
+      enabled: widget.adminMode,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: widget.adminMode
+            ? AdminTheme.canvas
+            : const Color(0xFFF7F8FA),
         appBar: phoneAppBar(
           context,
           AppBar(
@@ -956,6 +967,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               segments: const [
                 ButtonSegment(value: 'active', label: Text('Active')),
                 ButtonSegment(value: 'all', label: Text('All')),
+                ButtonSegment(value: 'reopen', label: Text('Reopen requests')),
                 ButtonSegment(value: 'resolved', label: Text('Resolved')),
                 ButtonSegment(value: 'closed', label: Text('Closed')),
               ],
@@ -1003,6 +1015,18 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (ticket['reopen_decision'] == 'pending')
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    'REOPEN REQUEST',
+                    style: TextStyle(
+                      color: _darkRed,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               Row(
                 children: [
                   Expanded(
@@ -1076,11 +1100,123 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     if (id == null || _sending) {
       return;
     }
+    String? reason;
+    if (!widget.adminMode) {
+      final controller = TextEditingController();
+      reason = await showDialog<String>(
+        context: context,
+        builder: (ctx) => CutLinkWorkspaceTheme(
+          child: AlertDialog(
+            title: const Text('Request ticket reopening'),
+            content: SizedBox(
+              width: 480,
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                maxLines: 3,
+                maxLength: 2000,
+                decoration: const InputDecoration(
+                  labelText: 'What still needs help?',
+                  hintText: 'Explain why this issue needs another look.',
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx, controller.text.trim());
+                  }
+                },
+                child: const Text('Send request'),
+              ),
+            ],
+          ),
+        ),
+      );
+      controller.dispose();
+      if (reason == null || !mounted) {
+        return;
+      }
+    }
     setState(() => _sending = true);
     try {
       await Supabase.instance.client.rpc(
-        'reopen_support_ticket',
-        params: {'p_ticket_id': id},
+        widget.adminMode
+            ? 'reopen_support_ticket'
+            : 'request_support_ticket_reopen',
+        params: {'p_ticket_id': id, if (!widget.adminMode) 'p_reason': reason},
+      );
+      if (mounted) {
+        await _loadTickets(showLoading: false);
+        await _loadMessages(id.toString(), markRead: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
+
+  Future<void> _reviewReopen(bool approve) async {
+    final id = _selectedTicket?['id'];
+    if (!widget.adminMode || id == null || _sending) {
+      return;
+    }
+    String? note;
+    if (!approve) {
+      final controller = TextEditingController();
+      note = await showDialog<String>(
+        context: context,
+        builder: (ctx) => CutLinkWorkspaceTheme(
+          child: AlertDialog(
+            title: const Text('Decline reopen request'),
+            content: SizedBox(
+              width: 480,
+              child: TextField(
+                controller: controller,
+                maxLines: 3,
+                maxLength: 2000,
+                decoration: const InputDecoration(
+                  labelText: 'Reply to the customer',
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx, controller.text.trim());
+                  }
+                },
+                child: const Text('Decline request'),
+              ),
+            ],
+          ),
+        ),
+      );
+      controller.dispose();
+      if (note == null || !mounted) {
+        return;
+      }
+    }
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'review_support_ticket_reopen',
+        params: {'p_ticket_id': id, 'p_approve': approve, 'p_note': note},
       );
       if (mounted) {
         await _loadTickets(showLoading: false);
@@ -1101,7 +1237,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     final ticket = _selectedTicket;
     if (ticket == null) return _emptySelection();
 
-    final closed = ticket['status']?.toString() == 'closed';
+    final closed = ['resolved', 'closed'].contains(ticket['status']);
     return Column(
       children: [
         Container(
@@ -1185,7 +1321,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text(
-                'Messages and files are deleted 30 days after resolution. Reopening cancels the countdown; resolving again starts a new 30 days.',
+                'Messages and files are removed 30 days after resolution. Reopen requests pause removal while CutLink reviews them. Only CutLink support can reopen a ticket.',
                 style: TextStyle(fontSize: 11),
               ),
               if (ticket['messages_delete_after'] != null)
@@ -1198,10 +1334,33 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   'Earlier resolved conversation was deleted. The ticket summary is retained.',
                   style: TextStyle(fontSize: 11),
                 ),
-              if (['resolved', 'closed'].contains(ticket['status']))
+              if (ticket['reopen_decision'] == 'pending') ...[
+                const Text(
+                  'Reopen request awaiting CutLink review',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _darkRed,
+                  ),
+                ),
+                if ((ticket['reopen_reason']?.toString() ?? '').isNotEmpty)
+                  Text(ticket['reopen_reason'].toString()),
+                if (widget.adminMode) ...[
+                  FilledButton.icon(
+                    onPressed: _sending ? null : () => _reviewReopen(true),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Approve & reopen'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _sending ? null : () => _reviewReopen(false),
+                    child: const Text('Decline request'),
+                  ),
+                ],
+              ] else if (['resolved', 'closed'].contains(ticket['status']))
                 TextButton(
                   onPressed: _sending ? null : _reopenTicket,
-                  child: const Text('Reopen ticket'),
+                  child: Text(
+                    widget.adminMode ? 'Reopen ticket' : 'Request reopening',
+                  ),
                 ),
             ],
           ),
@@ -1214,16 +1373,20 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             border: Border(top: BorderSide(color: Color(0xFFE1E4E7))),
           ),
           child: closed
-              ? const Row(
+              ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.lock_outline,
                       size: 18,
                       color: Color(0xFF666A70),
                     ),
-                    SizedBox(width: 8),
-                    Text('This ticket is closed.'),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.adminMode
+                          ? 'Reopen this ticket before replying.'
+                          : 'Request reopening to continue this conversation.',
+                    ),
                   ],
                 )
               : Column(

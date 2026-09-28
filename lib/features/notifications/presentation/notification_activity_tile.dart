@@ -7,12 +7,15 @@ class NotificationActivityTile extends StatelessWidget {
     required this.row,
     required this.onTap,
     this.compact = false,
+    this.onDelete,
   });
   final Map<String, dynamic> row;
   final VoidCallback? onTap;
   final bool compact;
+  final VoidCallback? onDelete;
   static IconData icon(String category) => switch (category) {
     'messages' || 'support' => Icons.chat_bubble_outline_rounded,
+    'platform' => Icons.campaign_outlined,
     'credits' => Icons.assignment_return_outlined,
     'payments' => Icons.payments_outlined,
     'delivery' => Icons.local_shipping_outlined,
@@ -82,6 +85,16 @@ class NotificationActivityTile extends StatelessWidget {
                             color: Color(0xFF6A6E75),
                           ),
                         ),
+                        if (onDelete != null)
+                          IconButton(
+                            tooltip: 'Delete notification',
+                            onPressed: onDelete,
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                            ),
+                          ),
                         if (!read) ...[
                           const SizedBox(width: 7),
                           const Icon(

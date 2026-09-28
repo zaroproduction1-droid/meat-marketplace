@@ -22,6 +22,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   List<Map<String, dynamic>> _orders = [];
   String? _openOrderId;
+  String? _removingOrderId;
 
   @override
   void initState() {
@@ -1206,6 +1207,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
   }
 
   Future<void> _cancelSupplierDraft(Map<String, dynamic> order) async {
+    if (_removingOrderId != null) {
+      return;
+    }
     final supplier = _supplierName(order);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1231,15 +1235,30 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         ),
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
 
     try {
-      await Supabase.instance.client
-          .from('orders')
-          .delete()
-          .eq('id', order['id'])
-          .eq('butcher_business_id', _butcherBusinessId!)
-          .eq('status', 'draft');
+      setState(() => _removingOrderId = order['id'].toString());
+      final removed = await Supabase.instance.client.rpc(
+        'cancel_butcher_order',
+        params: {'p_order_id': order['id']},
+      );
+      if (removed?.toString() != order['id']?.toString()) {
+        throw const PostgrestException(
+          message: 'The order was not removed. Refresh and try again.',
+        );
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _orders.removeWhere((row) => row['id'] == order['id']);
+        if (_openOrderId == order['id']) {
+          _openOrderId = null;
+        }
+      });
       if (!mounted) return;
       CutLinkNotice.show(
         context,
@@ -1255,6 +1274,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         message: error.message,
         error: true,
       );
+    } finally {
+      if (mounted) {
+        setState(() => _removingOrderId = null);
+      }
     }
   }
 

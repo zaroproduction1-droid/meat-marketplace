@@ -1004,6 +1004,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       return;
     }
 
+    final reason = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -1011,20 +1012,38 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           context,
           AlertDialog(
             title: const Text('Cancel Order?'),
-            content: Text(
-              'Cancel ${order['order_number'] ?? 'this order'} with ${_supplierName(order)}?',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Cancel ${order['order_number'] ?? 'this order'} with ${_supplierName(order)}?',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 500,
+                  decoration: const InputDecoration(
+                    labelText: 'Cancellation reason',
+                  ),
+                ),
+              ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
                 child: const Text('Keep Order'),
               ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF8D1B1B),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: reason,
+                builder: (_, value, _) => FilledButton(
+                  onPressed: value.text.trim().isEmpty
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF741C1C),
+                  ),
+                  child: const Text('Cancel Order'),
                 ),
-                child: const Text('Cancel Order'),
               ),
             ],
           ),
@@ -1032,7 +1051,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       },
     );
 
-    if (confirmed != true) {
+    final cancellationReason = reason.text.trim();
+    reason.dispose();
+    if (confirmed != true || !mounted) {
       return;
     }
 
@@ -1041,12 +1062,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     });
 
     try {
-      await Supabase.instance.client
-          .from('orders')
-          .update({'status': 'cancelled'})
-          .eq('id', orderId)
-          .eq('butcher_business_id', _butcherBusinessId!)
-          .eq('status', 'submitted');
+      await Supabase.instance.client.rpc(
+        'cancel_butcher_order',
+        params: {'p_order_id': orderId, 'p_reason': cancellationReason},
+      );
 
       if (!mounted) {
         return;

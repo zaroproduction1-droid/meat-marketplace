@@ -3630,50 +3630,33 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
                 final supplierField = SizedBox(
                   height: 46,
-                  child: OutlinedButton.icon(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (dialogContext) => phoneDialog(
-                        context,
-                        AlertDialog(
-                          title: const Text('Filter supplier'),
-                          content: SizedBox(
-                            width: 400,
-                            height: 56,
-                            child: TextField(
-                              controller: _supplierSearchController,
-                              autofocus: true,
-                              maxLines: 1,
-                              decoration: const InputDecoration(
-                                hintText: 'Supplier name',
-                                border: OutlineInputBorder(),
-                              ),
-                              onSubmitted: (_) =>
-                                  Navigator.of(dialogContext).pop(),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  _supplierSearchController.clear(),
-                              child: const Text('Clear'),
-                            ),
-                            FilledButton(
-                              onPressed: () =>
-                                  Navigator.of(dialogContext).pop(),
-                              child: const Text('Done'),
-                            ),
-                          ],
-                        ),
+                  child: TextField(
+                    controller: _supplierSearchController,
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                      labelText: 'Supplier',
+                      hintText: 'Search supplier name',
+                      prefixIcon: const Icon(
+                        Icons.storefront_outlined,
+                        size: 18,
                       ),
-                    ),
-                    icon: const Icon(Icons.storefront_outlined, size: 18),
-                    label: Text(
-                      _supplierSearchController.text.isEmpty
-                          ? 'Filter supplier'
-                          : _supplierSearchController.text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      suffixIcon: _supplierSearchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear supplier filter',
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: _supplierSearchController.clear,
+                            ),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE0E0DD)),
+                      ),
                     ),
                   ),
                 );
