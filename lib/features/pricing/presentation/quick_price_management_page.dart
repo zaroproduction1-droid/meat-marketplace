@@ -1388,6 +1388,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       return;
     }
 
+    var search = '';
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -1396,6 +1397,13 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             constraints: const BoxConstraints(maxWidth: 760, maxHeight: 680),
             child: StatefulBuilder(
               builder: (context, setDialogState) {
+                final customers = _approvedCustomers
+                    .where(
+                      (c) => _customerName(
+                        c,
+                      ).toLowerCase().contains(search.toLowerCase()),
+                    )
+                    .toList();
                 return Column(
                   children: [
                     Padding(
@@ -1407,7 +1415,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Customer-Specific Prices',
+                                  'VIP customer prices',
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,
@@ -1431,14 +1439,27 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                         ],
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Search customers',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (v) => setDialogState(() => search = v),
+                      ),
+                    ),
                     const Divider(height: 1),
                     Expanded(
                       child: ListView.separated(
                         padding: const EdgeInsets.all(18),
-                        itemCount: _approvedCustomers.length,
+                        itemCount: customers.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          final customer = _approvedCustomers[index];
+                          final customer = customers[index];
                           final customerId = customer['butcher_business_id']
                               ?.toString();
 

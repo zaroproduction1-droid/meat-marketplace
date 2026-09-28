@@ -87,11 +87,15 @@ class NotificationActivityTile extends StatelessWidget {
                         ),
                         if (onDelete != null)
                           IconButton(
-                            tooltip: 'Delete notification',
+                            tooltip: compact
+                                ? 'Dismiss from today’s bell'
+                                : 'Delete notification',
                             onPressed: onDelete,
                             visualDensity: VisualDensity.compact,
-                            icon: const Icon(
-                              Icons.delete_outline_rounded,
+                            icon: Icon(
+                              compact
+                                  ? Icons.close_rounded
+                                  : Icons.delete_outline_rounded,
                               size: 18,
                             ),
                           ),

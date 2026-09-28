@@ -8,8 +8,13 @@ import 'admin_widgets.dart';
 import 'platform_invoice_page.dart';
 
 class AdminBusinessPage extends StatefulWidget {
-  const AdminBusinessPage({super.key, required this.businessId});
+  const AdminBusinessPage({
+    super.key,
+    required this.businessId,
+    this.initialTab = 'business',
+  });
   final String businessId;
+  final String initialTab;
   @override
   State<AdminBusinessPage> createState() => _AdminBusinessPageState();
 }
@@ -26,6 +31,9 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
   @override
   void initState() {
     super.initState();
+    _tab = ['accounts', 'invoices'].contains(widget.initialTab)
+        ? widget.initialTab
+        : 'business';
     _load();
   }
 
@@ -520,10 +528,10 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
         ),
         body: Column(
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
+              child: Wrap(
+                runSpacing: 6,
                 children: [
                   for (final entry in {
                     'business': 'Profile & access',

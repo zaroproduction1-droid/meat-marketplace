@@ -49,7 +49,9 @@ class _ProductBrandFieldState extends State<ProductBrandField> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (mounted) {
+        setState(() => _failed = true);
+      }
     }
   }
 
@@ -231,7 +233,10 @@ class ProductSizeFields extends StatelessWidget {
     required this.onKindChanged,
     required this.onUnitChanged,
     this.enabled = true,
+    this.supplierBusinessId,
+    this.specificationId,
   });
+  final String? supplierBusinessId, specificationId;
   final TextEditingController minimum;
   final TextEditingController maximum;
   final String kind;
@@ -259,7 +264,9 @@ class ProductSizeFields extends StatelessWidget {
           CutLinkPickerOption(value: 'up_to', label: 'Up to a weight'),
         ],
         onChanged: (v) {
-          if (v != null) onKindChanged(v);
+          if (v != null) {
+            onKindChanged(v);
+          }
         },
       ),
       if (kind != 'none')
@@ -272,7 +279,9 @@ class ProductSizeFields extends StatelessWidget {
             CutLinkPickerOption(value: 'g', label: 'g'),
           ],
           onChanged: (v) {
-            if (v != null) onUnitChanged(v);
+            if (v != null) {
+              onUnitChanged(v);
+            }
           },
         ),
       if (['exact', 'range', 'at_least'].contains(kind))
@@ -318,6 +327,23 @@ class ProductSizeFields extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Piece size', style: TextStyle(fontWeight: FontWeight.w800)),
+        if (supplierBusinessId != null && specificationId != null)
+          ProductSizeSuggestions(
+            supplierId: supplierBusinessId!,
+            specificationId: specificationId!,
+            enabled: enabled,
+            onSelected: (size) {
+              // Unit conversion must run before assigning the chosen values.
+              onUnitChanged(size.unit);
+              minimum.text = size.min == null
+                  ? ''
+                  : ProductPieceSize.number(size.min!);
+              maximum.text = size.max == null
+                  ? ''
+                  : ProductPieceSize.number(size.max!);
+              onKindChanged(size.effectiveKind);
+            },
+          ),
         const SizedBox(height: 6),
         const Text(
           'Weight of each cut or portion inside the carton. Carton weight and price per kg stay separate.',
@@ -341,4 +367,130 @@ class ProductSizeFields extends StatelessWidget {
       ],
     );
   }
+}
+
+const productPackagingOptions = [
+  'Vacuum packed',
+  'Individually vacuum packed',
+  'Bulk packed',
+  'Tray packed',
+  'Bagged',
+  'Carton',
+  'Netted',
+  'Wrapped',
+];
+const productOriginOptions = ['Australia', 'New Zealand', 'Other'];
+const productPreparationOptions = [
+  'Whole',
+  'Trimmed',
+  'Untrimmed',
+  'Cap on',
+  'Cap off',
+  'Frenched',
+  'Rolled & netted',
+  'Sliced',
+  'Diced',
+  'Minced',
+];
+
+class ProductSizeSuggestions extends StatefulWidget {
+  const ProductSizeSuggestions({
+    super.key,
+    required this.supplierId,
+    required this.specificationId,
+    required this.onSelected,
+    required this.enabled,
+  });
+  final String supplierId, specificationId;
+  final bool enabled;
+  final ValueChanged<ProductPieceSize> onSelected;
+  @override
+  State<ProductSizeSuggestions> createState() => _ProductSizeSuggestionsState();
+}
+
+class _ProductSizeSuggestionsState extends State<ProductSizeSuggestions> {
+  List<ProductPieceSize> _sizes = [];
+  int _request = 0;
+  bool _failed = false;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductSizeSuggestions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.specificationId != widget.specificationId ||
+        oldWidget.supplierId != widget.supplierId) {
+      _sizes = [];
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    final request = ++_request;
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'supplier_product_size_options',
+        params: {
+          'p_supplier_business_id': widget.supplierId,
+          'p_specification_id': widget.specificationId,
+        },
+      );
+      if (!mounted || request != _request) {
+        return;
+      }
+      final sizes = (result as List)
+          .map(
+            (r) => ProductPieceSize.fromProduct(
+              Map<String, dynamic>.from(r as Map),
+            ),
+          )
+          .where((s) => s.error == null && s.label.isNotEmpty);
+      final unique = {for (final s in sizes) s.label: s}.values.toList()
+        ..sort((a, b) => compareProductSizeLabels(a.label, b.label));
+      setState(() {
+        _sizes = unique;
+        _failed = false;
+      });
+    } catch (_) {
+      if (mounted && request == _request) {
+        setState(() => _failed = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_sizes.isNotEmpty)
+          CutLinkPickerField<String>(
+            label: 'Reuse a size for this sub-cut',
+            value: null,
+            enabled: widget.enabled,
+            options: [
+              for (final size in _sizes)
+                CutLinkPickerOption(value: size.label, label: size.label),
+            ],
+            onChanged: (v) {
+              if (v != null) {
+                widget.onSelected(_sizes.firstWhere((s) => s.label == v));
+              }
+            },
+          ),
+        if (_failed)
+          TextButton(
+            onPressed: _load,
+            child: const Text('Size suggestions unavailable — retry'),
+          ),
+        const Text(
+          'Choose a saved size or enter a different weight below, such as 4.7 kg. Saved product sizes are also available to buyers.',
+        ),
+      ],
+    ),
+  );
 }

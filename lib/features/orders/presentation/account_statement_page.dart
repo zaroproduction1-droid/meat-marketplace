@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:typed_data';
 
@@ -495,7 +496,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
   }
 
   Future<Uint8List> _buildPdf() async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await DocumentPdfTheme.load());
 
     final rows = _periodTransactions;
     var runningBalance = _openingBalance;

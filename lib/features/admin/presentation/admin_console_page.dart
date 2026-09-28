@@ -89,7 +89,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     }
   }
 
-  void _change(String tab) {
+  void _change(String tab, {String? filter}) {
     if (tab == 'support') {
       Navigator.push(
         context,
@@ -105,7 +105,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       _tab = tab;
       _page = 0;
       _search = '';
-      _filter = null;
+      _filter = filter;
     });
     _load();
   }
@@ -114,7 +114,10 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => AdminBusinessPage(businessId: id),
+        builder: (_) => AdminBusinessPage(
+          businessId: id,
+          initialTab: _tab == 'accounts' ? 'invoices' : 'business',
+        ),
       ),
     );
     if (mounted) {
@@ -251,7 +254,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             'Subscription balance',
             PlatformAdminService.money(_data['outstanding']),
             Icons.account_balance_wallet_outlined,
-            onTap: () => _change('accounts'),
+            onTap: () => _change('accounts', filter: 'unpaid'),
           ),
           _metric(
             'Overdue subscriptions',
@@ -269,7 +272,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             'Accounts due to bill',
             '${_data['due_accounts'] ?? 0}',
             Icons.receipt_long_outlined,
-            onTap: () => _change('accounts'),
+            onTap: () => _change('accounts', filter: 'needs_invoice'),
           ),
         ],
       ),
@@ -428,7 +431,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                 ),
                 TextButton(
                   onPressed: () => _business('${row['business_id']}'),
-                  child: const Text('Open business'),
+                  child: const Text('Open account & invoices'),
                 ),
               ],
             ),
@@ -552,9 +555,10 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           },
         ),
         const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+        Padding(
+          padding: EdgeInsets.zero,
+          child: Wrap(
+            runSpacing: 6,
             children: [
               for (final option in <String?>[
                 null,
@@ -569,6 +573,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                       ]
                     : _tab == 'accounts'
                     ? [
+                        'needs_invoice',
+                        'on_hold',
                         'active',
                         'trial',
                         'paused',
@@ -582,7 +588,11 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                   padding: const EdgeInsets.only(right: 7),
                   child: ChoiceChip(
                     label: Text(
-                      option == null ? 'All' : option.replaceAll('_', ' '),
+                      option == null
+                          ? 'All'
+                          : option == 'needs_invoice'
+                          ? 'Ready to invoice'
+                          : option.replaceAll('_', ' '),
                     ),
                     selected: _filter == option,
                     onSelected: (_) {

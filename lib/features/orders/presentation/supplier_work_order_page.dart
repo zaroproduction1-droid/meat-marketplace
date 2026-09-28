@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'order_sales_contact.dart';
@@ -1640,7 +1641,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Future<Uint8List> _buildPickSlipPdf() async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await DocumentPdfTheme.load());
 
     pw.Widget labelValue(String label, String value) {
       return pw.Padding(
@@ -2605,7 +2606,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       children: [
                         Expanded(child: pickPanel),
                         const SizedBox(width: 12),
-                        SizedBox(width: 300, child: warehousePanel),
+                        SizedBox(
+                          width: 300,
+                          child: SingleChildScrollView(child: warehousePanel),
+                        ),
                       ],
                     ),
                   ),

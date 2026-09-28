@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
 import 'dart:typed_data';
 
@@ -212,7 +213,7 @@ class CutLinkQuotePdf {
     required List<Map<String, dynamic>> items,
     Uint8List? supplierLogoBytes,
   }) async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await DocumentPdfTheme.load());
     final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
     final baseNumber =
         quote['quote_number']?.toString() ??

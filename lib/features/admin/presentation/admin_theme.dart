@@ -137,10 +137,11 @@ class AdminNavigation extends StatelessWidget {
       if (c.maxWidth < 1050) {
         return Column(
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              child: Row(
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 6,
                 children: [
                   for (final entry in items.entries)
                     Padding(

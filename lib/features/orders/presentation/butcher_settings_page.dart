@@ -1,164 +1,325 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ButcherSettingsPage extends StatelessWidget {
-  const ButcherSettingsPage({super.key});
-
+  const ButcherSettingsPage({super.key, this.onBrandingChanged});
+  final VoidCallback? onBrandingChanged;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          titleSpacing: 20,
-          title: const Row(
-            children: [
-              Icon(Icons.settings_outlined, color: Color(0xFF741C1C), size: 22),
-              SizedBox(width: 10),
-              Text(
-                'Settings',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
-              ),
-            ],
-          ),
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
-          ),
-        ),
+    final sections = <(IconData, String, String, Widget)>[
+      (
+        Icons.business_outlined,
+        'Business profile',
+        'Your business identity, contacts and main address.',
+        const ButcherProfileSettingsPage(),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1120),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x07000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  children: [
-                    SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF8EEEE),
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                        ),
-                        child: Icon(
-                          Icons.tune_outlined,
-                          color: Color(0xFF741C1C),
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Butcher Settings',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
+      (
+        Icons.receipt_long_outlined,
+        'Billing & accounts',
+        'ABN, billing address and accounts contact.',
+        const ButcherBillingSettingsPage(),
+      ),
+      (
+        Icons.local_shipping_outlined,
+        'Delivery addresses',
+        'Manage delivery locations and your default address.',
+        const ButcherDeliveryAddressesPage(),
+      ),
+      (
+        Icons.notifications_outlined,
+        'Notifications',
+        'Choose alerts, categories and muted activity.',
+        const ButcherNotificationSettingsPage(),
+      ),
+      (
+        Icons.privacy_tip_outlined,
+        'Privacy',
+        'Choose how approved suppliers see your business.',
+        const ButcherPrivacySettingsPage(),
+      ),
+    ];
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        appBar: phoneAppBar(
+          context,
+          AppBar(title: const Text('Business settings')),
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) => Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: ListView(
+                padding: EdgeInsets.all(constraints.maxWidth < 600 ? 14 : 24),
+                children: [
+                  const Text(
+                    'Make CutLink yours',
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Manage your business identity, purchasing details and preferences.',
+                    style: TextStyle(color: Color(0xFF6D7177)),
+                  ),
+                  const SizedBox(height: 20),
+                  _ButcherBrandingCard(onChanged: onBrandingChanged),
+                  const SizedBox(height: 20),
+                  LayoutBuilder(
+                    builder: (context, c) => Wrap(
+                      spacing: 16,
+                      runSpacing: 4,
+                      children: [
+                        for (final section in sections)
+                          SizedBox(
+                            width: c.maxWidth >= 740
+                                ? (c.maxWidth - 16) / 2
+                                : c.maxWidth,
+                            child: _SettingsTile(
+                              icon: section.$1,
+                              title: section.$2,
+                              subtitle: section.$3,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      CutLinkWorkspaceTheme(child: section.$4),
+                                ),
+                              ),
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Manage your business profile, billing, delivery addresses, privacy and notifications.',
-                            style: TextStyle(
-                              color: Color(0xFF666A70),
-                              fontSize: 12.5,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              _SettingsTile(
-                icon: Icons.business_outlined,
-                title: 'Business Profile',
-                subtitle:
-                    'Trading name, legal name, business contact details and main address.',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ButcherProfileSettingsPage(),
                   ),
-                ),
+                ],
               ),
-              _SettingsTile(
-                icon: Icons.receipt_long_outlined,
-                title: 'Billing & Accounts',
-                subtitle:
-                    'ABN, billing address and the accounts contact suppliers should use.',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ButcherBillingSettingsPage(),
-                  ),
-                ),
-              ),
-              _SettingsTile(
-                icon: Icons.local_shipping_outlined,
-                title: 'Delivery Addresses',
-                subtitle:
-                    'Save multiple delivery locations and choose a default address.',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ButcherDeliveryAddressesPage(),
-                  ),
-                ),
-              ),
-              _SettingsTile(
-                icon: Icons.privacy_tip_outlined,
-                title: 'Privacy',
-                subtitle:
-                    'Control profile visibility and what approved suppliers can see.',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ButcherPrivacySettingsPage(),
-                  ),
-                ),
-              ),
-              _SettingsTile(
-                icon: Icons.notifications_outlined,
-                title: 'Notifications',
-                subtitle:
-                    'Choose which order, invoice and account activity should notify you.',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ButcherNotificationSettingsPage(),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _ButcherBrandingCard extends StatefulWidget {
+  const _ButcherBrandingCard({this.onChanged});
+  final VoidCallback? onChanged;
+  @override
+  State<_ButcherBrandingCard> createState() => _ButcherBrandingCardState();
+}
+
+class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
+  String? _businessId, _path, _error;
+  Uint8List? _bytes;
+  bool _loading = true, _busy = false;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final id = await _ButcherSettingsData.resolveButcherBusinessId();
+      final row = await Supabase.instance.client
+          .from('businesses')
+          .select('logo_path')
+          .eq('id', id)
+          .single();
+      final path = row['logo_path']?.toString();
+      Uint8List? bytes;
+      if (path != null && path.isNotEmpty) {
+        try {
+          bytes = await Supabase.instance.client.storage
+              .from('business-branding')
+              .download(path);
+        } catch (_) {
+          /* Allow replacing an old logo whose stored file is missing. */
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _businessId = id;
+          _path = path;
+          _bytes = bytes;
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Could not load company branding.';
+        });
+      }
+    }
+  }
+
+  Future<void> _change({bool remove = false}) async {
+    final id = _businessId;
+    if (_busy || id == null) {
+      return;
+    }
+    setState(() => _busy = true);
+    String? uploadedPath;
+    bool saved = false;
+    try {
+      Uint8List? bytes;
+      if (!remove) {
+        final files = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['png', 'jpg', 'jpeg'],
+        );
+        if (files.isEmpty) {
+          return;
+        }
+        bytes = await files.first.readAsBytes();
+        final extension = files.first.name.split('.').last.toLowerCase();
+        if (!['png', 'jpg', 'jpeg'].contains(extension) ||
+            bytes.isEmpty ||
+            bytes.length > 5 * 1024 * 1024) {
+          throw StateError('Choose a PNG or JPG logo up to 5 MB.');
+        }
+        uploadedPath =
+            '$id/logo-${DateTime.now().microsecondsSinceEpoch}.${extension == 'jpeg' ? 'jpg' : extension}';
+        await Supabase.instance.client.storage
+            .from('business-branding')
+            .uploadBinary(
+              uploadedPath,
+              bytes,
+              fileOptions: FileOptions(
+                contentType: extension == 'png' ? 'image/png' : 'image/jpeg',
+              ),
+            );
+      }
+      await Supabase.instance.client.rpc(
+        'set_my_business_logo',
+        params: {'p_business_id': id, 'p_logo_path': uploadedPath},
+      );
+      saved = true;
+      final oldPath = _path;
+      if (oldPath != null && oldPath.isNotEmpty) {
+        try {
+          await Supabase.instance.client.storage
+              .from('business-branding')
+              .remove([oldPath]);
+        } catch (_) {
+          /* Keep the saved logo if old-file cleanup is unavailable. */
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _path = uploadedPath;
+          _bytes = bytes;
+          _error = null;
+        });
+        widget.onChanged?.call();
+      }
+    } catch (e) {
+      if (!saved && uploadedPath != null) {
+        try {
+          await Supabase.instance.client.storage
+              .from('business-branding')
+              .remove([uploadedPath]);
+        } catch (_) {
+          /* Do not hide the original upload error. */
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Unable to update logo: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                ),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _bytes == null
+                    ? const Icon(
+                        Icons.storefront_outlined,
+                        size: 34,
+                        color: Color(0xFF741C1C),
+                      )
+                    : Image.memory(_bytes!, fit: BoxFit.contain),
+              ),
+              const SizedBox(width: 18),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Company branding',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Add your business logo to your CutLink identity. PNG or JPG, up to 5 MB.',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            TextButton(onPressed: _load, child: Text('$_error Retry')),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _busy || _loading || _businessId == null
+                    ? null
+                    : () => _change(),
+                icon: const Icon(Icons.upload_outlined),
+                label: Text(
+                  _busy
+                      ? 'Saving…'
+                      : _path == null
+                      ? 'Upload logo'
+                      : 'Change logo',
+                ),
+              ),
+              if (_path != null)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _change(remove: true),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove logo'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _SettingsTile extends StatelessWidget {
@@ -1138,11 +1299,13 @@ class ButcherNotificationSettingsPage extends StatefulWidget {
 class _ButcherNotificationSettingsPageState
     extends State<ButcherNotificationSettingsPage> {
   final Map<String, bool> _activityPreferences = {
+    'notify_platform': true,
     'notify_messages': true,
     'notify_credit_updates': true,
     'notify_delivery_updates': true,
     'notify_support_updates': true,
   };
+  bool _muteAll = false;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1169,6 +1332,7 @@ class _ButcherNotificationSettingsPageState
           .maybeSingle();
 
       if (row != null) {
+        _muteAll = row['mute_all_notifications'] == true;
         for (final key in _activityPreferences.keys) {
           _activityPreferences[key] = row[key] != false;
         }
@@ -1202,6 +1366,7 @@ class _ButcherNotificationSettingsPageState
           .upsert({
             'business_id': _businessId,
             ..._activityPreferences,
+            'mute_all_notifications': _muteAll,
             'notify_new_orders': _orders,
             'notify_quote_activity': _quotes,
             'notify_payment_claims': _payments,
@@ -1217,6 +1382,18 @@ class _ButcherNotificationSettingsPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Notification settings saved.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is PostgrestException
+                  ? e.message
+                  : 'Could not save notification preferences. Please try again.',
+            ),
+          ),
         );
       }
     } finally {
@@ -1236,9 +1413,19 @@ class _ButcherNotificationSettingsPageState
       child: Column(
         children: [
           const Text(
-            'These preferences control unread alert badges. All activity remains available in Notifications.',
+            'Choose what appears in the dashboard bell and unread alerts. Turn a category off to mute it. All activity remains available in All notifications.',
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Mute all dashboard alerts'),
+            subtitle: const Text(
+              'Keep notification history without bell alerts.',
+            ),
+            value: _muteAll,
+            onChanged: _saving ? null : (v) => setState(() => _muteAll = v),
           ),
           for (final entry in const {
+            'notify_platform': 'CutLink announcements',
             'notify_messages': 'Marketplace messages & issues',
             'notify_credit_updates': 'Credits & refunds',
             'notify_delivery_updates': 'Delivery and pickup updates',
@@ -1331,44 +1518,54 @@ class _SettingsFormScaffold extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: phoneAppBar(context, AppBar(title: Text(title))),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(padding: const EdgeInsets.all(18), child: child),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: saving ? null : onSave,
-              icon: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(
-                saving ? 'Saving...' : 'Save Changes',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            title: Text(title),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: FilledButton.icon(
+                  onPressed: saving ? null : onSave,
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: Text(saving ? 'Saving…' : 'Save changes'),
                 ),
               ),
+            ],
+          ),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Keep your business details and preferences up to date.',
+                  style: TextStyle(color: Color(0xFF6D7177)),
+                ),
+                const SizedBox(height: 18),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: child,
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }

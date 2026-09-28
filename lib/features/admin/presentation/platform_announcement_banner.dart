@@ -92,64 +92,86 @@ class _PlatformAnnouncementBannerState extends State<PlatformAnnouncementBanner>
     final row = rows.first;
     final tone = row['tone']?.toString() ?? 'normal';
     final foreground = AnnouncementStyle.foreground(tone);
+    void readNotice() {
+      showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('${row['title']}'),
+          content: SingleChildScrollView(child: Text('${row['body']}')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Material(
-      color: AnnouncementStyle.background(tone),
+      color: const Color(0xFFF5F6F8),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: DefaultTextStyle.merge(
-            style: TextStyle(color: foreground),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AnnouncementStyle.background(tone),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: foreground.withValues(alpha: .16)),
+            ),
+            padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(AnnouncementStyle.icon(tone), color: foreground),
-                const SizedBox(width: 10),
+                Icon(AnnouncementStyle.icon(tone), color: foreground, size: 21),
+                const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
-                    onTap: () => showDialog<void>(
-                      context: context,
-                      builder: (c) => AlertDialog(
-                        title: Text('${row['title']}'),
-                        content: SingleChildScrollView(
-                          child: Text('${row['body']}'),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(c),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      ),
-                    ),
+                    onTap: readNotice,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${row['title']}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                            color: foreground,
+                            fontSize: 13,
+                            height: 1.35,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           '${row['body']}',
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          rows.length > 1
-                              ? 'Read more · ${rows.length} notices'
-                              : 'Read more',
-                          style: const TextStyle(fontSize: 11),
+                          style: TextStyle(
+                            color: foreground,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: readNotice,
+                  child: Text(
+                    rows.length > 1 ? 'View (${rows.length})' : 'Read more',
+                    style: TextStyle(color: foreground),
                   ),
                 ),
                 IconButton(
                   tooltip: 'Dismiss for this session',
                   onPressed: () =>
                       setState(() => _dismissed.add('${row['id']}')),
-                  icon: Icon(Icons.close, size: 20, color: foreground),
+                  icon: Icon(Icons.close, size: 18, color: foreground),
                 ),
               ],
             ),

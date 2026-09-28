@@ -54,6 +54,20 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
             _debounce = Timer(const Duration(milliseconds: 400), _load);
           },
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'business_app_settings',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'business_id',
+            value: widget.businessId,
+          ),
+          callback: (_) {
+            _debounce?.cancel();
+            _debounce = Timer(const Duration(milliseconds: 400), _load);
+          },
+        )
         .subscribe();
     _midnight = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_nextReset != null && !DateTime.now().isBefore(_nextReset!)) {
@@ -125,6 +139,27 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
         _view.value = {
           ..._view.value,
           'error': 'Notifications could not refresh. Please try again.',
+        };
+      }
+    }
+  }
+
+  Future<void> _dismiss(Map<String, dynamic> row) async {
+    try {
+      await _client.rpc(
+        'dismiss_today_business_notification',
+        params: {'p_id': row['id']},
+      );
+      if (!mounted) {
+        return;
+      }
+      widget.onRead?.call();
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        _view.value = {
+          ..._view.value,
+          'error': 'Could not dismiss notification. Please try again.',
         };
       }
     }
@@ -258,6 +293,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                       NotificationActivityTile(
                                         row: rows[i],
                                         compact: true,
+                                        onDelete: () => _dismiss(rows[i]),
                                         onTap: () => Navigator.pop(
                                           dialogContext,
                                           rows[i],

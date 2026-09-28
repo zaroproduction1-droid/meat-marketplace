@@ -1,3 +1,5 @@
+import '../../delivery/presentation/packing_list_page.dart';
+import '../../delivery/presentation/supplier_fulfilment_actions.dart';
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -178,6 +180,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             created_at,
             updated_at,
             orders(
+              id,
+              assigned_delivery_driver_id,
               order_number,
               status,
               fulfilment_method,
@@ -858,6 +862,25 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             ],
           ),
           actions: [
+            if (_invoice?['orders'] is Map &&
+                (_invoice!['orders'] as Map)['fulfilment_method'] ==
+                    'delivery' &&
+                [
+                  'dispatched',
+                  'delivered',
+                  'completed',
+                ].contains((_invoice!['orders'] as Map)['status']))
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PackingListPage(
+                      orderId: _invoice!['order_id'].toString(),
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.inventory_2_outlined, size: 17),
+                label: const Text('Packing list PDF'),
+              ),
             FilledButton.icon(
               icon: const Icon(Icons.assignment_return_outlined, size: 18),
               label: const Text('Credit'),
@@ -1521,6 +1544,19 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if ([
+                    'issued',
+                    'part_paid',
+                    'paid',
+                  ].contains(_invoice?['status']) &&
+                  _invoice?['orders'] is Map &&
+                  _invoice?['order_id'] != null)
+                SupplierFulfilmentActions(
+                  orderId: _invoice!['order_id'].toString(),
+                  supplierId: _invoice!['supplier_business_id'].toString(),
+                  order: Map<String, dynamic>.from(_invoice!['orders'] as Map),
+                  onChanged: _loadPage,
+                ),
               sectionTitle('Totals', icon: Icons.calculate_outlined),
               _TotalRow(
                 label: totalDiscount > 0
@@ -1892,37 +1928,35 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           );
         }
 
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1320),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  header,
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: customerSummaryPanel()),
-                      const SizedBox(width: 12),
-                      Expanded(child: invoiceSummaryPanel()),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    header,
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: itemsPanel()),
+                        Expanded(child: customerSummaryPanel()),
                         const SizedBox(width: 12),
-                        SizedBox(width: 350, child: totalsActionsPanel()),
+                        Expanded(child: invoiceSummaryPanel()),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Expanded(child: itemsPanel()),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: constraints.maxWidth >= 1400 ? 390 : 340,
+                child: totalsActionsPanel(),
+              ),
+            ],
           ),
         );
       },

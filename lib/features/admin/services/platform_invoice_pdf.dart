@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -28,7 +29,16 @@ class PlatformInvoicePdf {
         issuer['gst_registered'] == true || issuer['gst_registered'] == 'true';
     final voided = invoice['voided_at'] != null;
     final paid = !voided && _number(invoice['outstanding']) <= 0;
+    final notice = Map<String, dynamic>.from(invoice['notice'] as Map? ?? {});
+    final stage = int.tryParse('${notice['stage']}') ?? 0;
+    final showNotice = stage > 0 && !voided && !paid;
+    final noticeTitle = switch (stage) {
+      1 => 'FIRST OVERDUE NOTICE',
+      2 => 'FINAL PAYMENT WARNING',
+      _ => 'THIRD NOTICE - ACCOUNT ON HOLD',
+    };
     final doc = pw.Document(
+      theme: await DocumentPdfTheme.load(),
       title: _text(invoice['invoice_number']),
       author: _text(issuer['legal_name']),
     );
@@ -165,6 +175,47 @@ class PlatformInvoicePdf {
               ),
             ],
           ),
+          if (showNotice)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 20),
+              child: pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(14),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#FFF1F0'),
+                  border: pw.Border.all(color: red),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      noticeTitle,
+                      style: pw.TextStyle(
+                        fontSize: 15,
+                        fontWeight: pw.FontWeight.bold,
+                        color: red,
+                      ),
+                    ),
+                    pw.SizedBox(height: 7),
+                    pw.Text(
+                      'Notice date: ${_date(notice['created_at'])} | Payment deadline: ${_date(notice['payment_deadline'])}',
+                    ),
+                    pw.SizedBox(height: 7),
+                    pw.Text(
+                      stage == 1
+                          ? 'Payment is overdue. Please pay the balance by the deadline above. Continued non-payment puts your CutLink account at risk of being placed on hold.'
+                          : stage == 2
+                          ? 'Final warning: payment remains overdue. If the balance is not received by the deadline above, CutLink may place your business account on hold and restrict trading access.'
+                          : 'Your business account has been placed on hold for overdue subscription payment. Pay all outstanding subscription balances using the details below and contact CutLink with your payment reference. Access is restored after payment verification and review.',
+                    ),
+                    pw.SizedBox(height: 7),
+                    pw.Text(
+                      'Reminder for the original invoice below. No additional charge has been created.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           pw.SizedBox(height: 26),
           pw.Container(
             width: double.infinity,
@@ -220,7 +271,7 @@ class PlatformInvoicePdf {
                   pw.Divider(),
                   line('Payments received', _money(invoice['amount_paid'])),
                   line(
-                    'Balance due',
+                    showNotice ? 'Overdue amount remaining' : 'Balance due',
                     _money(invoice['outstanding']),
                     strong: true,
                   ),

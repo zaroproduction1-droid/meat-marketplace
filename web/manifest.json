@@ -1,11 +1,11 @@
 {
-    "name": "meat_marketplace",
-    "short_name": "meat_marketplace",
+    "name": "CutLink",
+    "short_name": "CutLink",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0C1B29",
+    "theme_color": "#861E2D",
+    "description": "Wholesale meat trading for suppliers and butchers.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

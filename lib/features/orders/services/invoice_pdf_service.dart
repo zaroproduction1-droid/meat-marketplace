@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
 import 'invoice_commercial_details.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
@@ -319,7 +320,7 @@ class CutLinkInvoicePdf {
     required List<Map<String, dynamic>> items,
     Uint8List? supplierLogoBytes,
   }) async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await DocumentPdfTheme.load());
     final order = _order(invoice);
 
     final supplierName =

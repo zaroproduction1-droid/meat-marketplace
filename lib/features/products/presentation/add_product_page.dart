@@ -1468,6 +1468,8 @@ class _AddProductPageState extends State<AddProductPage> {
                         ),
                         const SizedBox(height: 14),
                         ProductSizeFields(
+                          supplierBusinessId: _supplierBusinessId,
+                          specificationId: _specificationId,
                           minimum: _goatWeightMin,
                           maximum: _goatWeightMax,
                           kind: _pieceSizeKind,
@@ -1597,13 +1599,10 @@ class _AddProductPageState extends State<AddProductPage> {
                             animalCode: _selectedAnimalCode,
                             enabled: !_saving,
                           ),
-                          TextFormField(
+                          ProductAttributeField(
                             controller: _packaging,
-                            decoration: const InputDecoration(
-                              labelText: 'Packaging (optional)',
-                              hintText: 'Example: vacuum packed',
-                              border: OutlineInputBorder(),
-                            ),
+                            label: 'Packaging',
+                            choices: productPackagingOptions,
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -1847,13 +1846,10 @@ class _AddProductPageState extends State<AddProductPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
-                            TextFormField(
+                            ProductAttributeField(
                               controller: _packaging,
-                              decoration: const InputDecoration(
-                                labelText: 'Pack Type (optional)',
-                                hintText: 'Vacuum packed, bag, carton',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: 'Packaging',
+                              choices: productPackagingOptions,
                             ),
                           ),
                         ],

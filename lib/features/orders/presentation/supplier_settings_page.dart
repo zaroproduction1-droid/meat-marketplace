@@ -1278,11 +1278,13 @@ class SupplierNotificationSettingsPage extends StatefulWidget {
 class _SupplierNotificationSettingsPageState
     extends State<SupplierNotificationSettingsPage> {
   final Map<String, bool> _activityPreferences = {
+    'notify_platform': true,
     'notify_messages': true,
     'notify_credit_updates': true,
     'notify_delivery_updates': true,
     'notify_support_updates': true,
   };
+  bool _muteAll = false;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1309,6 +1311,7 @@ class _SupplierNotificationSettingsPageState
           .maybeSingle();
 
       if (settings != null) {
+        _muteAll = settings['mute_all_notifications'] == true;
         for (final key in _activityPreferences.keys) {
           _activityPreferences[key] = settings[key] != false;
         }
@@ -1342,6 +1345,7 @@ class _SupplierNotificationSettingsPageState
           .upsert({
             'business_id': _businessId,
             ..._activityPreferences,
+            'mute_all_notifications': _muteAll,
             'notify_new_orders': _newOrders,
             'notify_quote_activity': _quoteActivity,
             'notify_payment_claims': _paymentClaims,
@@ -1357,6 +1361,18 @@ class _SupplierNotificationSettingsPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Notification settings saved.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is PostgrestException
+                  ? e.message
+                  : 'Could not save notification preferences. Please try again.',
+            ),
+          ),
         );
       }
     } finally {
@@ -1376,9 +1392,19 @@ class _SupplierNotificationSettingsPageState
       child: Column(
         children: [
           const Text(
-            'These preferences control unread alert badges. All activity remains available in Notifications.',
+            'Choose what appears in the dashboard bell and unread alerts. Turn a category off to mute it. All activity remains available in All notifications.',
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Mute all dashboard alerts'),
+            subtitle: const Text(
+              'Keep notification history without bell alerts.',
+            ),
+            value: _muteAll,
+            onChanged: _saving ? null : (v) => setState(() => _muteAll = v),
           ),
           for (final entry in const {
+            'notify_platform': 'CutLink announcements',
             'notify_messages': 'Marketplace messages & issues',
             'notify_credit_updates': 'Credits & refunds',
             'notify_delivery_updates': 'Delivery and pickup updates',

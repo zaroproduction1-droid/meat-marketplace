@@ -1,3 +1,4 @@
+import 'support_faq_panel.dart';
 import '../../admin/presentation/admin_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -28,6 +29,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   static const _darkRed = Color(0xFF8B1E2D);
   static const _navy = Color(0xFF081625);
 
+  String? _faqBusinessType;
+  String? _faqError;
+  bool _showFaq = false;
   bool _loading = true;
   bool _initialTicketOpened = false;
   bool _sending = false;
@@ -55,7 +59,37 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   void initState() {
     super.initState();
     _loadTickets();
+    _loadFaqRole();
     _subscribeToTickets();
+  }
+
+  Future<void> _loadFaqRole() async {
+    if (widget.adminMode) {
+      return;
+    }
+    try {
+      final row = await Supabase.instance.client
+          .from('businesses')
+          .select('business_type')
+          .eq('id', widget.businessId)
+          .single();
+      final type = row['business_type']?.toString();
+      if (type != 'supplier' && type != 'butcher') {
+        throw StateError('Business type unavailable.');
+      }
+      if (mounted) {
+        setState(() {
+          _faqBusinessType = type;
+          _faqError = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _faqError = 'Could not load your help section. Tap to retry.',
+        );
+      }
+    }
   }
 
   @override
@@ -868,7 +902,46 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             ),
           ),
         ),
-        body: _buildBody(),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Wrap(
+                spacing: 10,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Support tickets'),
+                    selected: !_showFaq,
+                    onSelected: (_) => setState(() => _showFaq = false),
+                  ),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.help_outline, size: 18),
+                    label: const Text('Help & FAQ'),
+                    selected: _showFaq,
+                    onSelected: (_) => setState(() => _showFaq = true),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _showFaq
+                  ? widget.adminMode || _faqBusinessType != null
+                        ? SupportFaqPanel(
+                            businessType: _faqBusinessType ?? 'butcher',
+                            adminMode: widget.adminMode,
+                          )
+                        : Center(
+                            child: _faqError == null
+                                ? const CircularProgressIndicator()
+                                : TextButton(
+                                    onPressed: _loadFaqRole,
+                                    child: Text(_faqError!),
+                                  ),
+                          )
+                  : _buildBody(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -960,22 +1033,28 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ),
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'active', label: Text('Active')),
-                ButtonSegment(value: 'all', label: Text('All')),
-                ButtonSegment(value: 'reopen', label: Text('Reopen requests')),
-                ButtonSegment(value: 'resolved', label: Text('Resolved')),
-                ButtonSegment(value: 'closed', label: Text('Closed')),
+            child: Wrap(
+              runSpacing: 6,
+              children: [
+                for (final entry in const {
+                  'active': 'Active',
+                  'all': 'All',
+                  'reopen': 'Reopen requests',
+                  'resolved': 'Resolved',
+                  'closed': 'Closed',
+                }.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(entry.value, softWrap: false),
+                      selected: _statusFilter == entry.key,
+                      onSelected: (_) =>
+                          setState(() => _statusFilter = entry.key),
+                    ),
+                  ),
               ],
-              selected: {_statusFilter},
-              showSelectedIcon: false,
-              onSelectionChanged: (value) {
-                setState(() => _statusFilter = value.first);
-              },
             ),
           ),
           const SizedBox(height: 10),

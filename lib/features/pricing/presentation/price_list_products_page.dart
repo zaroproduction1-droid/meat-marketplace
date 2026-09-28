@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,6 +19,16 @@ class PriceListProductsPage extends StatefulWidget {
 }
 
 class _PriceListProductsPageState extends State<PriceListProductsPage> {
+  Timer? _searchTimer;
+  String _search = '';
+  int _page = 0, _request = 0;
+  bool _hasMore = false;
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
+  }
+
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -30,6 +42,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
   }
 
   Future<void> _loadProductsAndPrices() async {
+    final request = ++_request;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -52,7 +65,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
 
       final businessId = membership['business_id'] as String;
 
-      final productsResponse = await Supabase.instance.client
+      var productQuery = Supabase.instance.client
           .from('products')
           .select('''
             id,
@@ -64,12 +77,24 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
             cuts(name)
             ''')
           .eq('supplier_business_id', businessId)
-          .eq('active', true)
-          .order('product_name');
+          .eq('active', true);
+      final term = _search.replaceAll(RegExp(r'[^a-zA-Z0-9 ._/-]'), ' ').trim();
+      if (term.isNotEmpty) {
+        productQuery = productQuery.or(
+          'product_name.ilike.%$term%,sku.ilike.%$term%',
+        );
+      }
+      final productsResponse = await productQuery
+          .order('product_name')
+          .order('id')
+          .range(_page * 50, _page * 50 + 50);
+      final visibleProducts = productsResponse.take(50).toList();
 
-      final pricesResponse = await Supabase.instance.client
-          .from('product_prices')
-          .select('''
+      final pricesResponse = visibleProducts.isEmpty
+          ? <Map<String, dynamic>>[]
+          : await Supabase.instance.client
+                .from('product_prices')
+                .select('''
             id,
             product_id,
             amount,
@@ -77,7 +102,12 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
             minimum_quantity,
             active
             ''')
-          .eq('price_list_id', widget.priceListId);
+                .eq('price_list_id', widget.priceListId)
+                .eq('active', true)
+                .inFilter(
+                  'product_id',
+                  visibleProducts.map((p) => p['id'].toString()).toList(),
+                );
 
       final pricesMap = <String, Map<String, dynamic>>{};
 
@@ -88,18 +118,19 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
         pricesMap[productId] = priceMap;
       }
 
-      if (!mounted) {
+      if (!mounted || request != _request) {
         return;
       }
 
       setState(() {
-        _products = List<Map<String, dynamic>>.from(productsResponse);
+        _hasMore = productsResponse.length > 50;
+        _products = List<Map<String, dynamic>>.from(visibleProducts);
 
         _pricesByProductId = pricesMap;
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) {
+      if (!mounted || request != _request) {
         return;
       }
 
@@ -108,7 +139,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) {
+      if (!mounted || request != _request) {
         return;
       }
 
@@ -344,25 +375,79 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: Text(widget.priceListName),
-          actions: [
-            IconButton(
-              onPressed: _loadProductsAndPrices,
-              tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh),
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: Text(widget.priceListName),
+            actions: [
+              IconButton(
+                onPressed: _loadProductsAndPrices,
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Search product name or SKU',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (v) {
+                      _search = v;
+                      _page = 0;
+                      _request++;
+                      _searchTimer?.cancel();
+                      _searchTimer = Timer(
+                        const Duration(milliseconds: 350),
+                        _loadProductsAndPrices,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: _isLoading || _page == 0
+                            ? null
+                            : () {
+                                _page--;
+                                _loadProductsAndPrices();
+                              },
+                        child: const Text('Previous'),
+                      ),
+                      Text('Page ${_page + 1} · up to 50 products'),
+                      TextButton(
+                        onPressed: _isLoading || !_hasMore
+                            ? null
+                            : () {
+                                _page++;
+                                _loadProductsAndPrices();
+                              },
+                        child: const Text('Next'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -401,7 +486,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Create at least one active product before adding prices.',
+            'No matching active products. Try another name or SKU.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18),
           ),

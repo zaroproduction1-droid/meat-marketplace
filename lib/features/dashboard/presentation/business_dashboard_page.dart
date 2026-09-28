@@ -848,7 +848,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         case 'settings':
           return supplier
               ? const SupplierSettingsPage(embedded: true)
-              : const ButcherSettingsPage();
+              : ButcherSettingsPage(
+                  onBrandingChanged: _refreshBusinessBranding,
+                );
         case 'admin':
           return _isAdmin
               ? AdminConsolePage(
@@ -1045,7 +1047,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   void _openSettings() {
     if (_businessType == 'butcher') {
-      _openPage(const ButcherSettingsPage());
+      _openPage(
+        ButcherSettingsPage(onBrandingChanged: _refreshBusinessBranding),
+      );
       return;
     }
 
@@ -2923,7 +2927,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       Icons.settings_outlined,
       'Settings',
       selected: _workspaceKey == 'settings',
-      onTap: () => _openPage(const ButcherSettingsPage()),
+      onTap: () => _openPage(
+        ButcherSettingsPage(onBrandingChanged: _refreshBusinessBranding),
+      ),
     ),
     if (_isAdmin)
       _sideItem(

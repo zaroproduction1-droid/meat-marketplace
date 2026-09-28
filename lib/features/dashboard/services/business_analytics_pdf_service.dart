@@ -1,3 +1,4 @@
+import '../../../shared/pdf/document_pdf_theme.dart';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -149,7 +150,7 @@ class BusinessAnalyticsPdfService {
     required String periodLabel,
     required Map<String, dynamic> analytics,
   }) async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await DocumentPdfTheme.load());
     final supplier = businessType == 'supplier';
     final summary = _map(analytics['summary']);
     final trend = _list(

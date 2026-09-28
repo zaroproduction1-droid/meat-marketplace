@@ -42,7 +42,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         context,
         AppBar(
           title: const Text(
-            'NSW Meat Marketplace',
+            'CutLink',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           actions: [

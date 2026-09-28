@@ -1,3 +1,4 @@
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +23,8 @@ class PrivatePriceListCustomersPage extends StatefulWidget {
 
 class _PrivatePriceListCustomersPageState
     extends State<PrivatePriceListCustomersPage> {
+  String _search = '';
+  final Set<String> _savingCustomers = {};
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -100,6 +103,10 @@ class _PrivatePriceListCustomersPageState
     required String butcherBusinessId,
     required bool assigned,
   }) async {
+    if (_savingCustomers.contains(butcherBusinessId)) {
+      return;
+    }
+    setState(() => _savingCustomers.add(butcherBusinessId));
     try {
       if (assigned) {
         await Supabase.instance.client.from('price_list_customers').insert({
@@ -143,6 +150,10 @@ class _PrivatePriceListCustomersPageState
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() => _savingCustomers.remove(butcherBusinessId));
+      }
     }
   }
 
@@ -160,43 +171,59 @@ class _PrivatePriceListCustomersPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: Text(
-            widget.priceListName,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          actions: [
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PriceListProductsPage(
-                      priceListId: widget.priceListId,
-                      priceListName: widget.priceListName,
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: Text(
+              widget.priceListName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PriceListProductsPage(
+                        priceListId: widget.priceListId,
+                        priceListName: widget.priceListName,
+                      ),
                     ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.price_change_outlined),
-              label: const Text('Product Prices'),
+                  );
+                },
+                icon: const Icon(Icons.price_change_outlined),
+                label: const Text('Product Prices'),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _loadCustomers,
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Search approved customers',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (v) => setState(() => _search = v),
+              ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: _loadCustomers,
-              tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh),
-            ),
-            const SizedBox(width: 8),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -254,15 +281,20 @@ class _PrivatePriceListCustomersPageState
       );
     }
 
+    final customers = _customers
+        .where(
+          (c) => _businessName(c).toLowerCase().contains(_search.toLowerCase()),
+        )
+        .toList();
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900),
         child: ListView.separated(
           padding: const EdgeInsets.all(24),
-          itemCount: _customers.length,
+          itemCount: customers.length,
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final customer = _customers[index];
+            final customer = customers[index];
 
             final butcherBusinessId = customer['butcher_business_id'] as String;
 
@@ -289,12 +321,14 @@ class _PrivatePriceListCustomersPageState
                       : 'Private pricing not assigned',
                 ),
                 value: assigned,
-                onChanged: (value) {
-                  _setCustomerAssignment(
-                    butcherBusinessId: butcherBusinessId,
-                    assigned: value,
-                  );
-                },
+                onChanged: _savingCustomers.contains(butcherBusinessId)
+                    ? null
+                    : (value) {
+                        _setCustomerAssignment(
+                          butcherBusinessId: butcherBusinessId,
+                          assigned: value,
+                        );
+                      },
               ),
             );
           },

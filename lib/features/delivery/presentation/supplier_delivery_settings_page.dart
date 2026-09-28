@@ -1,3 +1,4 @@
+import 'packing_list_page.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
@@ -51,7 +52,7 @@ class _SupplierDeliverySettingsPageState
   @override
   void initState() {
     super.initState();
-    _workspaceIndex = widget.initialTab.clamp(0, 3);
+    _workspaceIndex = widget.initialTab.clamp(0, 4);
     _loadPage();
   }
 
@@ -1336,6 +1337,39 @@ class _SupplierDeliverySettingsPageState
       ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          const Text(
+            'Packing lists',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Print delivery contents and customer instructions. Final invoices are required for every order on the run.',
+          ),
+          const SizedBox(height: 16),
+          if (_runs.isEmpty)
+            const Text('Create a delivery run to prepare its packing list.'),
+          for (final run in _runs.where((r) => r['status'] != 'cancelled'))
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.inventory_2_outlined),
+                title: Text(run['run_number']?.toString() ?? 'Delivery run'),
+                subtitle: Text(
+                  '${run['delivery_date'] ?? ''} • ${run['status'] ?? ''}',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        PackingListPage(runId: run['id'].toString()),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
           _sectionCard(
             title: 'General Delivery Rules',
             subtitle:
@@ -1450,6 +1484,7 @@ class _SupplierDeliverySettingsPageState
       'Delivery Runs',
       'Drivers & Vehicles',
       'Areas & Schedule',
+      'Packing lists',
     ];
     return Column(
       children: [
@@ -1504,7 +1539,7 @@ class _SupplierDeliverySettingsPageState
                       Icons.route_outlined,
                       Icons.badge_outlined,
                       Icons.map_outlined,
-                      Icons.tune_rounded,
+                      Icons.inventory_2_outlined,
                     ];
                     final selected = _workspaceIndex == i;
                     return Padding(

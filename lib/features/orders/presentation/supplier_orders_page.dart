@@ -1847,36 +1847,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     setState(() => _updatingOrderId = orderId);
 
     try {
-      if (_isMarketplaceOrder(order)) {
-        await Supabase.instance.client.rpc(
-          'complete_marketplace_order_delivery',
-          params: {'target_order_id': orderId},
-        );
-      } else {
-        final now = DateTime.now().toUtc().toIso8601String();
-
-        if (pickup) {
-          await Supabase.instance.client
-              .from('orders')
-              .update({
-                'status': 'completed',
-                'picked_up_at': now,
-                'completed_at': now,
-              })
-              .eq('id', orderId)
-              .eq('supplier_business_id', _supplierBusinessId!);
-        } else {
-          await Supabase.instance.client.rpc(
-            'quick_complete_supplier_delivery_order',
-            params: {'p_order_id': orderId, 'p_recipient_name': null},
-          );
-
-          await Supabase.instance.client.rpc(
-            'finalise_supplier_delivered_order',
-            params: {'p_order_id': orderId},
-          );
-        }
-      }
+      await Supabase.instance.client.rpc(
+        'advance_supplier_invoiced_order',
+        params: {'p_order_id': orderId, 'p_action': 'complete'},
+      );
 
       if (!mounted) return;
 

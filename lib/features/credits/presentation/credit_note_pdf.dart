@@ -6,19 +6,10 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CreditNotePdf {
-  // Keep historical product separators readable without altering their snapshots.
-  static String _description(dynamic value) => (value?.toString() ?? '')
-      .replaceAll(RegExp(r'[•·●▪‣�]'), ' - ')
-      .replaceAll(RegExp(r'[‐‑‒–—−]'), '-')
-      .replaceAll('\u00a0', ' ')
-      .replaceAll(RegExp(r'[ \t]+'), ' ')
-      .trim();
-
   static String money(dynamic value) =>
       '\$${(num.tryParse(value.toString()) ?? 0).toStringAsFixed(2)}';
   static Future<Uint8List> build(Map<String, dynamic> note) async {
-    final theme = await DocumentPdfTheme.load();
-    final doc = pw.Document(theme: theme);
+    final doc = pw.Document(theme: await DocumentPdfTheme.load());
     final snapshot = Map<String, dynamic>.from(note['invoice_snapshot'] as Map);
     String field(String name) => snapshot[name]?.toString().trim() ?? '';
     final lines = (note['supplier_credit_note_lines'] as List).cast<Map>();
@@ -64,7 +55,6 @@ class CreditNotePdf {
     ].map(field).where((s) => s.isNotEmpty).join(' ');
     doc.addPage(
       pw.MultiPage(
-        theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         footer: (c) => pw.Align(
@@ -156,7 +146,7 @@ class CreditNotePdf {
             data: [
               for (final l in lines)
                 [
-                  _description(l['description']),
+                  l['description'],
                   '${l['quantity']} ${l['quantity_unit'] ?? ''}',
                   l['weight_kg'],
                   money(l['amount']),

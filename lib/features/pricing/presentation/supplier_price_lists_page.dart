@@ -1,3 +1,4 @@
+import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +15,7 @@ class SupplierPriceListsPage extends StatefulWidget {
 }
 
 class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
+  String _search = '', _visibility = 'all';
   bool _isLoading = true;
   String? _errorMessage;
   String? _supplierBusinessId;
@@ -284,46 +286,49 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: const Text(
-            'Price Lists',
-            style: TextStyle(fontWeight: FontWeight.w700),
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: const Text(
+              'Price Lists',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            actions: [
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const SupplierCustomerRequestsPage(),
+                    ),
+                  );
+                },
+                tooltip: 'Customer requests',
+                icon: const Icon(Icons.people_outline),
+              ),
+              IconButton(
+                onPressed: _loadPriceLists,
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-          actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const SupplierCustomerRequestsPage(),
-                  ),
-                );
-              },
-              tooltip: 'Customer requests',
-              icon: const Icon(Icons.people_outline),
-            ),
-            IconButton(
-              onPressed: _loadPriceLists,
-              tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh),
-            ),
-            const SizedBox(width: 8),
-          ],
         ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCreatePriceListDialog,
+          backgroundColor: const Color(0xFF741C1C),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Create Price List'),
+        ),
+        body: _buildBody(),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreatePriceListDialog,
-        backgroundColor: const Color(0xFF741C1C),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Create Price List'),
-      ),
-      body: _buildBody(),
     );
   }
 
@@ -391,87 +396,127 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-      itemCount: _priceLists.length,
-      separatorBuilder: (context, index) {
-        return const SizedBox(height: 14);
-      },
-      itemBuilder: (context, index) {
-        final priceList = _priceLists[index];
-
-        final isActive = priceList['active'] as bool? ?? true;
-
-        final visibility = priceList['visibility'] as String?;
-
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0xFFE0E0E0)),
-            borderRadius: BorderRadius.circular(14),
+    final lists = _priceLists
+        .where(
+          (p) =>
+              (_visibility == 'all' || p['visibility'] == _visibility) &&
+              '${p['name']}'.toLowerCase().contains(_search.toLowerCase()),
+        )
+        .toList();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      children: [
+        const CutLinkSectionHeading(
+          title: 'Pricing & customer offers',
+          subtitle:
+              'Standard pricing for the marketplace, Trade pricing for approved customers and private lists for agreed VIP rates.',
+          icon: Icons.price_change_outlined,
+        ),
+        TextField(
+          decoration: const InputDecoration(
+            labelText: 'Search price lists',
+            prefixIcon: Icon(Icons.search),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(18),
-            leading: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4E5E5),
-                borderRadius: BorderRadius.circular(12),
+          onChanged: (v) => setState(() => _search = v),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final entry in const {
+              'all': 'All lists',
+              'public': 'Standard',
+              'approved_customers': 'Trade',
+              'private': 'VIP / private',
+            }.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: _visibility == entry.key,
+                onSelected: (_) => setState(() => _visibility = entry.key),
               ),
-              child: const Icon(
-                Icons.price_change_outlined,
-                color: Color(0xFF741C1C),
-              ),
-            ),
-            title: Text(
-              priceList['name'] as String? ?? 'Unnamed price list',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(_formatVisibility(visibility)),
-            ),
-            trailing: Chip(label: Text(isActive ? 'Active' : 'Inactive')),
-            onTap: () {
-              if (visibility == 'private') {
-                final supplierBusinessId = _supplierBusinessId;
-
-                if (supplierBusinessId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Supplier business could not be loaded.'),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (lists.isEmpty) const Text('No price lists match your search.'),
+        for (final list in lists)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.sell_outlined,
+                          color: Color(0xFF741C1C),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '${list['name']}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            list['active'] == true ? 'Active' : 'Inactive',
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                  return;
-                }
-
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PrivatePriceListCustomersPage(
-                      priceListId: priceList['id'] as String,
-                      priceListName:
-                          priceList['name'] as String? ?? 'Private Price List',
-                      supplierBusinessId: supplierBusinessId,
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_formatVisibility(list['visibility']?.toString())} · ${_visibilityDescription('${list['visibility']}')}',
                     ),
-                  ),
-                );
-
-                return;
-              }
-
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PriceListProductsPage(
-                    priceListId: priceList['id'] as String,
-                    priceListName: priceList['name'] as String? ?? 'Price List',
-                  ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => PriceListProductsPage(
+                                priceListId: '${list['id']}',
+                                priceListName: '${list['name']}',
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Edit product prices'),
+                        ),
+                        if (list['visibility'] == 'private' &&
+                            _supplierBusinessId != null)
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => PrivatePriceListCustomersPage(
+                                  priceListId: '${list['id']}',
+                                  priceListName: '${list['name']}',
+                                  supplierBusinessId: _supplierBusinessId!,
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.people_outline),
+                            label: const Text('Assign VIP customers'),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        );
-      },
+      ],
     );
   }
 }

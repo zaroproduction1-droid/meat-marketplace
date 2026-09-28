@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "meat_marketplace" "\0"
+            VALUE "FileDescription", "CutLink" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "meat_marketplace" "\0"
+            VALUE "InternalName", "cutlink" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "meat_marketplace.exe" "\0"
-            VALUE "ProductName", "meat_marketplace" "\0"
+            VALUE "OriginalFilename", "cutlink.exe" "\0"
+            VALUE "ProductName", "CutLink" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

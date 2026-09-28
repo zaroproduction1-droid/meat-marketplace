@@ -1,3 +1,4 @@
+import 'subscription_billing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -157,6 +158,19 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                                 '${r['reason'] ?? 'Please contact CutLink Support for details.'}',
                               ),
                               const SizedBox(height: 18),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => SubscriptionBillingPage(
+                                      businessId: '${r['business_id']}',
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.receipt_long_outlined),
+                                label: const Text('View subscription invoices'),
+                              ),
+                              const SizedBox(height: 10),
                               FilledButton.icon(
                                 onPressed: _busy
                                     ? null
