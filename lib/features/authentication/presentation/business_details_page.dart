@@ -1,3 +1,4 @@
+import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -194,192 +195,138 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const darkRed = Color(0xFF741C1C);
+    const darkRed = Color(0xFF933744);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: const Text('Business details'),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        'Tell us about your business',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'These details will be reviewed before marketplace access is approved.',
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        controller: _legalNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Legal business name',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          return _requiredValidator(
-                            value,
-                            'the legal business name',
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _tradingNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Trading name (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _abnController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'ABN',
-                          hintText: '11 digits',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _validateAbn,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _businessEmailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Business email',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _validateEmail,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _businessPhoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Business phone',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          return _requiredValidator(
-                            value,
-                            'the business phone number',
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _addressLine1Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Address line 1',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          return _requiredValidator(
-                            value,
-                            'the business address',
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _addressLine2Controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Address line 2 (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _suburbController,
-                        decoration: const InputDecoration(
-                          labelText: 'Suburb',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          return _requiredValidator(value, 'the suburb');
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      DropdownButtonFormField<String>(
-                        isExpanded: isPhoneLayout(context),
-                        initialValue: _state,
-                        decoration: const InputDecoration(
-                          labelText: 'State',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'NSW', child: Text('NSW')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _state = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _postcodeController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Postcode',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _validatePostcode,
-                      ),
-                      const SizedBox(height: 28),
-                      FilledButton(
-                        onPressed: _isLoading ? null : _submitBusinessDetails,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: darkRed,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Submit business details',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
+    return PublicAuthFrame(
+      title: 'Let’s meet your business.',
+      description:
+          'Add your business details so your registration can be reviewed for marketplace access.',
+      step: 3,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Tell us about your business',
+              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'These details will be reviewed before marketplace access is approved.',
+            ),
+            const SizedBox(height: 30),
+            TextFormField(
+              controller: _legalNameController,
+              decoration: const InputDecoration(
+                labelText: 'Legal business name',
+              ),
+              validator: (value) {
+                return _requiredValidator(value, 'the legal business name');
+              },
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _tradingNameController,
+              decoration: const InputDecoration(
+                labelText: 'Trading name (optional)',
               ),
             ),
-          ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _abnController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'ABN',
+                hintText: '11 digits',
+              ),
+              validator: _validateAbn,
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _businessEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Business email'),
+              validator: _validateEmail,
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _businessPhoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Business phone'),
+              validator: (value) {
+                return _requiredValidator(value, 'the business phone number');
+              },
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _addressLine1Controller,
+              decoration: const InputDecoration(labelText: 'Address line 1'),
+              validator: (value) {
+                return _requiredValidator(value, 'the business address');
+              },
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _addressLine2Controller,
+              decoration: const InputDecoration(
+                labelText: 'Address line 2 (optional)',
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _suburbController,
+              decoration: const InputDecoration(labelText: 'Suburb'),
+              validator: (value) {
+                return _requiredValidator(value, 'the suburb');
+              },
+            ),
+            const SizedBox(height: 18),
+            DropdownButtonFormField<String>(
+              isExpanded: isPhoneLayout(context),
+              initialValue: _state,
+              decoration: const InputDecoration(labelText: 'State'),
+              items: const [DropdownMenuItem(value: 'NSW', child: Text('NSW'))],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _state = value;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _postcodeController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Postcode'),
+              validator: _validatePostcode,
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _isLoading ? null : _submitBusinessDetails,
+              style: FilledButton.styleFrom(
+                backgroundColor: darkRed,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Submit business details',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     );

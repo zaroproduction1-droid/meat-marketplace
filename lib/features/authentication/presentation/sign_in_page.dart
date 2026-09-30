@@ -1,6 +1,7 @@
+import '../../../shared/widgets/public_auth_frame.dart';
 import 'restricted_account_page.dart';
-import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
+import '../../landing/presentation/public_page_palette.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pending_verification_page.dart';
 import 'business_details_page.dart';
@@ -226,7 +227,7 @@ class _SignInPageState extends State<SignInPage> {
 
   @override
   Widget build(BuildContext context) {
-    const darkRed = Color(0xFF741C1C);
+    const darkRed = Color(0xFF933744);
 
     if (widget.restoreSession && _isLoading) {
       return const Scaffold(
@@ -242,116 +243,93 @@ class _SignInPageState extends State<SignInPage> {
         ),
       );
     }
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: const Text(
-            'Sign in',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        'Welcome back',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Sign in using your confirmed email address.',
-                        style: TextStyle(color: Color(0xFF5E5E5E)),
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Email address',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _validateEmail,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _hidePassword,
-                        textInputAction: TextInputAction.done,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _hidePassword = !_hidePassword;
-                              });
-                            },
-                            icon: Icon(
-                              _hidePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                          ),
-                        ),
-                        validator: _validatePassword,
-                        onFieldSubmitted: (_) {
-                          _signIn();
-                        },
-                      ),
-                      const SizedBox(height: 28),
-                      FilledButton(
-                        onPressed: _isLoading ? null : _signIn,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: darkRed,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Sign in',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ],
+    return PublicAuthFrame(
+      title: 'Welcome back to CutLink.',
+      description: 'Your orders, stock and accounts — ready when you are.',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Welcome back',
+              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Sign in using your confirmed email address.',
+              style: TextStyle(color: PublicPagePalette.muted),
+            ),
+            const SizedBox(height: 30),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Email address'),
+              validator: _validateEmail,
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _hidePassword,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: 'Password',
+
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _hidePassword = !_hidePassword;
+                    });
+                  },
+                  icon: Icon(
+                    _hidePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                   ),
                 ),
               ),
+              validator: _validatePassword,
+              onFieldSubmitted: (_) {
+                _signIn();
+              },
             ),
-          ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _isLoading ? null : _signIn,
+              style: FilledButton.styleFrom(
+                backgroundColor: darkRed,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Sign in',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 18),
+            TextButton(
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RegistrationTypePage(),
+                      ),
+                    ),
+              child: const Text('New to CutLink? Register your business'),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,7 @@
+import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
+import '../../landing/presentation/public_page_palette.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_type_page.dart';
 import 'business_details_page.dart';
@@ -220,216 +222,182 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const darkRed = Color(0xFF741C1C);
+    const darkRed = Color(0xFF933744);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          title: Text('$businessTypeName registration'),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700),
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(18),
+    return PublicAuthFrame(
+      title: 'Create your CutLink login.',
+      description:
+          'One account for the tools your business needs. Start with your contact and login details.',
+      step: 2,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Create your login details',
+              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'You are registering as a $businessTypeName business.',
+              style: const TextStyle(
+                fontSize: 16,
+                color: PublicPagePalette.muted,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+            ),
+            const SizedBox(height: 32),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 550;
+
+                final firstNameField = TextFormField(
+                  controller: _firstNameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'First name'),
+                  validator: (value) {
+                    return validateRequired(value, 'first name');
+                  },
+                );
+
+                final lastNameField = TextFormField(
+                  controller: _lastNameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Last name'),
+                  validator: (value) {
+                    return validateRequired(value, 'last name');
+                  },
+                );
+
+                if (isNarrow) {
+                  return Column(
                     children: [
-                      const Text(
-                        'Create your login details',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'You are registering as a $businessTypeName business.',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF5E5E5E),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isNarrow = constraints.maxWidth < 550;
-
-                          final firstNameField = TextFormField(
-                            controller: _firstNameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'First name',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              return validateRequired(value, 'first name');
-                            },
-                          );
-
-                          final lastNameField = TextFormField(
-                            controller: _lastNameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Last name',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              return validateRequired(value, 'last name');
-                            },
-                          );
-
-                          if (isNarrow) {
-                            return Column(
-                              children: [
-                                firstNameField,
-                                const SizedBox(height: 18),
-                                lastNameField,
-                              ],
-                            );
-                          }
-
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: firstNameField),
-                              const SizedBox(width: 18),
-                              Expanded(child: lastNameField),
-                            ],
-                          );
-                        },
-                      ),
+                      firstNameField,
                       const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'Email address',
-                          hintText: 'name@business.com.au',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: validateEmail,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.telephoneNumber],
-                        decoration: const InputDecoration(
-                          labelText: 'Phone number',
-                          hintText: '04XX XXX XXX',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: validatePhone,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _hidePassword,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          helperText:
-                              'At least 8 characters, one capital letter and one number.',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _hidePassword = !_hidePassword;
-                              });
-                            },
-                            icon: Icon(
-                              _hidePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                          ),
-                        ),
-                        validator: validatePassword,
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: _hideConfirmPassword,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: InputDecoration(
-                          labelText: 'Confirm password',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _hideConfirmPassword = !_hideConfirmPassword;
-                              });
-                            },
-                            icon: Icon(
-                              _hideConfirmPassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                          ),
-                        ),
-                        validator: validateConfirmPassword,
-                        onFieldSubmitted: (_) {
-                          continueRegistration();
-                        },
-                      ),
-                      const SizedBox(height: 28),
-                      FilledButton(
-                        onPressed: _isLoading ? null : continueRegistration,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: darkRed,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Create account',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Back to business type'),
-                      ),
+                      lastNameField,
                     ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: firstNameField),
+                    const SizedBox(width: 18),
+                    Expanded(child: lastNameField),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(
+                labelText: 'Email address',
+                hintText: 'name@business.com.au',
+              ),
+              validator: validateEmail,
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.telephoneNumber],
+              decoration: const InputDecoration(
+                labelText: 'Phone number',
+                hintText: '04XX XXX XXX',
+              ),
+              validator: validatePhone,
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _hidePassword,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.newPassword],
+              decoration: InputDecoration(
+                labelText: 'Password',
+                helperText:
+                    'At least 8 characters, one capital letter and one number.',
+
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _hidePassword = !_hidePassword;
+                    });
+                  },
+                  icon: Icon(
+                    _hidePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                   ),
                 ),
               ),
+              validator: validatePassword,
             ),
-          ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _hideConfirmPassword,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.newPassword],
+              decoration: InputDecoration(
+                labelText: 'Confirm password',
+
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _hideConfirmPassword = !_hideConfirmPassword;
+                    });
+                  },
+                  icon: Icon(
+                    _hideConfirmPassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                ),
+              ),
+              validator: validateConfirmPassword,
+              onFieldSubmitted: (_) {
+                continueRegistration();
+              },
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _isLoading ? null : continueRegistration,
+              style: FilledButton.styleFrom(
+                backgroundColor: darkRed,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Create account',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Back to business type'),
+            ),
+          ],
         ),
       ),
     );

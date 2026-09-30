@@ -4,7 +4,7 @@ import 'package:cutlink/features/landing/presentation/cutlink_landing_content.da
 import 'package:cutlink/features/authentication/presentation/registration_type_page.dart';
 
 void main() {
-  for (final width in [390.0, 1440.0]) {
+  for (final width in [320.0, 390.0, 1440.0]) {
     testWidgets('Landing page routes both registration roles at width $width', (
       tester,
     ) async {

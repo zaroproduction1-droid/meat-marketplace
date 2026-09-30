@@ -1,4 +1,5 @@
 import 'admin_analytics_panel.dart';
+import 'admin_featured_businesses_panel.dart';
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 import 'dart:async';
@@ -32,6 +33,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   static const _tabs = {
     'overview': 'Overview',
     'analytics': 'Analytics',
+    'homepage': 'Front page',
     'businesses': 'Businesses',
     'accounts': 'Subscription accounts',
     'invoices': 'Invoices',
@@ -61,7 +63,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       _loading = true;
       _error = null;
     });
-    if (_tab == 'analytics') {
+    if (_tab == 'analytics' || _tab == 'homepage') {
       setState(() => _loading = false);
       return;
     }
@@ -706,7 +708,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                 onPressed: () => _change('support'),
                 icon: const Icon(Icons.support_agent),
               ),
-              if (_tab != 'analytics')
+              if (_tab != 'analytics' && _tab != 'homepage')
                 IconButton(
                   tooltip: 'Refresh',
                   onPressed: _load,
@@ -773,7 +775,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                   if (['businesses', 'accounts', 'invoices'].contains(_tab))
                     _filters(),
                   Expanded(
-                    child: _tab == 'analytics'
+                    child: _tab == 'homepage'
+                        ? const AdminFeaturedBusinessesPanel()
+                        : _tab == 'analytics'
                         ? AdminAnalyticsPanel(
                             onNavigate: _change,
                             onBusiness: _business,

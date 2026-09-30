@@ -121,6 +121,7 @@ class AdminNavigation extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final Widget child;
   static IconData icon(String key) => switch (key) {
+    'homepage' => Icons.home_outlined,
     'overview' => Icons.space_dashboard_outlined,
     'analytics' => Icons.insights_outlined,
     'businesses' => Icons.business_outlined,
