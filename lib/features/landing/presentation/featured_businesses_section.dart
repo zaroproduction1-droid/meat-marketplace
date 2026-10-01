@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../authentication/presentation/registration_type_page.dart';
 import 'public_page_palette.dart';
 
@@ -44,7 +45,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Registered businesses. Connected through CutLink.',
+            'The CutLink community.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: PublicPagePalette.text,
@@ -52,16 +53,6 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
               fontWeight: FontWeight.w800,
               height: 1.15,
               letterSpacing: -.8,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Meet the suppliers and butcher shops in our community.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: PublicPagePalette.muted,
-              fontSize: 16,
-              height: 1.6,
             ),
           ),
           const SizedBox(height: 32),
