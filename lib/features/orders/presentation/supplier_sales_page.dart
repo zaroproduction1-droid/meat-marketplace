@@ -1,6 +1,7 @@
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/sales_loading_progress.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../shared/animal_catalogues/product_variant.dart';
 import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
@@ -99,7 +101,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   void _queueStockSearch() {
     _searchDebounce?.cancel();
     ++_pageRequest; // Immediately invalidate any previous search response.
-    if (_supplierBusinessId == null || !mounted) return;
+    if (_supplierBusinessId == null || !mounted) {
+      return;
+    }
     setState(() {
       _stockOffset = 0;
       _pageLoading = true;
@@ -108,7 +112,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     });
     unawaited(_loadStockFacets());
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) unawaited(_loadStockPage());
+      if (mounted) {
+        unawaited(_loadStockPage());
+      }
     });
   }
 
@@ -146,10 +152,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   };
 
   Future<void> _loadStockFacets({bool force = false}) async {
-    if (_supplierBusinessId == null) return;
+    if (_supplierBusinessId == null) {
+      return;
+    }
     final scope =
         '$_supplierBusinessId|$_salesAnimalId|$_salesSectionId|$_selectedSpecificationId';
-    if (!force && _facetScope == scope) return;
+    if (!force && _facetScope == scope) {
+      return;
+    }
     final request = ++_facetRequest;
     setState(() {
       _facetScope = scope;
@@ -171,7 +181,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             },
           )
           .timeout(const Duration(seconds: 30));
-      if (!mounted || request != _facetRequest) return;
+      if (!mounted || request != _facetRequest) {
+        return;
+      }
       final data = _nestedMap(raw) ?? {};
       setState(() {
         _facetValues = _nestedMap(data['values']) ?? {};
@@ -179,7 +191,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         _facetSpecifications = _rows(data['specifications']);
       });
     } catch (_) {
-      if (!mounted || request != _facetRequest) return;
+      if (!mounted || request != _facetRequest) {
+        return;
+      }
       setState(() {
         _facetScope = null;
         _facetError =
@@ -200,7 +214,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           .toList();
 
   Future<void> _loadStockPage({int offset = 0}) async {
-    if (_supplierBusinessId == null) return;
+    if (_supplierBusinessId == null) {
+      return;
+    }
     _searchDebounce?.cancel();
     final request = ++_pageRequest;
     final query = _stockQuery;
@@ -221,7 +237,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             },
           )
           .timeout(const Duration(seconds: 30));
-      if (!mounted || request != _pageRequest) return;
+      if (!mounted || request != _pageRequest) {
+        return;
+      }
       final data = _nestedMap(raw) ?? {};
       final total = (data['total'] as num?)?.toInt() ?? 0;
       if (offset > 0 && offset >= total) {
@@ -249,7 +267,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         });
       }
     } catch (error) {
-      if (!mounted || request != _pageRequest) return;
+      if (!mounted || request != _pageRequest) {
+        return;
+      }
       setState(
         () => _pageError = error is TimeoutException
             ? 'Stock search took too long. Narrow your cut or search, or try again.'
@@ -295,7 +315,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               ),
           ],
           onChanged: (v) {
-            if (v != null) _changeStockFilters(() => change(v));
+            if (v != null) {
+              _changeStockFilters(() => change(v));
+            }
           },
         ),
       );
@@ -405,7 +427,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ),
                 ],
                 onChanged: (v) {
-                  if (v != null) _changeStockFilters(() => _stockSort = v);
+                  if (v != null) {
+                    _changeStockFilters(() => _stockSort = v);
+                  }
                 },
               ),
             ),
@@ -653,7 +677,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   void _refresh() {
-    if (mounted) _queueStockSearch();
+    if (mounted) {
+      _queueStockSearch();
+    }
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
@@ -739,7 +765,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       final supplier = await _resolveSupplierBusinessId().timeout(
         const Duration(seconds: 30),
       );
-      if (!mounted || request != _stockLoadRequest) return;
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
       setState(() {
         _supplierBusinessId = supplier;
         _loadStage = 1;
@@ -763,7 +791,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             .eq('order_source', 'marketplace')
             .eq('status', 'submitted'),
       ]).timeout(const Duration(seconds: 30));
-      if (!mounted || request != _stockLoadRequest) return;
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
       setState(() {
         _catalogueAnimals = _rows(responses[0]);
         _catalogueSections = _rows(responses[1]);
@@ -779,7 +809,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         _loadStockFacets(force: true),
       ]);
     } catch (error) {
-      if (!mounted || request != _stockLoadRequest) return;
+      if (!mounted || request != _stockLoadRequest) {
+        return;
+      }
       setState(() {
         _errorMessage = error is TimeoutException
             ? 'Loading took too long. Please try again.'
@@ -1502,7 +1534,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             .timeout(const Duration(seconds: 30));
         product = _nestedMap(raw);
       }
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (product == null) {
         throw StateError('This product is no longer available.');
       }
@@ -2241,7 +2275,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             'p_supplier_customer_account_id': customerAccountId,
             'p_order_source': 'manual',
             'p_source_reference': null,
-            'p_customer_reference': null,
+            'p_customer_reference': sale['customer_reference'],
             'p_delivery_notes':
                 (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
                 ? null
@@ -2623,7 +2657,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             'p_supplier_customer_account_id': customerAccountId,
             'p_order_source': 'manual',
             'p_source_reference': null,
-            'p_customer_reference': null,
+            'p_customer_reference': sale['customer_reference'],
             'p_delivery_notes':
                 (sale['delivery_notes']?.toString().trim().isEmpty ?? true)
                 ? null

@@ -1,11 +1,14 @@
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../orders/presentation/account_statement_page.dart';
+import 'supplier_customer_profile_dialog.dart';
+import '../services/customer_account_service.dart';
 import '../../orders/presentation/supplier_invoice_page.dart';
 
 class SupplierCustomerAccountPage extends StatefulWidget {
@@ -60,29 +63,7 @@ class _SupplierCustomerAccountPageState
       final account = Map<String, dynamic>.from(
         await client
             .from('supplier_customer_accounts')
-            .select('''
-              id,
-              supplier_business_id,
-              linked_butcher_business_id,
-              supplier_customer_relationship_id,
-              account_source,
-              customer_name,
-              legal_name,
-              abn,
-              contact_name,
-              email,
-              phone,
-              billing_address_line_1,
-              billing_address_line_2,
-              billing_suburb,
-              billing_state,
-              billing_postcode,
-              account_reference,
-              payment_method,
-              payment_terms_days,
-              credit_limit,
-              active
-            ''')
+            .select()
             .eq('id', widget.supplierCustomerAccountId)
             .single(),
       );
@@ -308,7 +289,9 @@ class _SupplierCustomerAccountPageState
         );
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _account = account;
@@ -336,13 +319,17 @@ class _SupplierCustomerAccountPageState
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
@@ -351,7 +338,9 @@ class _SupplierCustomerAccountPageState
   }
 
   double _asDouble(dynamic value) {
-    if (value is num) return value.toDouble();
+    if (value is num) {
+      return value.toDouble();
+    }
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
@@ -361,13 +350,17 @@ class _SupplierCustomerAccountPageState
   String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
   DateTime? _date(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return DateTime.tryParse(value.toString())?.toLocal();
   }
 
   String _formatDate(dynamic value) {
     final d = _date(value);
-    if (d == null) return '—';
+    if (d == null) {
+      return '—';
+    }
     return '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/'
         '${d.year}';
@@ -389,10 +382,14 @@ class _SupplierCustomerAccountPageState
 
   Future<void> _openStatement() async {
     final account = _account;
-    if (account == null) return;
+    if (account == null) {
+      return;
+    }
 
     final supplierId = account['supplier_business_id']?.toString();
-    if (supplierId == null || supplierId.isEmpty) return;
+    if (supplierId == null || supplierId.isEmpty) {
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -410,12 +407,16 @@ class _SupplierCustomerAccountPageState
 
   String _customerName() {
     final account = _account;
-    if (account == null) return 'Customer';
+    if (account == null) {
+      return 'Customer';
+    }
 
     final business = account['businesses'];
     if (business is Map) {
       final trading = business['trading_name']?.toString().trim() ?? '';
-      if (trading.isNotEmpty) return trading;
+      if (trading.isNotEmpty) {
+        return trading;
+      }
     }
 
     final name = account['customer_name']?.toString().trim() ?? '';
@@ -468,7 +469,9 @@ class _SupplierCustomerAccountPageState
     return _invoices.fold(0.0, (sum, invoice) {
       final due = _date(invoice['due_date']);
       final outstanding = _asDouble(invoice['outstanding_amount']);
-      if (due == null || outstanding <= 0) return sum;
+      if (due == null || outstanding <= 0) {
+        return sum;
+      }
       final dueOnly = DateTime(due.year, due.month, due.day);
       return dueOnly.isBefore(dateOnly) ? sum + outstanding : sum;
     });
@@ -482,7 +485,9 @@ class _SupplierCustomerAccountPageState
     return _invoices.fold(0.0, (sum, invoice) {
       final due = _date(invoice['due_date']);
       final outstanding = _asDouble(invoice['outstanding_amount']);
-      if (due == null || outstanding <= 0) return sum;
+      if (due == null || outstanding <= 0) {
+        return sum;
+      }
       final dueOnly = DateTime(due.year, due.month, due.day);
 
       if (!dueOnly.isBefore(today) && !dueOnly.isAfter(limit)) {
@@ -517,7 +522,9 @@ class _SupplierCustomerAccountPageState
       .where((p) => p['status']?.toString() == 'active')
       .fold(0.0, (sum, p) {
         final id = p['id']?.toString();
-        if (id == null) return sum;
+        if (id == null) {
+          return sum;
+        }
         return sum +
             (_asDouble(p['amount']) - _allocatedForPayment(id))
                 .clamp(0, double.infinity)
@@ -528,7 +535,9 @@ class _SupplierCustomerAccountPageState
       .where((c) => c['status']?.toString() == 'active')
       .fold(0.0, (sum, c) {
         final id = c['id']?.toString();
-        if (id == null) return sum;
+        if (id == null) {
+          return sum;
+        }
         return sum +
             (_asDouble(c['amount']) - _allocatedForCredit(id))
                 .clamp(0, double.infinity)
@@ -538,13 +547,17 @@ class _SupplierCustomerAccountPageState
   String _invoiceStatus(Map<String, dynamic> invoice) {
     final status = invoice['status']?.toString();
 
-    if (status == 'void') return 'Cancelled / Reversed';
+    if (status == 'void') {
+      return 'Cancelled / Reversed';
+    }
 
     final outstanding = _asDouble(invoice['outstanding_amount']);
     final paid = _asDouble(invoice['amount_paid']);
     final credit = _asDouble(invoice['credit_applied']);
 
-    if (outstanding <= 0) return 'Paid';
+    if (outstanding <= 0) {
+      return 'Paid';
+    }
 
     final due = _date(invoice['due_date']);
     final now = DateTime.now();
@@ -552,14 +565,18 @@ class _SupplierCustomerAccountPageState
 
     if (due != null) {
       final dueOnly = DateTime(due.year, due.month, due.day);
-      if (dueOnly.isBefore(today)) return 'Overdue';
+      if (dueOnly.isBefore(today)) {
+        return 'Overdue';
+      }
 
       if (!dueOnly.isAfter(today.add(const Duration(days: 7)))) {
         return 'Due Soon';
       }
     }
 
-    if (paid > 0 || credit > 0) return 'Partially Paid';
+    if (paid > 0 || credit > 0) {
+      return 'Partially Paid';
+    }
 
     return 'Open';
   }
@@ -605,10 +622,14 @@ class _SupplierCustomerAccountPageState
 
   Map<String, dynamic>? get _selectedInvoice {
     final id = _selectedInvoiceId;
-    if (id == null) return null;
+    if (id == null) {
+      return null;
+    }
 
     for (final invoice in _invoices) {
-      if (invoice['id']?.toString() == id) return invoice;
+      if (invoice['id']?.toString() == id) {
+        return invoice;
+      }
     }
 
     return null;
@@ -616,10 +637,14 @@ class _SupplierCustomerAccountPageState
 
   Map<String, dynamic>? get _selectedPayment {
     final id = _selectedPaymentId;
-    if (id == null) return null;
+    if (id == null) {
+      return null;
+    }
 
     for (final payment in _payments) {
-      if (payment['id']?.toString() == id) return payment;
+      if (payment['id']?.toString() == id) {
+        return payment;
+      }
     }
 
     return null;
@@ -641,7 +666,9 @@ class _SupplierCustomerAccountPageState
   bool get _canAllocateSelectedPayment {
     final payment = _selectedPayment;
 
-    if (payment == null || _isSaving) return false;
+    if (payment == null || _isSaving) {
+      return false;
+    }
 
     return _paymentAvailable(payment) > 0;
   }
@@ -665,7 +692,9 @@ class _SupplierCustomerAccountPageState
     final outstanding = _asDouble(invoice['outstanding_amount']);
     final available = _paymentAvailable(payment);
 
-    if (outstanding <= 0 || available <= 0) return;
+    if (outstanding <= 0 || available <= 0) {
+      return;
+    }
 
     final suggested = outstanding < available ? outstanding : available;
     final amountController = TextEditingController(
@@ -826,7 +855,9 @@ class _SupplierCustomerAccountPageState
 
     amountController.dispose();
 
-    if (confirmedAmount == null || !mounted) return;
+    if (confirmedAmount == null || !mounted) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -858,7 +889,9 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -1120,7 +1153,9 @@ class _SupplierCustomerAccountPageState
                                   amountController.text.trim(),
                                 );
 
-                                if (amount == null || amount <= 0) return;
+                                if (amount == null || amount <= 0) {
+                                  return;
+                                }
 
                                 Navigator.of(dialogContext).pop({
                                   'amount': amount,
@@ -1153,7 +1188,9 @@ class _SupplierCustomerAccountPageState
     referenceController.dispose();
     notesController.dispose();
 
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -1173,7 +1210,9 @@ class _SupplierCustomerAccountPageState
 
       await _loadPage();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       final payment = Map<String, dynamic>.from(response as Map);
 
@@ -1199,13 +1238,17 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   Future<void> _openAllocationDialog(Map<String, dynamic> payment) async {
     final paymentId = payment['id']?.toString();
-    if (paymentId == null) return;
+    if (paymentId == null) {
+      return;
+    }
 
     final alreadyAllocated = _roundMoney(_allocatedForPayment(paymentId));
     final paymentAmount = _roundMoney(payment['amount']);
@@ -1428,6 +1471,11 @@ class _SupplierCustomerAccountPageState
                     ),
                   ),
                   actions: [
+                    IconButton(
+                      tooltip: 'Customer profile',
+                      onPressed: _isLoading ? null : _editProfile,
+                      icon: const Icon(Icons.manage_accounts_outlined),
+                    ),
                     TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(),
                       child: const Text('Cancel'),
@@ -1464,7 +1512,9 @@ class _SupplierCustomerAccountPageState
                           (sum, item) => sum + _asDouble(item['amount']),
                         );
 
-                        if (total <= 0 || total > available + 0.005) return;
+                        if (total <= 0 || total > available + 0.005) {
+                          return;
+                        }
 
                         Navigator.of(dialogContext).pop(result);
                       },
@@ -1478,7 +1528,9 @@ class _SupplierCustomerAccountPageState
         },
       );
 
-      if (allocations == null || allocations.isEmpty) return;
+      if (allocations == null || allocations.isEmpty) {
+        return;
+      }
 
       setState(() => _isSaving = true);
 
@@ -1507,13 +1559,17 @@ class _SupplierCustomerAccountPageState
       for (final controller in controllers.values) {
         controller.dispose();
       }
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   Future<void> _autoAllocate(Map<String, dynamic> payment) async {
     final paymentId = payment['id']?.toString();
-    if (paymentId == null || _isSaving) return;
+    if (paymentId == null || _isSaving) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -1525,7 +1581,9 @@ class _SupplierCustomerAccountPageState
 
       final preview = List<Map<String, dynamic>>.from(previewResponse as List);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       if (preview.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1617,7 +1675,9 @@ class _SupplierCustomerAccountPageState
         ),
       );
 
-      if (confirmed != true) return;
+      if (confirmed != true) {
+        return;
+      }
 
       await Supabase.instance.client.rpc(
         'apply_auto_allocate_payment',
@@ -1638,7 +1698,9 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -1773,7 +1835,9 @@ class _SupplierCustomerAccountPageState
                       final amount = double.tryParse(
                         amountController.text.trim(),
                       );
-                      if (amount == null || amount <= 0) return;
+                      if (amount == null || amount <= 0) {
+                        return;
+                      }
 
                       Navigator.of(dialogContext).pop({
                         'amount': amount,
@@ -1800,7 +1864,9 @@ class _SupplierCustomerAccountPageState
     referenceController.dispose();
     reasonController.dispose();
 
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -1832,13 +1898,17 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   Future<void> _openCreditAllocationDialog(Map<String, dynamic> credit) async {
     final creditId = credit['id']?.toString();
-    if (creditId == null) return;
+    if (creditId == null) {
+      return;
+    }
 
     final alreadyAllocated = _allocatedForCredit(creditId);
     final creditAmount = _asDouble(credit['amount']);
@@ -2089,7 +2159,9 @@ class _SupplierCustomerAccountPageState
                           (sum, item) => sum + _asDouble(item['amount']),
                         );
 
-                        if (total <= 0 || total > available) return;
+                        if (total <= 0 || total > available) {
+                          return;
+                        }
 
                         Navigator.of(dialogContext).pop(result);
                       },
@@ -2103,7 +2175,9 @@ class _SupplierCustomerAccountPageState
         },
       );
 
-      if (allocations == null || allocations.isEmpty) return;
+      if (allocations == null || allocations.isEmpty) {
+        return;
+      }
 
       setState(() => _isSaving = true);
 
@@ -2129,7 +2203,9 @@ class _SupplierCustomerAccountPageState
       for (final controller in controllers.values) {
         controller.dispose();
       }
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -2185,7 +2261,9 @@ class _SupplierCustomerAccountPageState
     final reason = controller.text.trim();
     controller.dispose();
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -2209,7 +2287,9 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -2265,7 +2345,9 @@ class _SupplierCustomerAccountPageState
     final reason = controller.text.trim();
     controller.dispose();
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -2289,7 +2371,9 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -2298,7 +2382,9 @@ class _SupplierCustomerAccountPageState
     bool confirm,
   ) async {
     final id = submission['id']?.toString();
-    if (id == null || _isSaving) return;
+    if (id == null || _isSaving) {
+      return;
+    }
 
     final paymentAmount = _asDouble(submission['amount']);
     final proposedAllocations =
@@ -2510,7 +2596,9 @@ class _SupplierCustomerAccountPageState
     final note = noteController.text.trim();
     noteController.dispose();
 
-    if (proceed != true) return;
+    if (proceed != true) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -2563,7 +2651,9 @@ class _SupplierCustomerAccountPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -2744,7 +2834,9 @@ class _SupplierCustomerAccountPageState
 
   Future<void> _openInvoice(Map<String, dynamic> invoice) async {
     final id = invoice['id']?.toString();
-    if (id == null) return;
+    if (id == null) {
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2752,7 +2844,9 @@ class _SupplierCustomerAccountPageState
       ),
     );
 
-    if (mounted) await _loadPage();
+    if (mounted) {
+      await _loadPage();
+    }
   }
 
   String _paymentMethodLabel(String? value) {
@@ -2772,14 +2866,22 @@ class _SupplierCustomerAccountPageState
 
   String _paymentAllocationStatus(Map<String, dynamic> payment) {
     final id = payment['id']?.toString();
-    if (payment['status']?.toString() == 'reversed') return 'Reversed';
-    if (id == null) return 'Unallocated';
+    if (payment['status']?.toString() == 'reversed') {
+      return 'Reversed';
+    }
+    if (id == null) {
+      return 'Unallocated';
+    }
 
     final allocated = _allocatedForPayment(id);
     final amount = _asDouble(payment['amount']);
 
-    if (allocated <= 0) return 'Unallocated';
-    if (allocated + 0.005 < amount) return 'Partially Allocated';
+    if (allocated <= 0) {
+      return 'Unallocated';
+    }
+    if (allocated + 0.005 < amount) {
+      return 'Partially Allocated';
+    }
     return 'Fully Allocated';
   }
 
@@ -3377,6 +3479,45 @@ class _SupplierCustomerAccountPageState
     );
   }
 
+  Future<void> _editProfile() async {
+    final account = _account;
+    if (account == null) {
+      return;
+    }
+    final values = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => SupplierCustomerProfileDialog(
+        supplierBusinessId: account['supplier_business_id'].toString(),
+        account: account,
+      ),
+    );
+    if (values == null || !mounted) {
+      return;
+    }
+    try {
+      await CustomerAccountService.save(
+        supplierBusinessId: account['supplier_business_id'].toString(),
+        account: account,
+        values: values,
+      );
+      if (mounted) {
+        await _loadPage();
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is PostgrestException ? error.message : error.toString(),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -3583,6 +3724,16 @@ class _SupplierCustomerAccountPageState
                         ),
                       ),
                       const SizedBox(height: 18),
+                      if (_account?['account_hold'] == true) ...[
+                        const Text(
+                          'ACCOUNT ON HOLD',
+                          style: TextStyle(
+                            color: _darkRed,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       summary,
                       const SizedBox(height: 12),
                       termsPanel,

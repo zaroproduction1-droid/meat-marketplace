@@ -1,9 +1,11 @@
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supplier_work_order_page.dart';
+import '../../customers/services/customer_account_rules.dart';
 
 class SupplierQuoteEditorPage extends StatefulWidget {
   const SupplierQuoteEditorPage({
@@ -120,7 +122,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       final customerResponse = await client
           .from('supplier_customer_accounts')
           .select(
-            'id, customer_name, legal_name, account_source, linked_butcher_business_id, account_reference, payment_method, payment_terms_days, contact_name, email, phone, abn, delivery_address_line_1, delivery_address_line_2, delivery_suburb, delivery_state, delivery_postcode, active',
+            'id, customer_name, legal_name, account_source, linked_butcher_business_id, account_reference, account_hold, require_purchase_order, delivery_instructions, payment_method, payment_terms_days, contact_name, email, phone, abn, delivery_address_line_1, delivery_address_line_2, delivery_suburb, delivery_state, delivery_postcode, active',
           )
           .eq('supplier_business_id', supplierBusinessId)
           .eq('active', true)
@@ -309,6 +311,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
         ? method!
         : 'cod';
     _paymentTermsDays = (customer['payment_terms_days'] as num?)?.toInt() ?? 0;
+    _deliveryNotesController.text =
+        customer['delivery_instructions']?.toString() ?? '';
   }
 
   String? _nullable(String value) {
@@ -612,7 +616,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             'active': true,
           })
           .select(
-            'id, customer_name, legal_name, account_source, linked_butcher_business_id, account_reference, payment_method, payment_terms_days, contact_name, email, phone, abn, delivery_address_line_1, delivery_address_line_2, delivery_suburb, delivery_state, delivery_postcode, active',
+            'id, customer_name, legal_name, account_source, linked_butcher_business_id, account_reference, account_hold, require_purchase_order, delivery_instructions, payment_method, payment_terms_days, contact_name, email, phone, abn, delivery_address_line_1, delivery_address_line_2, delivery_suburb, delivery_state, delivery_postcode, active',
           )
           .single();
 
@@ -1105,6 +1109,17 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       return;
     }
 
+    final blocked = CustomerAccountRules.orderBlock(
+      _selectedCustomer() ?? {},
+      _customerReferenceController.text,
+    );
+    if (blocked != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(blocked)));
+      return;
+    }
+
     if (_lines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add at least one product.')),
@@ -1252,6 +1267,17 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select or add a customer.')),
       );
+      return;
+    }
+
+    final blocked = CustomerAccountRules.orderBlock(
+      _selectedCustomer() ?? {},
+      _customerReferenceController.text,
+    );
+    if (blocked != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(blocked)));
       return;
     }
 
@@ -1708,9 +1734,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             const SizedBox(height: 14),
             TextField(
               controller: _customerReferenceController,
-              decoration: const InputDecoration(
-                labelText: 'Customer reference / PO (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText:
+                    _selectedCustomer()?['require_purchase_order'] == true
+                    ? 'Customer PO number (required)'
+                    : 'Customer reference / PO (optional)',
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 14),

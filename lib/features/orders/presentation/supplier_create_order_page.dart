@@ -1,8 +1,10 @@
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/widgets/cutlink_notice.dart';
+import '../../customers/services/customer_account_rules.dart';
 
 class SupplierCreateOrderPage extends StatefulWidget {
   const SupplierCreateOrderPage({super.key});
@@ -16,6 +18,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   static const _darkRed = Color(0xFF741C1C);
 
   final _customerSearchController = TextEditingController();
+  final _customerReferenceController = TextEditingController();
   final _deliveryNotesController = TextEditingController();
   final _internalNotesController = TextEditingController();
 
@@ -45,6 +48,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
   void dispose() {
     _customerSearchController.removeListener(_handleSearchChanged);
     _customerSearchController.dispose();
+    _customerReferenceController.dispose();
     _deliveryNotesController.dispose();
     _internalNotesController.dispose();
     super.dispose();
@@ -108,7 +112,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           .from('supplier_customer_accounts')
           .select(
             'id, customer_name, legal_name, account_source, '
-            'linked_butcher_business_id, account_reference, '
+            'linked_butcher_business_id, account_reference, account_hold, require_purchase_order, delivery_instructions, '
             'payment_method, payment_terms_days, contact_name, email, phone, '
             'abn, licence_number, '
             'delivery_address_line_1, delivery_address_line_2, '
@@ -123,7 +127,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       for (final raw in response) {
         final customer = Map<String, dynamic>.from(raw);
         final id = customer['id']?.toString();
-        if (id == null || id.isEmpty) continue;
+        if (id == null || id.isEmpty) {
+          continue;
+        }
         byId[id] = customer;
       }
 
@@ -134,7 +140,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           ).toLowerCase().compareTo(_customerName(b).toLowerCase()),
         );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _supplierBusinessId = supplierBusinessId;
@@ -142,14 +150,18 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = error.toString();
@@ -162,14 +174,20 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     final customerName = customer['customer_name']?.toString().trim();
     final legalName = customer['legal_name']?.toString().trim();
 
-    if (customerName != null && customerName.isNotEmpty) return customerName;
-    if (legalName != null && legalName.isNotEmpty) return legalName;
+    if (customerName != null && customerName.isNotEmpty) {
+      return customerName;
+    }
+    if (legalName != null && legalName.isNotEmpty) {
+      return legalName;
+    }
     return 'Customer';
   }
 
   List<Map<String, dynamic>> get _matchingCustomers {
     final query = _customerSearchController.text.trim().toLowerCase();
-    if (query.isEmpty) return const [];
+    if (query.isEmpty) {
+      return const [];
+    }
 
     final startsWith = <Map<String, dynamic>>[];
     final contains = <Map<String, dynamic>>[];
@@ -222,7 +240,14 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
       // Approved account customers default to Account.
       // Non-account customers default to COD.
-      _paymentMethod = hasAccount ? 'account' : 'cod';
+      _paymentMethod = hasAccount
+          ? 'account'
+          : customer['payment_method'] == 'prepaid'
+          ? 'prepaid'
+          : 'cod';
+      _customerReferenceController.clear();
+      _deliveryNotesController.text =
+          customer['delivery_instructions']?.toString() ?? '';
       _paymentTermsDays = hasAccount ? _customerAccountTerms(customer) : 0;
     });
   }
@@ -234,7 +259,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
   Future<void> _addCustomer() async {
     final supplierBusinessId = _supplierBusinessId;
-    if (supplierBusinessId == null || _isSavingCustomer) return;
+    if (supplierBusinessId == null || _isSavingCustomer) {
+      return;
+    }
 
     final businessNameController = TextEditingController(
       text: _customerSearchController.text.trim(),
@@ -488,7 +515,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     stateController.dispose();
     postcodeController.dispose();
 
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
     setState(() => _isSavingCustomer = true);
 
@@ -506,7 +535,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           })
           .select(
             'id, customer_name, legal_name, account_source, '
-            'linked_butcher_business_id, account_reference, '
+            'linked_butcher_business_id, account_reference, account_hold, require_purchase_order, delivery_instructions, '
             'payment_method, payment_terms_days, contact_name, email, phone, '
             'abn, licence_number, '
             'delivery_address_line_1, delivery_address_line_2, '
@@ -516,7 +545,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
       final customer = Map<String, dynamic>.from(inserted);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _customers = [..._customers, customer]
@@ -536,7 +567,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
         message: '${_customerName(customer)} added.',
       );
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() => _isSavingCustomer = false);
 
@@ -560,7 +593,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       lastDate: DateTime(now.year + 2),
     );
 
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
     setState(() => _requestedDate = picked);
   }
 
@@ -570,12 +605,16 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       initialTime: _requestedTime ?? const TimeOfDay(hour: 12, minute: 0),
     );
 
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
     setState(() => _requestedTime = picked);
   }
 
   String _dateLabel(DateTime? date) {
-    if (date == null) return 'Choose date';
+    if (date == null) {
+      return 'Choose date';
+    }
 
     const months = [
       'Jan',
@@ -615,6 +654,20 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
         context,
         title: 'Customer required',
         message: 'Select a customer first.',
+        error: true,
+      );
+      return;
+    }
+
+    final blocked = CustomerAccountRules.orderBlock(
+      customer,
+      _customerReferenceController.text,
+    );
+    if (blocked != null) {
+      CutLinkNotice.show(
+        context,
+        title: 'Account restriction',
+        message: blocked,
         error: true,
       );
       return;
@@ -667,6 +720,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       'supplier_customer_account_id': customer['id']?.toString(),
       'customer': Map<String, dynamic>.from(customer),
       'customer_name': _customerName(customer),
+      'customer_reference': _nullable(_customerReferenceController.text),
       'payment_method': _paymentMethod,
       'payment_terms_days': _paymentMethod == 'account' ? _paymentTermsDays : 0,
       'fulfilment_method': _fulfilmentMethod,
@@ -1075,17 +1129,33 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             },
           ),
           const SizedBox(height: 14),
-          TextField(
-            controller: _deliveryNotesController,
-            enabled: customer != null,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: _fulfilmentMethod == 'pickup'
-                  ? 'Pickup notes (optional)'
-                  : 'Delivery notes (optional)',
-              border: const OutlineInputBorder(),
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _customerReferenceController,
+                decoration: InputDecoration(
+                  labelText:
+                      _selectedCustomer?['require_purchase_order'] == true
+                      ? 'Customer PO number (required)'
+                      : 'Customer reference / PO',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _deliveryNotesController,
+                enabled: customer != null,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: _fulfilmentMethod == 'pickup'
+                      ? 'Pickup notes (optional)'
+                      : 'Delivery notes (optional)',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           TextField(

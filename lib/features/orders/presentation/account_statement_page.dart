@@ -1,8 +1,8 @@
 import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -39,6 +39,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
   late DateTime _fromDate;
   late DateTime _toDate;
 
+  Map<String, dynamic>? _customerProfile;
   List<Map<String, dynamic>> _invoices = [];
   List<Map<String, dynamic>> _payments = [];
   List<Map<String, dynamic>> _credits = [];
@@ -53,15 +54,34 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
     _loadStatement();
   }
 
+  String get _statementEmail =>
+      (_customerProfile?['statement_email'] ?? _customerProfile?['email'] ?? '')
+          .toString()
+          .trim();
+  String get _billingAddress => [
+    for (final key in [
+      'billing_address_line_1',
+      'billing_address_line_2',
+      'billing_suburb',
+      'billing_state',
+      'billing_postcode',
+    ])
+      _customerProfile?[key]?.toString().trim() ?? '',
+  ].where((value) => value.isNotEmpty).join(', ');
+
   double _asDouble(dynamic value) {
-    if (value is num) return value.toDouble();
+    if (value is num) {
+      return value.toDouble();
+    }
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
   DateTime? _parseDate(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return DateTime.tryParse(value.toString())?.toLocal();
   }
 
@@ -70,7 +90,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
   String _date(dynamic value) {
     final parsed = value is DateTime ? value : _parseDate(value);
-    if (parsed == null) return '—';
+    if (parsed == null) {
+      return '—';
+    }
 
     return '${parsed.day.toString().padLeft(2, '0')}/'
         '${parsed.month.toString().padLeft(2, '0')}/'
@@ -90,6 +112,20 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
     try {
       final client = Supabase.instance.client;
+      Map<String, dynamic>? customerProfile;
+      if (widget.supplierView && widget.supplierCustomerAccountId != null) {
+        final row = await client
+            .from('supplier_customer_accounts')
+            .select(
+              'email,statement_email,billing_address_line_1,billing_address_line_2,billing_suburb,billing_state,billing_postcode,account_reference',
+            )
+            .eq('id', widget.supplierCustomerAccountId!)
+            .eq('supplier_business_id', widget.supplierBusinessId)
+            .maybeSingle();
+        if (row != null) {
+          customerProfile = Map<String, dynamic>.from(row);
+        }
+      }
 
       var invoiceQuery = client
           .from('invoices')
@@ -238,9 +274,12 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         ascending: true,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
+        _customerProfile = customerProfile;
         _invoices = List<Map<String, dynamic>>.from(invoicesResponse);
         _payments = List<Map<String, dynamic>>.from(paymentsResponse);
         _credits = List<Map<String, dynamic>>.from(creditsResponse);
@@ -260,13 +299,17 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -278,10 +321,14 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
     final rows = <Map<String, dynamic>>[];
 
     for (final invoice in _invoices) {
-      if (invoice['status']?.toString() == 'void') continue;
+      if (invoice['status']?.toString() == 'void') {
+        continue;
+      }
 
       final date = _parseDate(invoice['invoice_date'] ?? invoice['created_at']);
-      if (date == null) continue;
+      if (date == null) {
+        continue;
+      }
 
       final order = invoice['orders'];
       final orderNumber = order is Map
@@ -301,10 +348,14 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
     }
 
     for (final payment in _payments) {
-      if (payment['status']?.toString() != 'active') continue;
+      if (payment['status']?.toString() != 'active') {
+        continue;
+      }
 
       final date = _parseDate(payment['payment_date'] ?? payment['created_at']);
-      if (date == null) continue;
+      if (date == null) {
+        continue;
+      }
 
       final reference = payment['reference']?.toString().trim() ?? '';
 
@@ -320,10 +371,14 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
     }
 
     for (final credit in _credits) {
-      if (credit['status']?.toString() != 'active') continue;
+      if (credit['status']?.toString() != 'active') {
+        continue;
+      }
 
       final date = _parseDate(credit['credit_date'] ?? credit['created_at']);
-      if (date == null) continue;
+      if (date == null) {
+        continue;
+      }
 
       final type = credit['credit_type']?.toString() ?? 'credit';
       final reference = credit['reference']?.toString().trim() ?? '';
@@ -344,7 +399,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
     for (final refund in _refunds) {
       final date = _parseDate(refund['refunded_at']);
-      if (date == null) continue;
+      if (date == null) {
+        continue;
+      }
       rows.add({
         'date': _dateOnly(date),
         'type': 'refund',
@@ -360,7 +417,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
       final ad = a['date'] as DateTime;
       final bd = b['date'] as DateTime;
       final compare = ad.compareTo(bd);
-      if (compare != 0) return compare;
+      if (compare != 0) {
+        return compare;
+      }
 
       const priority = {
         'invoice': 0,
@@ -613,6 +672,16 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
+                      if (_billingAddress.isNotEmpty)
+                        pw.Text(
+                          _billingAddress,
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                      if (_statementEmail.isNotEmpty)
+                        pw.Text(
+                          _statementEmail,
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
                     ],
                   ),
                 ),
@@ -1033,6 +1102,22 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
             ],
           ),
           actions: [
+            if (widget.supplierView && _statementEmail.isNotEmpty)
+              IconButton(
+                tooltip: 'Copy statement email: $_statementEmail',
+                icon: const Icon(Icons.email_outlined),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: _statementEmail));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Statement email copied: $_statementEmail'),
+                    ),
+                  );
+                },
+              ),
             FilledButton.icon(
               onPressed: _loading || _error != null ? null : _downloadPdf,
               style: FilledButton.styleFrom(backgroundColor: _darkRed),
