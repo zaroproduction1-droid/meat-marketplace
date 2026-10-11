@@ -1,9 +1,15 @@
+import 'admin_memberships_panel.dart';
+import '../../memberships/services/membership_service.dart';
+import '../../../shared/widgets/cutlink_logo.dart';
 import 'admin_analytics_panel.dart';
 import 'admin_featured_businesses_panel.dart';
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
@@ -35,6 +41,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'analytics': 'Analytics',
     'homepage': 'Front page',
     'businesses': 'Businesses',
+    'memberships': 'Pricing & Memberships',
     'accounts': 'Subscription accounts',
     'invoices': 'Invoices',
     'announcements': 'Announcements',
@@ -63,7 +70,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       _loading = true;
       _error = null;
     });
-    if (_tab == 'analytics' || _tab == 'homepage') {
+    if (_tab == 'analytics' || _tab == 'homepage' || _tab == 'memberships') {
       setState(() => _loading = false);
       return;
     }
@@ -395,7 +402,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             ),
             const SizedBox(height: 6),
             Text(
-              'CL-${row['account_number']} · ${row['plan_name']} · ${PlatformAdminService.money(row['monthly_fee'])} / month, excl. GST',
+              'CL-${row['account_number']} · ${row['plan_name']} · ${PlatformAdminService.money(MembershipService.map(row['membership'])['effective_total'] ?? row['monthly_fee'])} / month, ${row['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excl. GST'}',
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -529,6 +536,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'analytics':
         'Subscription performance, business growth and support activity.',
     'businesses': 'Manage suppliers, butchers and account access.',
+    'memberships':
+        'Founding places, membership timelines and GST-inclusive pricing.',
     'accounts': 'Monthly plans, billing contacts and account balances.',
     'invoices': 'Review subscription invoices and record received payments.',
     'announcements': 'Keep the right businesses informed.',
@@ -697,9 +706,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             leading: const WorkspaceBackButton(),
             title: const Row(
               children: [
-                Icon(Icons.admin_panel_settings_outlined, size: 22),
+                CutLinkLogo(width: 120, height: 30),
                 SizedBox(width: 10),
-                Text('CutLink Admin'),
+                Text('Admin'),
               ],
             ),
             actions: [
@@ -775,7 +784,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                   if (['businesses', 'accounts', 'invoices'].contains(_tab))
                     _filters(),
                   Expanded(
-                    child: _tab == 'homepage'
+                    child: _tab == 'memberships'
+                        ? AdminMembershipsPanel(key: ValueKey(_request))
+                        : _tab == 'homepage'
                         ? const AdminFeaturedBusinessesPanel()
                         : _tab == 'analytics'
                         ? AdminAnalyticsPanel(

@@ -248,6 +248,7 @@ class BusinessDisplayLogo extends StatelessWidget {
           : Image.network(
               url,
               fit: BoxFit.contain,
+              semanticLabel: 'Registered business logo',
               errorBuilder: (_, error, stack) => fallback,
             ),
     );

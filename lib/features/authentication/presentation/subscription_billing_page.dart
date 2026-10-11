@@ -1,7 +1,12 @@
+import '../../memberships/services/membership_service.dart';
+import '../../memberships/presentation/membership_summary.dart';
+
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
@@ -17,6 +22,8 @@ class SubscriptionBillingPage extends StatefulWidget {
 }
 
 class _SubscriptionBillingPageState extends State<SubscriptionBillingPage> {
+  Map<String, dynamic>? _membership;
+  String? _membershipError;
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _rows = [];
@@ -24,6 +31,26 @@ class _SubscriptionBillingPageState extends State<SubscriptionBillingPage> {
   void initState() {
     super.initState();
     _load();
+    _loadMembership();
+  }
+
+  Future<void> _loadMembership() async {
+    try {
+      final membership = await MembershipService.mine(widget.businessId);
+      if (mounted) {
+        setState(() {
+          _membership = membership;
+          _membershipError = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () =>
+              _membershipError = 'Membership information could not be loaded.',
+        );
+      }
+    }
   }
 
   Future<void> _load() async {
@@ -132,7 +159,7 @@ class _SubscriptionBillingPageState extends State<SubscriptionBillingPage> {
       appBar: phoneAppBar(
         context,
         AppBar(
-          title: const Text('CutLink subscription'),
+          title: const Text('CutLink membership'),
           actions: [
             IconButton(
               onPressed: _loading ? null : _load,
@@ -147,6 +174,16 @@ class _SubscriptionBillingPageState extends State<SubscriptionBillingPage> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                if (_membership != null)
+                  MembershipSummary(membership: _membership!),
+                if (_membershipError != null)
+                  ListTile(
+                    title: Text(_membershipError!),
+                    trailing: TextButton(
+                      onPressed: _loadMembership,
+                      child: const Text('Retry'),
+                    ),
+                  ),
                 const CutLinkSectionHeading(
                   title: 'Outstanding subscription invoices',
                   subtitle:

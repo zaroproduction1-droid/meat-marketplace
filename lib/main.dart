@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'features/landing/presentation/cutlink_landing_content.dart';
 import 'shared/navigation/page_location.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'features/authentication/presentation/sign_in_page.dart';
 import 'features/authentication/presentation/registration_type_page.dart';
 
@@ -20,6 +24,32 @@ Future<void> main() async {
 
   if (supabasePublishableKey == null || supabasePublishableKey.isEmpty) {
     throw Exception('SUPABASE_PUBLISHABLE_KEY is missing from the .env file.');
+  }
+
+  // Frontend assets are public. Never initialise this client with a privileged key.
+  if (supabasePublishableKey.startsWith('sb_secret_')) {
+    throw StateError('Use a Supabase publishable key in the frontend.');
+  }
+  if (!supabasePublishableKey.startsWith('sb_publishable_')) {
+    try {
+      final segments = supabasePublishableKey.split('.');
+      final claims =
+          jsonDecode(
+                utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
+              )
+              as Map;
+      if (claims['role'] != 'anon') {
+        throw const FormatException('Privileged key');
+      }
+    } catch (_) {
+      throw StateError(
+        'Use a Supabase publishable key or legacy anon key in the frontend.',
+      );
+    }
+  }
+  final endpoint = Uri.tryParse(supabaseUrl);
+  if (endpoint == null || endpoint.scheme != 'https' || endpoint.host.isEmpty) {
+    throw StateError('SUPABASE_URL must be an HTTPS project endpoint.');
   }
 
   await Supabase.initialize(

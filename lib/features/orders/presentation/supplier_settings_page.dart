@@ -1,5 +1,9 @@
+import '../../memberships/presentation/membership_settings_link.dart';
+import '../../legal/presentation/legal_info_page.dart';
+import '../../../shared/security/upload_safety.dart';
 import '../../delivery/presentation/supplier_delivery_settings_page.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -29,6 +33,15 @@ class SupplierSettingsPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
+            const MembershipSettingsLink(),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy & policies'),
+              subtitle: const Text('Notices and information requests'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const LegalInfoPage()),
+              ),
+            ),
             if (!embedded) ...[
               Container(
                 padding: const EdgeInsets.all(14),
@@ -817,6 +830,7 @@ class _SupplierInvoiceConfigurationPageState
 
     setState(() => _uploadingLogo = true);
     try {
+      await UploadSafety.validateImage(bytes, file.name);
       final client = Supabase.instance.client;
       await client.storage
           .from('business-branding')
@@ -846,6 +860,12 @@ class _SupplierInvoiceConfigurationPageState
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Company logo updated.')));
+    } on FormatException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
     } on StorageException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(

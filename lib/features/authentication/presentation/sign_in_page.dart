@@ -1,8 +1,12 @@
 import '../../../shared/widgets/public_auth_frame.dart';
 import 'restricted_account_page.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../landing/presentation/public_page_palette.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'pending_verification_page.dart';
 import 'business_details_page.dart';
 import 'registration_type_page.dart';
@@ -96,6 +100,9 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Future<void> _signIn() async {
+    if (_isLoading) {
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) {
@@ -129,10 +136,7 @@ class _SignInPageState extends State<SignInPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
-
-      debugPrint('Supabase sign-in error: ${error.message}');
-      debugPrint('Supabase error code: ${error.code}');
-    } catch (error, stackTrace) {
+    } catch (_) {
       if (!mounted) {
         return;
       }
@@ -141,12 +145,13 @@ class _SignInPageState extends State<SignInPage> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-
-      debugPrint('Unexpected sign-in error: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sign-in could not complete. Check your connection and try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -277,6 +282,7 @@ class _SignInPageState extends State<SignInPage> {
                 labelText: 'Password',
 
                 suffixIcon: IconButton(
+                  tooltip: 'Show or hide password',
                   onPressed: () {
                     setState(() {
                       _hidePassword = !_hidePassword;

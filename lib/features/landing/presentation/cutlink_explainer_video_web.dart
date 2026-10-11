@@ -44,7 +44,7 @@ class _CutLinkExplainerVideoState extends State<CutLinkExplainerVideo> {
       ..setAttribute('playsinline', '')
       ..setAttribute(
         'aria-label',
-        'CutLink: connecting suppliers and butchers. 80 second film.',
+        'CutLink: connecting suppliers and butchers. Explainer film.',
       );
     video.style.cssText =
         'display:block;width:100%;height:100%;object-fit:contain;';

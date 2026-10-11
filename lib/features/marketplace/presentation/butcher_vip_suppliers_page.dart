@@ -1,4 +1,6 @@
+import '../../../shared/security/upload_safety.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -656,6 +658,16 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
         continue;
       }
 
+      try {
+        UploadSafety.validate(bytes, file.name, maxBytes: 10 * 1024 * 1024);
+      } on FormatException catch (error) {
+        _message(error.message);
+        continue;
+      }
+      if (_documents.length + additions.length >= 5) {
+        _message('Attach up to 5 documents per application.');
+        break;
+      }
       additions.add(
         _PendingDocument(
           fileName: file.name,

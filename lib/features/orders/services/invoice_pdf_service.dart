@@ -1,7 +1,9 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
 import 'invoice_commercial_details.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
+
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -321,6 +323,7 @@ class CutLinkInvoicePdf {
     Uint8List? supplierLogoBytes,
   }) async {
     final document = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final order = _order(invoice);
 
     final supplierName =
@@ -393,10 +396,21 @@ class CutLinkInvoicePdf {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(
-                '${_clean(invoice['supplier_trading_name_snapshot'], fallback: supplierName)} - CutLink generated tax invoice',
-                style: pw.TextStyle(fontSize: 7.4, color: _muted),
+              pw.Expanded(
+                child: pw.Row(
+                  children: [
+                    CutLinkPdfBrand.logo(cutLinkLogo, width: 68, height: 18),
+                    pw.SizedBox(width: 8),
+                    pw.Expanded(
+                      child: pw.Text(
+                        '${_clean(invoice['supplier_trading_name_snapshot'], fallback: supplierName)} - generated tax invoice',
+                        style: pw.TextStyle(fontSize: 7.4, color: _muted),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              pw.SizedBox(width: 8),
               pw.Text(
                 'Page ${context.pageNumber} of ${context.pagesCount}',
                 style: pw.TextStyle(fontSize: 7.4, color: _muted),

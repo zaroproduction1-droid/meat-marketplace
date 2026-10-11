@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../services/platform_admin_service.dart';
 import 'admin_theme.dart';
 import 'admin_widgets.dart';
@@ -296,12 +297,12 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                     AdminTileGrid(
                       children: [
                         AdminStatTile(
-                          label: 'Configured monthly fees',
+                          label: 'Current monthly charges',
                           value: PlatformAdminService.money(
-                            s['monthly_fees_ex_gst'],
+                            s['monthly_fees_inc_gst'],
                           ),
                           icon: Icons.autorenew_rounded,
-                          note: 'Active plans · excluding GST',
+                          note: 'Current active plans · GST inclusive',
                           onTap: () => widget.onNavigate('accounts'),
                         ),
                         AdminStatTile(

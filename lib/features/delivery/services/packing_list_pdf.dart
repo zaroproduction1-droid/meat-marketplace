@@ -1,5 +1,8 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
+
 import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -11,6 +14,7 @@ class PackingListPdf {
     Uint8List? logo,
   }) async {
     final document = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final supplier = Map<String, dynamic>.from(data['supplier'] as Map? ?? {});
     final run = Map<String, dynamic>.from(data['run'] as Map? ?? {});
     final orders = List<Map<String, dynamic>>.from(
@@ -64,6 +68,8 @@ class PackingListPdf {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
+                      CutLinkPdfBrand.logo(cutLinkLogo, width: 100, height: 26),
+                      pw.SizedBox(height: 4),
                       pw.Text(
                         'PACKING LIST',
                         style: pw.TextStyle(

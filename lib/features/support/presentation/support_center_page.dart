@@ -1,7 +1,9 @@
+import '../../../shared/security/upload_safety.dart';
 import 'support_faq_panel.dart';
 import '../../admin/presentation/admin_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
@@ -633,7 +635,11 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         final safeName = _safeFileName(file.name);
         final storagePath =
             '$ticketId/$userId/${DateTime.now().microsecondsSinceEpoch}_$index-$safeName';
-        final mimeType = _mimeTypeForFile(file.name);
+        final mimeType = UploadSafety.validate(
+          bytes,
+          file.name,
+          maxBytes: 15 * 1024 * 1024,
+        );
 
         await Supabase.instance.client.storage
             .from('support-attachments')
@@ -1933,26 +1939,6 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   String _safeFileName(String value) {
     final safe = value.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     return safe.isEmpty ? 'attachment' : safe;
-  }
-
-  String _mimeTypeForFile(String fileName) {
-    final extension = fileName.split('.').last.toLowerCase();
-    return switch (extension) {
-      'jpg' || 'jpeg' => 'image/jpeg',
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      'pdf' => 'application/pdf',
-      'txt' => 'text/plain',
-      'csv' => 'text/csv',
-      'doc' => 'application/msword',
-      'docx' =>
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'xls' => 'application/vnd.ms-excel',
-      'xlsx' =>
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'zip' => 'application/zip',
-      _ => 'application/octet-stream',
-    };
   }
 
   IconData _attachmentIcon(String fileName) {

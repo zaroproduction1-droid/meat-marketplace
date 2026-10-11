@@ -1,0 +1,7 @@
+# Hosting template: activate on a host supporting _headers; localhost does not read this.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wqdfimgaqqnhptxyarvm.supabase.co; media-src 'self' blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://wqdfimgaqqnhptxyarvm.supabase.co wss://wqdfimgaqqnhptxyarvm.supabase.co https://www.gstatic.com https://fonts.gstatic.com; worker-src 'self' blob:

@@ -1,8 +1,13 @@
+import '../../legal/presentation/legal_info_page.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../landing/presentation/public_page_palette.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'registration_type_page.dart';
 import 'business_details_page.dart';
 import 'sign_in_page.dart';
@@ -26,6 +31,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  bool _acknowledged = false;
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _isLoading = false;
@@ -48,7 +54,20 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
   }
 
   Future<void> continueRegistration() async {
+    if (_isLoading) {
+      return;
+    }
     FocusScope.of(context).unfocus();
+    if (!_acknowledged) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Read the development notices and confirm your business authority before continuing.',
+          ),
+        ),
+      );
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) {
       return;
@@ -67,6 +86,8 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
           'last_name': _lastNameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'business_type': widget.businessType.name,
+          'development_notice_version': LegalInfoPage.version,
+          'adult_business_authority_acknowledged': true,
         },
       );
 
@@ -325,6 +346,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                     'At least 8 characters, one capital letter and one number.',
 
                 suffixIcon: IconButton(
+                  tooltip: 'Show or hide password',
                   onPressed: () {
                     setState(() {
                       _hidePassword = !_hidePassword;
@@ -349,6 +371,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                 labelText: 'Confirm password',
 
                 suffixIcon: IconButton(
+                  tooltip: 'Show or hide password',
                   onPressed: () {
                     setState(() {
                       _hideConfirmPassword = !_hideConfirmPassword;
@@ -365,6 +388,24 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               onFieldSubmitted: (_) {
                 continueRegistration();
               },
+            ),
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              value: _acknowledged,
+              onChanged: _isLoading
+                  ? null
+                  : (value) => setState(() => _acknowledged = value ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(
+                'I am 18 or over, authorised to act for this business, and have read the development Terms and Privacy notice.',
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const LegalInfoPage()),
+              ),
+              child: const Text('Read Terms and Privacy notice'),
             ),
             const SizedBox(height: 28),
             FilledButton(

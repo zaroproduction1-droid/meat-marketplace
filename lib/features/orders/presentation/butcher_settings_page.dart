@@ -1,7 +1,14 @@
+import '../../memberships/presentation/membership_settings_link.dart';
+import '../../legal/presentation/legal_info_page.dart';
+import '../../../shared/security/upload_safety.dart';
+
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -55,6 +62,17 @@ class ButcherSettingsPage extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.all(constraints.maxWidth < 600 ? 14 : 24),
                 children: [
+                  const MembershipSettingsLink(),
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: const Text('Privacy & policies'),
+                    subtitle: const Text('Notices and information requests'),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LegalInfoPage(),
+                      ),
+                    ),
+                  ),
                   const Text(
                     'Make CutLink yours',
                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
@@ -182,6 +200,7 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
             bytes.length > 5 * 1024 * 1024) {
           throw StateError('Choose a PNG or JPG logo up to 5 MB.');
         }
+        await UploadSafety.validateImage(bytes, files.first.name);
         uploadedPath =
             '$id/logo-${DateTime.now().microsecondsSinceEpoch}.${extension == 'jpeg' ? 'jpg' : extension}';
         await Supabase.instance.client.storage

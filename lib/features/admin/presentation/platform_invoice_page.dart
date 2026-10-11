@@ -1,9 +1,16 @@
+import '../../memberships/services/membership_dates.dart';
+import '../../memberships/services/membership_service.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
+
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
+
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/platform_admin_service.dart';
@@ -435,23 +442,26 @@ Future<void> createSubscriptionInvoice(
   final start =
       DateTime.tryParse('${account['next_billing_date']}') ?? DateTime.now();
   final nextMonthLastDay = DateTime(start.year, start.month + 2, 0).day;
-  final next = DateTime(
+  final fallbackNext = DateTime(
     start.year,
     start.month + 1,
     start.day > nextMonthLastDay ? nextMonthLastDay : start.day,
   );
+  final membership = MembershipService.map(account['membership']);
+  final activation = DateTime.tryParse('${membership['started_on']}');
+  final periodEnd = activation == null
+      ? DateTime(fallbackNext.year, fallbackNext.month, fallbackNext.day - 1)
+      : MembershipDates.periodEnd(activation, start);
   String? invoiceId;
   final saved = await adminForm(
     context,
     title: 'Generate monthly invoice',
     submitLabel: 'Generate invoice',
     explanation:
-        '${account['billing_name']}\n${account['plan_name']} · ${PlatformAdminService.money(account['monthly_fee'])} excluding GST\nGST is added only when enabled in CutLink billing settings. Download the invoice to email it externally.',
+        '${account['billing_name']}\n${account['plan_name']} · ${account['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excluding GST'}\n${activation == null ? 'Configured monthly fee applies.' : 'Use one complete monthly period anchored to ${PlatformAdminService.date(activation)}. The backend calculates the price for that period, including free and discounted months.'} Download the invoice to email it externally.',
     initial: {
       'period_start': PlatformAdminService.iso(start),
-      'period_end': PlatformAdminService.iso(
-        next.subtract(const Duration(days: 1)),
-      ),
+      'period_end': PlatformAdminService.iso(periodEnd),
     },
     fields: const [
       AdminField('period_start', 'Period starts', required: true, date: true),

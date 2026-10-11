@@ -1,5 +1,8 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
+
 import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -37,6 +40,7 @@ class PlatformInvoicePdf {
       2 => 'FINAL PAYMENT WARNING',
       _ => 'THIRD NOTICE - ACCOUNT ON HOLD',
     };
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final doc = pw.Document(
       theme: await DocumentPdfTheme.load(),
       title: _text(invoice['invoice_number']),
@@ -104,14 +108,7 @@ class PlatformInvoicePdf {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      'CutLink',
-                      style: pw.TextStyle(
-                        fontSize: 30,
-                        fontWeight: pw.FontWeight.bold,
-                        color: red,
-                      ),
-                    ),
+                    CutLinkPdfBrand.logo(cutLinkLogo),
                     pw.SizedBox(height: 10),
                     details([
                       issuer['legal_name'],

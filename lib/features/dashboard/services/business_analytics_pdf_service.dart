@@ -1,4 +1,6 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
+
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -151,6 +153,7 @@ class BusinessAnalyticsPdfService {
     required Map<String, dynamic> analytics,
   }) async {
     final document = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final supplier = businessType == 'supplier';
     final summary = _map(analytics['summary']);
     final trend = _list(
@@ -189,13 +192,7 @@ class BusinessAnalyticsPdfService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(
-                  'CUTLINK',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
+                CutLinkPdfBrand.logo(cutLinkLogo),
                 pw.SizedBox(height: 2),
                 pw.Text(
                   supplier

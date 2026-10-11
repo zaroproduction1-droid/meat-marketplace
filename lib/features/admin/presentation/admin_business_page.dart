@@ -1,7 +1,11 @@
+import '../../memberships/services/membership_service.dart';
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/phone_layout.dart';
 import '../services/platform_admin_service.dart';
 import 'admin_widgets.dart';
@@ -128,12 +132,25 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               ? 'Suspend'
               : 'Reject'} business',
       explanation: status == 'approved'
-          ? 'Previously suspended memberships will be restored. This does not alter the subscription balance.'
+          ? 'Review later/development business leaves founding places untouched. Choose genuine founding only after checking the business is real and the offer is open. Genuine standard activates standard pricing. Existing memberships are never restarted by restoring access.'
           : 'This disables business access for active members. Their records and balances remain intact.',
-      fields: const [
-        AdminField(
+      initial: const {'membership_review': 'review_later'},
+      fields: [
+        if (status == 'approved')
+          const AdminField(
+            'membership_review',
+            'Membership review',
+            required: true,
+            options: [
+              'review_later',
+              'genuine_founding',
+              'genuine_standard',
+              'development_business',
+            ],
+          ),
+        const AdminField(
           'reason',
-          'Reason shown to the business',
+          'Reason shown to the business (8–1000 characters for membership activation)',
           required: true,
           lines: 3,
         ),
@@ -383,7 +400,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${r['plan_name']} · ${PlatformAdminService.money(r['monthly_fee'])} / month',
+              '${r['plan_name']} · ${PlatformAdminService.money(MembershipService.map(r['membership'])['effective_total'] ?? r['monthly_fee'])} / month · ${r['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excluding GST'}',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             Text(

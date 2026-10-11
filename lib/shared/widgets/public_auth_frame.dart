@@ -1,4 +1,8 @@
+import 'cutlink_logo.dart';
+import '../../features/legal/presentation/legal_info_page.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../features/landing/presentation/public_page_palette.dart';
 
 /// Public account pages share a visual frame; their forms own all account logic.
@@ -31,14 +35,23 @@ class PublicAuthFrame extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: PublicPagePalette.border),
     );
+    final formWithNotices = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        child,
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const LegalInfoPage()),
+          ),
+          child: const Text('Privacy & policies'),
+        ),
+      ],
+    );
     final intro = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(
-          Icons.link_rounded,
-          size: 42,
-          color: PublicPagePalette.accent,
-        ),
+        const CutLinkLogo(symbolOnly: true, width: 42, height: 42),
         const SizedBox(height: 20),
         Text(
           title,
@@ -170,10 +183,7 @@ class PublicAuthFrame extends StatelessWidget {
           backgroundColor: ink,
           foregroundColor: PublicPagePalette.text,
           surfaceTintColor: Colors.transparent,
-          title: const Text(
-            'CutLink',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
+          title: const CutLinkLogo(),
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(1),
             child: Divider(height: 1, color: PublicPagePalette.border),
@@ -196,7 +206,7 @@ class PublicAuthFrame extends StatelessWidget {
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: PublicPagePalette.border),
                       ),
-                      child: child,
+                      child: formWithNotices,
                     );
                     if (c.maxWidth < 900) {
                       return Column(

@@ -1,3 +1,7 @@
+import 'cutlink_pricing_page.dart';
+import '../../../shared/widgets/cutlink_logo.dart';
+import '../../legal/presentation/legal_info_page.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../authentication/presentation/registration_type_page.dart';
@@ -40,22 +44,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
     );
   }
 
-  Widget _brand() => const Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(Icons.link_rounded, color: PublicPagePalette.primary, size: 30),
-      SizedBox(width: 8),
-      Text(
-        'CutLink',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          color: PublicPagePalette.text,
-          letterSpacing: -.8,
-        ),
-      ),
-    ],
-  );
+  Widget _brand() => const CutLinkLogo(width: 150, height: 38);
 
   Widget _join(BusinessType role) {
     final supplier = role == BusinessType.supplier;
@@ -118,7 +107,12 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
     child: _frame(
       Row(
         children: [
-          _brand(),
+          Flexible(
+            child: CutLinkLogo(
+              width: MediaQuery.sizeOf(context).width < 400 ? 110 : 150,
+              height: 38,
+            ),
+          ),
           const Spacer(),
           if (MediaQuery.sizeOf(context).width >= 1000) ...[
             TextButton(
@@ -144,6 +138,14 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
             ),
             const SizedBox(width: 16),
           ],
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CutLinkPricingPage(),
+              ),
+            ),
+            child: const Text('Pricing'),
+          ),
           OutlinedButton(
             onPressed: widget.onSignIn,
             style: OutlinedButton.styleFrom(
@@ -402,6 +404,14 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               _brand(),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const LegalInfoPage(),
+                                  ),
+                                ),
+                                child: const Text('Privacy & policies'),
+                              ),
                               Text(
                                 '© ${DateTime.now().year} CutLink',
                                 style: const TextStyle(

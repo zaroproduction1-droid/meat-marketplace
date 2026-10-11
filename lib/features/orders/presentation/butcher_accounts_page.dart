@@ -1,9 +1,11 @@
+import '../../../shared/security/retry_safe_payments.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -1443,18 +1445,15 @@ class _ButcherSupplierAccountPageState
     setState(() => _loading = true);
 
     try {
-      await Supabase.instance.client.rpc(
-        'submit_butcher_account_payment',
-        params: {
-          'target_supplier_business_id': widget.supplierBusinessId,
-          'payment_amount': result['amount'],
-          'payment_date_value': result['date'],
-          'payment_method_value': result['method'],
-          'payment_reference': result['reference'],
-          'payment_notes': result['notes'],
-          'allocations_json': result['allocations'],
-        },
-      );
+      await RetrySafePayments.call('submit_butcher_account_payment', {
+        'target_supplier_business_id': widget.supplierBusinessId,
+        'payment_amount': result['amount'],
+        'payment_date_value': result['date'],
+        'payment_method_value': result['method'],
+        'payment_reference': result['reference'],
+        'payment_notes': result['notes'],
+        'allocations_json': result['allocations'],
+      });
 
       _selectedInvoiceIds.clear();
 
@@ -2705,23 +2704,17 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
       final invoiceNumber = _invoice['invoice_number']?.toString() ?? 'Invoice';
 
-      await Supabase.instance.client.rpc(
-        'submit_butcher_account_payment',
-        params: {
-          'target_supplier_business_id': supplierBusinessId,
-          'payment_amount': result['amount'],
-          'payment_date_value': DateTime.now()
-              .toIso8601String()
-              .split('T')
-              .first,
-          'payment_method_value': 'other',
-          'payment_reference': 'Invoice payment • $invoiceNumber',
-          'payment_notes': result['note'],
-          'allocations_json': [
-            {'invoice_id': widget.invoiceId, 'amount': result['amount']},
-          ],
-        },
-      );
+      await RetrySafePayments.call('submit_butcher_account_payment', {
+        'target_supplier_business_id': supplierBusinessId,
+        'payment_amount': result['amount'],
+        'payment_date_value': DateTime.now().toIso8601String().split('T').first,
+        'payment_method_value': 'other',
+        'payment_reference': 'Invoice payment • $invoiceNumber',
+        'payment_notes': result['note'],
+        'allocations_json': [
+          {'invoice_id': widget.invoiceId, 'amount': result['amount']},
+        ],
+      });
 
       if (!mounted) {
         return;

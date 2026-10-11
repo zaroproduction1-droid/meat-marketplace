@@ -1,5 +1,7 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
+
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -214,6 +216,7 @@ class CutLinkQuotePdf {
     Uint8List? supplierLogoBytes,
   }) async {
     final document = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final revision = (quote['quote_revision'] as num?)?.toInt() ?? 0;
     final baseNumber =
         quote['quote_number']?.toString() ??
@@ -268,6 +271,7 @@ class CutLinkQuotePdf {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
+              CutLinkPdfBrand.logo(cutLinkLogo, width: 68, height: 18),
               pw.Text(
                 'This document is a quote and not a tax invoice.',
                 style: pw.TextStyle(fontSize: 7.5, color: _muted),

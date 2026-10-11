@@ -1,5 +1,8 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
+
 import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -10,6 +13,7 @@ class CreditNotePdf {
       '\$${(num.tryParse(value.toString()) ?? 0).toStringAsFixed(2)}';
   static Future<Uint8List> build(Map<String, dynamic> note) async {
     final doc = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
     final snapshot = Map<String, dynamic>.from(note['invoice_snapshot'] as Map);
     String field(String name) => snapshot[name]?.toString().trim() ?? '';
     final lines = (note['supplier_credit_note_lines'] as List).cast<Map>();
@@ -57,9 +61,12 @@ class CreditNotePdf {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
-        footer: (c) => pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: text('Page ${c.pageNumber} of ${c.pagesCount}', size: 8),
+        footer: (c) => pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            CutLinkPdfBrand.logo(cutLinkLogo, width: 68, height: 18),
+            text('Page ${c.pageNumber} of ${c.pagesCount}', size: 8),
+          ],
         ),
         build: (_) => [
           pw.Row(

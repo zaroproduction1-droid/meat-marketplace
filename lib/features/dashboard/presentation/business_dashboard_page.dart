@@ -1,3 +1,4 @@
+import '../../../shared/widgets/cutlink_logo.dart';
 import '../../authentication/presentation/restricted_account_page.dart';
 import '../../notifications/presentation/today_notifications_bell.dart';
 import '../../notifications/presentation/activity_notifications_page.dart';
@@ -11,6 +12,7 @@ import '../../orders/presentation/supplier_work_order_page.dart';
 import '../../orders/presentation/supplier_marketplace_order_detail_page.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -2800,18 +2802,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           final logoSize = compact ? 28.0 : 34.0;
           final toggleSize = compact ? 28.0 : 34.0;
 
-          final logo = Container(
+          final logo = CutLinkLogo(
+            symbolOnly: true,
+            onDark: true,
             width: logoSize,
             height: logoSize,
-            decoration: BoxDecoration(
-              color: _darkRed,
-              borderRadius: BorderRadius.circular(compact ? 8 : 9),
-            ),
-            child: Icon(
-              Icons.link_rounded,
-              color: Colors.white,
-              size: compact ? 18 : 21,
-            ),
           );
 
           final toggle = IconButton(
@@ -2837,21 +2832,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   )
                 : Row(
                     children: [
-                      logo,
-                      const SizedBox(width: 10),
                       const Expanded(
-                        child: Text(
-                          'CutLink',
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                        child: CutLinkLogo(
+                          onDark: true,
+                          width: 160,
+                          height: 36,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       toggle,
                     ],
                   ),

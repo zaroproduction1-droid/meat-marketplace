@@ -1,3 +1,4 @@
+import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -556,6 +557,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
   Future<Uint8List> _buildPdf() async {
     final document = pw.Document(theme: await DocumentPdfTheme.load());
+    final cutLinkLogo = await CutLinkPdfBrand.load();
 
     final rows = _periodTransactions;
     var runningBalance = _openingBalance;
@@ -571,13 +573,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(
-                  'CUTLINK',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
+                CutLinkPdfBrand.logo(cutLinkLogo),
                 pw.SizedBox(height: 2),
                 pw.Text(
                   'ACCOUNT STATEMENT',

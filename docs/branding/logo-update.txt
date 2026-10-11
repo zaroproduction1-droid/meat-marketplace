@@ -1,0 +1,52 @@
+CutLink official logo update
+
+Extract this ZIP directly into C:\Projects\meat-marketplace (your existing project root). Allow replacement so lib/..., assets/... and web/... merge into the matching folders. There is no enclosing project folder.
+
+Apply after the previous security replacement ZIP if you are using that update; overlapping files preserve its changes. This ZIP contains only logo changes and the complete current versions of those affected files. It does not apply or replace Supabase migrations.
+
+From the project root in VS Code PowerShell:
+  flutter pub get
+  flutter analyze
+  flutter test
+  flutter run -d chrome
+
+Fully restart Flutter after copying new assets. Browser icons can be cached: refresh or test in a private window. No new dependencies, environment changes or database migration are required for the logo update. Existing assets/images/ registration covers the supplied artwork.
+
+Check landing desktop/mobile, registration/sign-in, expanded/collapsed dashboard navigation and Admin. Generate an admin subscription invoice/overdue notice PDF, supplier invoice, quote, credit note, account statement, analytics report, warehouse pick slip and delivery packing list. Re-download existing invoices to see new branding; already downloaded PDFs and embedded videos/screenshots are not rewritten.
+
+Supplier business logos, issuer/legal identity, invoice numbers, balances, bank details, customer snapshots and private-note handling are preserved. Official CutLink branding is separate from supplier identity. No files are deleted or renamed; no commit, push or deployment performed.
+
+Verification here: supplied PNGs decoded and verified, Dart source parsed/formatted, asset registration and logo load references checked, archive CRC and replacement bytes verified. Full Flutter analysis, browser layout and actual generated PDF rendering remain to be verified in your local environment.
+
+Files and reasons:
+- assets/images/CutLink-Horizontal-Burgundy.png: Official supplied artwork.
+- assets/images/CutLink-Symbol-Burgundy.png: Official supplied artwork.
+- assets/images/CutLink-Horizontal-White.png: Official supplied artwork.
+- assets/images/CutLink-Symbol-White.png: Official supplied artwork.
+- assets/images/CutLink-Horizontal-Black.png: Official supplied artwork.
+- assets/images/CutLink-Symbol-Black.png: Official supplied artwork.
+- web/favicon.png: Official browser/home-screen icon.
+- web/favicon.ico: Official browser/home-screen icon.
+- web/favicon.svg: Official browser/home-screen icon.
+- web/apple-touch-icon.png: Official browser/home-screen icon.
+- web/icons/Icon-192.png: Official browser/home-screen icon.
+- web/icons/Icon-maskable-192.png: Official browser/home-screen icon.
+- web/icons/Icon-512.png: Official browser/home-screen icon.
+- web/icons/Icon-maskable-512.png: Official browser/home-screen icon.
+- lib/shared/widgets/cutlink_logo.dart: Shared proportion-preserving logo loader.
+- lib/shared/pdf/cutlink_pdf_brand.dart: Shared proportion-preserving logo loader.
+- lib/features/landing/presentation/cutlink_landing_content.dart: Official branding in page header or document output.
+- lib/shared/widgets/public_auth_frame.dart: Shared proportion-preserving logo loader.
+- lib/features/authentication/presentation/business_dashboard_page.dart: Official branding in page header or document output.
+- lib/features/dashboard/presentation/business_dashboard_page.dart: Official branding in page header or document output.
+- lib/features/admin/presentation/admin_console_page.dart: Official branding in page header or document output.
+- lib/features/admin/services/platform_invoice_pdf.dart: Official branding in page header or document output.
+- lib/features/dashboard/services/business_analytics_pdf_service.dart: Official branding in page header or document output.
+- lib/features/orders/presentation/account_statement_page.dart: Official branding in page header or document output.
+- lib/features/orders/presentation/supplier_work_order_page.dart: Official branding in page header or document output.
+- lib/features/orders/services/invoice_pdf_service.dart: Official branding in page header or document output.
+- web/index.html: Browser icon links.
+- lib/features/credits/services/credit_note_pdf.dart: Official branding in page header or document output.
+- lib/features/credits/presentation/credit_note_pdf.dart: Official branding in page header or document output.
+- lib/features/delivery/services/packing_list_pdf.dart: Official branding in page header or document output.
+- lib/features/orders/services/quote_pdf_service.dart: Official branding in page header or document output.

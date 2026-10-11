@@ -1,5 +1,7 @@
 import 'admin_theme.dart';
+
 import 'package:flutter/material.dart';
+
 import '../services/platform_admin_service.dart';
 
 class AdminField {
@@ -340,11 +342,20 @@ Future<bool> editSubscriptionAccount(
       ? 'Set up subscription account'
       : 'Edit subscription account',
   explanation:
-      'Monthly fee is in AUD, before GST. Billing status does not automatically suspend business access.',
+      'Choose the GST basis for legacy accounts. Managed membership prices are fixed by the backend and GST inclusive. Billing status does not automatically suspend business access.',
   initial: account.isNotEmpty
-      ? account
+      ? {
+          ...account,
+          'fee_basis': account['fee_gst_inclusive'] == true
+              ? 'including_gst'
+              : 'excluding_gst',
+        }
       : {
           'plan_name': 'CutLink monthly',
+          'fee_basis': 'including_gst',
+          'monthly_fee': business['business_type'] == 'supplier'
+              ? '350'
+              : '200',
           'status': 'active',
           'billing_name': PlatformAdminService.name(business),
           'billing_email': business['business_email'] ?? '',
@@ -362,9 +373,15 @@ Future<bool> editSubscriptionAccount(
     AdminField('plan_name', 'Plan name', required: true),
     AdminField(
       'monthly_fee',
-      'Monthly fee, excluding GST (AUD)',
+      'Monthly fee (AUD; selected GST basis)',
       required: true,
       number: true,
+    ),
+    AdminField(
+      'fee_basis',
+      'GST basis',
+      required: true,
+      options: ['including_gst', 'excluding_gst'],
     ),
     AdminField(
       'status',
@@ -392,6 +409,7 @@ Future<bool> editSubscriptionAccount(
     await PlatformAdminService.action('save_account', {
       ...data,
       'business_id': business['id'] ?? account['business_id'],
+      'fee_gst_inclusive': data['fee_basis'] == 'including_gst',
     });
   },
 );

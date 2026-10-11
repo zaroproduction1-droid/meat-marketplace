@@ -1,3 +1,4 @@
+import '../../../shared/security/retry_safe_payments.dart';
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -1195,18 +1196,14 @@ class _SupplierCustomerAccountPageState
     setState(() => _isSaving = true);
 
     try {
-      final response = await Supabase.instance.client.rpc(
-        'record_account_payment',
-        params: {
-          'target_supplier_customer_account_id':
-              widget.supplierCustomerAccountId,
-          'payment_amount': result['amount'],
-          'payment_date_value': result['date'],
-          'payment_method_value': result['method'],
-          'payment_reference': result['reference'],
-          'payment_notes': result['notes'],
-        },
-      );
+      final response = await RetrySafePayments.call('record_account_payment', {
+        'target_supplier_customer_account_id': widget.supplierCustomerAccountId,
+        'payment_amount': result['amount'],
+        'payment_date_value': result['date'],
+        'payment_method_value': result['method'],
+        'payment_reference': result['reference'],
+        'payment_notes': result['notes'],
+      });
 
       await _loadPage();
 

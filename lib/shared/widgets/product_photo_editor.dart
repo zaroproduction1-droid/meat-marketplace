@@ -1,8 +1,11 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
+
+import '../security/upload_safety.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'catalogue_product_image.dart';
 
 /// Photo choices remain a draft until the product itself is saved.
@@ -40,8 +43,7 @@ class ProductPhotoDraft extends ChangeNotifier {
     if (data.isEmpty || data.length > 5 * 1024 * 1024) {
       throw Exception('Choose a PNG, JPG or WebP picture up to 5 MB.');
     }
-    final codec = await ui.instantiateImageCodec(data, targetWidth: 1200);
-    codec.dispose();
+    await UploadSafety.validateImage(data, file.name, allowWebp: true);
     if (_disposed) {
       return;
     }
@@ -168,9 +170,7 @@ class ProductPhotoEditor extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                draft.dirty
-                    ? 'Photo changes will be saved with this product.'
-                    : 'Keep the catalogue picture or upload your own. PNG, JPG or WebP, up to 5 MB.',
+                draft.dirty ? 'Photo changes will be saved with this product.' : 'Keep the catalogue picture or upload your own. PNG, JPG or WebP, up to 5 MB.',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF666A70)),
               ),
               const SizedBox(height: 8),

@@ -1,4 +1,6 @@
+import '../../../shared/widgets/cutlink_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -41,10 +43,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       appBar: phoneAppBar(
         context,
         AppBar(
-          title: const Text(
-            'CutLink',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
+          title: const CutLinkLogo(),
           actions: [
             TextButton.icon(
               onPressed: _isSigningOut ? null : _signOut,
