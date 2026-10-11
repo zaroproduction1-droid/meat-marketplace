@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'upload_file_type.dart';
+import 'upload_image_dimensions.dart';
 
 /// Client-side defence in depth. Storage/RLS and malware scanning remain server controls.
 abstract final class UploadSafety {
@@ -16,34 +17,35 @@ abstract final class UploadSafety {
     String name, {
     bool allowWebp = false,
   }) async {
-    final mime = validate(bytes, name, maxBytes: 5 * 1024 * 1024);
-    if (![
-      'image/png',
-      'image/jpeg',
-      if (allowWebp) 'image/webp',
-    ].contains(mime)) {
-      throw const FormatException('Choose a PNG or JPG image.');
-    }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    ui.ImageDescriptor? descriptor;
+    UploadImageDimensions.validate(bytes, name, allowWebp: allowWebp);
+    ui.Codec? codec;
+    ui.Image? image;
     try {
-      descriptor = await ui.ImageDescriptor.encoded(buffer);
-      if (descriptor.width > 8192 ||
-          descriptor.height > 8192 ||
-          descriptor.width * descriptor.height > 24000000) {
-        throw const FormatException(
-          'Choose an image under 24 megapixels and 8192 pixels per side.',
-        );
+      // Encoded ImageDescriptor.width/height throw UnsupportedError on web.
+      // Header dimensions are checked above before any pixel decode. A small
+      // first-frame decode verifies the data using the same cross-platform API
+      // as image rendering, without changing the original upload bytes.
+      codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 64,
+        targetHeight: 64,
+        allowUpscaling: false,
+      );
+      image = (await codec.getNextFrame()).image;
+      if (image.width <= 0 || image.height <= 0) {
+        throw const FormatException('The image has invalid dimensions.');
       }
     } on FormatException {
       rethrow;
     } catch (_) {
-      throw const FormatException(
-        'The image could not be decoded. Choose a valid PNG, JPG or WebP.',
+      throw FormatException(
+        allowWebp
+            ? 'The image could not be opened. Choose another PNG, JPG or WebP.'
+            : 'The image could not be opened. Choose another PNG or JPG.',
       );
     } finally {
-      descriptor?.dispose();
-      buffer.dispose();
+      image?.dispose();
+      codec?.dispose();
     }
   }
 }
