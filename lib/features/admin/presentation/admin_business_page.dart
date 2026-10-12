@@ -1,4 +1,4 @@
-import '../../memberships/services/membership_service.dart';
+import 'admin_billing_panel.dart';
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 
@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../services/platform_admin_service.dart';
 import 'admin_widgets.dart';
-import 'platform_invoice_page.dart';
 
 class AdminBusinessPage extends StatefulWidget {
   const AdminBusinessPage({
@@ -35,8 +34,8 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
   @override
   void initState() {
     super.initState();
-    _tab = ['accounts', 'invoices'].contains(widget.initialTab)
-        ? widget.initialTab
+    _tab = ['billing', 'accounts', 'invoices'].contains(widget.initialTab)
+        ? 'billing'
         : 'business';
     _load();
   }
@@ -56,7 +55,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
     try {
       final results = await Future.wait([
         PlatformAdminService.query('business', businessId: widget.businessId),
-        if (_tab != 'business')
+        if (_tab != 'business' && _tab != 'billing')
           PlatformAdminService.query(
             _tab,
             businessId: widget.businessId,
@@ -132,7 +131,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               ? 'Suspend'
               : 'Reject'} business',
       explanation: status == 'approved'
-          ? 'Review later/development business leaves founding places untouched. Choose genuine founding only after checking the business is real and the offer is open. Genuine standard activates standard pricing. Existing memberships are never restarted by restoring access.'
+          ? 'Approve access only, or start a membership after checking this is a real business. Founding starts the free offer; standard starts regular pricing. Restoring access never restarts an existing offer.'
           : 'This disables business access for active members. Their records and balances remain intact.',
       initial: const {'membership_review': 'review_later'},
       fields: [
@@ -141,6 +140,12 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
             'membership_review',
             'Membership review',
             required: true,
+            optionLabels: {
+              'review_later': 'Approve access — decide membership later',
+              'genuine_founding': 'Approve & start founding membership',
+              'genuine_standard': 'Approve & start standard membership',
+              'development_business': 'Test business — no founding place',
+            },
             options: [
               'review_later',
               'genuine_founding',
@@ -228,12 +233,6 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
       },
     );
     if (changed && mounted) {
-      await _load();
-    }
-  }
-
-  Future<void> _account(AdminRow account) async {
-    if (await editSubscriptionAccount(context, _business, account) && mounted) {
       await _load();
     }
   }
@@ -394,65 +393,6 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
     ],
   );
   Widget _row(AdminRow r) {
-    if (_tab == 'accounts') {
-      return AdminCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${r['plan_name']} · ${PlatformAdminService.money(MembershipService.map(r['membership'])['effective_total'] ?? r['monthly_fee'])} / month · ${r['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excluding GST'}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            Text(
-              'Account CL-${r['account_number']} · ${r['status']}\nOutstanding ${PlatformAdminService.money(r['outstanding'])} · Overdue ${PlatformAdminService.money(r['overdue'])}\nNext billing ${PlatformAdminService.date(r['next_billing_date'])}',
-            ),
-            Wrap(
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => _account(r),
-                  child: const Text('Edit account'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    await createSubscriptionInvoice(context, r);
-                    if (mounted) {
-                      await _load();
-                    }
-                  },
-                  child: const Text('Generate invoice'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-    if (_tab == 'invoices') {
-      return AdminCard(
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            '${r['invoice_number']} · ${PlatformAdminService.money(r['total_amount'])}',
-          ),
-          subtitle: Text(
-            '${r['status']} · Due ${PlatformAdminService.date(r['due_date'])}',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => PlatformInvoicePage(invoiceId: '${r['id']}'),
-              ),
-            );
-            if (mounted) {
-              await _load();
-            }
-          },
-        ),
-      );
-    }
     if (_tab == 'trade_invoices') {
       return AdminCard(
         child: ListTile(
@@ -552,12 +492,11 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                 children: [
                   for (final entry in {
                     'business': 'Profile & access',
+                    'billing': 'Billing',
                     'orders': 'Orders',
                     'trade_invoices': 'Trade invoices',
                     if (_business['business_type'] == 'supplier')
                       'products': 'Inventory',
-                    'accounts': 'Subscription account',
-                    'invoices': 'Subscription invoices',
                     'audit': 'Audit',
                   }.entries)
                     Padding(
@@ -571,7 +510,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                 ],
               ),
             ),
-            if (_tab != 'business' && _tab != 'accounts' && _tab != 'audit')
+            if (_tab != 'business' && _tab != 'billing' && _tab != 'audit')
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
@@ -594,32 +533,20 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               child: _loading
                   ? const AdminLoading()
                   : _error != null
-                  ? Center(child: Text(_error!))
+                  ? BillingError(message: _error!, onRetry: _load)
+                  : _tab == 'billing'
+                  ? AdminBusinessBilling(
+                      key: ValueKey(_request),
+                      business: _business,
+                      onReviewAccess: () => _status('approved'),
+                    )
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
                         if (_tab == 'business')
                           _profile()
                         else ...[
-                          if (_tab == 'accounts' && _rows.isEmpty)
-                            AdminCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'No subscription account configured.',
-                                  ),
-                                  const SizedBox(height: 12),
-                                  FilledButton(
-                                    onPressed: () => _account({}),
-                                    child: const Text(
-                                      'Set up subscription account',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (_rows.isEmpty)
+                          if (_rows.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(20),
                               child: Text('No records found.'),

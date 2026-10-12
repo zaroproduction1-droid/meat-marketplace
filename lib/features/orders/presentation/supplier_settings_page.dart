@@ -1,3 +1,4 @@
+import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
 import '../../legal/presentation/legal_info_page.dart';
 import '../../../shared/security/upload_safety.dart';
@@ -90,6 +91,16 @@ class SupplierSettingsPage extends StatelessWidget {
                 final twoColumns = constraints.maxWidth >= 760;
 
                 final cards = [
+                  _SettingsTile(
+                    icon: Icons.person_outline,
+                    title: 'My account',
+                    subtitle: 'Your personal name, phone and sign-in email.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PersonalAccountSettingsPage(),
+                      ),
+                    ),
+                  ),
                   _SettingsTile(
                     icon: Icons.local_shipping_outlined,
                     title: 'Delivery settings',

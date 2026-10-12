@@ -1,12 +1,31 @@
-import 'dart:convert';
 import 'dart:math';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Retains a request key after uncertain transport failures within this process.
-/// This does not move money. Pending keys do not survive an application restart.
+import 'payment_retry_queue.dart';
+
+/// Retry-safe recording of trade payments. This does not move money.
 abstract final class RetrySafePayments {
-  static final _pending = <String, String>{};
+  static final _queue = PaymentRetryQueue(
+    load: (name) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.reload();
+      return preferences.getString(name);
+    },
+    save: (name, value) async {
+      final preferences = await SharedPreferences.getInstance();
+      if (!await preferences.setString(name, value)) {
+        throw StateError(
+          'Cannot save the payment retry key. Check browser storage before trying again.',
+        );
+      }
+    },
+    send: (operation, params) async {
+      return await Supabase.instance.client.rpc(operation, params: params);
+    },
+    newKey: _key,
+  );
   static String _key() {
     final random = Random.secure();
     final bytes = List.generate(16, (_) => random.nextInt(256));
@@ -24,19 +43,6 @@ abstract final class RetrySafePayments {
     if (userId == null) {
       throw StateError('Sign in to record payment.');
     }
-    final identity = '$userId:$operation:${jsonEncode(params)}';
-    // Bound memory without silently losing uncertain requests.
-    if (!_pending.containsKey(identity) && _pending.length >= 100) {
-      throw StateError(
-        'Several payments need review. Check your account history before recording more.',
-      );
-    }
-    final key = _pending.putIfAbsent(identity, _key);
-    final response = await Supabase.instance.client.rpc(
-      operation,
-      params: {...params, 'p_request_key': key},
-    );
-    _pending.remove(identity);
-    return response;
+    return _queue.call(userId, operation, params);
   }
 }

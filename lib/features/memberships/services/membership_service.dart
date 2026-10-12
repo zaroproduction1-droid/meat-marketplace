@@ -25,12 +25,24 @@ abstract final class MembershipService {
         .timeout(const Duration(seconds: 15)),
   );
   static String stage(dynamic stage) => switch (stage) {
-    'free_founding' => 'Free founding period',
-    'founding_half_price' => 'Founding 50% period',
-    'not_started' => 'Not started',
+    'free_founding' => 'Your free founding months',
+    'founding_half_price' => 'Your half-price year',
+    'not_started' => 'Membership starts soon',
     'standard' => 'Standard membership',
     _ => 'Awaiting membership review',
   };
+  static num standardPrice(bool supplier) => supplier ? 349.99 : 199.99;
+
+  /// Round the published price to cents before halving, as the database does.
+  static num halfPrice(dynamic amount) {
+    final value = num.tryParse('$amount');
+    if (value == null || !value.isFinite || value < 0) {
+      return 0;
+    }
+    final cents = (value * 100).round();
+    return ((cents + 1) ~/ 2) / 100;
+  }
+
   static String money(dynamic amount) =>
       '\$${(num.tryParse('$amount') ?? 0).toStringAsFixed(2)}';
 }

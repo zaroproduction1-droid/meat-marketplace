@@ -1,12 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../memberships/services/membership_service.dart';
 import '../services/platform_admin_service.dart';
 import 'admin_widgets.dart';
-import 'admin_business_page.dart';
+import 'admin_theme.dart';
 
+/// Offer controls live inside Billing. Individual memberships live on each account.
 class AdminMembershipsPanel extends StatefulWidget {
   const AdminMembershipsPanel({super.key});
   @override
@@ -14,50 +13,32 @@ class AdminMembershipsPanel extends StatefulWidget {
 }
 
 class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
-  AdminRow _data = {};
-  List<AdminRow> _rows = [];
-  final _searchController = TextEditingController();
-  String _search = '';
-  String? _error;
+  AdminRow _plans = {};
   bool _loading = true;
-  int _offset = 0, _request = 0;
-  Timer? _debounce;
+  String? _error;
   @override
   void initState() {
     super.initState();
     _load();
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
-    final request = ++_request;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final data = await MembershipService.admin(
-        search: _search,
-        offset: _offset,
-      );
-      if (mounted && request == _request) {
+      final plans = await MembershipService.publicPricing();
+      if (mounted) {
         setState(() {
-          _data = data;
-          _rows = PlatformAdminService.rows(data['rows']);
+          _plans = plans;
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted && request == _request) {
+    } catch (error) {
+      if (mounted) {
         setState(() {
-          _error =
-              'Could not load memberships. Check access and that the membership migration has been applied.';
+          _error = PlatformAdminService.error(error);
           _loading = false;
         });
       }
@@ -65,158 +46,92 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
   }
 
   Future<void> _offer(String role, AdminRow plan) async {
-    final enabling = plan['offer_enabled'] != true;
-    final changed = await adminForm(
+    final opening = plan['offer_enabled'] != true;
+    final saved = await adminForm(
       context,
-      title: '${enabling ? 'Open' : 'Pause'} $role founding enrolment',
-      explanation:
-          'Opening permits only deliberate genuine-business confirmations. Existing members retain their agreed timeline. '
-          'Pausing stops new founding allocations; it does not cancel existing offers.',
+      title: '${opening ? 'Open' : 'Pause'} $role founding offer',
+      explanation: opening
+          ? 'New approved businesses can receive founding places when you confirm their membership.'
+          : 'New businesses stop receiving founding places. Existing members keep their offer.',
       fields: const [
         AdminField(
           'reason',
-          'Reason (8–1000 characters)',
+          'Reason (at least 8 characters)',
           required: true,
-          lines: 3,
+          lines: 2,
         ),
       ],
-      submitLabel: enabling ? 'Confirm opening' : 'Confirm pause',
-      submit: (data) => PlatformAdminService.action('set_founding_offer', {
-        ...data,
-        'role': role,
-        'enabled': enabling,
-      }).then((_) {}),
+      submitLabel: opening ? 'Open offer' : 'Pause offer',
+      submit: (data) async {
+        await PlatformAdminService.action('set_founding_offer', {
+          ...data,
+          'role': role,
+          'enabled': opening,
+        });
+      },
     );
-    if (changed && mounted) {
+    if (saved && mounted) {
       await _load();
     }
   }
 
-  Future<void> _enrol(AdminRow row) async {
-    final changed = await adminForm(
-      context,
-      title: 'Confirm ${row['business']} membership',
-      explanation:
-          'Confirm this is a genuine active approved business. Test/demo/admin businesses must not use founding places. '
-          'Activation starts today in Sydney. Founding places follow confirmation order; if full, standard pricing applies. '
-          'Existing invoices covering this or a future period must be resolved first.',
-      initial: const {'selection': 'founding_if_available'},
-      fields: const [
-        AdminField(
-          'genuine_business_confirmed',
-          'I have checked this is a genuine business',
-          required: true,
-          options: ['true'],
-        ),
-        AdminField(
-          'selection',
-          'Membership',
-          required: true,
-          options: ['founding_if_available', 'standard'],
-        ),
-        AdminField(
-          'reason',
-          'Review reason (8–1000 characters)',
-          required: true,
-          lines: 3,
-        ),
-      ],
-      submitLabel: 'Confirm activation',
-      submit: (data) => PlatformAdminService.action('activate_membership', {
-        ...data,
-        'business_id': row['business_id'],
-      }).then((_) {}),
-    );
-    if (changed && mounted) {
-      await _load();
-    }
-  }
-
-  Future<void> _change(AdminRow row, {required bool revoke}) async {
-    final membership = MembershipService.map(row['membership']);
-    final changed = await adminForm(
-      context,
-      title: revoke ? 'Revoke founding eligibility' : 'Change founding tier',
-      explanation: revoke
-          ? 'The allocated position stays recorded and is not reused. Standard pricing applies to future billing. '
-                'Invoices already issued are unchanged. This does not suspend the business.'
-          : 'This changes the offer without restarting its original clock or changing its position. '
-                'The ten-place first-tier limit still applies. Existing invoices are unchanged.',
-      initial: {'tier': membership['tier']},
-      fields: [
-        if (!revoke)
-          const AdminField(
-            'tier',
-            'Founding tier',
-            required: true,
-            options: ['founding_tier_1', 'founding_tier_2'],
+  Widget _plan(String role) {
+    final plan = MembershipService.map(_plans[role]);
+    final supplier = role == 'supplier';
+    return AdminCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            supplier ? 'Suppliers' : 'Butchers',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
-        const AdminField(
-          'reason',
-          'Reason (8–1000 characters)',
-          required: true,
-          lines: 3,
-        ),
-      ],
-      submitLabel: revoke ? 'Confirm revocation' : 'Confirm tier change',
-      submit: (data) => PlatformAdminService.action(
-        revoke ? 'revoke_founding' : 'set_founding_tier',
-        {...data, 'business_id': row['business_id']},
-      ).then((_) {}),
-    );
-    if (changed && mounted) {
-      await _load();
-    }
-  }
-
-  Widget _overview(String role) {
-    final plan = MembershipService.map(
-      MembershipService.map(_data['plans'])[role],
-    );
-    return SizedBox(
-      width: 340,
-      child: AdminCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              role == 'supplier' ? 'Suppliers' : 'Butchers',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          const SizedBox(height: 8),
+          Text(
+            '${MembershipService.money(plan['standard_total'])} / month',
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+          ),
+          const Text('AUD · GST included'),
+          const Divider(height: 28),
+          const Icon(
+            Icons.workspace_premium_rounded,
+            color: Color(0xFF906B2B),
+            size: 30,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Founding offer',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const Text('First 6 months free'),
+          Text(
+            'First 10: then ${MembershipService.money(plan['discounted_total'])}/month for a year.',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${plan['remaining'] ?? '—'} of ${plan['founding_limit'] ?? '—'} founding places left',
+          ),
+          Text(
+            plan['offer_enabled'] == true
+                ? 'Open for new members'
+                : 'Paused for new members',
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: plan.isEmpty ? null : () => _offer(role, plan),
+            child: Text(
+              plan['offer_enabled'] == true ? 'Pause offer' : 'Open offer',
             ),
-            Text(
-              '${MembershipService.money(plan['standard_total'])} AUD / month · GST inclusive',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Allocated ${plan['allocated'] ?? '—'} of ${plan['founding_limit'] ?? '—'} · Remaining ${plan['remaining'] ?? '—'}',
-            ),
-            Text(
-              'First tier: ${plan['first_tier_limit'] ?? '—'} · Second tier: ${role == 'supplier' ? 5 : 15}',
-            ),
-            Text(
-              plan['offer_enabled'] == true
-                  ? 'Founding enrolment open'
-                  : 'Founding enrolment paused',
-            ),
-            TextButton(
-              onPressed: plan.isEmpty ? null : () => _offer(role, plan),
-              child: Text(
-                plan['offer_enabled'] == true
-                    ? 'Pause enrolment'
-                    : 'Open enrolment',
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  DataCell _cell(String value) => DataCell(Text(value));
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AdminLoading();
     }
     if (_error != null) {
       return Center(
@@ -230,152 +145,44 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.all(20),
       children: [
-        Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          children: [_overview('supplier'), _overview('butcher')],
-        ),
-        const SizedBox(height: 12),
         const Text(
-          'Existing businesses are unallocated until reviewed. Revoked places remain in the allocated count.',
+          'Regular prices & founding offers',
+          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          decoration: const InputDecoration(
-            labelText: 'Search business or role',
-            prefixIcon: Icon(Icons.search),
-          ),
-          controller: _searchController,
-          onChanged: (value) {
-            _search = value;
-            _offset = 0;
-            _debounce?.cancel();
-            _debounce = Timer(const Duration(milliseconds: 400), _load);
+        const SizedBox(height: 6),
+        const Text(
+          'Start or change a business’s membership from its billing account.',
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 700 ||
+                MediaQuery.textScalerOf(context).scale(1) > 1.4) {
+              return Column(children: [_plan('supplier'), _plan('butcher')]);
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _plan('supplier')),
+                const SizedBox(width: 16),
+                Expanded(child: _plan('butcher')),
+              ],
+            );
           },
         ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('Business')),
-              DataColumn(label: Text('Role')),
-              DataColumn(label: Text('Position / tier')),
-              DataColumn(label: Text('Approved')),
-              DataColumn(label: Text('Offer start')),
-              DataColumn(label: Text('Free ends')),
-              DataColumn(label: Text('50% ends')),
-              DataColumn(label: Text('Current / standard')),
-              DataColumn(label: Text('Membership stage')),
-              DataColumn(label: Text('Billing / payment')),
-              DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Review')),
-            ],
-            rows: [for (final row in _rows.take(50)) _row(row)],
+        const SizedBox(height: 10),
+        const Text(
+          'Remaining founding places: 6 months free, then the regular monthly price. Places follow confirmation order and are not recycled.',
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh offers'),
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton(
-              onPressed: _offset == 0
-                  ? null
-                  : () {
-                      _offset -= 50;
-                      _load();
-                    },
-              child: const Text('Previous'),
-            ),
-            Text('Page ${_offset ~/ 50 + 1}'),
-            TextButton(
-              onPressed: _rows.length > 50
-                  ? () {
-                      _offset += 50;
-                      _load();
-                    }
-                  : null,
-              child: const Text('Next'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  DataRow _row(AdminRow row) {
-    final m = MembershipService.map(row['membership']);
-    final founding = m['position'] != null;
-    final revoked = m['revoked_at'] != null;
-    final eligible =
-        row['active'] == true &&
-        row['verification_status'] == 'approved' &&
-        row['admin_business'] != true;
-    return DataRow(
-      cells: [
-        DataCell(
-          TextButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    AdminBusinessPage(businessId: '${row['business_id']}'),
-              ),
-            ),
-            child: Text('${row['business']}'),
-          ),
-        ),
-        _cell('${row['role']}'),
-        _cell(
-          founding
-              ? '#${m['position']} · ${m['tier']}'.replaceAll('_', ' ')
-              : m.isEmpty
-              ? 'Unallocated'
-              : 'Standard',
-        ),
-        _cell(
-          m['approved_on'] != null
-              ? PlatformAdminService.date(m['approved_on'])
-              : m['approval_confirmed_on'] != null
-              ? 'Confirmed ${PlatformAdminService.date(m['approval_confirmed_on'])}'
-              : '—',
-        ),
-        _cell(PlatformAdminService.date(m['started_on'])),
-        _cell(PlatformAdminService.date(m['free_end'])),
-        _cell(PlatformAdminService.date(m['discount_end'])),
-        _cell(
-          m.isEmpty
-              ? 'Legacy / not enrolled'
-              : '${MembershipService.money(m['effective_total'])} / ${MembershipService.money(m['standard_total'])}',
-        ),
-        _cell(MembershipService.stage(m['stage'])),
-        _cell(
-          '${row['subscription_status'] ?? 'Not configured'} · ${PlatformAdminService.amount(row['overdue']) > 0
-              ? 'Past due'
-              : PlatformAdminService.amount(row['outstanding']) > 0
-              ? 'Payment pending'
-              : 'No balance'}',
-        ),
-        _cell(
-          '${row['verification_status']}${revoked ? ' · offer revoked' : ''}${row['admin_business'] == true ? ' · admin business' : ''}${row['review_state'] == 'development_business' ? ' · development' : ''}',
-        ),
-        DataCell(
-          m.isEmpty
-              ? TextButton(
-                  onPressed: eligible ? () => _enrol(row) : null,
-                  child: const Text('Confirm membership'),
-                )
-              : founding && !revoked
-              ? PopupMenuButton<String>(
-                  tooltip: 'Membership actions',
-                  onSelected: (action) =>
-                      _change(row, revoke: action == 'revoke'),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'tier', child: Text('Change tier')),
-                    PopupMenuItem(value: 'revoke', child: Text('Revoke offer')),
-                  ],
-                )
-              : const Text('Tracked'),
         ),
       ],
     );

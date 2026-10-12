@@ -125,7 +125,7 @@ class AdminNavigation extends StatelessWidget {
     'overview' => Icons.space_dashboard_outlined,
     'analytics' => Icons.insights_outlined,
     'businesses' => Icons.business_outlined,
-    'accounts' => Icons.account_balance_wallet_outlined,
+    'billing' || 'accounts' => Icons.account_balance_wallet_outlined,
     'invoices' => Icons.receipt_long_outlined,
     'announcements' => Icons.campaign_outlined,
     'audit' => Icons.history_rounded,
@@ -140,22 +140,49 @@ class AdminNavigation extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              child: Wrap(
-                spacing: 4,
-                runSpacing: 6,
-                children: [
-                  for (final entry in items.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        avatar: Icon(icon(entry.key), size: 17),
-                        label: Text(entry.value),
-                        selected: value == entry.key,
-                        onSelected: (_) => onChanged(entry.key),
+              child: c.maxWidth < 600
+                  ? DropdownButtonFormField<String>(
+                      key: ValueKey(value),
+                      initialValue: value,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Admin section',
                       ),
+                      items: [
+                        for (final entry in items.entries)
+                          DropdownMenuItem(
+                            value: entry.key,
+                            child: Row(
+                              children: [
+                                Icon(icon(entry.key), size: 18),
+                                const SizedBox(width: 10),
+                                Text(entry.value),
+                              ],
+                            ),
+                          ),
+                      ],
+                      onChanged: (section) {
+                        if (section != null) {
+                          onChanged(section);
+                        }
+                      },
+                    )
+                  : Wrap(
+                      spacing: 4,
+                      runSpacing: 6,
+                      children: [
+                        for (final entry in items.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              avatar: Icon(icon(entry.key), size: 17),
+                              label: Text(entry.value),
+                              selected: value == entry.key,
+                              onSelected: (_) => onChanged(entry.key),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
             ),
             Expanded(child: child),
           ],

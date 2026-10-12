@@ -1,5 +1,5 @@
-import 'admin_memberships_panel.dart';
-import '../../memberships/services/membership_service.dart';
+import 'admin_billing_panel.dart';
+import '../services/admin_billing_labels.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import 'admin_analytics_panel.dart';
 import 'admin_featured_businesses_panel.dart';
@@ -18,7 +18,6 @@ import '../services/platform_admin_service.dart';
 import 'admin_widgets.dart';
 import 'admin_business_page.dart';
 import 'admin_announcement_page.dart';
-import 'platform_invoice_page.dart';
 
 class AdminConsolePage extends StatefulWidget {
   const AdminConsolePage({super.key, this.initialTab = 'overview'});
@@ -29,6 +28,7 @@ class AdminConsolePage extends StatefulWidget {
 
 class _AdminConsolePageState extends State<AdminConsolePage> {
   String _tab = 'overview', _search = '';
+  String _billingView = 'accounts';
   String? _filter;
   bool _loading = true;
   String? _error;
@@ -41,18 +41,19 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'analytics': 'Analytics',
     'homepage': 'Front page',
     'businesses': 'Businesses',
-    'memberships': 'Pricing & Memberships',
-    'accounts': 'Subscription accounts',
-    'invoices': 'Invoices',
+    'billing': 'Billing',
     'announcements': 'Announcements',
     'audit': 'Audit history',
-    'settings': 'Billing settings',
     'support': 'Support inbox',
   };
   @override
   void initState() {
     super.initState();
-    _tab = _tabs.containsKey(widget.initialTab)
+    final billing = adminBillingSection(widget.initialTab);
+    _billingView = billing ?? 'accounts';
+    _tab = billing != null
+        ? 'billing'
+        : _tabs.containsKey(widget.initialTab)
         ? widget.initialTab
         : 'overview';
     _load();
@@ -70,7 +71,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       _loading = true;
       _error = null;
     });
-    if (_tab == 'analytics' || _tab == 'homepage' || _tab == 'memberships') {
+    if (_tab == 'analytics' || _tab == 'homepage' || _tab == 'billing') {
       setState(() => _loading = false);
       return;
     }
@@ -111,7 +112,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     }
     _debounce?.cancel();
     setState(() {
-      _tab = tab;
+      final billing = adminBillingSection(tab);
+      _billingView = billing ?? _billingView;
+      _tab = billing != null ? 'billing' : tab;
       _page = 0;
       _search = '';
       _filter = filter;
@@ -123,31 +126,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => AdminBusinessPage(
-          businessId: id,
-          initialTab: _tab == 'accounts' ? 'invoices' : 'business',
-        ),
-      ),
-    );
-    if (mounted) {
-      await _load();
-    }
-  }
-
-  Future<void> _editAccount(AdminRow account) async {
-    if (await editSubscriptionAccount(context, {
-          'id': account['business_id'],
-        }, account) &&
-        mounted) {
-      await _load();
-    }
-  }
-
-  Future<void> _invoice(AdminRow row) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => PlatformInvoicePage(invoiceId: '${row['id']}'),
+        builder: (_) =>
+            AdminBusinessPage(businessId: id, initialTab: 'business'),
       ),
     );
     if (mounted) {
@@ -185,50 +165,6 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     }
   }
 
-  Future<void> _settings() async {
-    final initial = {
-      ..._data,
-      'gst_registered': '${_data['gst_registered'] ?? false}',
-    };
-    final saved = await adminForm(
-      context,
-      title: 'CutLink billing details',
-      explanation:
-          'These details are saved on each new invoice. Changes do not rewrite previously issued invoices.',
-      initial: initial,
-      fields: const [
-        AdminField(
-          'legal_name',
-          'CutLink legal / trading entity',
-          required: true,
-        ),
-        AdminField('abn', 'ABN'),
-        AdminField('email', 'Billing email', required: true),
-        AdminField('phone', 'Phone'),
-        AdminField('address', 'Business address', lines: 2),
-        AdminField(
-          'gst_registered',
-          'Registered for GST',
-          required: true,
-          options: ['false', 'true'],
-        ),
-        AdminField('bank_name', 'Bank'),
-        AdminField('account_name', 'Bank account name'),
-        AdminField('bsb', 'BSB'),
-        AdminField('account_number', 'Bank account number'),
-        AdminField('payment_instructions', 'Payment instructions', lines: 3),
-      ],
-      submit: (d) async {
-        await PlatformAdminService.action('save_settings', {
-          'details': {...d, 'gst_registered': d['gst_registered'] == 'true'},
-        });
-      },
-    );
-    if (saved && mounted) {
-      await _load();
-    }
-  }
-
   Widget _metric(
     String label,
     String value,
@@ -257,19 +193,19 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             'Awaiting approval',
             '${_data['pending'] ?? 0}',
             Icons.how_to_reg_outlined,
-            onTap: () => _change('businesses'),
+            onTap: () => _change('businesses', filter: 'pending'),
           ),
           _metric(
-            'Subscription balance',
+            'Unpaid CutLink invoices',
             PlatformAdminService.money(_data['outstanding']),
             Icons.account_balance_wallet_outlined,
             onTap: () => _change('accounts', filter: 'unpaid'),
           ),
           _metric(
-            'Overdue subscriptions',
+            'Overdue payments',
             PlatformAdminService.money(_data['overdue']),
             Icons.schedule_outlined,
-            onTap: () => _change('invoices'),
+            onTap: () => _change('invoices', filter: 'overdue'),
           ),
           _metric(
             'Payments received',
@@ -278,7 +214,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             onTap: () => _change('invoices'),
           ),
           _metric(
-            'Accounts due to bill',
+            'Ready to invoice',
             '${_data['due_accounts'] ?? 0}',
             Icons.receipt_long_outlined,
             onTap: () => _change('accounts', filter: 'needs_invoice'),
@@ -296,7 +232,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Open a business to manage access, review its trading activity and configure its monthly subscription. Subscription payments and supplier trade invoices are accounted for separately.',
+              'Use Billing for CutLink memberships, invoices and received payments.',
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -311,7 +247,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                 OutlinedButton.icon(
                   onPressed: () => _change('settings'),
                   icon: const Icon(Icons.settings_outlined),
-                  label: const Text('Billing setup'),
+                  label: const Text('Invoice details'),
                 ),
                 OutlinedButton.icon(
                   onPressed: _announcement,
@@ -324,50 +260,6 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
         ),
       ),
     ],
-  );
-  Widget _settingsView() => AdminCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const CutLinkSectionHeading(
-          title: 'CutLink billing profile',
-          subtitle:
-              'Issuer identity and payment instructions for subscription invoices.',
-          icon: Icons.business_outlined,
-        ),
-        const SizedBox(height: 16),
-        if (_data.isEmpty)
-          const Text(
-            'Set up your billing identity before generating the first subscription invoice.',
-          ),
-        for (final field in {
-          'legal_name': 'Legal entity',
-          'abn': 'ABN',
-          'email': 'Email',
-          'phone': 'Phone',
-          'address': 'Address',
-          'bank_name': 'Bank',
-          'account_name': 'Account name',
-          'bsb': 'BSB',
-          'account_number': 'Account number',
-          'payment_instructions': 'Payment instructions',
-        }.entries)
-          if ('${_data[field.key] ?? ''}'.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SelectableText('${field.value}: ${_data[field.key]}'),
-            ),
-        Text(
-          'GST: ${_data['gst_registered'] == true ? 'Registered' : 'Not enabled'}',
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _settings,
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('Edit billing details'),
-        ),
-      ],
-    ),
   );
   Widget _row(AdminRow row) {
     if (_tab == 'businesses') {
@@ -388,86 +280,6 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _business('${row['id']}'),
-        ),
-      );
-    }
-    if (_tab == 'accounts') {
-      return AdminCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${row['billing_name']}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'CL-${row['account_number']} · ${row['plan_name']} · ${PlatformAdminService.money(MembershipService.map(row['membership'])['effective_total'] ?? row['monthly_fee'])} / month, ${row['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excl. GST'}',
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: [
-                AdminStatus('${row['status']}'),
-                Text(
-                  'Outstanding ${PlatformAdminService.money(row['outstanding'])}',
-                ),
-                Text('Overdue ${PlatformAdminService.money(row['overdue'])}'),
-                Text(
-                  'Next bill ${PlatformAdminService.date(row['next_billing_date'])}',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: () async {
-                    await createSubscriptionInvoice(context, row);
-                    if (mounted) {
-                      await _load();
-                    }
-                  },
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('Generate invoice'),
-                ),
-                OutlinedButton(
-                  onPressed: () => _editAccount(row),
-                  child: const Text('Edit subscription'),
-                ),
-                TextButton(
-                  onPressed: () => _business('${row['business_id']}'),
-                  child: const Text('Open account & invoices'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-    if (_tab == 'invoices') {
-      return AdminCard(
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            '${row['invoice_number']} · ${row['billing_name']}',
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Total ${PlatformAdminService.money(row['total_amount'])} · Paid ${PlatformAdminService.money(row['amount_paid'])}\nBalance ${PlatformAdminService.money(row['outstanding'])} · Due ${PlatformAdminService.date(row['due_date'])}',
-              ),
-              const SizedBox(height: 8),
-              AdminStatus('${row['status']}'),
-            ],
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => _invoice(row),
         ),
       );
     }
@@ -536,13 +348,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'analytics':
         'Subscription performance, business growth and support activity.',
     'businesses': 'Manage suppliers, butchers and account access.',
-    'memberships':
-        'Founding places, membership timelines and GST-inclusive pricing.',
-    'accounts': 'Monthly plans, billing contacts and account balances.',
-    'invoices': 'Review subscription invoices and record received payments.',
+    'billing': 'Memberships, CutLink invoices and payments in one place.',
     'announcements': 'Keep the right businesses informed.',
     'audit': 'A traceable history of administrative actions and trade access.',
-    'settings': 'Your billing identity and payment instructions.',
   };
   Widget _filters() => Padding(
     padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -647,8 +455,6 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           children: [
             if (_tab == 'overview')
               _overview()
-            else if (_tab == 'settings')
-              _settingsView()
             else ...[
               if (_rows.isEmpty)
                 AdminCard(
@@ -696,7 +502,12 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   @override
   Widget build(BuildContext context) {
     if (ModalRoute.of(context)?.isCurrent == true) {
-      PageLocation.workspace({'page': 'admin', 'tab': _tab});
+      PageLocation.workspace({
+        'page': 'admin',
+        'tab': _tab == 'billing'
+            ? (_billingView == 'pricing' ? 'memberships' : _billingView)
+            : _tab,
+      });
     }
     return AdminTheme(
       child: Scaffold(
@@ -772,20 +583,23 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                             icon: const Icon(Icons.add, size: 18),
                             label: const Text('New announcement'),
                           ),
-                        if (_tab == 'accounts')
-                          FilledButton.icon(
-                            onPressed: () => _change('businesses'),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Set up account'),
-                          ),
                       ],
                     ),
                   ),
-                  if (['businesses', 'accounts', 'invoices'].contains(_tab))
-                    _filters(),
+                  if (_tab == 'businesses') _filters(),
                   Expanded(
-                    child: _tab == 'memberships'
-                        ? AdminMembershipsPanel(key: ValueKey(_request))
+                    child: _tab == 'billing'
+                        ? AdminBillingPanel(
+                            key: ValueKey(_request),
+                            initialView: _billingView,
+                            initialFilter: _filter,
+                            onViewChanged: (view) {
+                              setState(() {
+                                _billingView = view;
+                                _filter = null;
+                              });
+                            },
+                          )
                         : _tab == 'homepage'
                         ? const AdminFeaturedBusinessesPanel()
                         : _tab == 'analytics'

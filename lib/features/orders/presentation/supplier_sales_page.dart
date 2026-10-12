@@ -1,3 +1,4 @@
+import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/sales_loading_progress.dart';
@@ -4357,6 +4358,17 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             child: Divider(height: 1, color: Color(0xFFE4E6E8)),
           ),
           actions: [
+            MissingItemRequestButton(
+              businessId: _supplierBusinessId,
+              pageName: 'Supplier sales',
+              catalogueContext: {
+                'Animal': _selectedAnimalCode,
+                'Cut / region': _selectedAnimalRegionKey,
+                'Specification ID': _selectedSpecificationId,
+                'Grade ID': _selectedGradeId,
+                'Search': _searchController.text,
+              },
+            ),
             IconButton(
               onPressed: _loadStock,
               tooltip: 'Refresh sales workspace',

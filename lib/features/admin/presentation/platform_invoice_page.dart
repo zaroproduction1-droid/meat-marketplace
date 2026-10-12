@@ -1,6 +1,3 @@
-import '../../memberships/services/membership_dates.dart';
-import '../../memberships/services/membership_service.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_theme.dart';
@@ -16,6 +13,7 @@ import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/platform_admin_service.dart';
 import '../services/platform_invoice_pdf.dart';
 import 'admin_widgets.dart';
+import 'admin_membership_actions.dart';
 
 class PlatformInvoicePage extends StatefulWidget {
   const PlatformInvoicePage({super.key, required this.invoiceId});
@@ -52,8 +50,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
       if (mounted) {
         setState(() {
           _invoice = row;
-          final notices = PlatformAdminService.rows(row['notices']);
-          _notice = notices.isEmpty ? null : notices.last;
+          _notice = null;
           _pdf = null;
           _version++;
           _loading = false;
@@ -132,6 +129,14 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
     );
     if (saved && mounted) {
       await _load();
+      if (mounted && _invoice != null) {
+        final notices = PlatformAdminService.rows(_invoice!['notices']);
+        setState(() {
+          _notice = notices.isEmpty ? null : notices.last;
+          _pdf = null;
+          _version++;
+        });
+      }
     }
   }
 
@@ -183,6 +188,12 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
           'Payment method',
           required: true,
           options: ['bank_transfer', 'card', 'cash', 'other'],
+          optionLabels: {
+            'bank_transfer': 'Bank transfer',
+            'card': 'Card',
+            'cash': 'Cash',
+            'other': 'Other',
+          },
         ),
         AdminField('reference', 'Payment reference'),
       ],
@@ -287,6 +298,30 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
     return deadline != null && deadline.isBefore(today);
   }
 
+  Widget _value(String label, dynamic amount) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label),
+      Text(
+        PlatformAdminService.money(amount),
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+      ),
+    ],
+  );
+
+  void _more(String action) {
+    switch (action) {
+      case 'payments':
+        _payments();
+      case 'notice':
+        _issueNotice();
+      case 'restore':
+        _restoreBillingAccess();
+      case 'void':
+        _reason('void_invoice', widget.invoiceId, 'Void CutLink invoice');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     PageLocation.track(context, {
@@ -321,105 +356,183 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
               )
             : Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'Balance ${PlatformAdminService.money(_invoice!['outstanding'])}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                          ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: _exporting ? null : () => _export(false),
-                          icon: const Icon(Icons.download_outlined),
-                          label: const Text('Download / share'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _exporting ? null : () => _export(true),
-                          icon: const Icon(Icons.print_outlined),
-                          label: const Text('Print'),
-                        ),
-                        if (_invoice!['voided_at'] == null &&
-                            PlatformAdminService.amount(
-                                  _invoice!['outstanding'],
-                                ) >
-                                0)
-                          OutlinedButton.icon(
-                            onPressed: _payment,
-                            icon: const Icon(Icons.payments_outlined),
-                            label: const Text('Record payment'),
-                          ),
-                        if (_canIssueNotice)
-                          OutlinedButton.icon(
-                            onPressed: _issueNotice,
-                            icon: const Icon(
-                              Icons.notification_important_outlined,
-                            ),
-                            label: const Text('Generate overdue notice'),
-                          ),
-                        if (_invoice!['billing_hold'] == true)
-                          OutlinedButton.icon(
-                            onPressed: _restoreBillingAccess,
-                            icon: const Icon(Icons.lock_open_outlined),
-                            label: const Text('Review & restore access'),
-                          ),
-                        Chip(
-                          label: Text(
-                            _notice == null
-                                ? 'Original invoice'
-                                : 'Overdue notice ${_notice!['stage']}',
-                          ),
-                        ),
-                        PopupMenuButton<AdminRow?>(
-                          tooltip: 'Choose invoice or notice',
-                          icon: const Icon(Icons.history),
-                          onSelected: (value) => setState(() {
-                            _notice = value == null || value.isEmpty
-                                ? null
-                                : value;
-                            _pdf = null;
-                            _version++;
-                          }),
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                              value: <String, dynamic>{},
-                              child: Text('Original invoice'),
-                            ),
-                            for (final n in PlatformAdminService.rows(
-                              _invoice!['notices'],
-                            ))
-                              PopupMenuItem(
-                                value: n,
-                                child: Text(
-                                  'Notice ${n['stage']} · ${PlatformAdminService.date(n['created_at'])}',
-                                ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * .45,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '${PlatformAdminService.map(_invoice!['customer_snapshot'])['billing_name'] ?? 'Business'}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
                               ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 24,
+                              runSpacing: 10,
+                              children: [
+                                _value(
+                                  'Invoice total',
+                                  _invoice!['total_amount'],
+                                ),
+                                _value(
+                                  'Payments received',
+                                  _invoice!['amount_paid'],
+                                ),
+                                _value(
+                                  'Still unpaid',
+                                  _invoice!['outstanding'],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Due date'),
+                                    Text(
+                                      PlatformAdminService.date(
+                                        _invoice!['due_date'],
+                                      ),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (_invoice!['voided_at'] == null &&
+                                    PlatformAdminService.amount(
+                                          _invoice!['outstanding'],
+                                        ) >
+                                        0)
+                                  FilledButton.icon(
+                                    onPressed: _payment,
+                                    icon: const Icon(Icons.payments_outlined),
+                                    label: const Text(
+                                      'Record received payment',
+                                    ),
+                                  ),
+                                OutlinedButton.icon(
+                                  onPressed: _exporting
+                                      ? null
+                                      : () => _export(false),
+                                  icon: const Icon(Icons.download_outlined),
+                                  label: Text(
+                                    _notice == null
+                                        ? 'Download invoice'
+                                        : 'Download reminder',
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: _exporting
+                                      ? null
+                                      : () => _export(true),
+                                  icon: const Icon(Icons.print_outlined),
+                                  label: const Text('Print'),
+                                ),
+                                PopupMenuButton<String>(
+                                  tooltip: 'More invoice actions',
+                                  onSelected: _more,
+                                  itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                      value: 'payments',
+                                      child: Text('Payment history'),
+                                    ),
+                                    if (_canIssueNotice)
+                                      const PopupMenuItem(
+                                        value: 'notice',
+                                        child: Text('Create overdue reminder'),
+                                      ),
+                                    if (_invoice!['billing_hold'] == true)
+                                      const PopupMenuItem(
+                                        value: 'restore',
+                                        child: Text('Review & restore access'),
+                                      ),
+                                    if (_invoice!['voided_at'] == null &&
+                                        PlatformAdminService.amount(
+                                              _invoice!['amount_paid'],
+                                            ) ==
+                                            0)
+                                      const PopupMenuItem(
+                                        value: 'void',
+                                        child: Text('Void this invoice'),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Chip(
+                                  label: Text(
+                                    _invoice!['voided_at'] != null
+                                        ? 'Voided'
+                                        : PlatformAdminService.amount(
+                                                _invoice!['outstanding'],
+                                              ) <=
+                                              0
+                                        ? 'Paid'
+                                        : 'Payment outstanding',
+                                  ),
+                                ),
+                                PopupMenuButton<AdminRow>(
+                                  tooltip: 'View original invoice or reminder',
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _notice == null
+                                              ? 'Viewing original invoice'
+                                              : 'Viewing reminder ${_notice!['stage']}',
+                                        ),
+                                        const Icon(Icons.arrow_drop_down),
+                                      ],
+                                    ),
+                                  ),
+                                  onSelected: (value) => setState(() {
+                                    _notice = value.isEmpty ? null : value;
+                                    _pdf = null;
+                                    _version++;
+                                  }),
+                                  itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                      value: <String, dynamic>{},
+                                      child: Text('Original invoice'),
+                                    ),
+                                    for (final notice
+                                        in PlatformAdminService.rows(
+                                          _invoice!['notices'],
+                                        ))
+                                      PopupMenuItem(
+                                        value: notice,
+                                        child: Text(
+                                          'Reminder ${notice['stage']} · ${PlatformAdminService.date(notice['created_at'])}',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
                         ),
-                        TextButton(
-                          onPressed: _payments,
-                          child: const Text('Payment history'),
-                        ),
-                        if (_invoice!['voided_at'] == null &&
-                            PlatformAdminService.amount(
-                                  _invoice!['amount_paid'],
-                                ) ==
-                                0)
-                          TextButton(
-                            onPressed: () => _reason(
-                              'void_invoice',
-                              widget.invoiceId,
-                              'Void subscription invoice',
-                            ),
-                            child: const Text('Void invoice'),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                   Expanded(
@@ -439,48 +552,303 @@ Future<void> createSubscriptionInvoice(
   BuildContext context,
   AdminRow account,
 ) async {
-  final start =
-      DateTime.tryParse('${account['next_billing_date']}') ?? DateTime.now();
-  final nextMonthLastDay = DateTime(start.year, start.month + 2, 0).day;
-  final fallbackNext = DateTime(
-    start.year,
-    start.month + 1,
-    start.day > nextMonthLastDay ? nextMonthLastDay : start.day,
+  final id = await showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _InvoiceReviewDialog(accountId: '${account['id']}'),
   );
-  final membership = MembershipService.map(account['membership']);
-  final activation = DateTime.tryParse('${membership['started_on']}');
-  final periodEnd = activation == null
-      ? DateTime(fallbackNext.year, fallbackNext.month, fallbackNext.day - 1)
-      : MembershipDates.periodEnd(activation, start);
-  String? invoiceId;
-  final saved = await adminForm(
-    context,
-    title: 'Generate monthly invoice',
-    submitLabel: 'Generate invoice',
-    explanation:
-        '${account['billing_name']}\n${account['plan_name']} · ${account['fee_gst_inclusive'] == true ? 'GST inclusive' : 'excluding GST'}\n${activation == null ? 'Configured monthly fee applies.' : 'Use one complete monthly period anchored to ${PlatformAdminService.date(activation)}. The backend calculates the price for that period, including free and discounted months.'} Download the invoice to email it externally.',
-    initial: {
-      'period_start': PlatformAdminService.iso(start),
-      'period_end': PlatformAdminService.iso(periodEnd),
-    },
-    fields: const [
-      AdminField('period_start', 'Period starts', required: true, date: true),
-      AdminField('period_end', 'Period ends', required: true, date: true),
-    ],
-    submit: (data) async {
-      final result = await PlatformAdminService.action('create_invoice', {
-        ...data,
-        'id': account['id'],
-      });
-      invoiceId = result['id']?.toString();
-    },
-  );
-  if (saved && context.mounted && invoiceId != null) {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => PlatformInvoicePage(invoiceId: invoiceId!),
-      ),
-    );
+  if (!context.mounted || id == null) {
+    return;
   }
+  if (id == 'invoice_settings') {
+    if (await editCutLinkInvoiceDetails(context) && context.mounted) {
+      await createSubscriptionInvoice(context, account);
+    }
+    return;
+  }
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => PlatformInvoicePage(invoiceId: id)),
+  );
+}
+
+class _InvoiceReviewDialog extends StatefulWidget {
+  const _InvoiceReviewDialog({required this.accountId});
+  final String accountId;
+  @override
+  State<_InvoiceReviewDialog> createState() => _InvoiceReviewDialogState();
+}
+
+class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
+  AdminRow? _quote;
+  String? _error;
+  bool _loading = true, _saving = false;
+  final _start = TextEditingController(), _end = TextEditingController();
+  bool get _edited =>
+      _quote != null &&
+      (_start.text != _quote!['period_start'] ||
+          _end.text != _quote!['period_end']);
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _start.addListener(_datesChanged);
+    _end.addListener(_datesChanged);
+  }
+
+  void _datesChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _start.dispose();
+    _end.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load({bool custom = false}) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (custom &&
+          (DateTime.tryParse(_start.text) == null ||
+              DateTime.tryParse(_end.text) == null)) {
+        throw ArgumentError('Choose valid start and end dates.');
+      }
+      final quote = await PlatformAdminService.invoicePreview(
+        widget.accountId,
+        start: custom ? _start.text : null,
+        end: custom ? _end.text : null,
+      );
+      if (mounted) {
+        setState(() {
+          _quote = quote;
+          _start.text = '${quote['period_start']}';
+          _end.text = '${quote['period_end']}';
+          _loading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = PlatformAdminService.error(error);
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _create() async {
+    if (_saving || _loading || _quote == null || _edited || _error != null) {
+      return;
+    }
+    if (_quote!['existing_invoice_id'] != null) {
+      Navigator.of(context).pop('${_quote!['existing_invoice_id']}');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final result = await PlatformAdminService.action('create_invoice', {
+        'id': widget.accountId,
+        'period_start': _quote!['period_start'],
+        'period_end': _quote!['period_end'],
+        'expected_total': _quote!['total'],
+      });
+      if (result['id'] == null) {
+        throw StateError(
+          'No invoice was returned. Refresh the preview and try again.',
+        );
+      }
+      if (mounted) {
+        Navigator.of(context).pop('${result['id']}');
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = PlatformAdminService.error(error);
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _date(TextEditingController controller) async {
+    final now = DateTime.now();
+    final current = DateTime.tryParse(controller.text) ?? now;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date != null && mounted) {
+      controller.text = PlatformAdminService.iso(date);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_saving,
+    child: AlertDialog(
+      title: const Text('Review CutLink invoice'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (!_loading && _quote != null) ...[
+                Text(
+                  '${_quote!['business']}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${PlatformAdminService.date(_quote!['period_start'])} – ${PlatformAdminService.date(_quote!['period_end'])}',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  PlatformAdminService.money(_quote!['total']),
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    color: AdminTheme.accent,
+                  ),
+                ),
+                Text(
+                  'Total AUD · Includes ${PlatformAdminService.money(_quote!['gst_amount'])} GST',
+                ),
+                Text(
+                  'Payment due ${PlatformAdminService.date(_quote!['due_date'])}',
+                ),
+                const SizedBox(height: 10),
+                if (_quote!['stage'] == 'free_founding')
+                  const Text('This period is free under the founding offer.'),
+                if (_quote!['stage'] == 'founding_half_price')
+                  const Text('This period is part of the half-price year.'),
+                if (_quote!['existing_invoice_id'] != null)
+                  Text(
+                    '${_quote!['invoice_number']} already covers these dates. Open it instead of creating another.',
+                  ),
+                if (_quote!['issuer_ready'] != true) ...[
+                  const Text(
+                    'Add your CutLink business name and billing email before creating invoices.',
+                  ),
+                  TextButton(
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop('invoice_settings'),
+                    child: const Text('Add invoice details'),
+                  ),
+                ],
+                ExpansionTile(
+                  title: const Text('Change billing period'),
+                  tilePadding: EdgeInsets.zero,
+                  children: [
+                    TextField(
+                      controller: _start,
+                      enabled: !_saving && !_loading,
+                      decoration: InputDecoration(
+                        labelText: 'Starts (YYYY-MM-DD)',
+                        suffixIcon: IconButton(
+                          onPressed: _saving ? null : () => _date(_start),
+                          icon: const Icon(Icons.calendar_today_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _end,
+                      enabled: !_saving && !_loading,
+                      decoration: InputDecoration(
+                        labelText: 'Ends (YYYY-MM-DD)',
+                        suffixIcon: IconButton(
+                          onPressed: _saving ? null : () => _date(_end),
+                          icon: const Icon(Icons.calendar_today_outlined),
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _saving || _loading
+                          ? null
+                          : () => _load(custom: true),
+                      child: const Text('Update preview'),
+                    ),
+                    TextButton(
+                      onPressed: _saving || _loading ? null : () => _load(),
+                      child: const Text('Use next invoice period'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Creates an invoice only. Download its PDF to send to the business. No money is charged.',
+                ),
+              ],
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              if (_error != null)
+                TextButton(
+                  onPressed: _saving || _loading
+                      ? null
+                      : () => _load(custom: _quote != null),
+                  child: const Text('Refresh preview'),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed:
+              _saving ||
+                  _loading ||
+                  _error != null ||
+                  _quote == null ||
+                  _quote!['issuer_ready'] != true
+              ? null
+              : _edited
+              ? () => _load(custom: true)
+              : _create,
+          child: Text(
+            _saving
+                ? 'Creating…'
+                : _edited
+                ? 'Update preview'
+                : _quote?['existing_invoice_id'] != null
+                ? 'Open existing invoice'
+                : 'Create invoice',
+          ),
+        ),
+      ],
+    ),
+  );
 }

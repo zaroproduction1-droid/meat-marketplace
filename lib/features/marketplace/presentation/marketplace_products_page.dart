@@ -1,3 +1,4 @@
+import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
@@ -2842,6 +2843,18 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             ],
           ),
           actions: [
+            MissingItemRequestButton(
+              businessId: _butcherBusinessId,
+              pageName: 'Butcher browse products',
+              catalogueContext: {
+                'Animal': _selectedAnimalCode,
+                'Cut / region': _selectedAnimalRegionKey,
+                'Section ID': _selectedSectionId,
+                'Specification ID': _selectedSpecificationId,
+                'Grade ID': _selectedGradeId,
+                'Search': _searchController.text,
+              },
+            ),
             IconButton(
               tooltip: _favourites.hasSearch(_savedSearchFilters())
                   ? 'Remove saved search'

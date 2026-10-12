@@ -30,6 +30,22 @@ class PlatformAdminService {
       params: {'p_action': action, 'p_data': data},
     ),
   );
+  static Future<AdminRow> invoicePreview(
+    String accountId, {
+    String? start,
+    String? end,
+  }) async => map(
+    await Supabase.instance.client
+        .rpc(
+          'platform_admin_invoice_preview',
+          params: {
+            'p_account_id': accountId,
+            'p_period_start': start,
+            'p_period_end': end,
+          },
+        )
+        .timeout(const Duration(seconds: 20)),
+  );
   static AdminRow map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
   static List<AdminRow> rows(dynamic value) =>
@@ -44,8 +60,20 @@ class PlatformAdminService {
   }
 
   static String iso(DateTime date) => date.toIso8601String().substring(0, 10);
-  static String name(AdminRow b) =>
-      '${b['trading_name'] ?? b['billing_name'] ?? b['legal_name'] ?? 'Business'}';
+  static String name(AdminRow business) {
+    for (final value in [
+      business['trading_name'],
+      business['billing_name'],
+      business['legal_name'],
+      business['business'],
+    ]) {
+      if (value != null && '$value'.trim().isNotEmpty) {
+        return '$value'.trim();
+      }
+    }
+    return 'Business';
+  }
+
   static String error(Object e) =>
       e is PostgrestException ? e.message : e.toString();
   static String requestKey() {

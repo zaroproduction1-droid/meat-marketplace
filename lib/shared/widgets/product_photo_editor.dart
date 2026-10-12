@@ -170,7 +170,9 @@ class ProductPhotoEditor extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                draft.dirty ? 'Photo changes will be saved with this product.' : 'Keep the catalogue picture or upload your own. PNG, JPG or WebP, up to 5 MB.',
+                draft.dirty
+                    ? 'Photo changes will be saved with this product.'
+                    : 'Keep the catalogue picture or upload your own. PNG, JPG or WebP, up to 5 MB.',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF666A70)),
               ),
               const SizedBox(height: 8),

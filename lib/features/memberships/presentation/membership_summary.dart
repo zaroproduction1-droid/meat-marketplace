@@ -51,16 +51,20 @@ class MembershipSummary extends StatelessWidget {
                 ),
               Text('Membership started: ${_date(membership['started_on'])}'),
               if (membership['free_end'] != null)
-                Text('Free period ends: ${_date(membership['free_end'])}'),
+                Text(
+                  'Your free months finish: ${_date(membership['free_end'])}',
+                ),
               if (membership['discount_end'] != null)
-                Text('50% period ends: ${_date(membership['discount_end'])}'),
+                Text(
+                  'Your half-price year finishes: ${_date(membership['discount_end'])}',
+                ),
               if (membership['tier'] == 'founding_tier_1')
                 Text(
-                  'Months 1–6: free · Months 7–18: ${MembershipService.money((num.tryParse('${membership['standard_total']}') ?? 0) / 2)}/month · Month 19 onward: ${MembershipService.money(membership['standard_total'])}/month.',
+                  'Free for your first 6 months. Then ${MembershipService.money(MembershipService.halfPrice(membership['standard_total']))}/month for 12 months. After that, ${MembershipService.money(membership['standard_total'])}/month.',
                 ),
               if (membership['tier'] == 'founding_tier_2')
                 Text(
-                  'Months 1–6: free · Month 7 onward: ${MembershipService.money(membership['standard_total'])}/month.',
+                  'Free for your first 6 months. After that, ${MembershipService.money(membership['standard_total'])}/month.',
                 ),
               if (membership['revoked_at'] != null)
                 const Text(

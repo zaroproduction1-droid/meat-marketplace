@@ -1,3 +1,5 @@
+import '../../support/presentation/missing_item_request_button.dart';
+import 'vip_customer_prices_dialog.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
@@ -10,7 +12,6 @@ import '../../products/presentation/edit_product_page.dart';
 import '../../products/presentation/add_product_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
@@ -25,6 +26,8 @@ class _PendingPriceChange {
     required this.minimumQuantity,
     required this.minimumQuantityUnit,
     this.priceListId,
+    this.customer,
+    this.minimumText,
   });
 
   final Map<String, dynamic> product;
@@ -34,6 +37,8 @@ class _PendingPriceChange {
   final double? minimumQuantity;
   final dynamic minimumQuantityUnit;
   String? priceListId;
+  final Map<String, dynamic>? customer;
+  final String? minimumText;
 }
 
 class QuickPriceManagementPage extends StatefulWidget {
@@ -626,7 +631,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             butcher_business_id,
             businesses!supplier_customer_relationships_butcher_business_id_fkey(
               legal_name,
-              trading_name
+              trading_name,
+              logo_path
             )
           ''')
           .eq('supplier_business_id', supplierBusinessId)
@@ -954,61 +960,6 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     _ => 'kg',
   };
 
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-
-    if (number == null) {
-      return 'Not set';
-    }
-
-    final parts = number.toStringAsFixed(2).split('.');
-    final digits = parts.first;
-    final buffer = StringBuffer();
-
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) {
-        buffer.write(',');
-      }
-      buffer.write(digits[i]);
-    }
-
-    return '\$${buffer.toString()}.${parts.last}';
-  }
-
-  Future<Map<String, dynamic>> _ensurePriceList({
-    required String visibility,
-    required String defaultName,
-  }) async {
-    final existing = _firstPriceListForVisibility(visibility);
-    if (existing != null) {
-      return existing;
-    }
-
-    final supplierId = _supplierBusinessId;
-    if (supplierId == null) {
-      throw Exception('Supplier business could not be identified.');
-    }
-
-    final inserted = await Supabase.instance.client
-        .from('price_lists')
-        .insert({
-          'supplier_business_id': supplierId,
-          'name': defaultName,
-          'visibility': visibility,
-          'active': true,
-        })
-        .select('''
-          id,
-          supplier_business_id,
-          name,
-          visibility,
-          active
-        ''')
-        .single();
-
-    return Map<String, dynamic>.from(inserted);
-  }
-
   String _changeKey(String productId, String visibility, [String? listId]) =>
       '$productId|$visibility|${listId ?? ''}';
 
@@ -1058,328 +1009,126 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     });
   }
 
-  void _queueDialogPrice({
+  void _queueVipPrice({
     required Map<String, dynamic> product,
-    required Map<String, dynamic> priceList,
-    required String amountText,
-    required String basis,
-    required double? minimum,
+    required Map<String, dynamic> customer,
+    required Map<String, dynamic>? priceList,
+    required Map<String, dynamic>? existingPrice,
+    required VipCustomerPriceDraft? draft,
   }) {
-    final productId = product['id'].toString();
-    final listId = priceList['id'].toString();
-    final key = _changeKey(productId, 'private', listId);
-    final catchWeight = _isCatchWeight(product);
-
+    final id = customer['butcher_business_id'].toString();
+    final key = _changeKey(product['id'].toString(), 'private', id);
     setState(() {
+      if (draft == null) {
+        _pendingChanges.remove(key);
+        return;
+      }
       _pendingChanges[key] = _PendingPriceChange(
         product: product,
+        customer: customer,
+        minimumText: draft.minimumText,
         visibility: 'private',
-        priceListId: listId,
-        amountText: amountText.trim(),
-        priceBasis: catchWeight ? 'kilogram' : basis,
-        minimumQuantity: minimum,
-        minimumQuantityUnit: catchWeight ? 'carton' : product['order_unit'],
+        priceListId: priceList?['id']?.toString(),
+        amountText: draft.amountText.trim(),
+        priceBasis: _isCatchWeight(product) ? 'kilogram' : draft.priceBasis,
+        minimumQuantity: double.tryParse(draft.minimumText.trim()),
+        minimumQuantityUnit: _isCatchWeight(product)
+            ? 'carton'
+            : existingPrice?['minimum_quantity_unit'] ?? product['order_unit'],
       );
     });
   }
 
-  Future<void> _saveAllChanges() async {
-    if (_pendingChanges.isEmpty || _isSavingChanges) {
-      return;
+  Future<bool> _saveAllChanges() async {
+    if (_pendingChanges.isEmpty) {
+      return true;
     }
-
-    final changes = _pendingChanges.values.toList();
-    for (final change in changes) {
+    if (_isSavingChanges) {
+      return false;
+    }
+    final changes = Map<String, _PendingPriceChange>.of(_pendingChanges);
+    for (final change in changes.values) {
       final amount = double.tryParse(change.amountText);
       if (amount == null || !amount.isFinite || amount < 0) {
         _message('Enter a valid price for ${change.product['product_name']}.');
-        return;
+        return false;
+      }
+      if (change.minimumText != null &&
+          change.minimumText!.trim().isNotEmpty &&
+          double.tryParse(change.minimumText!.trim()) == null) {
+        _message(
+          'Check the minimum order for ${change.product['product_name']}.',
+        );
+        return false;
+      }
+      final minimum = change.minimumQuantity;
+      if (minimum != null &&
+          (!minimum.isFinite ||
+              minimum <= 0 ||
+              (_isCatchWeight(change.product) &&
+                  minimum != minimum.roundToDouble()))) {
+        _message(
+          'Check the minimum order for ${change.product['product_name']}.',
+        );
+        return false;
       }
     }
-
     setState(() => _isSavingChanges = true);
-
     try {
-      for (final change in changes) {
-        if (change.priceListId != null) {
-          continue;
-        }
-        final list = await _ensurePriceList(
-          visibility: change.visibility,
-          defaultName: change.visibility == 'public'
-              ? 'Standard Pricing'
-              : 'Trade Pricing',
-        );
-        change.priceListId = list['id']?.toString();
-      }
-
-      final now = DateTime.now().toIso8601String();
-      await Supabase.instance.client.from('product_prices').upsert([
-        for (final change in changes)
-          {
-            'price_list_id': change.priceListId,
-            'product_id': change.product['id'].toString(),
-            'amount': double.parse(change.amountText),
-            'price_basis': change.priceBasis,
-            'minimum_quantity': change.minimumQuantity,
-            'minimum_quantity_unit': change.minimumQuantityUnit,
-            'active': true,
-            'updated_at': now,
-          },
-      ], onConflict: 'price_list_id,product_id');
-
+      // List creation, customer assignment and every price update share one
+      // database transaction. An invalid or unauthorised row rolls it all back.
+      await Supabase.instance.client
+          .rpc(
+            'save_supplier_price_changes',
+            params: {
+              'p_supplier_business_id': _supplierBusinessId,
+              'p_changes': [
+                for (final change in changes.values)
+                  {
+                    'product_id': change.product['id'].toString(),
+                    'price_list_id': change.priceListId,
+                    'visibility': change.visibility,
+                    'butcher_business_id':
+                        change.customer?['butcher_business_id'],
+                    'amount': double.parse(change.amountText),
+                    'price_basis': change.priceBasis,
+                    'minimum_quantity': change.minimumQuantity,
+                    'minimum_quantity_unit': change.minimumQuantityUnit,
+                  },
+              ],
+            },
+          )
+          .timeout(const Duration(seconds: 30));
       if (!mounted) {
-        return;
+        return true;
       }
-      final count = changes.length;
       setState(() {
-        _pendingChanges.clear();
+        for (final entry in changes.entries) {
+          if (identical(_pendingChanges[entry.key], entry.value)) {
+            _pendingChanges.remove(entry.key);
+          }
+        }
         _isSavingChanges = false;
       });
       await _loadPage();
-      _message('$count price change${count == 1 ? '' : 's'} saved.');
+      _message(
+        '${changes.length} price change${changes.length == 1 ? '' : 's'} saved.',
+      );
+      return true;
     } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() => _isSavingChanges = false);
+        _message(error.message);
       }
-      setState(() => _isSavingChanges = false);
-      _message(error.message);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _isSavingChanges = false);
-      _message(error.toString());
-    }
-  }
-
-  Future<void> _openPriceDialog({
-    required Map<String, dynamic> product,
-    required Map<String, dynamic> priceList,
-    required Map<String, dynamic>? existingPrice,
-    required String title,
-  }) async {
-    final productId = product['id']?.toString();
-    final priceListId = priceList['id']?.toString();
-    if (productId == null || priceListId == null) {
-      return;
-    }
-    final pending =
-        _pendingChanges[_changeKey(productId, 'private', priceListId)];
-
-    final catchWeight = _isCatchWeight(product);
-    final initialBasis = catchWeight
-        ? 'kilogram'
-        : pending?.priceBasis ??
-              existingPrice?['price_basis']?.toString() ??
-              product['price_basis']?.toString() ??
-              'unit';
-
-    final amountController = TextEditingController(
-      text: pending?.amountText ?? existingPrice?['amount']?.toString() ?? '',
-    );
-    final minimumController = TextEditingController(
-      text:
-          pending?.minimumQuantity?.toString() ??
-          existingPrice?['minimum_quantity']?.toString() ??
-          '',
-    );
-
-    var basis = ['kilogram', 'carton', 'unit'].contains(initialBasis)
-        ? initialBasis
-        : 'unit';
-
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> save() async {
-              final amount = double.tryParse(amountController.text.trim());
-
-              if (amount == null || !amount.isFinite || amount < 0) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Enter a valid price.')),
-                );
-                return;
-              }
-
-              final minimumText = minimumController.text.trim();
-              double? minimum;
-
-              if (minimumText.isNotEmpty) {
-                if (catchWeight) {
-                  final whole = int.tryParse(minimumText);
-                  if (whole == null || whole <= 0) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Minimum cartons must be a whole number greater than 0.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                  minimum = whole.toDouble();
-                } else {
-                  minimum = double.tryParse(minimumText);
-                  if (minimum == null || minimum <= 0) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Minimum quantity must be greater than 0.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                }
-              }
-
-              _queueDialogPrice(
-                product: product,
-                priceList: priceList,
-                amountText: amountController.text,
-                basis: basis,
-                minimum: minimum,
-              );
-
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop(true);
-              }
-            }
-
-            return phoneDialog(
-              context,
-              AlertDialog(
-                title: Text('$title • ${product['product_name'] ?? 'Product'}'),
-                content: SizedBox(
-                  width: 500,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F8F6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          switch (priceList['visibility']?.toString()) {
-                            'public' =>
-                              'Standard Price: normal marketplace price.',
-                            'approved_customers' =>
-                              'Trade Price: shown to approved supplier customers.',
-                            'private' =>
-                              'Customer-Specific Price: only for this selected customer.',
-                            _ => '',
-                          },
-                          style: const TextStyle(
-                            color: Color(0xFF555555),
-                            height: 1.35,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: amountController,
-                        autofocus: true,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Price inc GST',
-                          prefixText: '\$ ',
-                          suffixText:
-                              '/ ${catchWeight ? 'kg' : _basisLabel(basis)}',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (!catchWeight)
-                        DropdownButtonFormField<String>(
-                          isExpanded: isPhoneLayout(context),
-                          initialValue: basis,
-                          decoration: const InputDecoration(
-                            labelText: 'Price basis',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'kilogram',
-                              child: Text('Per kilogram'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'carton',
-                              child: Text('Per carton'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'unit',
-                              child: Text('Per unit'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() => basis = value);
-                            }
-                          },
-                        ),
-                      if (!catchWeight) const SizedBox(height: 16),
-                      TextField(
-                        controller: minimumController,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: !catchWeight,
-                        ),
-                        inputFormatters: catchWeight
-                            ? [FilteringTextInputFormatter.digitsOnly]
-                            : null,
-                        decoration: InputDecoration(
-                          labelText: catchWeight
-                              ? 'Minimum order (optional)'
-                              : 'Minimum quantity (optional)',
-                          suffixText: catchWeight ? 'cartons' : null,
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      if (catchWeight) ...[
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Catch-weight products are ordered by whole cartons and charged per kg after the actual weight is known.',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    onPressed: save,
-                    child: const Text('Add to changes'),
-                  ),
-                ],
-              ),
-            );
-          },
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSavingChanges = false);
+        _message(
+          'Prices could not be saved. Your changes are kept; try again.',
         );
-      },
-    );
-
-    amountController.dispose();
-    minimumController.dispose();
-
-    if (saved == true && mounted) {
-      setState(() {});
+      }
     }
+    return false;
   }
 
   Future<void> _manageCustomerPrices(Map<String, dynamic> product) async {
@@ -1387,270 +1136,109 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       _message('There are no approved butcher customers yet.');
       return;
     }
-
-    var search = '';
+    final customers = <String, Map<String, dynamic>>{
+      for (final customer in _approvedCustomers)
+        if (customer['butcher_business_id'] != null)
+          customer['butcher_business_id'].toString(): customer,
+    };
+    final entries = <VipCustomerPriceEntry>[];
+    final lists = <String, Map<String, dynamic>?>{};
+    final prices = <String, Map<String, dynamic>?>{};
+    for (final entry in customers.entries) {
+      final id = entry.key;
+      final list = _privatePriceListForCustomer(id);
+      final price = list == null
+          ? null
+          : _priceForProductAndList(
+              product['id'].toString(),
+              list['id'].toString(),
+            );
+      lists[id] = list;
+      prices[id] = price;
+      final pending =
+          _pendingChanges[_changeKey(product['id'].toString(), 'private', id)];
+      final catchWeight = _isCatchWeight(product);
+      final rawBasis = catchWeight
+          ? 'kilogram'
+          : price?['price_basis']?.toString() ??
+                product['price_basis']?.toString() ??
+                'unit';
+      final basis = ['kilogram', 'carton', 'unit'].contains(rawBasis)
+          ? rawBasis
+          : 'unit';
+      final saved = VipCustomerPriceDraft(
+        amountText: price?['amount']?.toString() ?? '',
+        priceBasis: basis,
+        minimumText: price?['minimum_quantity']?.toString() ?? '',
+      );
+      final logo = _nestedMap(
+        entry.value['businesses'],
+      )?['logo_path']?.toString().trim();
+      entries.add(
+        VipCustomerPriceEntry(
+          customerId: id,
+          name: _customerName(entry.value),
+          saved: saved,
+          initial: pending == null
+              ? saved
+              : VipCustomerPriceDraft(
+                  amountText: pending.amountText,
+                  priceBasis: pending.priceBasis,
+                  minimumText:
+                      pending.minimumText ??
+                      pending.minimumQuantity?.toString() ??
+                      '',
+                ),
+          logoUrl: logo == null || logo.isEmpty
+              ? null
+              : logo.startsWith('https://')
+              ? logo
+              : Supabase.instance.client.storage
+                    .from('business-branding')
+                    .getPublicUrl(logo),
+        ),
+      );
+    }
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        return Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 680),
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                final customers = _approvedCustomers
-                    .where(
-                      (c) => _customerName(
-                        c,
-                      ).toLowerCase().contains(search.toLowerCase()),
-                    )
-                    .toList();
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 20, 12, 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'VIP customer prices',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  product['product_name']?.toString() ??
-                                      'Product',
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Search customers',
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (v) => setDialogState(() => search = v),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(18),
-                        itemCount: customers.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final customer = customers[index];
-                          final customerId = customer['butcher_business_id']
-                              ?.toString();
-
-                          final priceList = customerId == null
-                              ? null
-                              : _privatePriceListForCustomer(customerId);
-
-                          final price = priceList == null
-                              ? null
-                              : _priceForProductAndList(
-                                  product['id'].toString(),
-                                  priceList['id'].toString(),
-                                );
-
-                          return Container(
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFE2E2DE),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _customerName(customer),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        price == null
-                                            ? 'No special price'
-                                            : '${_money(price['amount'])} / ${_basisLabel(price['price_basis']?.toString())} inc GST',
-                                        style: TextStyle(
-                                          color: price == null
-                                              ? const Color(0xFF777777)
-                                              : _darkRed,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                OutlinedButton.icon(
-                                  onPressed: customerId == null
-                                      ? null
-                                      : () async {
-                                          try {
-                                            var list = priceList;
-
-                                            list ??=
-                                                await _createPrivatePriceListForCustomer(
-                                                  customer,
-                                                );
-
-                                            if (!dialogContext.mounted) {
-                                              return;
-                                            }
-
-                                            Navigator.of(dialogContext).pop();
-
-                                            await _openPriceDialog(
-                                              product: product,
-                                              priceList: list,
-                                              existingPrice: price,
-                                              title:
-                                                  'Customer-Specific Price • ${_customerName(customer)}',
-                                            );
-
-                                            if (!mounted) {
-                                              return;
-                                            }
-
-                                            await _manageCustomerPrices(
-                                              product,
-                                            );
-                                          } catch (error) {
-                                            _message(error.toString());
-                                          }
-                                        },
-                                  icon: const Icon(Icons.edit_outlined),
-                                  label: Text(
-                                    price == null ? 'Set Price' : 'Change',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      },
+      barrierDismissible: false,
+      builder: (_) => VipCustomerPricesDialog(
+        productName: product['product_name']?.toString() ?? 'Product',
+        customers: entries,
+        catchWeight: _isCatchWeight(product),
+        pendingCount: () => _pendingChanges.length,
+        onSaveAll: _saveAllChanges,
+        onDraftChanged: (id, draft) => _queueVipPrice(
+          product: product,
+          customer: customers[id]!,
+          priceList: lists[id],
+          existingPrice: prices[id],
+          draft: draft,
+        ),
+      ),
     );
   }
 
-  Future<Map<String, dynamic>> _createPrivatePriceListForCustomer(
-    Map<String, dynamic> customer,
-  ) async {
-    final supplierId = _supplierBusinessId;
-    final customerId = customer['butcher_business_id']?.toString();
-
-    if (supplierId == null || customerId == null || customerId.isEmpty) {
-      throw Exception('Customer could not be identified.');
-    }
-
-    final existing = _privatePriceListForCustomer(customerId);
-    if (existing != null) {
-      return existing;
-    }
-
-    final inserted = await Supabase.instance.client
-        .from('price_lists')
-        .insert({
-          'supplier_business_id': supplierId,
-          'name': '${_customerName(customer)} - Customer Price',
-          'visibility': 'private',
-          'active': true,
-        })
-        .select('''
-          id,
-          supplier_business_id,
-          name,
-          visibility,
-          active
-        ''')
-        .single();
-
-    final id = inserted['id']?.toString();
-    if (id == null || id.isEmpty) {
-      throw Exception('Customer-specific price list could not be created.');
-    }
-
-    await Supabase.instance.client.from('price_list_customers').insert({
-      'price_list_id': id,
-      'butcher_business_id': customerId,
-    });
-
-    await _loadPage();
-
-    final loaded = _privatePriceListForCustomer(customerId);
-    if (loaded == null) {
-      throw Exception('Customer-specific price list could not be loaded.');
-    }
-
-    return loaded;
-  }
-
   int _specialPriceCountForProduct(String productId) {
-    final priceListIds = <String>{};
-
+    final customerIds = <String>{};
     for (final customer in _approvedCustomers) {
-      final customerId = customer['butcher_business_id']?.toString();
-      if (customerId == null) {
+      final id = customer['butcher_business_id']?.toString();
+      if (id == null) {
         continue;
       }
-
-      final list = _privatePriceListForCustomer(customerId);
-      if (list == null) {
-        continue;
-      }
-
-      final price = _priceForProductAndList(productId, list['id'].toString());
-
-      if (price != null) {
-        priceListIds.add(list['id'].toString());
+      final list = _privatePriceListForCustomer(id);
+      if (list != null &&
+          _priceForProductAndList(productId, list['id'].toString()) != null) {
+        customerIds.add(id);
       }
     }
-
     for (final change in _pendingChanges.values) {
-      if (change.visibility == 'private' &&
-          change.product['id']?.toString() == productId &&
-          change.priceListId != null) {
-        priceListIds.add(change.priceListId!);
+      final id = change.customer?['butcher_business_id']?.toString();
+      if (id != null && change.product['id']?.toString() == productId) {
+        customerIds.add(id);
       }
     }
-
-    return priceListIds.length;
+    return customerIds.length;
   }
 
   Widget _buildSectionStrip() {
@@ -2129,6 +1717,17 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           actions: [
+            MissingItemRequestButton(
+              businessId: _supplierBusinessId,
+              pageName: 'Supplier inventory & pricing',
+              catalogueContext: {
+                'Animal': _selectedAnimalCode,
+                'Cut / region': _selectedAnimalRegionKey,
+                'Section ID': _selectedSectionId,
+                'Specification ID': _selectedSpecificationId,
+                'Search': _searchController.text,
+              },
+            ),
             IconButton(
               tooltip: 'Browse animal catalogue',
               icon: const Icon(Icons.menu_book_outlined),

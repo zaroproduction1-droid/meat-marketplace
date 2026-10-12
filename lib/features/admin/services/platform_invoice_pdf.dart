@@ -1,3 +1,4 @@
+import 'admin_billing_labels.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 
@@ -232,7 +233,7 @@ class PlatformInvoicePdf {
             headers: ['DESCRIPTION', 'AMOUNT (AUD)'],
             data: [
               [
-                '${_text(invoice['description'])}\n${_date(invoice['period_start'])} - ${_date(invoice['period_end'])}',
+                '${_text(adminInvoiceDescription(invoice['description']))}\n${_date(invoice['period_start'])} - ${_date(invoice['period_end'])}',
                 _money(invoice['subtotal']),
               ],
             ],

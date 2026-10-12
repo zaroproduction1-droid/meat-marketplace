@@ -3,6 +3,7 @@ import 'admin_theme.dart';
 import 'package:flutter/material.dart';
 
 import '../services/platform_admin_service.dart';
+import '../../memberships/services/membership_service.dart';
 
 class AdminField {
   const AdminField(
@@ -13,9 +14,12 @@ class AdminField {
     this.options,
     this.number = false,
     this.date = false,
+    this.checkbox = false,
+    this.optionLabels = const {},
   });
   final String keyName, label;
-  final bool required, number, date;
+  final bool required, number, date, checkbox;
+  final Map<String, String> optionLabels;
   final int lines;
   final List<String>? options;
 }
@@ -133,7 +137,43 @@ class _AdminFormState extends State<_AdminForm> {
                   for (final f in widget.fields)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 14),
-                      child: f.options != null
+                      child: f.checkbox
+                          ? FormField<bool>(
+                              initialValue:
+                                  _controllers[f.keyName]!.text == 'true',
+                              validator: (value) => f.required && value != true
+                                  ? 'Please confirm before continuing.'
+                                  : null,
+                              builder: (field) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CheckboxListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    title: Text(f.label),
+                                    value: field.value ?? false,
+                                    onChanged: _saving
+                                        ? null
+                                        : (value) {
+                                            field.didChange(value);
+                                            _controllers[f.keyName]!.text =
+                                                '${value == true}';
+                                          },
+                                  ),
+                                  if (field.hasError)
+                                    Text(
+                                      field.errorText!,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.error,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            )
+                          : f.options != null
                           ? DropdownButtonFormField<String>(
                               initialValue:
                                   f.options!.contains(
@@ -147,7 +187,10 @@ class _AdminFormState extends State<_AdminForm> {
                                 for (final v in f.options!)
                                   DropdownMenuItem(
                                     value: v,
-                                    child: Text(v.replaceAll('_', ' ')),
+                                    child: Text(
+                                      f.optionLabels[v] ??
+                                          v.replaceAll('_', ' '),
+                                    ),
                                   ),
                               ],
                               onChanged: _saving
@@ -336,26 +379,21 @@ Future<bool> editSubscriptionAccount(
   BuildContext context,
   AdminRow business,
   AdminRow account,
-) => adminForm(
-  context,
-  title: account.isEmpty
-      ? 'Set up subscription account'
-      : 'Edit subscription account',
-  explanation:
-      'Choose the GST basis for legacy accounts. Managed membership prices are fixed by the backend and GST inclusive. Billing status does not automatically suspend business access.',
-  initial: account.isNotEmpty
+) {
+  final managed = MembershipService.map(account['membership']).isNotEmpty;
+  final initial = account.isNotEmpty
       ? {
           ...account,
           'fee_basis': account['fee_gst_inclusive'] == true
               ? 'including_gst'
               : 'excluding_gst',
         }
-      : {
+      : <String, dynamic>{
           'plan_name': 'CutLink monthly',
           'fee_basis': 'including_gst',
-          'monthly_fee': business['business_type'] == 'supplier'
-              ? '350'
-              : '200',
+          'monthly_fee': MembershipService.standardPrice(
+            business['business_type'] == 'supplier',
+          ).toStringAsFixed(2),
           'status': 'active',
           'billing_name': PlatformAdminService.name(business),
           'billing_email': business['business_email'] ?? '',
@@ -365,51 +403,75 @@ Future<bool> editSubscriptionAccount(
             business['suburb'],
             business['state'],
             business['postcode'],
-          ].where((v) => v != null && '$v'.isNotEmpty).join(', '),
+          ].where((value) => value != null && '$value'.isNotEmpty).join(', '),
           'payment_terms_days': '14',
           'next_billing_date': PlatformAdminService.iso(DateTime.now()),
+        };
+  return adminForm(
+    context,
+    title: account.isEmpty
+        ? 'Manual billing account'
+        : 'Billing contact & schedule',
+    explanation: managed
+        ? 'Your membership offer sets the price automatically. Pausing billing does not suspend business access.'
+        : 'Custom billing uses the fee you enter. To start a founding offer, use Start membership on the business billing page.',
+    initial: initial,
+    fields: [
+      const AdminField('billing_name', 'Bill to', required: true),
+      const AdminField('billing_email', 'Billing email', required: true),
+      const AdminField('billing_address', 'Billing address', lines: 2),
+      const AdminField(
+        'payment_terms_days',
+        'Days to pay',
+        required: true,
+        number: true,
+      ),
+      const AdminField(
+        'next_billing_date',
+        'Next invoice starts',
+        required: true,
+        date: true,
+      ),
+      const AdminField(
+        'status',
+        'Billing',
+        required: true,
+        options: ['active', 'trial', 'paused', 'cancelled'],
+        optionLabels: {
+          'active': 'Active',
+          'trial': 'Trial',
+          'paused': 'Paused',
+          'cancelled': 'Cancelled',
         },
-  fields: const [
-    AdminField('plan_name', 'Plan name', required: true),
-    AdminField(
-      'monthly_fee',
-      'Monthly fee (AUD; selected GST basis)',
-      required: true,
-      number: true,
-    ),
-    AdminField(
-      'fee_basis',
-      'GST basis',
-      required: true,
-      options: ['including_gst', 'excluding_gst'],
-    ),
-    AdminField(
-      'status',
-      'Billing status',
-      required: true,
-      options: ['trial', 'active', 'paused', 'cancelled'],
-    ),
-    AdminField('billing_name', 'Bill to', required: true),
-    AdminField('billing_email', 'Billing email', required: true),
-    AdminField('billing_address', 'Billing address', lines: 2),
-    AdminField(
-      'payment_terms_days',
-      'Payment terms (days)',
-      required: true,
-      number: true,
-    ),
-    AdminField(
-      'next_billing_date',
-      'Next billing date',
-      required: true,
-      date: true,
-    ),
-  ],
-  submit: (data) async {
-    await PlatformAdminService.action('save_account', {
-      ...data,
-      'business_id': business['id'] ?? account['business_id'],
-      'fee_gst_inclusive': data['fee_basis'] == 'including_gst',
-    });
-  },
-);
+      ),
+      if (!managed) ...[
+        const AdminField('plan_name', 'Invoice description', required: true),
+        const AdminField(
+          'monthly_fee',
+          'Custom monthly fee (AUD)',
+          required: true,
+          number: true,
+        ),
+        const AdminField(
+          'fee_basis',
+          'Does that fee include GST?',
+          required: true,
+          options: ['including_gst', 'excluding_gst'],
+          optionLabels: {
+            'including_gst': 'Yes — GST included',
+            'excluding_gst': 'No — add GST if registered',
+          },
+        ),
+      ],
+    ],
+    submit: (data) async {
+      await PlatformAdminService.action('save_account', {
+        ...initial,
+        ...data,
+        'business_id': business['id'] ?? account['business_id'],
+        'fee_gst_inclusive':
+            (data['fee_basis'] ?? initial['fee_basis']) == 'including_gst',
+      });
+    },
+  );
+}

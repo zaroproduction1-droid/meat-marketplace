@@ -1,3 +1,4 @@
+import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
 import '../../legal/presentation/legal_info_page.dart';
 import '../../../shared/security/upload_safety.dart';
@@ -18,6 +19,12 @@ class ButcherSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sections = <(IconData, String, String, Widget)>[
+      (
+        Icons.person_outline,
+        'My account',
+        'Your personal name, phone and sign-in email.',
+        const PersonalAccountSettingsPage(),
+      ),
       (
         Icons.business_outlined,
         'Business profile',

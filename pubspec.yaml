@@ -40,6 +40,8 @@ dependencies:
   flutter_svg: ^2.3.0
   path_drawing: ^1.0.1
   web: 1.1.1
+  crypto: 3.0.7
+  shared_preferences: 2.5.5
 
 dev_dependencies:
   flutter_test:

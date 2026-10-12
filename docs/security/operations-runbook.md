@@ -17,7 +17,7 @@ Do not store server keys, scheduler token, private contact details or incident e
 
 ## Backup coverage and recovery
 
-Read-only inspection found the free plan, 75 public tables, and 22 stored objects: 7 support attachments (~3.58 MB), 4 branding files (~0.06 MB), 11 VIP files (~5.46 MB). Product-photo bucket exists but had no objects in the aggregate inspection. Object names and bytes were not exported. These counts do not verify that every linked object exists or has a backup.
+Read-only inspection found the free plan, 77 public tables, and 22 stored objects: 7 support attachments (~3.58 MB), 4 branding files (~0.06 MB), 11 VIP files (~5.46 MB). Product-photo bucket exists but had no objects in the aggregate inspection. Object names and bytes were not exported. These counts do not verify that every linked object exists or has a backup.
 
 Recoverable from the supplied ZIP: app source, assets, tests and dependency lockfile. Read-only definitions and deployed cleanup function were inspected; they are not a complete recoverable database backup. No full data/auth dump, stored-file backup, provider configuration export or genuine isolated restoration was completed. Database-only backup does not restore stored file bytes.
 
@@ -35,7 +35,7 @@ Proposed targets to agree: recover within 4 hours and lose no more than 24 hours
 
 ## Monitoring, alerting and retention
 
-Existing platform-admin audit data and an hourly resolved-support cleanup job were found. The cleanup schedule was preserved, not verified end to end. The new migration adds a private access-change journal containing timestamps, actor/target IDs, event type and changed field names only; it excludes names, emails, financial values, comments and credentials. It adds write-window and request-key ledgers. None of these new controls is active until the migration is applied.
+Existing platform-admin audit data and an hourly resolved-support cleanup job were found. The cleanup schedule was preserved; worker version 2 is deployed and invalid-token/method rejection is verified. A valid live cleanup deletion was not invoked as a test. The installed migration adds a private access-change journal containing timestamps, actor/target IDs, event type and changed field names only; it excludes names, emails, financial values, comments and credentials. It adds write-window and request-key ledgers. The access journal, selected write limiter and private replay ledger are active. Alert transport and delivery remain unconfigured/unverified.
 
 Recommended alert rules, requiring configured transport and confirmed recipients:
 
@@ -46,7 +46,7 @@ Recommended alert rules, requiring configured transport and confirmed recipients
 
 Use existing provider logs or an approved provider before adding an SDK. Name both a primary and backup recipient. Trigger a benign synthetic event and prove receipt, acknowledgement and access restrictions. This was not done; no active alerts are claimed.
 
-Suggested retention pending owner approval: 30 days operational logs/window counters, 90 days access-change audit events, and payment replay records while clients may still retry (initially 30 days). Request ledgers include payment response/payload data and therefore require restricted access and retention review; purge only after an approved plan. Do not expire replay keys while an outstanding retry can be accepted as new. No automatic retention job was created for new tables. Do not log or export raw ledger content into monitoring. Existing support retention may be shorter or longer; review the actual policy and lawful record obligations before changing it.
+Suggested retention pending owner approval: 30 days operational logs, 90 days access-change audit events, and payment replay records while clients may still retry (do not use an automatic 30-day cutoff: the new client retains uncertain keys without expiry). Old per-user write windows are pruned after 60 minutes on that user’s next successful write; inactive users’ windows still need an approved retention plan. Request ledgers include payment response/payload data and therefore require restricted access and retention review; purge only after an approved plan. Do not expire replay keys while an outstanding retry can be accepted as new. No automatic retention job was created for new tables. Do not log or export raw ledger content into monitoring. Existing support retention may be shorter or longer; review the actual policy and lawful record obligations before changing it.
 
 ## Incident response
 
@@ -73,3 +73,11 @@ The worker only calls a configured Supabase origin and rejects redirects; it doe
 ## Release acceptance record
 
 Fill actual owner, date and evidence for: local Flutter analysis/tests/release build; browser headers and accessibility; all business-role isolation; keyed buyer/supplier replay and concurrent invoice/order operations; dependency/licence clearance; provider CAPTCHA/Auth settings; malware pipeline; backup freshness + isolated restore; delivered security/cost alerts; legal entity/contact/policies and privacy request handling. Do not publish until open blockers have an explicit disposition.
+
+## 11 October verification update
+
+34 isolated database checks, 20 client retry checks, 21 cleanup checks and 7 hosted permission checks passed. Hosted cleanup rejects invalid tokens (401) and GET (405). Database row fingerprints matched before/after migration; all 77 public tables retain RLS. This proves selected hardening, not a real backup restore, alert delivery or all-role clearance. OAIC notification criteria were rechecked against the official “When to report a data breach” page on 11 October 2026. No notification was sent.
+
+The dashboard currently requires secure sign-in; the connector can manage schema/functions but cannot configure all Auth/account/backup/billing settings. The owner must securely authenticate before those can be verified. Do not paste passwords or service keys into chat/source. No paid resources or new scheduled jobs were created.
+
+Device retry metadata contains hashed fingerprints/random keys only. Clearing site data, switching devices/tabs or changing payment details can create a new request key. Review the recorded history before resubmitting any uncertain payment. Legacy unkeyed RPC signatures remain compatible and do not provide keyed replay protection. This flow records trade payments; it does not charge a bank account or card.
