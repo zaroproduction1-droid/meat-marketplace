@@ -1199,10 +1199,20 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         ),
       );
     }
+    final standardList = _firstPriceListForVisibility('public');
+    final standard = standardList == null
+        ? null
+        : _priceForProductAndList(
+            product['id'].toString(),
+            standardList['id'].toString(),
+          );
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => VipCustomerPricesDialog(
+        standardPrice: standard == null
+            ? null
+            : {...standard, 'price_lists': standardList},
         productName: product['product_name']?.toString() ?? 'Product',
         customers: entries,
         catchWeight: _isCatchWeight(product),

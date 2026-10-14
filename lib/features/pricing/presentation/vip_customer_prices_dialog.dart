@@ -1,3 +1,5 @@
+import '../../../shared/widgets/customer_price_display.dart';
+import '../../../shared/widgets/sharp_logo.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -74,9 +76,11 @@ class VipCustomerPricesDialog extends StatefulWidget {
     required this.onDraftChanged,
     required this.pendingCount,
     required this.onSaveAll,
+    this.standardPrice,
   });
 
   final String productName;
+  final Map<String, dynamic>? standardPrice;
   final List<VipCustomerPriceEntry> customers;
   final bool catchWeight;
   final void Function(String customerId, VipCustomerPriceDraft? draft)
@@ -236,7 +240,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
     );
     return Container(
       key: ValueKey('vip-logo-${customer.customerId}'),
-      width: 52,
+      width: 80,
       height: 52,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
@@ -248,9 +252,8 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
           ? fallback
           : ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
+              child: SharpLogo.network(
                 customer.logoUrl!,
-                fit: BoxFit.contain,
                 semanticLabel: '${customer.name} logo',
                 errorBuilder: (_, error, stack) => fallback,
               ),
@@ -299,6 +302,28 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                               fontSize: 15,
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          if (draft.priceError() == null)
+                            CustomerPriceDisplay(
+                              fontSize: 16,
+                              product: {
+                                'product_prices': [
+                                  if (widget.standardPrice != null)
+                                    widget.standardPrice!,
+                                ],
+                              },
+                              visiblePrice: {
+                                'amount': double.tryParse(
+                                  draft.amountText.trim(),
+                                ),
+                                'price_basis': draft.priceBasis,
+                                'active': true,
+                                'price_lists': {
+                                  'active': true,
+                                  'visibility': 'private',
+                                },
+                              },
+                            ),
                           const SizedBox(height: 4),
                           Text(
                             dirty

@@ -1,3 +1,4 @@
+import '../../features/orders/presentation/supplier_work_order_page.dart';
 import '../navigation/page_location.dart';
 import '../../features/credits/presentation/credit_notes_page.dart';
 import 'dart:async';
@@ -314,41 +315,57 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
   }
 
   Future<void> _replacement() async {
+    if (_sending) return;
     if (widget.onReplacement != null) {
-      await widget.onReplacement!();
-      if (mounted) {
-        await _reload();
+      setState(() => _sending = true);
+      try {
+        await widget.onReplacement!();
+        if (mounted) await _reload();
+      } finally {
+        if (mounted) setState(() => _sending = false);
       }
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Arrange replacement'),
-        content: const Text(
-          'Create a no-charge replacement order for the affected products? It will appear in supplier Work Orders.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Create replacement'),
-          ),
-        ],
-      ),
-    );
+    final confirmed = _issue['replacement_order_id'] != null
+        ? true
+        : await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Arrange replacement'),
+              content: const Text(
+                'Create a no-charge replacement order for the affected products? It will appear in supplier Work Orders.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Create replacement'),
+                ),
+              ],
+            ),
+          );
     if (confirmed != true || !mounted) {
       return;
     }
     setState(() => _sending = true);
     var success = false;
     try {
-      await Supabase.instance.client.rpc(
+      final replacementId = await Supabase.instance.client.rpc(
         'create_replacement_order',
         params: {'target_issue_id': _issue['id']},
+      );
+      final id = replacementId?.toString();
+      if (id == null || id.isEmpty) {
+        throw StateError('The replacement work order was not returned.');
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => SupplierWorkOrderPage(orderId: id),
+        ),
       );
       _sent = true;
       success = true;
@@ -383,11 +400,14 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                 onPressed: _sending ? null : () => _action('review'),
                 child: const Text('Start review'),
               ),
-            if (_issue['replacement_order_id'] == null)
-              TextButton(
-                onPressed: _sending ? null : _replacement,
-                child: const Text('Arrange replacement'),
+            TextButton(
+              onPressed: _sending ? null : _replacement,
+              child: Text(
+                _issue['replacement_order_id'] == null
+                    ? 'Create replacement work order'
+                    : 'Open replacement work order',
               ),
+            ),
             TextButton(
               onPressed: _sending ? null : () => _credits(create: true),
               child: const Text('Issue credit / refund'),

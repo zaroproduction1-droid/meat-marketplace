@@ -1,3 +1,4 @@
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
 import '../../legal/presentation/legal_info_page.dart';
@@ -19,12 +20,6 @@ class ButcherSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sections = <(IconData, String, String, Widget)>[
-      (
-        Icons.person_outline,
-        'My account',
-        'Your personal name, phone and sign-in email.',
-        const PersonalAccountSettingsPage(),
-      ),
       (
         Icons.business_outlined,
         'Business profile',
@@ -291,7 +286,7 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
                         size: 34,
                         color: Color(0xFF741C1C),
                       )
-                    : Image.memory(_bytes!, fit: BoxFit.contain),
+                    : SharpLogo.memory(_bytes!),
               ),
               const SizedBox(width: 18),
               const Expanded(
@@ -480,7 +475,6 @@ class _ButcherProfileSettingsPageState
 
   final _tradingName = TextEditingController();
   final _legalName = TextEditingController();
-  final _loginEmailController = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _address1 = TextEditingController();
@@ -498,7 +492,6 @@ class _ButcherProfileSettingsPageState
   @override
   void dispose() {
     for (final c in [
-      _loginEmailController,
       _tradingName,
       _legalName,
       _email,
@@ -517,8 +510,6 @@ class _ButcherProfileSettingsPageState
   Future<void> _load() async {
     try {
       final id = await _ButcherSettingsData.resolveButcherBusinessId();
-      _loginEmailController.text =
-          Supabase.instance.client.auth.currentUser?.email ?? '';
       final row = await Supabase.instance.client
           .from('businesses')
           .select('''
@@ -633,13 +624,20 @@ class _ButcherProfileSettingsPageState
       onSave: _save,
       child: Column(
         children: [
+          const PersonalAccountSettingsPage(embedded: true),
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 16),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Business details',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 16),
           _field(_tradingName, 'Trading Name'),
           _field(_legalName, 'Legal Name'),
-          _lockedEmailField(
-            _loginEmailController,
-            'Login Email',
-            'This email is used to sign in and cannot be changed here.',
-          ),
           _field(
             _email,
             'Business Contact Email',
@@ -1612,29 +1610,6 @@ class _SectionHeading extends StatelessWidget {
       ),
     );
   }
-}
-
-Widget _lockedEmailField(
-  TextEditingController controller,
-  String label,
-  String helperText,
-) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
-      controller: controller,
-      readOnly: true,
-      enableInteractiveSelection: true,
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        prefixIcon: const Icon(Icons.lock_outline),
-        filled: true,
-        fillColor: const Color(0xFFF1F1F1),
-        border: const OutlineInputBorder(),
-      ),
-    ),
-  );
 }
 
 Widget _field(

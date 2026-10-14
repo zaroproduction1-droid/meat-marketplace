@@ -14,11 +14,15 @@ class PersonalAccountSettingsPage extends StatefulWidget {
     this.loadProfile,
     this.saveProfile,
     this.signInEmail,
+    this.embedded = false,
   });
 
   final AccountProfileLoader? loadProfile;
   final AccountProfileSaver? saveProfile;
   final String? signInEmail;
+
+  /// Render directly inside Business profile without a separate page or scroll.
+  final bool embedded;
 
   @override
   State<PersonalAccountSettingsPage> createState() =>
@@ -130,7 +134,7 @@ class _PersonalAccountSettingsPageState
         setState(() => _fill(saved));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Your account details have been saved.'),
+            content: Text('Your contact details have been saved.'),
           ),
         );
       }
@@ -156,110 +160,135 @@ class _PersonalAccountSettingsPageState
             ? Supabase.instance.client.auth.currentUser?.email
             : null) ??
         '';
+    final content = _loading
+        ? const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        : _loadError != null
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_loadError!),
+              TextButton(onPressed: _load, child: const Text('Try again')),
+            ],
+          )
+        : Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Your contact details',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Your name appears on new support tickets and messages.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF6D7177)),
+                ),
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final firstName = TextFormField(
+                      key: const ValueKey('account-first-name'),
+                      controller: _first,
+                      enabled: !_saving,
+                      maxLength: 80,
+                      decoration: const InputDecoration(
+                        labelText: 'First name',
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Enter your first name.'
+                          : null,
+                    );
+                    final lastName = TextFormField(
+                      key: const ValueKey('account-last-name'),
+                      controller: _last,
+                      enabled: !_saving,
+                      maxLength: 80,
+                      decoration: const InputDecoration(
+                        labelText: 'Last name (optional)',
+                      ),
+                    );
+                    if (constraints.maxWidth < 600) {
+                      return Column(children: [firstName, lastName]);
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: firstName),
+                        const SizedBox(width: 12),
+                        Expanded(child: lastName),
+                      ],
+                    );
+                  },
+                ),
+                TextFormField(
+                  key: const ValueKey('account-phone'),
+                  controller: _phone,
+                  enabled: !_saving,
+                  maxLength: 40,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Personal phone (optional)',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Sign-in email'),
+                  child: SelectableText(email),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Previously sent messages keep their original name. '
+                  'Save your contact details here; use the business save action '
+                  'for the company details below.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6D7177)),
+                ),
+                if (_saveError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _saveError!,
+                    style: const TextStyle(color: Color(0xFF741C1C)),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    key: const ValueKey('account-save'),
+                    onPressed: _saving ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF741C1C),
+                    ),
+                    icon: const Icon(Icons.save_outlined, size: 18),
+                    label: Text(_saving ? 'Saving…' : 'Save contact details'),
+                  ),
+                ),
+              ],
+            ),
+          );
     return PopScope(
       canPop: !_saving,
-      child: Scaffold(
-        appBar: phoneAppBar(context, AppBar(title: const Text('My account'))),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _loadError != null
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_loadError!),
-                      TextButton(
-                        onPressed: _load,
-                        child: const Text('Try again'),
-                      ),
-                    ],
-                  )
-                : SingleChildScrollView(
+      child: widget.embedded
+          ? content
+          : Scaffold(
+              appBar: phoneAppBar(
+                context,
+                AppBar(title: const Text('Your contact details')),
+              ),
+              body: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _form,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Your name appears on new support tickets and messages. '
-                            'Business and billing contacts are managed separately.',
-                          ),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            key: const ValueKey('account-first-name'),
-                            controller: _first,
-                            enabled: !_saving,
-                            maxLength: 80,
-                            decoration: const InputDecoration(
-                              labelText: 'First name',
-                            ),
-                            validator: (value) =>
-                                value == null || value.trim().isEmpty
-                                ? 'Enter your first name.'
-                                : null,
-                          ),
-                          TextFormField(
-                            key: const ValueKey('account-last-name'),
-                            controller: _last,
-                            enabled: !_saving,
-                            maxLength: 80,
-                            decoration: const InputDecoration(
-                              labelText: 'Last name (optional)',
-                            ),
-                          ),
-                          TextFormField(
-                            key: const ValueKey('account-phone'),
-                            controller: _phone,
-                            enabled: !_saving,
-                            maxLength: 40,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                              labelText: 'Personal phone (optional)',
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Sign-in email',
-                            ),
-                            child: SelectableText(email),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Previously sent messages keep the name recorded at the time.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF666A70),
-                            ),
-                          ),
-                          if (_saveError != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              _saveError!,
-                              style: const TextStyle(color: Color(0xFF741C1C)),
-                            ),
-                          ],
-                          const SizedBox(height: 20),
-                          FilledButton(
-                            key: const ValueKey('account-save'),
-                            onPressed: _saving ? null : _save,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF741C1C),
-                            ),
-                            child: Text(
-                              _saving ? 'Saving…' : 'Save account details',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: content,
                   ),
-          ),
-        ),
-      ),
+                ),
+              ),
+            ),
     );
   }
 }

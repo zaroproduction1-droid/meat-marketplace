@@ -45,6 +45,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   final _documentNumberController = TextEditingController();
   late SupplierDocumentType _selectedType;
   bool _showCredits = false;
+  int _creditTotal = 0;
+  int _searchVersion = 0;
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = false;
@@ -142,6 +144,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   Future<void> _loadAllDocuments({bool append = false}) async {
     if (append && (_isLoadingMore || !_hasMore)) return;
+    final version = ++_searchVersion;
     setState(() {
       _hasSearched = true;
       if (append) {
@@ -174,6 +177,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       }
 
       final offset = append ? _loadedOrderCount : 0;
+      if (_showCredits) {
+        await _loadCreditDocuments(supplierBusinessId, offset, append, version);
+        return;
+      }
       final orderRows =
           _selectedType == SupplierDocumentType.all ||
               _selectedType == SupplierDocumentType.quotes
@@ -224,7 +231,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       ];
       final hasMore = pageLengths.any((length) => length == _pageSize);
 
-      if (!mounted) return;
+      if (!mounted || version != _searchVersion) return;
       setState(() {
         _documents = append ? [..._documents, ...documents] : documents;
         _documents.sort((a, b) => b.sortDate.compareTo(a.sortDate));
@@ -234,19 +241,88 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         _isLoadingMore = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted || version != _searchVersion) return;
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
         _isLoadingMore = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || version != _searchVersion) return;
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
         _isLoadingMore = false;
       });
+    }
+  }
+
+  Future<void> _loadCreditDocuments(
+    String supplierBusinessId,
+    int offset,
+    bool append,
+    int version,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime? from;
+    DateTime? to;
+    switch (_dateRange) {
+      case _DocumentDateRange.today:
+        from = today;
+        to = today.add(const Duration(days: 1));
+      case _DocumentDateRange.last7Days:
+        from = today.subtract(const Duration(days: 6));
+        to = today.add(const Duration(days: 1));
+      case _DocumentDateRange.last30Days:
+        from = today.subtract(const Duration(days: 29));
+        to = today.add(const Duration(days: 1));
+      case _DocumentDateRange.custom:
+        from = _customDateRange?.start;
+        to = _customDateRange?.end.add(const Duration(days: 1));
+      case _DocumentDateRange.any:
+        break;
+    }
+    final response = await Supabase.instance.client.rpc(
+      'search_supplier_credit_notes',
+      params: {
+        'p_supplier_id': supplierBusinessId,
+        'p_account_id': _selectedCustomer?.accountId,
+        'p_butcher_id': _selectedCustomer?.linkedButcherBusinessId,
+        'p_customer': _selectedCustomer == null
+            ? _customerController.text.trim()
+            : null,
+        'p_search': _searchController.text.trim(),
+        'p_number': _documentNumberController.text.trim(),
+        'p_source': _selectedSource,
+        'p_status': _selectedStatus,
+        'p_from': from?.toUtc().toIso8601String(),
+        'p_to': to?.toUtc().toIso8601String(),
+        'p_offset': offset,
+        'p_limit': _pageSize,
+      },
+    );
+    final data = Map<String, dynamic>.from(response as Map);
+    final documents = _maps(
+      data['rows'],
+    ).map(_UnifiedDocument.fromCredit).toList();
+    if (!mounted || !_showCredits || version != _searchVersion) return;
+    setState(() {
+      _documents = append ? [..._documents, ...documents] : documents;
+      _creditTotal = (data['total'] as num).toInt();
+      _loadedOrderCount = offset + documents.length;
+      _hasMore = _loadedOrderCount < _creditTotal;
+      _isLoading = false;
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _createCredit() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const CreditNoteEditor()),
+    );
+    if (mounted && _showCredits) {
+      await _loadAllDocuments();
     }
   }
 
@@ -413,6 +489,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    if (_showCredits) return _documents;
     return _documents.where((document) {
       if (!_matchesSelectedType(document)) return false;
       if (_selectedCustomer != null &&
@@ -453,16 +530,17 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     }).toList();
   }
 
-  bool _matchesSelectedType(_UnifiedDocument document) =>
-      switch (_selectedType) {
-        SupplierDocumentType.all => true,
-        SupplierDocumentType.quotes =>
-          document.type == _UnifiedDocumentType.quote,
-        SupplierDocumentType.workOrders =>
-          document.type == _UnifiedDocumentType.workOrder,
-        SupplierDocumentType.invoices =>
-          document.type == _UnifiedDocumentType.invoice,
-      };
+  bool _matchesSelectedType(_UnifiedDocument document) => _showCredits
+      ? document.type == _UnifiedDocumentType.creditNote
+      : switch (_selectedType) {
+          SupplierDocumentType.all => true,
+          SupplierDocumentType.quotes =>
+            document.type == _UnifiedDocumentType.quote,
+          SupplierDocumentType.workOrders =>
+            document.type == _UnifiedDocumentType.workOrder,
+          SupplierDocumentType.invoices =>
+            document.type == _UnifiedDocumentType.invoice,
+        };
 
   List<String> get _sources => <String>{
     'marketplace',
@@ -477,48 +555,56 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         .where((source) => source.isNotEmpty),
   }.toList()..sort();
 
-  List<String> get _statuses => <String>{
-    ...switch (_selectedType) {
-      SupplierDocumentType.quotes => const ['draft'],
-      SupplierDocumentType.workOrders => const [
-        'created',
-        'printed',
-        'picking',
-        'picked',
-        'completed',
-      ],
-      SupplierDocumentType.invoices => const [
-        'ready',
-        'issued',
-        'part_paid',
-        'paid',
-        'void',
-      ],
-      SupplierDocumentType.all => const [
-        'draft',
-        'created',
-        'printed',
-        'picking',
-        'picked',
-        'completed',
-        'ready',
-        'issued',
-        'part_paid',
-        'paid',
-        'void',
-      ],
-    },
-    ..._documents
-        .where(_matchesSelectedType)
-        .map((document) => document.statusValue)
-        .where((status) => status.isNotEmpty),
-  }.toList()..sort();
+  List<String> get _statuses =>
+      _showCredits
+            ? ['available', 'applied', 'partially_refunded', 'refunded']
+            : <String>{
+                ...switch (_selectedType) {
+                  SupplierDocumentType.quotes => const ['draft'],
+                  SupplierDocumentType.workOrders => const [
+                    'created',
+                    'printed',
+                    'picking',
+                    'picked',
+                    'completed',
+                  ],
+                  SupplierDocumentType.invoices => const [
+                    'ready',
+                    'issued',
+                    'part_paid',
+                    'paid',
+                    'void',
+                  ],
+                  SupplierDocumentType.all => const [
+                    'draft',
+                    'created',
+                    'printed',
+                    'picking',
+                    'picked',
+                    'completed',
+                    'ready',
+                    'issued',
+                    'part_paid',
+                    'paid',
+                    'void',
+                  ],
+                },
+                ..._documents
+                    .where(_matchesSelectedType)
+                    .map((document) => document.statusValue)
+                    .where((status) => status.isNotEmpty),
+              }.toList()
+        ..sort();
 
   void _clearFilters() {
+    ++_searchVersion;
     _customerController.clear();
     _searchController.clear();
     _documentNumberController.clear();
     setState(() {
+      _isLoading = false;
+      _isLoadingMore = false;
+      _creditTotal = 0;
       _selectedCustomer = null;
       _selectedSource = null;
       _selectedStatus = null;
@@ -534,6 +620,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Future<void> _openDocument(_UnifiedDocument document) async {
     Widget page;
     switch (document.type) {
+      case _UnifiedDocumentType.creditNote:
+        page = CreditNoteDetail(noteId: document.id, supplierView: true);
       case _UnifiedDocumentType.quote:
         page = SupplierQuotePage(orderId: document.orderId);
       case _UnifiedDocumentType.workOrder:
@@ -604,7 +692,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   ),
                   SizedBox(height: 1),
                   Text(
-                    'Search quotes, work orders and invoices only when you need them',
+                    'Search quotes, work orders, invoices and credit notes when you need them',
                     style: TextStyle(
                       color: Color(0xFF74787E),
                       fontSize: 10.8,
@@ -615,11 +703,15 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               ),
             ),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SupplierSalesPage()),
-              ),
+              onPressed: _showCredits
+                  ? _createCredit
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SupplierSalesPage(),
+                      ),
+                    ),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('New Sale'),
+              label: Text(_showCredits ? 'New Credit' : 'New Sale'),
             ),
             const SizedBox(width: 6),
             IconButton(
@@ -675,6 +767,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             ),
             TextButton.icon(
               onPressed: () {
+                _clearFilters();
                 setState(() => _showCredits = true);
                 if (widget.embedded) {
                   PageLocation.workspace({
@@ -703,6 +796,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       child: TextButton.icon(
         onPressed: () {
           setState(() {
+            ++_searchVersion;
+            _isLoading = false;
+            _isLoadingMore = false;
             _showCredits = false;
             if (widget.embedded) {
               PageLocation.workspace({'page': 'invoices'});
@@ -764,11 +860,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         const SizedBox(height: 10),
         Expanded(
           child: !_hasSearched
-              ? const _SearchPrompt()
+              ? _SearchPrompt(credits: _showCredits)
               : documents.isEmpty
-              ? const Center(
-                  child: Text('No invoice records match this search.'),
-                )
+              ? const Center(child: Text('No documents match this search.'))
               : RefreshIndicator(
                   onRefresh: _loadAllDocuments,
                   child: Column(
@@ -823,7 +917,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   Widget _resultsHeader() {
-    final invoice = _selectedType == SupplierDocumentType.invoices;
+    final invoice =
+        !_showCredits && _selectedType == SupplierDocumentType.invoices;
     Widget heading(
       String text,
       double width, {
@@ -862,7 +957,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               ]
             : [
                 heading('DOCUMENT', 135),
-                if (_selectedType == SupplierDocumentType.all)
+                if (!_showCredits && _selectedType == SupplierDocumentType.all)
                   heading('TYPE', 90),
                 const Expanded(flex: 2, child: _ColumnHeading('CUSTOMER')),
                 const Expanded(flex: 3, child: _ColumnHeading('DESCRIPTION')),
@@ -870,7 +965,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                 heading('SOURCE', 82),
                 heading('TOTAL', 90, align: TextAlign.right),
                 const SizedBox(width: 12),
-                heading('STATUS', 100),
+                heading('STATUS', _showCredits ? 145 : 100),
                 const SizedBox(width: 18),
               ],
       ),
@@ -925,26 +1020,33 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   width: fieldWidth,
                   child: _textField(
                     controller: _documentNumberController,
-                    label: switch (_selectedType) {
-                      SupplierDocumentType.all => 'Document Number',
-                      SupplierDocumentType.quotes => 'Quote Number',
-                      SupplierDocumentType.workOrders => 'Work Order Number',
-                      SupplierDocumentType.invoices => 'Invoice Number',
-                    },
+                    label: _showCredits
+                        ? 'Credit Note Number'
+                        : switch (_selectedType) {
+                            SupplierDocumentType.all => 'Document Number',
+                            SupplierDocumentType.quotes => 'Quote Number',
+                            SupplierDocumentType.workOrders =>
+                              'Work Order Number',
+                            SupplierDocumentType.invoices => 'Invoice Number',
+                          },
                     hint: 'Enter a full or partial number',
                   ),
                 ),
                 SizedBox(
                   width: fieldWidth,
                   child: _dropdown(
-                    label: _selectedType == SupplierDocumentType.invoices
+                    label: _showCredits
+                        ? 'Credit Status'
+                        : _selectedType == SupplierDocumentType.invoices
                         ? 'Invoice Status'
                         : 'Status',
                     value: _statuses.contains(_selectedStatus)
                         ? _selectedStatus
                         : null,
                     items: _statuses,
-                    itemLabel: _UnifiedDocument.label,
+                    itemLabel: _showCredits
+                        ? _UnifiedDocument.creditStatusLabel
+                        : _UnifiedDocument.label,
                     onChanged: (value) =>
                         setState(() => _selectedStatus = value),
                   ),
@@ -968,7 +1070,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 11),
                   child: Text(
-                    '${_filteredDocuments.length} result${_filteredDocuments.length == 1 ? '' : 's'}',
+                    '${_showCredits ? _creditTotal : _filteredDocuments.length} result${(_showCredits ? _creditTotal : _filteredDocuments.length) == 1 ? '' : 's'}',
                     style: const TextStyle(
                       color: Color(0xFF686D73),
                       fontSize: 11.5,
@@ -1085,6 +1187,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     } else if (matches.length == 1) {
       _selectCustomer(matches.single);
       if (executeSearch) _loadAllDocuments();
+    } else if (_showCredits && executeSearch) {
+      _loadAllDocuments();
     } else {
       _customerFocusNode.requestFocus();
       setState(() {});
@@ -1204,7 +1308,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           ),
           child: isPhoneLayout(context)
               ? _phoneDocument(document)
-              : _selectedType == SupplierDocumentType.invoices
+              : !_showCredits && _selectedType == SupplierDocumentType.invoices
               ? _invoiceRow(document)
               : _standardRow(document),
         ),
@@ -1277,7 +1381,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      if (_selectedType == SupplierDocumentType.all)
+      if (!_showCredits && _selectedType == SupplierDocumentType.all)
         SizedBox(width: 90, child: _badge(document.typeLabel)),
       Expanded(
         flex: 2,
@@ -1303,7 +1407,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ),
       ),
       const SizedBox(width: 12),
-      SizedBox(width: 100, child: _statusChip(document.status)),
+      SizedBox(
+        width: _showCredits ? 145 : 100,
+        child: _statusChip(document.status),
+      ),
       const Icon(Icons.chevron_right, size: 18, color: Color(0xFF777B80)),
     ],
   );
@@ -1404,10 +1511,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         const SizedBox(height: 2),
         Expanded(
           child: KeyedSubtree(
-            key: ValueKey(_selectedType),
-            child: _showCredits
-                ? const CreditNotesPage(supplierView: true, embedded: true)
-                : _managementView(),
+            key: ValueKey(_showCredits ? 'credits' : _selectedType),
+            child: _managementView(),
           ),
         ),
       ],
@@ -1433,29 +1538,36 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 }
 
-enum _UnifiedDocumentType { order, quote, workOrder, invoice }
+enum _UnifiedDocumentType { order, quote, workOrder, invoice, creditNote }
 
 class _SearchPrompt extends StatelessWidget {
-  const _SearchPrompt();
+  const _SearchPrompt({this.credits = false});
+  final bool credits;
 
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 440),
-      child: const Column(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.manage_search_rounded, size: 54, color: Color(0xFF741C1C)),
-          SizedBox(height: 12),
-          Text(
-            'Search invoices',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          const Icon(
+            Icons.manage_search_rounded,
+            size: 54,
+            color: Color(0xFF741C1C),
           ),
-          SizedBox(height: 7),
+          const SizedBox(height: 12),
           Text(
-            'Choose filters or enter a customer, document number, or description, then press Enter. Press Enter with empty filters to show every quote, work order, and invoice.',
+            credits ? 'Search credit notes' : 'Search invoices',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            credits
+                ? 'Choose filters or enter a customer, credit or invoice number, product, SKU, reason or notes, then press Enter. Press Enter with empty filters to show all credit notes.'
+                : 'Choose filters or enter a customer, document number, or description, then press Enter. Press Enter with empty filters to show every quote, work order, and invoice.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF6D7278), height: 1.45),
+            style: const TextStyle(color: Color(0xFF6D7278), height: 1.45),
           ),
         ],
       ),
@@ -1642,11 +1754,48 @@ class _UnifiedDocument {
     outstandingAmount: _double(invoice['outstanding_amount']),
   );
 
+  factory _UnifiedDocument.fromCredit(
+    Map<String, dynamic> note,
+  ) => _UnifiedDocument(
+    id: note['id'].toString(),
+    orderId: '',
+    type: _UnifiedDocumentType.creditNote,
+    number: note['credit_number']?.toString() ?? 'Credit note',
+    customer: note['customer_name']?.toString() ?? 'Customer',
+    sortDate: _date(note['created_at']),
+    total: _double(note['total_amount']),
+    statusValue: note['credit_status']?.toString() ?? '',
+    sourceValue: note['order_source']?.toString() ?? '',
+    reference:
+        '${note['invoice_number'] ?? ''} ${note['customer_reference'] ?? ''}',
+    relatedOrderNumber: note['order_number']?.toString() ?? '',
+    searchableDetails:
+        '${note['reason'] ?? ''} ${note['notes'] ?? ''} ${note['product_search'] ?? ''}',
+    itemDescriptions: [
+      note['invoice_number']?.toString() ?? '',
+      note['reason']?.toString() ?? '',
+      ..._itemDescriptions(note['line_items']),
+    ].where((value) => value.isNotEmpty).toList(),
+    supplierCustomerAccountId: note['supplier_customer_account_id']?.toString(),
+    butcherBusinessId: note['butcher_business_id']?.toString(),
+    outstandingAmount: _double(note['available']),
+    amountPaid: _double(note['refunded']),
+  );
+
+  static String creditStatusLabel(dynamic value) => switch (value?.toString()) {
+    'available' => 'Credit available',
+    'applied' => 'Applied to invoice',
+    'partially_refunded' => 'Partially refunded',
+    'refunded' => 'Refunded',
+    _ => label(value),
+  };
+
   String get typeLabel => switch (type) {
     _UnifiedDocumentType.order => 'ORDER',
     _UnifiedDocumentType.quote => 'QUOTE',
     _UnifiedDocumentType.workOrder => 'WORK ORDER',
     _UnifiedDocumentType.invoice => 'INVOICE',
+    _UnifiedDocumentType.creditNote => 'CREDIT NOTE',
   };
 
   String get dateLabel =>
@@ -1655,7 +1804,9 @@ class _UnifiedDocument {
       total == null ? '—' : '\$${total!.toStringAsFixed(2)}';
   String get amountPaidLabel => _money(amountPaid);
   String get outstandingLabel => _money(outstandingAmount);
-  String get status => label(statusValue);
+  String get status => type == _UnifiedDocumentType.creditNote
+      ? creditStatusLabel(statusValue)
+      : label(statusValue);
   String get source => sourceLabel(sourceValue);
   String get paymentStatus {
     if (statusValue == 'void') return 'Void';

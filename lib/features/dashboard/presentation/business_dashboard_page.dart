@@ -1,3 +1,4 @@
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import '../../authentication/presentation/restricted_account_page.dart';
 import '../../notifications/presentation/today_notifications_bell.dart';
@@ -1139,9 +1140,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ? fallbackWidget()
           : ClipRRect(
               borderRadius: BorderRadius.circular(size * 0.20),
-              child: Image.network(
+              child: SharpLogo.network(
                 logoUrl,
-                fit: BoxFit.contain,
                 errorBuilder: (_, _, _) => fallbackWidget(),
               ),
             ),

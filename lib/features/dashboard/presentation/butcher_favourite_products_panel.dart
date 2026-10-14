@@ -1,3 +1,4 @@
+import '../../../shared/widgets/customer_price_display.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -57,7 +58,7 @@ class _ButcherFavouriteProductsPanelState
             'id,active,photo_path,hide_catalogue_photo,'
             'meat_animals(code,name),meat_sections(name),'
             'meat_specifications(name),meat_grades(code,name),'
-            'businesses(trading_name,legal_name))',
+            'businesses(trading_name,legal_name),product_prices(*,price_lists(*)))',
           )
           .eq('business_id', widget.businessId)
           .eq('user_id', user.id)
@@ -257,6 +258,10 @@ class _ButcherFavouriteProductsPanelState
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+          if (available) ...[
+            const SizedBox(height: 6),
+            CustomerPriceDisplay(product: product, fontSize: 16),
+          ],
           if (!available) const Text('Currently unavailable'),
           const SizedBox(height: 8),
           OutlinedButton.icon(

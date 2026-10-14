@@ -1,3 +1,4 @@
+import '../../../shared/widgets/sharp_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -245,9 +246,8 @@ class BusinessDisplayLogo extends StatelessWidget {
       ),
       child: url.isEmpty
           ? fallback
-          : Image.network(
+          : SharpLogo.network(
               url,
-              fit: BoxFit.contain,
               semanticLabel: 'Registered business logo',
               errorBuilder: (_, error, stack) => fallback,
             ),

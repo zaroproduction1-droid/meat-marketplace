@@ -1202,47 +1202,40 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
     final existingReplacement = issue['replacement_order_id']?.toString();
 
-    if (existingReplacement != null && existingReplacement.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'A replacement fulfilment already exists for this issue.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return phoneDialog(
-          context,
-          AlertDialog(
-            title: const Text('Create Replacement Fulfilment?'),
-            content: Text(
-              'Create a no-charge replacement order for the affected '
-              'products in ${order['order_number'] ?? 'this order'}? '
-              'It will start in Accepted and move through Processing, '
-              'Dispatched, Delivered and Completed like a normal order.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF741C1C),
+    final confirmed =
+        existingReplacement != null && existingReplacement.isNotEmpty
+        ? true
+        : await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) {
+              return phoneDialog(
+                context,
+                AlertDialog(
+                  title: const Text('Create Replacement Fulfilment?'),
+                  content: Text(
+                    'Create a no-charge replacement order for the affected '
+                    'products in ${order['order_number'] ?? 'this order'}? '
+                    'Available stock will be reserved and a replacement work order '
+                    'will open for picking and fulfilment. If stock is insufficient, '
+                    'nothing will be created.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF741C1C),
+                      ),
+                      child: const Text('Create Replacement'),
+                    ),
+                  ],
                 ),
-                child: const Text('Create Replacement'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+              );
+            },
+          );
 
     if (confirmed != true) {
       return;
@@ -1262,14 +1255,16 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Replacement fulfilment created'
-            '${replacementId == null ? '.' : ' successfully.'}',
-          ),
+      final id = replacementId?.toString();
+      if (id == null || id.isEmpty) {
+        throw StateError('The replacement work order was not returned.');
+      }
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => SupplierWorkOrderPage(orderId: id),
         ),
       );
+      if (!mounted) return;
 
       await _loadOrders();
 
@@ -1281,6 +1276,16 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open the replacement work order. Please retry.',
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {

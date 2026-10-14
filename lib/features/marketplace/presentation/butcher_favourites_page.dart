@@ -1,3 +1,4 @@
+import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -224,41 +225,6 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
     favouriteMap(product['meat_grades'])['name']?.toString() ?? '',
     product['marbling_score']?.toString() ?? '',
   ].where((part) => part.isNotEmpty).join(' • ');
-  String _price(Map<String, dynamic> product) {
-    Map<String, dynamic>? best;
-    var priority = 0;
-    for (final raw
-        in product['product_prices'] is List
-            ? product['product_prices'] as List
-            : const []) {
-      final price = favouriteMap(raw),
-          list = favouriteMap(favouriteMap(raw)['price_lists']);
-      final rank = switch (list['visibility']) {
-        'private' => 3,
-        'approved_customers' => 2,
-        'public' => 1,
-        _ => 0,
-      };
-      if (price['active'] == true &&
-          list['active'] == true &&
-          rank > priority) {
-        best = price;
-        priority = rank;
-      }
-    }
-    final amount = num.tryParse('${best?['amount']}');
-    if (amount == null) {
-      return 'Contact supplier';
-    }
-    final basis = switch (best?['price_basis']) {
-      'per_kg' || 'kilogram' => 'kg',
-      'per_carton' => 'carton',
-      'per_unit' => 'unit',
-      _ => best?['price_basis']?.toString() ?? '',
-    };
-    return '\$${amount.toStringAsFixed(2)}${basis.isEmpty ? '' : ' / $basis'}';
-  }
-
   Future<void> _openProduct(Map<String, dynamic> row) async {
     if (row['product_id'] == null || _busyId != null) {
       return;
@@ -690,12 +656,13 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
                     ),
                     if (isProduct) ...[
                       Text(_productSummary(product)),
-                      Text(
-                        !available
-                            ? 'No longer available'
-                            : '${_price(product)}${product['availability_status'] == 'out_of_stock' ? ' • Out of stock' : ''}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
+                      if (!available)
+                        const Text('No longer available')
+                      else ...[
+                        CustomerPriceDisplay(product: product, fontSize: 16),
+                        if (product['availability_status'] == 'out_of_stock')
+                          const Text('Out of stock'),
+                      ],
                     ],
                     const SizedBox(height: 8),
                     Wrap(

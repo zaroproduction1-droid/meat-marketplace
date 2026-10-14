@@ -1,3 +1,5 @@
+import '../../../shared/widgets/customer_price_display.dart';
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -2054,19 +2056,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return bestPrice;
   }
 
-  String _formatPriceBasis(String? value) {
-    switch (value) {
-      case 'kilogram':
-        return 'kg';
-      case 'carton':
-        return 'carton';
-      case 'unit':
-        return 'unit';
-      default:
-        return '';
-    }
-  }
-
   String _formatAvailability(String? value) {
     switch (value) {
       case 'in_stock':
@@ -3041,7 +3030,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Row(
       children: [
         Container(
-          width: 64,
+          width: isPhoneLayout(context) ? 80 : 104,
           height: 56,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
@@ -3051,13 +3040,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ),
           child: path.isEmpty
               ? fallback
-              : Image.network(
+              : SharpLogo.network(
                   Supabase.instance.client.storage
                       .from('business-branding')
                       .getPublicUrl(path),
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                  isAntiAlias: true,
                   semanticLabel: '$name logo',
                   errorBuilder: (_, error, stackTrace) => fallback,
                 ),
@@ -3081,8 +3067,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Widget _buildMarketplaceProductCard(Map<String, dynamic> product) {
     final price = _findVisiblePrice(product);
-    final amount = price?['amount'];
-    final priceBasis = price?['price_basis'] as String?;
     final productId = product['id']?.toString();
     final adding = productId != null && _addingProductId == productId;
     final supplierSpecification = product['supplier_specification']?.toString();
@@ -3212,15 +3196,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              Text(
-                amount == null
-                    ? 'Contact supplier'
-                    : '\$${_formatNumber(amount)}'
-                          '${_formatPriceBasis(priceBasis).isEmpty ? '' : ' / ${_formatPriceBasis(priceBasis)}'}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
+              CustomerPriceDisplay(
+                product: product,
+                visiblePrice: price,
+                alignment: narrow
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.end,
               ),
               const SizedBox(height: 8),
               Wrap(

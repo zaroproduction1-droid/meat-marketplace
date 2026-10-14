@@ -1,3 +1,4 @@
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
 import '../../legal/presentation/legal_info_page.dart';
@@ -91,16 +92,6 @@ class SupplierSettingsPage extends StatelessWidget {
                 final twoColumns = constraints.maxWidth >= 760;
 
                 final cards = [
-                  _SettingsTile(
-                    icon: Icons.person_outline,
-                    title: 'My account',
-                    subtitle: 'Your personal name, phone and sign-in email.',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const PersonalAccountSettingsPage(),
-                      ),
-                    ),
-                  ),
                   _SettingsTile(
                     icon: Icons.local_shipping_outlined,
                     title: 'Delivery settings',
@@ -467,7 +458,6 @@ class _SupplierProfileSettingsPageState
   String? _error;
   String? _businessId;
 
-  final _loginEmailController = TextEditingController();
   final _tradingName = TextEditingController();
   final _legalName = TextEditingController();
   final _email = TextEditingController();
@@ -487,7 +477,6 @@ class _SupplierProfileSettingsPageState
   @override
   void dispose() {
     for (final c in [
-      _loginEmailController,
       _tradingName,
       _legalName,
       _email,
@@ -506,8 +495,6 @@ class _SupplierProfileSettingsPageState
   Future<void> _load() async {
     try {
       final id = await _SupplierSettingsData.resolveSupplierBusinessId();
-      _loginEmailController.text =
-          Supabase.instance.client.auth.currentUser?.email ?? '';
       final business = await Supabase.instance.client
           .from('businesses')
           .select('''
@@ -622,13 +609,20 @@ class _SupplierProfileSettingsPageState
       onSave: _save,
       child: Column(
         children: [
+          const PersonalAccountSettingsPage(embedded: true),
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 16),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Business details',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 16),
           _field(_tradingName, 'Trading Name'),
           _field(_legalName, 'Legal Name'),
-          _lockedEmailField(
-            _loginEmailController,
-            'Login Email',
-            'This email is used to sign in and cannot be changed here.',
-          ),
           _field(
             _email,
             'Business Contact Email',
@@ -936,11 +930,10 @@ class _SupplierInvoiceConfigurationPageState
 
     Widget preview;
     if (_logoBytes != null) {
-      preview = Image.memory(_logoBytes!, fit: BoxFit.contain);
+      preview = SharpLogo.memory(_logoBytes!);
     } else if (logoUrl != null) {
-      preview = Image.network(
+      preview = SharpLogo.network(
         logoUrl,
-        fit: BoxFit.contain,
         errorBuilder: (_, _, _) => const Icon(
           Icons.business_outlined,
           size: 38,
@@ -1795,37 +1788,6 @@ class _SectionHeading extends StatelessWidget {
       ),
     );
   }
-}
-
-Widget _lockedEmailField(
-  TextEditingController controller,
-  String label,
-  String helperText,
-) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: TextField(
-      controller: controller,
-      readOnly: true,
-      enableInteractiveSelection: true,
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        helperMaxLines: 2,
-        prefixIcon: const Icon(Icons.lock_outline),
-        filled: true,
-        fillColor: const Color(0xFFF5F6F7),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
-        ),
-      ),
-    ),
-  );
 }
 
 Widget _field(

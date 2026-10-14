@@ -1,3 +1,4 @@
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/security/retry_safe_payments.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../credits/presentation/credit_notes_page.dart';
@@ -3008,9 +3009,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             if (_supplierLogoBytes != null) ...[
               SizedBox(
                 height: 72,
-                child: Image.memory(
+                child: SharpLogo.memory(
                   _supplierLogoBytes!,
-                  fit: BoxFit.contain,
                   alignment: Alignment.centerLeft,
                 ),
               ),

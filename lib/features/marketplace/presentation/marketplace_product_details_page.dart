@@ -1,3 +1,5 @@
+import '../../../shared/widgets/customer_price_display.dart';
+import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -135,12 +137,10 @@ class _MarketplaceProductDetailsPageState
                 height: 64,
                 child: logoPath.isEmpty
                     ? fallbackLogo
-                    : Image.network(
+                    : SharpLogo.network(
                         Supabase.instance.client.storage
                             .from('business-branding')
                             .getPublicUrl(logoPath),
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
                         semanticLabel: '$name logo',
                         errorBuilder: (_, error, stackTrace) => fallbackLogo,
                       ),
@@ -443,19 +443,6 @@ class _MarketplaceProductDetailsPageState
     }
   }
 
-  String _formatPriceBasis(String? value) {
-    switch (value) {
-      case 'kilogram':
-        return 'kg';
-      case 'carton':
-        return 'carton';
-      case 'unit':
-        return 'unit';
-      default:
-        return '';
-    }
-  }
-
   Map<String, dynamic>? _findVisiblePrice() {
     final rawPrices = widget.product['product_prices'];
 
@@ -512,151 +499,18 @@ class _MarketplaceProductDetailsPageState
     return bestPrice;
   }
 
-  Map<String, dynamic>? _priceForVisibility(String visibility) {
-    final rawPrices = widget.product['product_prices'];
-
-    if (rawPrices is! List) {
-      return null;
-    }
-
-    for (final rawPrice in rawPrices) {
-      if (rawPrice is! Map) {
-        continue;
-      }
-
-      final price = Map<String, dynamic>.from(rawPrice);
-
-      if (price['active'] != true) {
-        continue;
-      }
-
-      final rawPriceList = price['price_lists'];
-
-      if (rawPriceList is! Map) {
-        continue;
-      }
-
-      final priceList = Map<String, dynamic>.from(rawPriceList);
-
-      if (priceList['active'] != true) {
-        continue;
-      }
-
-      if (priceList['visibility']?.toString() == visibility) {
-        return price;
-      }
-    }
-
-    return null;
-  }
-
-  String _visiblePriceLabel(Map<String, dynamic>? price) {
-    final rawPriceList = price?['price_lists'];
-
-    if (rawPriceList is! Map) {
-      return 'Standard Price';
-    }
-
-    switch (rawPriceList['visibility']?.toString()) {
-      case 'private':
-        return 'Your Special Price';
-      case 'approved_customers':
-        return 'Your Trade Price';
-      case 'public':
-      default:
-        return 'Standard Price';
-    }
-  }
-
   Widget _buildCustomerPriceDisplay({
     required Map<String, dynamic>? visiblePrice,
     required CrossAxisAlignment alignment,
     double priceFontSize = 24,
-  }) {
-    if (visiblePrice == null || visiblePrice['amount'] == null) {
-      return const Text(
-        'Price unavailable',
-        style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF666666)),
-      );
-    }
-
-    final visibleAmountRaw = visiblePrice['amount'];
-    final visibleAmount = visibleAmountRaw is num
-        ? visibleAmountRaw.toDouble()
-        : double.tryParse('$visibleAmountRaw');
-
-    final visibleBasis = visiblePrice['price_basis']?.toString();
-
-    final standardPrice = _priceForVisibility('public');
-    final standardAmountRaw = standardPrice?['amount'];
-    final standardAmount = standardAmountRaw is num
-        ? standardAmountRaw.toDouble()
-        : double.tryParse('${standardAmountRaw ?? ''}');
-
-    final standardBasis = standardPrice?['price_basis']?.toString();
-
-    final priceLabel = _visiblePriceLabel(visiblePrice);
-    final isDiscountedPrice =
-        priceLabel != 'Standard Price' &&
-        visibleAmount != null &&
-        standardAmount != null &&
-        standardAmount > visibleAmount &&
-        standardBasis == visibleBasis;
-
-    final saving = isDiscountedPrice ? standardAmount - visibleAmount : null;
-
-    final savingPercent = isDiscountedPrice && standardAmount > 0
-        ? (saving! / standardAmount) * 100
-        : null;
-
-    return Column(
-      crossAxisAlignment: alignment,
-      children: [
-        if (isDiscountedPrice) ...[
-          Text(
-            '${_formatMoney(standardAmount)} / ${_formatPriceBasis(standardBasis)}',
-            style: const TextStyle(
-              fontSize: 15,
-              color: Color(0xFF777777),
-              decoration: TextDecoration.lineThrough,
-              decorationThickness: 2,
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-        Text(
-          '${_formatMoney(visibleAmountRaw)} / ${_formatPriceBasis(visibleBasis)}',
-          style: TextStyle(
-            fontSize: priceFontSize,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF741C1C),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          priceLabel,
-          style: TextStyle(
-            color: priceLabel == 'Standard Price'
-                ? const Color(0xFF666666)
-                : const Color(0xFF741C1C),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-        if (saving != null && savingPercent != null) ...[
-          const SizedBox(height: 5),
-          Text(
-            'You save ${_formatMoney(saving)} / ${_formatPriceBasis(visibleBasis)} • ${savingPercent.toStringAsFixed(1)}%',
-            style: const TextStyle(
-              color: Color(0xFF2E7D32),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+  }) => CustomerPriceDisplay(
+    product: widget.product,
+    visiblePrice: visiblePrice,
+    alignment: alignment,
+    fontSize: priceFontSize,
+    showLabel: true,
+    showSavings: true,
+  );
 
   String _orderQuantityUnit(Map<String, dynamic>? visiblePrice) {
     final configuredOrderUnit = widget.product['order_unit']?.toString();
