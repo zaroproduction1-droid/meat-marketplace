@@ -16,7 +16,10 @@ Future<List<Map<String, dynamic>>> loadDocumentProductDetails(
   final current = <String, Map<String, dynamic>>{};
   for (var start = 0; start < missing.length; start += 80) {
     final rows = await Supabase.instance.client
-        .from('products')
+        .rpc(
+          'catalogue_products',
+          params: {'p_product_ids': missing.skip(start).take(80).toList()},
+        )
         .select(
           'id,brand,origin_country,origin_state,temperature_state,marbling_score,'
           'breed_program,piece_size_kind,piece_weight_min,piece_weight_max,piece_weight_unit,'
@@ -27,8 +30,7 @@ Future<List<Map<String, dynamic>>> loadDocumentProductDetails(
           'chicken_size_weight,chicken_carton_size,feeding_days,bone_state,rib_count,'
           'production_claim,hgp_free,meat_grades(code,name),meat_animals(code,name),'
           'meat_sections(name),meat_specifications(name,ham_code)',
-        )
-        .inFilter('id', missing.skip(start).take(80).toList());
+        );
     for (final row in rows) {
       Map<String, dynamic> nested(String key) =>
           row[key] is Map ? Map<String, dynamic>.from(row[key] as Map) : {};

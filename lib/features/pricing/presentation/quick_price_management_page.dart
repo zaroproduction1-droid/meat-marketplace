@@ -1,3 +1,4 @@
+import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import 'vip_customer_prices_dialog.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
@@ -1767,7 +1768,15 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           ],
         ),
       ),
-      body: AbsorbPointer(absorbing: _isSavingChanges, child: _buildBody()),
+      body: AbsorbPointer(
+        absorbing: _isSavingChanges,
+        child: Column(
+          children: [
+            const SupplierPhotoTermsNotice(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
       bottomNavigationBar: _pendingChanges.isEmpty
           ? null
           : SafeArea(

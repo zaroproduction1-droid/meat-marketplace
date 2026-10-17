@@ -1,3 +1,4 @@
+import '../../../shared/widgets/product_content_report_button.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -1018,24 +1019,6 @@ class _MarketplaceProductDetailsPageState
     return parts.join(' • ');
   }
 
-  String _availableQuantityText() {
-    final quantity = widget.product['available_quantity'];
-    final unit = widget.product['quantity_unit']?.toString();
-
-    if (quantity == null) {
-      return 'Not provided';
-    }
-
-    final label = switch (unit) {
-      'kilogram' => 'kg',
-      'carton' => 'cartons',
-      'unit' => 'units',
-      _ => unit ?? '',
-    };
-
-    return '${_formatNumber(quantity)}${label.isEmpty ? '' : ' $label'}';
-  }
-
   String _halalLabel() {
     switch (widget.product['halal_status']?.toString()) {
       case 'halal':
@@ -1190,7 +1173,16 @@ class _MarketplaceProductDetailsPageState
   }
 
   Widget _productImagePlaceholder() {
-    return CatalogueProductImage(product: widget.product);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CatalogueProductImage(product: widget.product),
+        ProductContentReportButton(
+          product: widget.product,
+          businessId: _favourites.businessId,
+        ),
+      ],
+    );
   }
 
   Widget _compactOrderCard(Map<String, dynamic> product) {
@@ -1341,7 +1333,6 @@ class _MarketplaceProductDetailsPageState
     final detailFields = <MapEntry<String, String>>[
       MapEntry('SKU', product['sku']?.toString() ?? 'Not provided'),
       MapEntry('Brand', _textValue('brand')),
-      MapEntry('Available', _availableQuantityText()),
       MapEntry('Animal', _speciesName()),
       MapEntry('Section', _newSectionName()),
       MapEntry('Specification', _currentCatalogueProductName()),

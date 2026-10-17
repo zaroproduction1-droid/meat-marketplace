@@ -1,3 +1,5 @@
+import 'product_report_context_panel.dart';
+import '../../../shared/widgets/product_report_dialog.dart';
 import '../../../shared/security/upload_safety.dart';
 import 'support_faq_panel.dart';
 import '../../admin/presentation/admin_theme.dart';
@@ -204,7 +206,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         messages_purged_at,
         closed_at,
         created_at,
-        updated_at
+        updated_at,
+        product_content_reports(ticket_id,reason,snapshot,evidence_status,purged_at)
       ''');
 
       if (!widget.adminMode) {
@@ -824,6 +827,17 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
   }
 
+  Map<String, dynamic>? _productReport(Map<String, dynamic> ticket) {
+    final value = ticket['product_content_reports'];
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is List && value.isNotEmpty && value.first is Map) {
+      return Map<String, dynamic>.from(value.first as Map);
+    }
+    return null;
+  }
+
   List<Map<String, dynamic>> get _visibleTickets {
     final query = _search.trim().toLowerCase();
     return _tickets.where((ticket) {
@@ -832,6 +846,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         'active' =>
           ticket['reopen_decision'] == 'pending' ||
               (status != 'resolved' && status != 'closed'),
+        'reports' =>
+          _productReport(ticket) != null ||
+              ticket['subject'] == 'Product or photo content report',
         'reopen' => ticket['reopen_decision'] == 'pending',
         'resolved' => status == 'resolved',
         'closed' => status == 'closed',
@@ -839,12 +856,22 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       };
       if (!statusMatches) return false;
       if (query.isEmpty) return true;
-      return [
+      final report = _productReport(ticket);
+      final snapshot = report?['snapshot'] is Map
+          ? report!['snapshot'] as Map
+          : const {};
+      final text = [
         ticket['ticket_number'],
         ticket['subject'],
         ticket['business_name'],
         ticket['requester_name'],
-      ].any((value) => value?.toString().toLowerCase().contains(query) == true);
+        snapshot['product_name'],
+        snapshot['specification'],
+        snapshot['sku'],
+        snapshot['supplier_name'],
+        productReportReasons[report?['reason']],
+      ].where((v) => v != null).join(' ').toLowerCase();
+      return query.split(RegExp(r'\s+')).every(text.contains);
     }).toList();
   }
 
@@ -1047,6 +1074,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 for (final entry in const {
                   'active': 'Active',
                   'all': 'All',
+                  'reports': 'Product reports',
                   'reopen': 'Reopen requests',
                   'resolved': 'Resolved',
                   'closed': 'Closed',
@@ -1100,6 +1128,18 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_productReport(ticket) != null)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    'PRODUCT / PHOTO REPORT',
+                    style: TextStyle(
+                      color: _darkRed,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               if (ticket['reopen_decision'] == 'pending')
                 const Padding(
                   padding: EdgeInsets.only(bottom: 6),
@@ -1323,6 +1363,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     if (ticket == null) return _emptySelection();
 
     final closed = ['resolved', 'closed'].contains(ticket['status']);
+    final hasProductReport = _productReport(ticket) != null;
     return Column(
       children: [
         Container(
@@ -1386,14 +1427,25 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: _messages.isEmpty
+          child: _messages.isEmpty && !hasProductReport
               ? const Center(child: CircularProgressIndicator())
               : ListView.builder(
                   controller: _messagesScrollController,
                   reverse: false,
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, index) => _messageBubble(_messages[index]),
+                  itemCount: _messages.length + (hasProductReport ? 1 : 0),
+                  itemBuilder: (_, index) {
+                    if (hasProductReport && index == 0) {
+                      return ProductReportContextPanel(
+                        key: ValueKey(ticket['id']),
+                        ticketId: ticket['id'].toString(),
+                        adminMode: widget.adminMode,
+                      );
+                    }
+                    return _messageBubble(
+                      _messages[index - (hasProductReport ? 1 : 0)],
+                    );
+                  },
                 ),
         ),
         Container(

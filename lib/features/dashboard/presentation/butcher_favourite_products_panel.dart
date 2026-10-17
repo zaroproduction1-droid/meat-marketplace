@@ -53,21 +53,32 @@ class _ButcherFavouriteProductsPanelState
       }
       final rows = await client
           .from('butcher_favourite_products')
-          .select(
-            'id,product_id,product_name,supplier_name,dashboard_slot,products('
-            'id,active,photo_path,hide_catalogue_photo,'
-            'meat_animals(code,name),meat_sections(name),'
-            'meat_specifications(name),meat_grades(code,name),'
-            'businesses(trading_name,legal_name),product_prices(*,price_lists(*)))',
-          )
+          .select('id,product_id,product_name,supplier_name,dashboard_slot')
           .eq('business_id', widget.businessId)
           .eq('user_id', user.id)
           .gte('dashboard_slot', 1)
           .lte('dashboard_slot', 4)
           .order('dashboard_slot')
           .limit(4);
+      final ids = rows
+          .map((row) => row['product_id'])
+          .whereType<String>()
+          .toList();
+      final products = ids.isEmpty
+          ? <Map<String, dynamic>>[]
+          : List<Map<String, dynamic>>.from(
+              await client
+                  .rpc('catalogue_products', params: {'p_product_ids': ids})
+                  .select(_productSelect),
+            );
+      final byId = {for (final product in products) product['id']: product};
       if (mounted) {
-        setState(() => _rows = List<Map<String, dynamic>>.from(rows));
+        setState(
+          () => _rows = [
+            for (final row in rows)
+              {...row, 'products': byId[row['product_id']]},
+          ],
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -88,10 +99,15 @@ class _ButcherFavouriteProductsPanelState
     final favourites = ButcherFavouritesStore(businessId: widget.businessId);
     try {
       final product = await Supabase.instance.client
-          .from('products')
-          .select(_productSelect)
+          .rpc(
+            'catalogue_products',
+            params: {
+              'p_product_ids': [row['product_id']],
+            },
+          )
           .eq('id', row['product_id'])
           .eq('active', true)
+          .select(_productSelect)
           .maybeSingle();
       if (product == null) {
         throw StateError('Product unavailable');

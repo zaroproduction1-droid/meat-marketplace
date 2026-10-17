@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/supplier_photo_policy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Pre-launch notices. Replace operator/contact details before public release.
 class LegalInfoPage extends StatefulWidget {
   const LegalInfoPage({super.key});
-  static const version = 'development-2026-10-10';
+  static const version = 'development-2026-10-17';
   @override
   State<LegalInfoPage> createState() => _LegalInfoPageState();
 }
@@ -130,8 +131,9 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
   }
 
   static const notices = <String, String>{
+    'Supplier photos, copyright and content reports': SupplierPhotoPolicy.terms,
     'Privacy notice':
-        'CutLink is a pre-launch business platform in NSW, Australia. CutlinkTrade is the intended web identity; the legal operator and public privacy contact are still to be confirmed. These development notices are not a statement that the service is ready for public launch.\n\nWe process login and contact details, business profiles and addresses, wholesale products and prices, orders, invoices, payment records, delivery details, trade applications and their supporting documents, support messages and technical activity needed to operate the service. Provide only information needed for the transaction. Do not upload passwords, identity documents or consumer credit reports unless a specific lawful, necessary process has been established.\n\nInformation is shared with the relevant trading businesses and authorised support staff according to business access controls. Publicly featured business names, logos and product photos are public. Private support and trade documents require authorised access. Supabase provides authentication, database and file storage; the connected project is in Sydney. Any further provider, overseas processing and retention details must be confirmed before launch.\n\nCutLink does not store card credentials or transfer money through the payment-recording screens. Keep passwords and private API keys out of uploads and messages. We keep records needed for active business services and lawful financial or dispute obligations; retention periods and recovery procedures are still being verified. Request access, correction or deletion below. We verify requests and explain information that must be retained. Before launch the operator must publish a working contact, complaint process and final retention schedule.',
+        'CutLink is a pre-launch business platform in NSW, Australia. CutlinkTrade is the intended web identity; the legal operator and public privacy contact are still to be confirmed. These development notices are not a statement that the service is ready for public launch.\n\nWe process login and contact details, business profiles and addresses, wholesale products and prices, photo-rights confirmations and content reports, orders, invoices, payment records, delivery details, trade applications and their supporting documents, support messages and technical activity needed to operate the service. Provide only information needed for the transaction. Do not upload passwords, identity documents or consumer credit reports unless a specific lawful, necessary process has been established.\n\nInformation is shared with the relevant trading businesses and authorised support staff according to business access controls. Publicly featured business names, logos and product photos are public. Exact supplier stock quantities and available stock weights are restricted to that supplier\'s authorised members; buyers see availability labels. Authorised administrators may access business information for a legitimate support, security or compliance purpose, with trade-record access logged in the admin workspace. Ordinary database-owner access is not made invisible by these app controls. Private support and trade documents require authorised access. Supabase provides authentication, database and file storage; the connected project is in Sydney. Any further provider, overseas processing and retention details must be confirmed before launch.\n\nCutLink does not store card credentials or transfer money through the payment-recording screens. Keep passwords and private API keys out of uploads and messages. We keep records needed for active business services and lawful financial or dispute obligations; retention periods and recovery procedures are still being verified. Request access, correction or deletion below. We verify requests and explain information that must be retained. Before launch the operator must publish a working contact, complaint process and final retention schedule.',
     'Terms of use':
         'Development terms: CutLink connects wholesale suppliers and butchers and provides inventory, ordering, invoicing, accounts and delivery tools. Use is intended for adults aged 18 or over who are authorised to act for a business. Keep login credentials private and provide accurate business and licensing information. Approval in CutLink is platform access approval; it does not independently guarantee food safety, product quality, creditworthiness or regulatory compliance.\n\nThe trading parties are responsible for agreeing product specifications, availability, catch-weight pricing, applicable tax, delivery charges, payment terms and fulfilment. Review these before confirming an order. Recording payment in CutLink is not a bank transfer or card charge. Do not upload unlawful content, impersonate a business or attempt unauthorised access.\n\nOperator identity, service charges, subscription cancellation, suspension, dispute procedures and final contractual terms must be confirmed before public launch or accepting platform fees. Nothing in these notices excludes rights or remedies that cannot lawfully be excluded under Australian law.',
     'Refund and dispute notice':
@@ -155,7 +157,7 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Pre-launch • NSW, Australia • Version development-2026-10-10',
+              'Pre-launch • NSW, Australia • Version development-2026-10-17',
             ),
             const SizedBox(height: 16),
             for (final entry in notices.entries)

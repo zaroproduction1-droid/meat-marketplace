@@ -1,3 +1,4 @@
+import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -1498,7 +1499,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       ),
       body: AbsorbPointer(
         absorbing: _savingSpecificationIds.isNotEmpty,
-        child: _buildBody(),
+        child: Column(
+          children: [
+            const SupplierPhotoTermsNotice(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
     );
   }

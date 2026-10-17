@@ -1,3 +1,4 @@
+import 'product_photo_moderation_controls.dart';
 import 'admin_billing_panel.dart';
 import 'admin_theme.dart';
 import '../../../shared/navigation/page_location.dart';
@@ -421,6 +422,10 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               'SKU ${r['sku'] ?? ''} · ${r['available_quantity']} ${r['quantity_unit']}',
             ),
             AdminStatus(r['active'] == true ? 'active' : 'inactive'),
+            ProductPhotoModerationControls(
+              key: ValueKey(r['id']),
+              productId: r['id'].toString(),
+            ),
           ],
         ),
       );

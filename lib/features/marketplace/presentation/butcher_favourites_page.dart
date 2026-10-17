@@ -81,9 +81,11 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
       final current = <String, Map<String, dynamic>>{};
       for (var start = 0; start < ids.length; start += 80) {
         final batch = await Supabase.instance.client
-            .from('products')
-            .select(_productSelect)
-            .inFilter('id', ids.skip(start).take(80).toList());
+            .rpc(
+              'catalogue_products',
+              params: {'p_product_ids': ids.skip(start).take(80).toList()},
+            )
+            .select(_productSelect);
         for (final product in batch) {
           current[product['id'].toString()] = Map<String, dynamic>.from(
             product,
@@ -232,10 +234,15 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
     setState(() => _busyId = row['id'].toString());
     try {
       final product = await Supabase.instance.client
-          .from('products')
-          .select(_productSelect)
+          .rpc(
+            'catalogue_products',
+            params: {
+              'p_product_ids': [row['product_id']],
+            },
+          )
           .eq('id', row['product_id'])
           .eq('active', true)
+          .select(_productSelect)
           .maybeSingle();
       if (!mounted) {
         return;
@@ -461,8 +468,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
           (!_available ||
               _kind == 'search' ||
               (product['active'] == true &&
-                  product['availability_status'] != 'out_of_stock' &&
-                  (num.tryParse('${product['available_quantity']}') ?? 0) > 0));
+                  product['availability_status'] != 'out_of_stock'));
     }).toList();
     rows.sort(
       (a, b) => _sort == 'name'

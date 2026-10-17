@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'catalogue_product_image.dart';
+import 'supplier_photo_policy.dart';
+import 'supplier_photo_terms_notice.dart';
 
 /// Photo choices remain a draft until the product itself is saved.
 class ProductPhotoDraft extends ChangeNotifier {
@@ -65,13 +67,6 @@ class ProductPhotoDraft extends ChangeNotifier {
     notifyListeners();
   }
 
-  void useCatalogue() {
-    bytes = null;
-    hidden = false;
-    dirty = true;
-    notifyListeners();
-  }
-
   Map<String, dynamic> get preview => {
     ...product,
     if (dirty) 'photo_path': null,
@@ -83,6 +78,10 @@ class ProductPhotoDraft extends ChangeNotifier {
     }
     final path =
         '$businessId/$productId/${DateTime.now().microsecondsSinceEpoch}.$extension';
+    await Supabase.instance.client.rpc(
+      'authorise_product_photo_upload',
+      params: {'p_product_id': productId, 'p_storage_path': path},
+    );
     await Supabase.instance.client.storage
         .from('product-photos')
         .uploadBinary(
@@ -172,7 +171,7 @@ class ProductPhotoEditor extends StatelessWidget {
               Text(
                 draft.dirty
                     ? 'Photo changes will be saved with this product.'
-                    : 'Keep the catalogue picture or upload your own. PNG, JPG or WebP, up to 5 MB.',
+                    : 'Upload your own stock photo, or one you have permission to use. PNG, JPG or WebP, up to 5 MB.',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF666A70)),
               ),
               const SizedBox(height: 8),
@@ -185,6 +184,9 @@ class ProductPhotoEditor extends StatelessWidget {
                         ? null
                         : () async {
                             try {
+                              if (!await ensureSupplierPhotoTerms(context)) {
+                                return;
+                              }
                               await draft.pick();
                             } catch (error) {
                               if (context.mounted) {
@@ -207,8 +209,25 @@ class ProductPhotoEditor extends StatelessWidget {
                     label: const Text('Remove'),
                   ),
                   TextButton(
-                    onPressed: enabled ? draft.useCatalogue : null,
-                    child: const Text('Use catalogue picture'),
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Supplier photo terms'),
+                        content: const SizedBox(
+                          width: 620,
+                          child: SingleChildScrollView(
+                            child: SelectableText(SupplierPhotoPolicy.terms),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: const Text('Supplier photo terms'),
                   ),
                 ],
               ),

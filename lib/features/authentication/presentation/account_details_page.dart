@@ -1,3 +1,4 @@
+import '../../../shared/widgets/supplier_photo_policy.dart';
 import '../../legal/presentation/legal_info_page.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -88,6 +89,10 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
           'business_type': widget.businessType.name,
           'development_notice_version': LegalInfoPage.version,
           'adult_business_authority_acknowledged': true,
+          if (widget.businessType == BusinessType.supplier) ...{
+            'supplier_photo_terms_accepted': true,
+            'supplier_photo_terms_version': SupplierPhotoPolicy.version,
+          },
         },
       );
 
@@ -397,8 +402,10 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                   : (value) => setState(() => _acknowledged = value ?? false),
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              title: const Text(
-                'I am 18 or over, authorised to act for this business, and have read the development Terms and Privacy notice.',
+              title: Text(
+                widget.businessType == BusinessType.supplier
+                    ? 'I am 18 or over, authorised to act for this business, and agree to the development Terms, including the supplier photo terms. I have read the Privacy notice.'
+                    : 'I am 18 or over, authorised to act for this business, and have read the development Terms and Privacy notice.',
               ),
             ),
             TextButton(

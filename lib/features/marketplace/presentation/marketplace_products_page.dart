@@ -1262,9 +1262,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
       setState(() {
         _stockScope = null;
-        _stockError = error is TimeoutException
-            ? 'Loading took too long. Please retry.'
-            : 'Unable to load products: $error';
+        final timedOut =
+            error is TimeoutException ||
+            (error is PostgrestException && error.code == '57014');
+        _stockError = timedOut
+            ? 'The product search took too long. Please retry.'
+            : error is StateError
+            ? error.message.toString()
+            : 'Products could not be loaded. Check your connection and retry.';
       });
     } finally {
       if (mounted && version == _stockLoadVersion) {
@@ -1281,7 +1286,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           children: [
             Expanded(child: Text(_stockError!)),
             TextButton(
-              onPressed: () => _loadStock(force: true),
+              onPressed: () =>
+                  _loadStock(force: true, offset: _stockPageOffset),
               child: const Text('Retry'),
             ),
           ],
@@ -2147,24 +2153,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return parts.join(' • ');
   }
 
-  String _availableText(Map<String, dynamic> product) {
-    final quantity = product['available_quantity'];
-    final unit = product['quantity_unit']?.toString();
-
-    if (quantity == null) {
-      return '';
-    }
-
-    final label = switch (unit) {
-      'kilogram' => 'kg',
-      'carton' => 'cartons',
-      'unit' => 'units',
-      _ => unit ?? '',
-    };
-
-    return '${_formatNumber(quantity)}${label.isEmpty ? '' : ' $label'}';
-  }
-
   String _halalLabel(String? value) {
     switch (value) {
       case 'halal':
@@ -2228,7 +2216,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final halal = _halalLabel(product['halal_status']?.toString());
     final originCountry = product['origin_country']?.toString();
     final originState = product['origin_state']?.toString();
-    final available = _availableText(product);
 
     if (brand != null && brand.trim().isNotEmpty) {
       chips.add(_specChip(icon: Icons.sell_outlined, label: brand.trim()));
@@ -2336,15 +2323,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     if (originParts.isNotEmpty) {
       chips.add(
         _specChip(icon: Icons.public_outlined, label: originParts.join(', ')),
-      );
-    }
-
-    if (available.isNotEmpty) {
-      chips.add(
-        _specChip(
-          icon: Icons.inventory_outlined,
-          label: 'Available $available',
-        ),
       );
     }
 
@@ -3131,8 +3109,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     _supplierIdentity(product),
                     const SizedBox(height: 4),
                     Text(
-                      '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}'
-                      '${_availableText(product).isEmpty ? '' : ' • ${_availableText(product)}'}',
+                      '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}',
                       style: const TextStyle(
                         color: Color(0xFF666666),
                         fontSize: 10.5,
@@ -4049,6 +4026,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     Widget supplierStockStage() {
+      // The header already displays the load error and Retry action. An error
+      // is not evidence that no offers exist for the selected product.
+      if (_stockError != null) {
+        return const SizedBox.shrink();
+      }
       if (_loadingStock) {
         return const Center(child: CircularProgressIndicator());
       }
@@ -4262,7 +4244,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
+                            _loadingStock
+                                ? 'Loading…'
+                                : _stockError != null
+                                ? 'Not loaded'
+                                : '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
                             style: const TextStyle(
                               color: Color(0xFF741C1C),
                               fontSize: 10.5,

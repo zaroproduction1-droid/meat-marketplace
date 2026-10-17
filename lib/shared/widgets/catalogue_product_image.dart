@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../animal_catalogues/catalogue_cut_images.dart';
-
 class CatalogueProductImage extends StatelessWidget {
   const CatalogueProductImage({
     super.key,
@@ -27,9 +25,6 @@ class CatalogueProductImage extends StatelessWidget {
         : Supabase.instance.client.storage
               .from('product-photos')
               .getPublicUrl(path);
-    final asset = product['hide_catalogue_photo'] == true
-        ? null
-        : catalogueImageAsset(product);
     final cut =
         (product['meat_specifications'] as Map?)?['name']?.toString() ?? 'Cut';
     final height = imageHeight ?? (thumbnail ? 64.0 : 210.0);
@@ -58,9 +53,7 @@ class CatalogueProductImage extends StatelessWidget {
     return Tooltip(
       message: url != null
           ? '$cut • Supplier photo'
-          : asset == null
-          ? 'Photo not yet available'
-          : '$cut • Illustrative image',
+          : 'Photo not yet available',
       child: Container(
         width: imageWidth ?? (thumbnail ? 64 : null),
         clipBehavior: Clip.antiAlias,
@@ -82,34 +75,8 @@ class CatalogueProductImage extends StatelessWidget {
                 semanticLabel: '$cut supplier photo',
                 errorBuilder: (_, _, _) => placeholder(),
               )
-            else if (asset == null)
-              placeholder()
             else
-              Image.asset(
-                asset,
-                filterQuality: FilterQuality.high,
-                height: height,
-                width: double.infinity,
-                fit: fit,
-                cacheWidth: thumbnail
-                    ? ((imageWidth ?? 64) *
-                              MediaQuery.devicePixelRatioOf(context))
-                          .ceil()
-                          .clamp(160, 1200)
-                          .toInt()
-                    : 800,
-                semanticLabel: '$cut, illustrative image',
-                errorBuilder: (_, _, _) => placeholder(),
-              ),
-            if (url == null && asset != null && !thumbnail)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
-                child: Text(
-                  'Illustrative image • Actual product may vary',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: Color(0xFF71777D)),
-                ),
-              ),
+              placeholder(),
           ],
         ),
       ),
