@@ -11,11 +11,13 @@ class ProductBrandField extends StatefulWidget {
     this.supplierBusinessId,
     this.animalCode,
     this.enabled = true,
+    this.allowCustom = true,
   });
   final TextEditingController controller;
   final String? supplierBusinessId;
   final String? animalCode;
   final bool enabled;
+  final bool allowCustom;
   @override
   State<ProductBrandField> createState() => _ProductBrandFieldState();
 }
@@ -85,10 +87,11 @@ class _ProductBrandFieldState extends State<ProductBrandField> {
           options: [
             for (final brand in choices)
               CutLinkPickerOption(value: brand, label: brand),
-            const CutLinkPickerOption(
-              value: '__other__',
-              label: 'Other — enter a brand',
-            ),
+            if (widget.allowCustom)
+              const CutLinkPickerOption(
+                value: '__other__',
+                label: 'Other — enter a brand',
+              ),
           ],
           validator: (_) => widget.controller.text.trim().isEmpty
               ? 'Choose a brand or Unbranded.'
@@ -132,12 +135,14 @@ class ProductAttributeField extends StatefulWidget {
     required this.choices,
     this.enabled = true,
     this.onChanged,
+    this.allowCustom = true,
   });
   final TextEditingController controller;
   final String label;
   final List<String> choices;
   final bool enabled;
   final VoidCallback? onChanged;
+  final bool allowCustom;
   @override
   State<ProductAttributeField> createState() => _ProductAttributeFieldState();
 }
@@ -160,10 +165,11 @@ class _ProductAttributeFieldState extends State<ProductAttributeField> {
               if (current.isNotEmpty) current,
             })
               CutLinkPickerOption(value: value, label: value),
-            const CutLinkPickerOption(
-              value: '__other__',
-              label: 'Other — enter specification',
-            ),
+            if (widget.allowCustom)
+              const CutLinkPickerOption(
+                value: '__other__',
+                label: 'Other — enter specification',
+              ),
           ],
           onChanged: (value) {
             setState(() {

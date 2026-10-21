@@ -1,75 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cutlink/shared/widgets/supplier_specification_field.dart';
+import 'package:cutlink/shared/widgets/cutlink_picker.dart';
 
 void main() {
-  test(
-    'All five requested animals use general cuts; Beef keeps its current flow',
-    () {
-      for (final code in ['CHICKEN', 'LAMB', 'MUTTON', 'GOAT', 'VEAL']) {
-        expect(SupplierSpecificationField.usesGeneralSubcuts(code), isTrue);
-      }
-      expect(SupplierSpecificationField.usesGeneralSubcuts('BEEF'), isFalse);
-      expect(SupplierSpecificationField.usesGeneralSubcuts(null), isFalse);
-    },
-  );
-
-  testWidgets(
-    'Supplier can type their own preparation without another sub-cut selector',
-    (tester) async {
-      final controller = TextEditingController();
-      addTearDown(controller.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SupplierSpecificationField(
-              controller: controller,
-              animalCode: 'CHICKEN',
-            ),
-          ),
-        ),
-      );
-      await tester.enterText(
-        find.byType(TextFormField),
-        'Skinless, tender off, sliced 10 mm',
-      );
-      expect(controller.text, 'Skinless, tender off, sliced 10 mm');
-      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
-    },
-  );
-
-  testWidgets('Existing supplier notes stay visible and editable', (
+  testWidgets('Supplier specification uses dropdowns instead of free text', (
     tester,
   ) async {
-    final controller = TextEditingController(text: 'Cap off, 8 ribs, frenched');
-    addTearDown(controller.dispose);
+    final values = <String, String>{};
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SupplierSpecificationField(
-            controller: controller,
-            animalCode: 'LAMB',
+          body: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, update) => SupplierSpecificationField(
+                animalCode: 'CHICKEN',
+                values: values,
+                onChanged: (key, value) => update(() {
+                  values[key] = value;
+                }),
+              ),
+            ),
           ),
         ),
       ),
     );
-    expect(find.text('Cap off, 8 ribs, frenched'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField), 'Cap on, 6 ribs');
-    expect(controller.text, 'Cap on, 6 ribs');
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.byType(CutLinkPickerField<String>), findsNWidgets(5));
+    await tester.tap(find.text('Bone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Boneless'));
+    await tester.pumpAndSettle();
+    expect(values['bone'], 'boneless');
   });
 
-  test('Chicken attribute fallback accepts only supported values', () {
-    expect(
-      ChickenProductAttributes.value('chicken_skin', 'skin_off'),
-      'skin_off',
+  testWidgets('Old written details are preserved for reference', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SupplierSpecificationField(
+              animalCode: 'LAMB',
+              values: const {'cap': 'cap_off', 'rib_count': '8'},
+              previousDetails: 'Original saved supplier wording',
+              onChanged: (_, _) {},
+            ),
+          ),
+        ),
+      ),
     );
-    expect(
-      ChickenProductAttributes.value('chicken_skin', 'unsupported'),
-      'not_applicable',
-    );
-    expect(
-      ChickenProductAttributes.value('chicken_preparation', 'diced'),
-      'diced',
-    );
+    expect(find.byType(TextFormField), findsNothing);
+    await tester.ensureVisible(find.text('Previous written details'));
+    await tester.tap(find.text('Previous written details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Original saved supplier wording'), findsOneWidget);
   });
 }

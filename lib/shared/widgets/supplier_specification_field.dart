@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../animal_catalogues/supplier_variant_options.dart';
+import 'cutlink_picker.dart';
+
 /// Shared cut choices describe the cut; this field describes one supplier's item.
 class SupplierSpecificationField extends StatelessWidget {
   const SupplierSpecificationField({
     super.key,
-    required this.controller,
+    required this.values,
+    required this.onChanged,
     required this.animalCode,
+    this.previousDetails = '',
     this.enabled = true,
   });
-  final TextEditingController controller;
+  final Map<String, String> values;
+  final void Function(String field, String value) onChanged;
+  final String previousDetails;
   final String? animalCode;
   final bool enabled;
 
@@ -16,22 +23,66 @@ class SupplierSpecificationField extends StatelessWidget {
       const {'CHICKEN', 'LAMB', 'MUTTON', 'GOAT', 'VEAL'}.contains(code);
 
   @override
-  Widget build(BuildContext context) => TextFormField(
-    controller: controller,
-    enabled: enabled,
-    minLines: 2,
-    maxLines: 5,
-    maxLength: 2000,
-    decoration: InputDecoration(
-      labelText: 'Your specification (optional)',
-      helperText:
-          'Describe this item for buyers. This does not create another sub-cut.',
-      helperMaxLines: 3,
-      hintText: animalCode == 'CHICKEN'
-          ? 'For example: skinless, tender off, sliced 10 mm, fresh.'
-          : 'For example: boneless, cap off, 8 ribs, rolled and netted, chilled.',
-      alignLabelWithHint: true,
-    ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Choose the details that apply. Butchers can filter by these same options. Leave unrelated details as Not specified.',
+      ),
+      const SizedBox(height: 14),
+      LayoutBuilder(
+        builder: (context, constraints) => Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: [
+            for (final field in SupplierVariantOptions.fields(animalCode))
+              SizedBox(
+                width: constraints.maxWidth < 600
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 14) / 2,
+                child: CutLinkPickerField<String>(
+                  label: SupplierVariantOptions.labels[field]!,
+                  value: values[field] ?? '',
+                  enabled: enabled,
+                  options: [
+                    const CutLinkPickerOption(
+                      value: '',
+                      label: 'Not specified',
+                    ),
+                    for (final option in SupplierVariantOptions.options(
+                      animalCode,
+                      field,
+                    ).entries)
+                      CutLinkPickerOption(
+                        value: option.key,
+                        label: option.value,
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onChanged(field, value);
+                    }
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      if (previousDetails.trim().isNotEmpty)
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('Previous written details'),
+          subtitle: const Text(
+            'Kept for reference. Select the matching dropdown options above.',
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(previousDetails),
+            ),
+          ],
+        ),
+    ],
   );
 }
 

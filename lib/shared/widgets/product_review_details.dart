@@ -1,4 +1,5 @@
 import '../formatters/cutlink_numbers.dart';
+import '../animal_catalogues/supplier_variant_options.dart';
 import 'cutlink_review_theme.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -91,6 +92,13 @@ class ProductReviewDetails extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 12),
+              if (SupplierVariantOptions.summary(product).isNotEmpty) ...[
+                Text(
+                  SupplierVariantOptions.summary(product),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+              ],
               InkWell(
                 onTap: product['photo_path'] == null
                     ? null

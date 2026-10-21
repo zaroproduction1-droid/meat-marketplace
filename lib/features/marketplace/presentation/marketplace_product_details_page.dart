@@ -1,4 +1,5 @@
 import '../../../shared/widgets/product_content_report_button.dart';
+import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
@@ -1363,6 +1364,14 @@ class _MarketplaceProductDetailsPageState
     ];
 
     final meatFields = <MapEntry<String, String>>[
+      for (final entry in SupplierVariantOptions.normalise(
+        LambProductDetails.animalCode(product),
+        product['supplier_attributes'],
+      ).entries)
+        MapEntry(
+          SupplierVariantOptions.labels[entry.key]!,
+          SupplierVariantOptions.choices[entry.key]![entry.value]!,
+        ),
       if (LambProductDetails.isLamb(product) ||
           !SupplierSpecificationField.usesGeneralSubcuts(
             LambProductDetails.animalCode(product),
@@ -1637,7 +1646,12 @@ class _MarketplaceProductDetailsPageState
         if (supplierSpecification.isNotEmpty) ...[
           const SizedBox(height: 10),
           _compactCard(
-            title: 'Supplier Specification',
+            title:
+                SupplierVariantOptions.supports(
+                  LambProductDetails.animalCode(product),
+                )
+                ? 'Previous supplier details'
+                : 'Supplier Specification',
             icon: Icons.description_outlined,
             child: Text(
               supplierSpecification,

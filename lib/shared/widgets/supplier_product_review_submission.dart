@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 String supplierCorrectionFieldLabel(Object? field) {
   final value = field?.toString() ?? '';
   const labels = {
+    'supplier_attributes': 'Product specification options',
     'photo_path': 'Photo',
     'hide_catalogue_photo': 'Photo',
     'meat_animal_id': 'Animal',

@@ -1,3 +1,4 @@
+import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
@@ -91,10 +92,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _selectedBone = '';
   String _selectedFatClass = '';
   String _selectedTemperature = '';
+  final Map<String, String> _supplierAttributeFilters = {};
   bool _stockViewActive = false;
   bool _filtersExpanded = false;
 
   void _resetVariants() {
+    _supplierAttributeFilters.clear();
     _stockViewActive = false;
     _selectedPieceSize = null;
     _selectedProgram = '';
@@ -111,7 +114,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     bool brand = true,
     bool marbling = true,
   }) {
-    return (_selectedPieceSize == null ||
+    return SupplierVariantOptions.matches(p, _supplierAttributeFilters) &&
+        (_selectedPieceSize == null ||
             _selectedPieceSize!.isEmpty ||
             productSizeLabel(p) == _selectedPieceSize) &&
         (_selectedProgram.isEmpty || productProgram(p) == _selectedProgram) &&
@@ -135,7 +139,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   List<Map<String, dynamic>> get _variantScope => _facetProducts.where((p) {
-    if (_compactFacets) return true;
+    if (_compactFacets) {
+      return true;
+    }
     final hasCut =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     if (hasCut &&
@@ -296,7 +302,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               _selectedBrand = v;
               _selectedCommercialSpecificationKey = null;
             }),
-          if (bones.isNotEmpty || _selectedBone.isNotEmpty)
+          if (!SupplierVariantOptions.supports(_selectedAnimalCode) &&
+              (bones.isNotEmpty || _selectedBone.isNotEmpty))
             picker('Bone', _selectedBone, bones, (v) {
               _selectedBone = v;
               _selectedCommercialSpecificationKey = null;
@@ -311,6 +318,40 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               _selectedTemperature = v;
               _selectedCommercialSpecificationKey = null;
             }),
+          for (final field in SupplierVariantOptions.fields(
+            _selectedAnimalCode,
+          ))
+            SizedBox(
+              width: 210,
+              child: CutLinkPickerField<String>(
+                label: SupplierVariantOptions.labels[field]!,
+                value: _supplierAttributeFilters[field] ?? '',
+                dense: true,
+                showLabelWhenDense: true,
+                options: [
+                  const CutLinkPickerOption(value: '', label: 'Any'),
+                  for (final option in SupplierVariantOptions.options(
+                    _selectedAnimalCode,
+                    field,
+                  ).entries)
+                    CutLinkPickerOption(value: option.key, label: option.value),
+                ],
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    if (value.isEmpty) {
+                      _supplierAttributeFilters.remove(field);
+                    } else {
+                      _supplierAttributeFilters[field] = value;
+                    }
+                    _selectedCommercialSpecificationKey = null;
+                  });
+                  _applySearch();
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -339,6 +380,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Map<String, dynamic> _savedSearchFilters() => {
+    'supplierAttributes': Map<String, String>.from(_supplierAttributeFilters),
     'version': 1,
     'animal': _selectedAnimalCode,
     'region': _selectedAnimalRegionKey,
@@ -371,6 +413,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedAnimalCode = animal!;
     }
     _selectedAnimalRegionKey = value('region');
+    _supplierAttributeFilters
+      ..clear()
+      ..addAll(
+        SupplierVariantOptions.normalise(
+          _selectedAnimalCode,
+          filters['supplierAttributes'],
+        ),
+      );
     _selectedSectionId = value('section');
     _selectedSpecificationId = value('specification');
     _selectedGradeId = value('grade');
@@ -463,6 +513,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ),
       ..._chickenAttributeFilters.values,
       ..._goatAttributeFilters.values,
+      ..._supplierAttributeFilters.values,
       _selectedPieceSize ?? '',
       _selectedProgram,
       _selectedMarbling,
@@ -1074,7 +1125,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _compactFacets = compact;
       });
     } catch (_) {
-      if (!mounted || version != _facetLoadVersion) return;
+      if (!mounted || version != _facetLoadVersion) {
+        return;
+      }
       setState(() => _facetError = 'Filter options could not load.');
     } finally {
       if (mounted && version == _facetLoadVersion) {
@@ -1129,6 +1182,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _availableOnly,
       _chickenAttributeFilters,
       _goatAttributeFilters,
+      _supplierAttributeFilters,
       _searchController.text.trim(),
       _supplierSearchController.text.trim(),
       _sortMode,
@@ -1194,7 +1248,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       );
       if (commercialKeys?.isEmpty == true) {
         await optionLoad;
-        if (!mounted || version != _stockLoadVersion) return;
+        if (!mounted || version != _stockLoadVersion) {
+          return;
+        }
       } else {
         unawaited(optionLoad);
       }
@@ -1222,6 +1278,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 .toList()
           : commercialKeys;
       final filters = <String, dynamic>{
+        'attributes': _supplierAttributeFilters,
         'values': values,
         'available': _availableOnly,
         if (_selectedSpecificationId != null)
@@ -1894,6 +1951,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
+      _supplierAttributeFilters.clear();
     });
 
     if (defaultRegionKey != null) {
@@ -1925,6 +1983,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
+      _supplierAttributeFilters.clear();
     });
 
     _applySearch();
@@ -1973,6 +2032,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
+      _supplierAttributeFilters.clear();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2351,7 +2411,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _commercialSpecificationLabel(Map<String, dynamic> product) {
     if (_animalCode(product) == CutLinkAnimals.chicken) {
       final chickenValues = <String>[
-        product['supplier_specification']?.toString().trim() ?? '',
+        SupplierVariantOptions.summary(product),
         _prettyChickenValue(product['chicken_production_type']),
         _prettyChickenValue(product['chicken_skin']),
         _prettyChickenValue(product['chicken_bone']),
@@ -2376,7 +2436,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     if (LambProductDetails.isLamb(product)) {
       final lambValues = <String>[
-        product['supplier_specification']?.toString().trim() ?? '',
+        SupplierVariantOptions.summary(product),
         LambProductDetails.program(product),
         LambProductDetails.fatClass(product),
         productSizeLabel(product),
@@ -2392,12 +2452,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     final values = <String>[
+      SupplierVariantOptions.summary(product),
       _prettyChickenValue(product['bone_state']),
       _prettyChickenValue(product['temperature_state']),
       _prettyChickenValue(product['halal_status']),
       _prettyChickenValue(product['packaging_type']),
       product['brand']?.toString().trim() ?? '',
-      _prettyChickenValue(product['supplier_specification']),
+      if (!SupplierVariantOptions.supports(_animalCode(product)))
+        _prettyChickenValue(product['supplier_specification']),
     ].where((value) => value.isNotEmpty).toList();
 
     final size = productSizeLabel(product);
@@ -2752,7 +2814,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Widget _gradeBadge(Map<String, dynamic> product) {
     final code = _gradeCode(product);
-    if (code == 'LAMB') return const SizedBox.shrink();
+    if (code == 'LAMB') {
+      return const SizedBox.shrink();
+    }
     final name = _gradeName(product);
     final label = [
       code,
@@ -2931,6 +2995,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   String _mainCommercialSummary(Map<String, dynamic> product) {
     final parts = <String>[];
+    final attributes = SupplierVariantOptions.summary(product);
+    if (attributes.isNotEmpty) {
+      parts.add(attributes);
+    }
 
     final commercialDescription = LambProductDetails.commercialDescription(
       product,
@@ -3294,6 +3362,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _selectedCommercialSpecificationKey = null;
       _chickenAttributeFilters.clear();
       _goatAttributeFilters.clear();
+      _supplierAttributeFilters.clear();
       _stockViewActive = true;
       _stockScope = null;
     });
@@ -3705,6 +3774,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       _halalOnly = false;
                       _chickenAttributeFilters.clear();
                       _goatAttributeFilters.clear();
+                      _supplierAttributeFilters.clear();
                     });
                     _applySearch();
                   },
