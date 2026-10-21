@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 
 class NotificationActivityTile extends StatelessWidget {
@@ -15,6 +16,7 @@ class NotificationActivityTile extends StatelessWidget {
   final VoidCallback? onDelete;
   static IconData icon(String category) => switch (category) {
     'messages' || 'support' => Icons.chat_bubble_outline_rounded,
+    'moderation' => Icons.fact_check_outlined,
     'platform' => Icons.campaign_outlined,
     'credits' => Icons.assignment_return_outlined,
     'payments' => Icons.payments_outlined,
@@ -69,7 +71,9 @@ class NotificationActivityTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            category.toUpperCase(),
+                            category == 'moderation'
+                                ? 'PRODUCT REVIEW'
+                                : category.toUpperCase(),
                             style: const TextStyle(
                               fontSize: 10,
                               color: Color(0xFF6A6E75),

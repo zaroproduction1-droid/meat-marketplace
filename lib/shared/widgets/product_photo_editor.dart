@@ -1,3 +1,5 @@
+import 'cutlink_review_theme.dart';
+
 import 'dart:typed_data';
 
 import '../security/upload_safety.dart';
@@ -93,6 +95,12 @@ class ProductPhotoDraft extends ChangeNotifier {
           ),
         );
     preparedPath = path;
+    // Storage may complete without its trigger setting the consent completion flag.
+    // Verify the real stored object and owner before the product assignment.
+    await Supabase.instance.client.rpc(
+      'confirm_product_photo_upload',
+      params: {'p_product_id': productId, 'p_storage_path': path},
+    );
   }
 
   Map<String, dynamic> get fields =>
@@ -211,20 +219,22 @@ class ProductPhotoEditor extends StatelessWidget {
                   TextButton(
                     onPressed: () => showDialog<void>(
                       context: context,
-                      builder: (dialogContext) => AlertDialog(
-                        title: const Text('Supplier photo terms'),
-                        content: const SizedBox(
-                          width: 620,
-                          child: SingleChildScrollView(
-                            child: SelectableText(SupplierPhotoPolicy.terms),
+                      builder: (dialogContext) => CutLinkReviewTheme(
+                        child: AlertDialog(
+                          title: const Text('Supplier photo terms'),
+                          content: const SizedBox(
+                            width: 620,
+                            child: SingleChildScrollView(
+                              child: SelectableText(SupplierPhotoPolicy.terms),
+                            ),
                           ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              child: const Text('Close'),
+                            ),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogContext),
-                            child: const Text('Close'),
-                          ),
-                        ],
                       ),
                     ),
                     child: const Text('Supplier photo terms'),

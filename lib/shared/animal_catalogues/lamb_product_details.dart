@@ -62,6 +62,7 @@ abstract final class LambProductDetails {
   static String secondaryLine(Map<String, dynamic> product) {
     if (!isLamb(product)) return '';
     final parts = <String>[
+      product['supplier_specification']?.toString().trim() ?? '',
       fatClass(product),
       productSizeLabel(product),
       _clean(product['bone_state']),
@@ -77,6 +78,7 @@ abstract final class LambProductDetails {
   }
 
   static String searchableText(Map<String, dynamic> product) => <String>[
+    product['supplier_specification']?.toString().trim() ?? '',
     program(product),
     commercialDescription(product),
     fatClass(product),

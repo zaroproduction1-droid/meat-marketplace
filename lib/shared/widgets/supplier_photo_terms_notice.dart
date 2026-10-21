@@ -1,5 +1,8 @@
+import 'cutlink_review_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'supplier_photo_policy.dart';
 
 final _supplierPhotoTermsRevision = ValueNotifier<int>(0);
@@ -61,47 +64,52 @@ class _SupplierTermsDialogState extends State<_SupplierTermsDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Supplier photo terms'),
-    content: SizedBox(
-      width: 650,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.accepted
-                  ? 'You have accepted these terms.'
-                  : 'Accept once for this supplier login account. You will not be asked for each photo.',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 14),
-            const SelectableText(SupplierPhotoPolicy.terms),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+  Widget build(BuildContext context) => CutLinkReviewTheme(
+    child: AlertDialog(
+      title: const Text('Supplier photo terms'),
+      content: SizedBox(
+        width: 650,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.accepted
+                    ? 'You have accepted these terms.'
+                    : 'Accept once for this supplier login account. You will not be asked for each photo.',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-          ],
-        ),
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: _saving
-            ? null
-            : () => Navigator.pop(context, widget.accepted),
-        child: Text(widget.accepted ? 'Close' : 'Not now'),
-      ),
-      if (!widget.accepted)
-        FilledButton(
-          onPressed: _saving ? null : _accept,
-          child: Text(
-            _saving ? 'Saving…' : 'I agree to the supplier photo terms',
+              const SizedBox(height: 14),
+              const SelectableText(SupplierPhotoPolicy.terms),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+            ],
           ),
         ),
-    ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving
+              ? null
+              : () => Navigator.pop(context, widget.accepted),
+          child: Text(widget.accepted ? 'Close' : 'Not now'),
+        ),
+        if (!widget.accepted)
+          FilledButton(
+            onPressed: _saving ? null : _accept,
+            child: Text(
+              _saving ? 'Saving…' : 'I agree to the supplier photo terms',
+            ),
+          ),
+      ],
+    ),
   );
 }
 
@@ -167,9 +175,9 @@ class _SupplierPhotoTermsNoticeState extends State<SupplierPhotoTermsNotice> {
     margin: const EdgeInsets.fromLTRB(12, 8, 12, 6),
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: const Color(0xFFF8F2ED),
+      color: Colors.white,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFFE7D9D0)),
+      border: Border.all(color: const Color(0xFFE3E5E8)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,

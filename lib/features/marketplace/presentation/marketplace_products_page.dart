@@ -1,8 +1,10 @@
+import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -2349,6 +2351,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _commercialSpecificationLabel(Map<String, dynamic> product) {
     if (_animalCode(product) == CutLinkAnimals.chicken) {
       final chickenValues = <String>[
+        product['supplier_specification']?.toString().trim() ?? '',
         _prettyChickenValue(product['chicken_production_type']),
         _prettyChickenValue(product['chicken_skin']),
         _prettyChickenValue(product['chicken_bone']),
@@ -2373,6 +2376,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     if (LambProductDetails.isLamb(product)) {
       final lambValues = <String>[
+        product['supplier_specification']?.toString().trim() ?? '',
         LambProductDetails.program(product),
         LambProductDetails.fatClass(product),
         productSizeLabel(product),
@@ -3439,7 +3443,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _buildBody() {
     final phone = isPhoneLayout(context);
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const WorkspaceLoading(label: 'Loading marketplace products…');
     }
 
     if (_errorMessage != null) {
