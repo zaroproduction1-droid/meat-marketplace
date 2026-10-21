@@ -1,4 +1,7 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
+
 import 'dart:math';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 typedef AdminRow = Map<String, dynamic>;
@@ -51,7 +54,7 @@ class PlatformAdminService {
   static List<AdminRow> rows(dynamic value) =>
       value is List ? value.map(map).toList() : <AdminRow>[];
   static double amount(dynamic value) => double.tryParse('$value') ?? 0;
-  static String money(dynamic value) => '\$${amount(value).toStringAsFixed(2)}';
+  static String money(dynamic value) => CutLinkNumbers.money(value);
   static String date(dynamic value) {
     final d = DateTime.tryParse('$value');
     return d == null

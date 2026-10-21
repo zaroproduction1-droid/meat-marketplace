@@ -1,0 +1,5 @@
+# PRE-LAUNCH: index.html contains noindex, nofollow.
+# Allow crawlers to read that tag. This file is NOT access control.
+# A real sitemap URL will be added after the production domain is confirmed.
+User-agent: *
+Allow: /

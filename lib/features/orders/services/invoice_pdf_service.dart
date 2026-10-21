@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
@@ -23,15 +24,7 @@ class CutLinkInvoicePdf {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  static String _money(dynamic value) {
-    final amount = _asDouble(value);
-    final parts = amount.abs().toStringAsFixed(2).split('.');
-    final whole = parts.first.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
-    return '${amount < 0 ? '-' : ''}\$$whole.${parts.last}';
-  }
+  static String _money(dynamic value) => CutLinkNumbers.money(value);
 
   static String _date(dynamic value) {
     if (value == null) return '-';
@@ -285,7 +278,7 @@ class CutLinkInvoicePdf {
     if (discountAmount > 0) {
       if (_clean(item['discount_type'], fallback: '') == 'percent') {
         details.add(
-          'Discount: ${_asDouble(item['discount_value']).toStringAsFixed(2)}% (-${_money(discountAmount)})',
+          'Discount: ${CutLinkNumbers.number(_asDouble(item['discount_value']), decimals: 2)}% (-${_money(discountAmount)})',
         );
       } else {
         details.add('Discount: -${_money(discountAmount)}');
@@ -712,13 +705,16 @@ class CutLinkInvoicePdf {
                   children: [
                     _tableCell(_itemDescription(item)),
                     _tableCell(
-                      '${_clean(item['supplied_quantity'] ?? item['ordered_quantity'], fallback: '0')} ${_clean(item['supplied_quantity_unit'] ?? item['ordered_quantity_unit'], fallback: '')}',
+                      '${CutLinkNumbers.quantity(item['supplied_quantity'] ?? item['ordered_quantity'])} ${_clean(item['supplied_quantity_unit'] ?? item['ordered_quantity_unit'], fallback: '')}',
                       align: pw.TextAlign.center,
                     ),
                     _tableCell(
                       item['actual_weight'] == null
                           ? ''
-                          : _asDouble(item['actual_weight']).toStringAsFixed(2),
+                          : CutLinkNumbers.number(
+                              item['actual_weight'],
+                              decimals: 2,
+                            ),
                       align: pw.TextAlign.center,
                     ),
                     _tableCell(

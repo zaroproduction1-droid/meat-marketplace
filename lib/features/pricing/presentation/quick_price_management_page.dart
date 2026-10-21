@@ -1,8 +1,12 @@
+import '../../../shared/widgets/workspace_loading.dart';
+import '../../../shared/widgets/workspace_request_error.dart';
+import '../../../shared/widgets/supplier_product_attention_notice.dart';
 import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import 'vip_customer_prices_dialog.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -12,6 +16,7 @@ import '../../../shared/animal_catalogues/lamb_product_details.dart';
 import '../../products/presentation/edit_product_page.dart';
 import '../../products/presentation/add_product_page.dart';
 import '../../../shared/widgets/catalogue_product_image.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -112,7 +117,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
 
   Future<void> _loadFilterChoices(List<String> ids) async {
     final scope = '$_supplierBusinessId:${ids.join(',')}';
-    if (_filterChoiceScope == scope) return;
+    if (_filterChoiceScope == scope) {
+      return;
+    }
     _filterChoiceScope = scope;
     final version = ++_filterChoiceVersion;
     setState(() {
@@ -130,7 +137,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             },
           )
           .timeout(const Duration(seconds: 25));
-      if (!mounted || version != _filterChoiceVersion) return;
+      if (!mounted || version != _filterChoiceVersion) {
+        return;
+      }
       setState(
         () => _filterChoices = {
           for (final entry in Map<String, dynamic>.from(raw as Map).entries)
@@ -138,7 +147,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         },
       );
     } catch (_) {
-      if (!mounted || version != _filterChoiceVersion) return;
+      if (!mounted || version != _filterChoiceVersion) {
+        return;
+      }
       setState(() {
         _filterChoiceScope = null;
         _filterChoiceError = 'Filter options could not load.';
@@ -1773,6 +1784,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         child: Column(
           children: [
             const SupplierPhotoTermsNotice(),
+            SupplierProductAttentionNotice(businessId: _supplierBusinessId),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -1818,27 +1830,13 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
   Widget _buildBody() {
     _scheduleStock();
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const WorkspaceLoading(label: 'Loading inventory and pricing…');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
-              Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: _loadPage,
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
+      return WorkspaceRequestError(
+        onRetry: _loadPage,
+        title: 'Could not load inventory and pricing',
       );
     }
 

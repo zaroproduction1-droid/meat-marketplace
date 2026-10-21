@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -77,7 +78,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
+  String _money(dynamic value) => CutLinkNumbers.money(value);
 
   DateTime? _parseDate(dynamic value) {
     if (value == null) {

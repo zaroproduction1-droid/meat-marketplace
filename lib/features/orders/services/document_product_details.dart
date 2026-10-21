@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/animal_catalogues/product_variant.dart';
 
 /// Shared by screens and vector PDFs. No private notes or live prices are read.
@@ -74,10 +75,15 @@ String documentProductSpecifications(Map<String, dynamic> item) {
   if (details['carton_weight'] != null) {
     add(
       'Carton weight',
-      '${details['carton_weight']} ${details['carton_weight_unit'] ?? 'kg'}',
+      '${CutLinkNumbers.quantity(details['carton_weight'])} ${details['carton_weight_unit'] ?? 'kg'}',
     );
   }
-  add('Pieces/carton', details['pieces_per_carton']);
+  add(
+    'Pieces/carton',
+    details['pieces_per_carton'] == null
+        ? null
+        : CutLinkNumbers.quantity(details['pieces_per_carton']),
+  );
   add('Carton size', details['chicken_carton_size']);
   add('Halal', details['halal_status']);
   add('Specification', details['supplier_specification']);

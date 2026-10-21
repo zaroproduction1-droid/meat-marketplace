@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import 'document_product_details.dart';
@@ -19,8 +20,7 @@ class CutLinkQuotePdf {
   static double _number(dynamic value) =>
       value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
 
-  static String _money(dynamic value) =>
-      '\$${_number(value).toStringAsFixed(2)}';
+  static String _money(dynamic value) => CutLinkNumbers.money(value);
 
   static String _date(dynamic value) {
     final parsed = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
@@ -501,7 +501,7 @@ class CutLinkQuotePdf {
                           fallback: '',
                         ).isNotEmpty)
                           item['discount_type']?.toString() == 'percent'
-                              ? 'Discount: ${_number(item['discount_value']).toStringAsFixed(2)}%${_number(item['discount_amount']) > 0 ? ' (-${_money(item['discount_amount'])})' : ''}'
+                              ? 'Discount: ${CutLinkNumbers.number(_number(item['discount_value']), decimals: 2)}%${_number(item['discount_amount']) > 0 ? ' (-${_money(item['discount_amount'])})' : ''}'
                               : 'Discount: ${_money(item['discount_value'])}${_number(item['discount_amount']) > 0 ? ' (-${_money(item['discount_amount'])})' : ''}',
                         if (_clean(
                           item['public_comment'],
@@ -511,7 +511,7 @@ class CutLinkQuotePdf {
                       ].join('\n'),
                     ),
                     _tableCell(
-                      '${_number(item['quantity']).toStringAsFixed(_number(item['quantity']) % 1 == 0 ? 0 : 2)} ${_clean(item['quantity_unit'], fallback: '')}',
+                      '${CutLinkNumbers.number(item['quantity'], decimals: _number(item['quantity']) % 1 == 0 ? 0 : 2)} ${_clean(item['quantity_unit'], fallback: '')}',
                       align: pw.TextAlign.center,
                     ),
                     _tableCell(

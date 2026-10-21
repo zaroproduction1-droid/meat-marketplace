@@ -1328,6 +1328,7 @@ class _ButcherNotificationSettingsPageState
     'notify_credit_updates': true,
     'notify_delivery_updates': true,
     'notify_support_updates': true,
+    'notify_product_reviews': true,
   };
   bool _muteAll = false;
   bool _loading = true;
@@ -1454,6 +1455,7 @@ class _ButcherNotificationSettingsPageState
             'notify_credit_updates': 'Credits & refunds',
             'notify_delivery_updates': 'Delivery and pickup updates',
             'notify_support_updates': 'CutLink Support replies',
+            'notify_product_reviews': 'Product reports and corrections',
           }.entries)
             SwitchListTile(
               contentPadding: EdgeInsets.zero,

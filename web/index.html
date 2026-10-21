@@ -17,9 +17,22 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#741C1C">
+  <!-- PRE-LAUNCH: remove only after the production domain and public pages are reviewed. -->
+  <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="CutLink connects wholesale meat suppliers and butchers. Find products, manage orders, invoices, delivery and accounts in one place.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CutLink">
+  <meta property="og:locale" content="en_AU">
+  <meta property="og:title" content="CutLink | Wholesale Meat Trading">
+  <meta property="og:description" content="Connect with wholesale meat suppliers and butchers. Manage products, trade orders, invoices and deliveries in one workspace.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CutLink | Wholesale Meat Trading">
+  <meta name="twitter:description" content="Wholesale meat trading for suppliers and butchers, with orders, invoices and delivery in one workspace.">
+  <!-- canonical, og:url and absolute social-image URL are added once the domain is final. -->
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -32,10 +45,26 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" href="favicon.png" sizes="32x32">
 
-  <title>CutLink</title>
+  <title>CutLink | Wholesale Meat Trading</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="cutlink_startup.css">
 </head>
 <body>
+  <main id="cutlink-startup" class="startup">
+    <section class="startup-card" aria-labelledby="startup-title">
+      <img src="favicon.svg" width="64" height="64" alt="" class="brand-icon">
+      <p class="eyebrow">WHOLESALE MEAT TRADING</p>
+      <h1 id="startup-title">CutLink</h1>
+      <p>Connecting suppliers and butchers.</p>
+      <p id="startup-status" role="status" aria-live="polite">Opening your workspace…</p>
+      <div id="startup-recovery" hidden>
+        <p>Your workspace has not finished opening. Check your connection and try again.</p>
+        <button id="startup-retry" type="button">Try again</button>
+      </div>
+      <noscript><p>CutLink needs JavaScript to run. Enable JavaScript in your browser, then reload this page.</p></noscript>
+    </section>
+  </main>
+  <script src="cutlink_startup.js"></script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -44,6 +73,6 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <script id="cutlink-bootstrap" src="flutter_bootstrap.js" async></script>
 </body>
 </html>

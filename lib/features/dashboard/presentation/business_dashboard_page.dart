@@ -1,3 +1,4 @@
+import '../../admin/presentation/admin_product_notifications_bell.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import '../../authentication/presentation/restricted_account_page.dart';
@@ -703,6 +704,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _todayBell() {
+    if (_isAdmin) {
+      return const AdminProductNotificationsBell();
+    }
     final id = _businessId;
     if (id == null) {
       return const SizedBox.shrink();

@@ -16,9 +16,11 @@ class AdminBusinessPage extends StatefulWidget {
     super.key,
     required this.businessId,
     this.initialTab = 'business',
+    this.initialAccessReason,
   });
   final String businessId;
   final String initialTab;
+  final String? initialAccessReason;
   @override
   State<AdminBusinessPage> createState() => _AdminBusinessPageState();
 }
@@ -35,10 +37,24 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
   @override
   void initState() {
     super.initState();
+    final reason = widget.initialAccessReason?.trim();
+    if (reason != null && reason.length >= 8 && reason.length <= 1000) {
+      _tradeReason = reason;
+    }
     _tab = ['billing', 'accounts', 'invoices'].contains(widget.initialTab)
         ? 'billing'
+        : widget.initialTab == 'products' && _tradeReason != null
+        ? 'products'
         : 'business';
     _load();
+    // Direct links without report context must use the existing audited access flow.
+    if (widget.initialTab == 'products' && _tradeReason == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _selectTab('products');
+        }
+      });
+    }
   }
 
   @override
@@ -54,23 +70,26 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        PlatformAdminService.query('business', businessId: widget.businessId),
-        if (_tab != 'business' && _tab != 'billing')
-          PlatformAdminService.query(
-            _tab,
-            businessId: widget.businessId,
-            search: _search,
-            offset: _page * 50,
-            accessReason: _tradeReason,
-          ),
-      ]);
+      final business = await PlatformAdminService.query(
+        'business',
+        businessId: widget.businessId,
+      );
+      if (!mounted || request != _request) {
+        return;
+      }
+      setState(() => _business = PlatformAdminService.map(business));
+      final records = _tab != 'business' && _tab != 'billing'
+          ? await PlatformAdminService.query(
+              _tab,
+              businessId: widget.businessId,
+              search: _search,
+              offset: _page * 50,
+              accessReason: _tradeReason,
+            )
+          : null;
       if (mounted && request == _request) {
         setState(() {
-          _business = PlatformAdminService.map(results.first);
-          _rows = results.length > 1
-              ? PlatformAdminService.rows(results.last)
-              : [];
+          _rows = PlatformAdminService.rows(records);
           _loading = false;
         });
       }
@@ -425,6 +444,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
             ProductPhotoModerationControls(
               key: ValueKey(r['id']),
               productId: r['id'].toString(),
+              onChanged: _load,
             ),
           ],
         ),

@@ -1,3 +1,5 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -126,7 +128,9 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
       SizedBox(
         width: 96,
         child: Text(
-          money ? PlatformAdminService.money(value) : value.toInt().toString(),
+          money
+              ? PlatformAdminService.money(value)
+              : CutLinkNumbers.integer(value.toInt()),
           textAlign: TextAlign.right,
           style: const TextStyle(fontSize: 11, color: AdminTheme.ink),
         ),
@@ -228,7 +232,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     trailing: Text(
-      '$value',
+      CutLinkNumbers.quantity(value, fallback: '$value'),
       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
     ),
     onTap: onTap,
@@ -343,7 +347,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                         ),
                         AdminStatTile(
                           label: 'New businesses',
-                          value: '${s['new_businesses'] ?? 0}',
+                          value: CutLinkNumbers.integer(s['new_businesses']),
                           icon: Icons.add_business_outlined,
                           note: 'Registered during selected period',
                           onTap: () => widget.onNavigate('businesses'),

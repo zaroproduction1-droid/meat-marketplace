@@ -2,11 +2,12 @@
     "name": "CutLink",
     "short_name": "CutLink",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
     "background_color": "#0C1B29",
-    "theme_color": "#861E2D",
+    "theme_color": "#741C1C",
     "description": "Wholesale meat trading for suppliers and butchers.",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

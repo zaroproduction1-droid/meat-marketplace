@@ -1,6 +1,8 @@
+import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -2651,7 +2653,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const WorkspaceLoading(label: 'Loading orders…');
     }
 
     if (_errorMessage != null) {

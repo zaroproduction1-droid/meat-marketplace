@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 
@@ -17,8 +18,7 @@ class CreditNotePdf {
       .replaceAll(RegExp(r'[ \t]+'), ' ')
       .trim();
 
-  static String money(dynamic value) =>
-      '\$${(num.tryParse(value.toString()) ?? 0).toStringAsFixed(2)}';
+  static String money(dynamic value) => CutLinkNumbers.money(value);
   static Future<Uint8List> build(Map<String, dynamic> note) async {
     final theme = await DocumentPdfTheme.load();
     final doc = pw.Document(theme: theme);
@@ -164,8 +164,8 @@ class CreditNotePdf {
               for (final l in lines)
                 [
                   _description(l['description']),
-                  '${l['quantity']} ${l['quantity_unit'] ?? ''}',
-                  l['weight_kg'],
+                  '${CutLinkNumbers.quantity(l['quantity'])} ${l['quantity_unit'] ?? ''}',
+                  CutLinkNumbers.quantity(l['weight_kg'], fallback: ''),
                   money(l['amount']),
                 ],
             ],

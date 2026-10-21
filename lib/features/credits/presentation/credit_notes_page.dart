@@ -1,9 +1,14 @@
+import '../../../shared/widgets/workspace_loading.dart';
+import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
+
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
@@ -177,14 +182,14 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                     ),
                   ),
                 ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(_error!),
-                  ),
                 Expanded(
                   child: _loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const WorkspaceLoading(label: 'Loading credit notes…')
+                      : _error != null
+                      ? WorkspaceRequestError(
+                          onRetry: _load,
+                          title: 'Could not load credit notes',
+                        )
                       : _rows.isEmpty
                       ? const Center(child: Text('No credit notes yet.'))
                       : ListView.builder(
@@ -1068,11 +1073,12 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
           ),
         ),
         body: n == null
-            ? Center(
-                child: _error == null
-                    ? const CircularProgressIndicator()
-                    : Text(_error!),
-              )
+            ? _error == null
+                  ? const WorkspaceLoading(label: 'Loading credit note…')
+                  : WorkspaceRequestError(
+                      onRetry: _load,
+                      title: 'Could not load the credit note',
+                    )
             : Column(
                 children: [
                   if (_busy) const LinearProgressIndicator(),

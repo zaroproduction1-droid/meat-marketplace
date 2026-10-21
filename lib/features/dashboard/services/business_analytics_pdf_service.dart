@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 
@@ -19,12 +20,11 @@ class BusinessAnalyticsPdfService {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  static String _money(dynamic value) =>
-      '\$${_number(value).toStringAsFixed(2)}';
+  static String _money(dynamic value) => CutLinkNumbers.money(value);
 
   static String _percent(dynamic value) {
     if (value == null) return '—';
-    return '${_number(value).toStringAsFixed(1)}%';
+    return '${CutLinkNumbers.number(_number(value), decimals: 1)}%';
   }
 
   static String _date(dynamic raw) {
@@ -136,7 +136,7 @@ class BusinessAnalyticsPdfService {
                 _money(rows[i]['value']),
                 rows[i]['orders'] == null
                     ? '—'
-                    : '${_integer(rows[i]['orders'])}',
+                    : CutLinkNumbers.integer(_integer(rows[i]['orders'])),
               ],
           ],
           headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
@@ -257,7 +257,10 @@ class BusinessAnalyticsPdfService {
                 supplier ? 'Sales value' : 'Purchase spend',
                 _money(summary[supplier ? 'order_value' : 'purchase_value']),
               ),
-              _kpi('Orders', '${_integer(summary['order_count'])}'),
+              _kpi(
+                'Orders',
+                CutLinkNumbers.integer(_integer(summary['order_count'])),
+              ),
               _kpi('Credit notes', _money(summary['credit_total'])),
               _kpi(
                 'Money refunded',
@@ -266,9 +269,9 @@ class BusinessAnalyticsPdfService {
               ),
               _kpi(
                 'Return cases',
-                '${_integer(summary['return_count'])}',
+                CutLinkNumbers.integer(_integer(summary['return_count'])),
                 note:
-                    '${_number(summary['returned_kg']).toStringAsFixed(2)} kg returned',
+                    '${CutLinkNumbers.number(_number(summary['returned_kg']), decimals: 2)} kg returned',
               ),
               _kpi(
                 'Average order value',
@@ -299,8 +302,8 @@ class BusinessAnalyticsPdfService {
                 for (final row in returns)
                   [
                     row['name'] ?? '',
-                    '${_integer(row['cases'])}',
-                    _number(row['kg']).toStringAsFixed(2),
+                    CutLinkNumbers.integer(_integer(row['cases'])),
+                    CutLinkNumbers.number(_number(row['kg']), decimals: 2),
                     _money(row['value']),
                   ],
               ],
@@ -383,7 +386,7 @@ class BusinessAnalyticsPdfService {
                 for (final row in statusMix)
                   [
                     row['label']?.toString() ?? 'Unknown',
-                    '${_integer(row['count'])}',
+                    CutLinkNumbers.integer(_integer(row['count'])),
                   ],
               ],
               headerDecoration: const pw.BoxDecoration(

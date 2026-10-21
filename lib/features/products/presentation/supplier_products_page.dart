@@ -1,3 +1,4 @@
+import '../../../shared/widgets/supplier_product_attention_notice.dart';
 import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'dart:async';
@@ -1502,6 +1503,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         child: Column(
           children: [
             const SupplierPhotoTermsNotice(),
+            SupplierProductAttentionNotice(businessId: _supplierBusinessId),
             Expanded(child: _buildBody()),
           ],
         ),

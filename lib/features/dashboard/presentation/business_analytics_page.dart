@@ -1,5 +1,7 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -170,25 +172,15 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) {
-    final amount = _number(value);
-    final abs = amount.abs();
-    if (abs >= 1000000) {
-      return '\$${(amount / 1000000).toStringAsFixed(abs >= 10000000 ? 1 : 2)}m';
-    }
-    if (abs >= 1000) {
-      return '\$${(amount / 1000).toStringAsFixed(abs >= 10000 ? 1 : 2)}k';
-    }
-    return '\$${amount.toStringAsFixed(2)}';
-  }
+  String _money(dynamic value) => CutLinkNumbers.money(value);
 
-  String _moneyFull(dynamic value) => '\$${_number(value).toStringAsFixed(2)}';
+  String _moneyFull(dynamic value) => CutLinkNumbers.money(value);
 
   String _percent(dynamic value, {int decimals = 1}) {
     if (value == null) {
       return '—';
     }
-    return '${_number(value).toStringAsFixed(decimals)}%';
+    return '${CutLinkNumbers.number(_number(value), decimals: decimals)}%';
   }
 
   Map<String, dynamic> get _summary {
@@ -882,7 +874,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       ),
                       const SizedBox(width: 2),
                       Text(
-                        '${change.abs().toStringAsFixed(1)}%',
+                        '${CutLinkNumbers.number(change.abs(), decimals: 1)}%',
                         style: TextStyle(
                           color: changeColor,
                           fontSize: 10,
@@ -904,15 +896,19 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: valueColor ?? _deepNavy,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.6,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: valueColor ?? _deepNavy,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.6,
+              ),
             ),
           ),
           if (caption != null) ...[
@@ -959,7 +955,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 value: _moneyFull(_summary['credit_total']),
                 icon: Icons.receipt_long_outlined,
                 caption:
-                    '${_integer(_summary['credit_count'])} credit notes issued',
+                    '${CutLinkNumbers.integer(_integer(_summary['credit_count']))} credit notes issued',
               ),
               _kpiCard(
                 label: 'Money refunded',
@@ -969,14 +965,16 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               ),
               _kpiCard(
                 label: 'Return cases',
-                value: '${_integer(_summary['return_count'])}',
+                value: CutLinkNumbers.integer(
+                  _integer(_summary['return_count']),
+                ),
                 icon: Icons.assignment_return_outlined,
                 caption: 'Goods returned, excluding price-only credits',
               ),
               _kpiCard(
                 label: 'Returned weight',
                 value:
-                    '${_number(_summary['returned_kg']).toStringAsFixed(2)} kg',
+                    '${CutLinkNumbers.number(_number(_summary['returned_kg']), decimals: 2)} kg',
                 icon: Icons.scale_outlined,
                 caption: 'Recorded weight of returned goods',
               ),
@@ -1050,7 +1048,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${_integer(leaders[i]['cases'])} returns • ${_number(leaders[i]['kg']).toStringAsFixed(2)} kg',
+                              '${CutLinkNumbers.integer(_integer(leaders[i]['cases']))} returns • ${CutLinkNumbers.number(_number(leaders[i]['kg']), decimals: 2)} kg',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: _muted,
@@ -1114,7 +1112,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       ),
       _kpiCard(
         label: 'Orders',
-        value: '$orderCount',
+        value: CutLinkNumbers.integer(orderCount),
         icon: Icons.receipt_long_outlined,
         change: _changePercent(orderCount.toDouble(), previousCount.toDouble()),
         caption: 'Non-draft orders in this period',
@@ -1346,7 +1344,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             ),
                             if (data[i]['orders'] != null)
                               Text(
-                                '${_integer(data[i]['orders'])} orders',
+                                '${CutLinkNumbers.integer(_integer(data[i]['orders']))} orders',
                                 style: const TextStyle(
                                   color: _muted,
                                   fontSize: 9.5,
@@ -1418,7 +1416,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           child: Text(
                             total <= 0
                                 ? '0%'
-                                : '${((_number(data[i]['value']) / total) * 100).toStringAsFixed(0)}%',
+                                : '${CutLinkNumbers.number(((_number(data[i]['value']) / total) * 100), decimals: 0)}%',
                             textAlign: TextAlign.right,
                             style: const TextStyle(
                               color: _muted,
@@ -1487,7 +1485,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           ),
                         ),
                         Text(
-                          '${_integer(rows[i]['count'])}',
+                          CutLinkNumbers.integer(_integer(rows[i]['count'])),
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
@@ -1499,7 +1497,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           child: Text(
                             total == 0
                                 ? '0%'
-                                : '${((_integer(rows[i]['count']) / total) * 100).toStringAsFixed(0)}%',
+                                : '${CutLinkNumbers.number(((_integer(rows[i]['count']) / total) * 100), decimals: 0)}%',
                             textAlign: TextAlign.right,
                             style: const TextStyle(
                               color: _muted,
@@ -1569,13 +1567,37 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               mode: PhoneRowMode.metrics,
               desktop: Row(
                 children: [
-                  Expanded(child: _miniStat('Active', '$active', _deepNavy)),
+                  Expanded(
+                    child: _miniStat(
+                      'Active',
+                      CutLinkNumbers.integer(active),
+                      _deepNavy,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _miniStat('In stock', '$inStock', _positive)),
+                  Expanded(
+                    child: _miniStat(
+                      'In stock',
+                      CutLinkNumbers.integer(inStock),
+                      _positive,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _miniStat('Limited', '$limited', _warning)),
+                  Expanded(
+                    child: _miniStat(
+                      'Limited',
+                      CutLinkNumbers.integer(limited),
+                      _warning,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _miniStat('Out', '$out', _danger)),
+                  Expanded(
+                    child: _miniStat(
+                      'Out',
+                      CutLinkNumbers.integer(out),
+                      _danger,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1588,7 +1610,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ),
                 const Spacer(),
                 Text(
-                  '${inStockPct.toStringAsFixed(0)}%',
+                  '${CutLinkNumbers.number(inStockPct, decimals: 0)}%',
                   style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w900,
@@ -1661,7 +1683,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${concentration.toStringAsFixed(1)}%',
+                    '${CutLinkNumbers.number(concentration, decimals: 1)}%',
                     style: TextStyle(
                       color: riskColor,
                       fontSize: 30,
@@ -1768,7 +1790,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     ? 'Sales are trending down'
                     : 'Purchasing spend is lower'),
           body:
-              '${change.abs().toStringAsFixed(1)}% ${change >= 0 ? 'above' : 'below'} the previous $_days-day period.',
+              '${CutLinkNumbers.number(change.abs(), decimals: 1)}% ${change >= 0 ? 'above' : 'below'} the previous $_days-day period.',
           colour: change >= 0 ? _positive : _warning,
         ),
       );
@@ -1795,7 +1817,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           icon: Icons.report_problem_outlined,
           title: 'Issue rate is elevated',
           body:
-              '${issueRate.toStringAsFixed(1)}% of orders had a reported issue in this period.',
+              '${CutLinkNumbers.number(issueRate, decimals: 1)}% of orders had a reported issue in this period.',
           colour: _warning,
         ),
       );
@@ -1810,7 +1832,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             icon: Icons.inventory_2_outlined,
             title: 'Catalogue availability needs review',
             body:
-                '$out products are out of stock and $limited are marked limited.',
+                '${CutLinkNumbers.integer(out)} products are out of stock and ${CutLinkNumbers.integer(limited)} are marked limited.',
             colour: out > 0 ? _danger : _warning,
           ),
         );
@@ -1823,7 +1845,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             icon: Icons.hub_outlined,
             title: 'Purchasing is concentrated',
             body:
-                '${concentration.toStringAsFixed(1)}% of spend is with your largest supplier.',
+                '${CutLinkNumbers.number(concentration, decimals: 1)}% of spend is with your largest supplier.',
             colour: concentration >= 65 ? _danger : _warning,
           ),
         );
@@ -2228,23 +2250,7 @@ class _BusinessAnalyticsOverviewPanelState
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) {
-    final amount = _number(value);
-    final raw = amount.toStringAsFixed(2);
-    final parts = raw.split('.');
-    final negative = parts.first.startsWith('-');
-    final whole = negative ? parts.first.substring(1) : parts.first;
-    final decimals = parts.last;
-    final buffer = StringBuffer();
-    for (var i = 0; i < whole.length; i++) {
-      final remaining = whole.length - i;
-      buffer.write(whole[i]);
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-    return '${negative ? '-' : ''}\$${buffer.toString()}.$decimals';
-  }
+  String _money(dynamic value) => CutLinkNumbers.money(value);
 
   Map<String, dynamic> get _summary {
     final raw = _analytics['summary'];
@@ -2427,7 +2433,10 @@ class _BusinessAnalyticsOverviewPanelState
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _OverviewMetric(label: 'Orders', value: '$orders'),
+                child: _OverviewMetric(
+                  label: 'Orders',
+                  value: CutLinkNumbers.integer(orders),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2453,7 +2462,7 @@ class _BusinessAnalyticsOverviewPanelState
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             ),
             Text(
-              '${_integer(summary['return_count'])} returns',
+              '${CutLinkNumbers.integer(_integer(summary['return_count']))} returns',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ],
@@ -2514,14 +2523,18 @@ class _OverviewMetric extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF081625),
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF081625),
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -2588,21 +2601,7 @@ class _TrendChartState extends State<_TrendChart> {
         : '${parsed.day} ${months[parsed.month - 1]}';
   }
 
-  String _money(double value) {
-    final raw = value.toStringAsFixed(2);
-    final parts = raw.split('.');
-    final whole = parts.first;
-    final decimals = parts.last;
-    final buffer = StringBuffer();
-    for (var i = 0; i < whole.length; i++) {
-      final remaining = whole.length - i;
-      buffer.write(whole[i]);
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-    return '\$${buffer.toString()}.$decimals';
-  }
+  String _money(double value) => CutLinkNumbers.money(value);
 
   int _nearestIndex(double dx, double width) {
     if (widget.data.length <= 1 || width <= 0) {

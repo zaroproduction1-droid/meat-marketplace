@@ -1,3 +1,5 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
+
 Map<String, dynamic> invoiceCommercialDetails(Map<String, dynamic> invoice) {
   final raw = invoice['commercial_details_snapshot'];
   return raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
@@ -79,6 +81,7 @@ String invoiceSupplySummary(List<Map<String, dynamic>> items) {
   return [
     if (cartons > 0)
       'Cartons: ${cartons == cartons.roundToDouble() ? cartons.toInt() : cartons}',
-    if (hasWeight) 'Recorded weight: ${kg.toStringAsFixed(2)} kg',
+    if (hasWeight)
+      'Recorded weight: ${CutLinkNumbers.number(kg, decimals: 2)} kg',
   ].join('  |  ');
 }

@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 import '../../../shared/navigation/page_location.dart';
@@ -522,36 +523,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _formatNumber(dynamic value) {
-    if (value == null) {
-      return '0';
-    }
+  String _formatNumber(dynamic value) => CutLinkNumbers.quantity(value);
 
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-
-    if (number == null) {
-      return value.toString();
-    }
-
-    if (number == number.roundToDouble()) {
-      return number.toInt().toString();
-    }
-
-    return number
-        .toStringAsFixed(3)
-        .replaceFirst(RegExp(r'0+$'), '')
-        .replaceFirst(RegExp(r'\.$'), '');
-  }
-
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-
-    if (number == null) {
-      return '\$0.00';
-    }
-
-    return '\$${number.toStringAsFixed(2)}';
-  }
+  String _money(dynamic value) => CutLinkNumbers.money(value);
 
   String _unitLabel(String? value) {
     return switch (value) {
@@ -1299,7 +1273,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     final suppliedController = TextEditingController(
       text:
           item['supplied_quantity']?.toString() ??
-          _formatNumber(orderedQuantity),
+          (orderedQuantity?.toString() ?? '0'),
     );
 
     final weightController = TextEditingController(

@@ -373,6 +373,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                       'credits',
                                       'delivery',
                                       'support',
+                                      'moderation',
                                       'platform',
                                     ])
                                       Padding(
@@ -383,6 +384,8 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                           label: Text(
                                             cat == null
                                                 ? 'All activity'
+                                                : cat == 'moderation'
+                                                ? 'Product reports'
                                                 : cat == 'platform'
                                                 ? 'CutLink'
                                                 : '${cat[0].toUpperCase()}${cat.substring(1)}',

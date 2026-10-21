@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import 'admin_billing_labels.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
@@ -14,7 +15,7 @@ class PlatformInvoicePdf {
       .replaceAll('–', '-')
       .replaceAll('•', '-');
   static double _number(dynamic v) => double.tryParse('$v') ?? 0;
-  static String _money(dynamic v) => '\$${_number(v).toStringAsFixed(2)}';
+  static String _money(dynamic v) => CutLinkNumbers.money(v);
   static String _date(dynamic v) {
     final d = DateTime.tryParse('$v');
     return d == null

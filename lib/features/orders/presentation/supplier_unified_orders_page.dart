@@ -1,7 +1,10 @@
+import '../../../shared/widgets/workspace_loading.dart';
+import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -833,20 +836,13 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   Widget _managementView() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return const WorkspaceLoading(label: 'Loading sales documents…');
+    }
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _loadAllDocuments,
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
+      return WorkspaceRequestError(
+        onRetry: _loadAllDocuments,
+        title: 'Could not load sales documents',
       );
     }
 

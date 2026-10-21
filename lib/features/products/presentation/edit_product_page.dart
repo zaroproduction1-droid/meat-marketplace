@@ -1,8 +1,17 @@
+import '../../../shared/widgets/local_draft_recovery.dart';
+import '../../../shared/drafts/local_draft_store.dart';
+import '../../../shared/widgets/unsaved_changes_guard.dart';
+import '../../../shared/widgets/workspace_loading.dart';
+import '../../../shared/widgets/workspace_request_error.dart';
+import '../../../shared/widgets/supplier_product_review_submission.dart';
 import '../../../shared/widgets/price_adjustment_helper.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/product_photo_editor.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/animal_catalogues/product_variant.dart';
@@ -20,7 +29,50 @@ class EditProductPage extends StatefulWidget {
 }
 
 class _EditProductPageState extends State<EditProductPage> {
-  final _formKey = GlobalKey<FormState>();
+  var _formKey = GlobalKey<FormState>();
+  final _draftKey = GlobalKey<LocalDraftRecoveryState>();
+  final _draftUser = Supabase.instance.client.auth.currentUser?.id ?? '';
+  Map<String, TextEditingController> get _draftControllers => {
+    'skuController': _skuController,
+    'productNameController': _productNameController,
+    'descriptionController': _descriptionController,
+    'brandController': _brandController,
+    'originCountryController': _originCountryController,
+    'originStateController': _originStateController,
+    'marblingScoreController': _marblingScoreController,
+    'gradeController': _gradeController,
+    'breedProgramController': _breedProgramController,
+    'pieceWeightMinController': _pieceWeightMinController,
+    'pieceWeightMaxController': _pieceWeightMaxController,
+    'cartonWeightController': _cartonWeightController,
+    'piecesPerCartonController': _piecesPerCartonController,
+    'packagingTypeController': _packagingTypeController,
+    'trimSpecificationController': _trimSpecificationController,
+    'fatSpecificationController': _fatSpecificationController,
+    'supplierSpecificationController': _supplierSpecificationController,
+    'commercialDescriptionController': _commercialDescriptionController,
+    'lotBatchController': _lotBatchController,
+    'slaughterDateController': _slaughterDateController,
+    'useByDateController': _useByDateController,
+  };
+  Map<String, dynamic> _draftValues() => {
+    'selectedAnimalId': _selectedAnimalId,
+    'selectedSectionId': _selectedSectionId,
+    'selectedSpecificationId': _selectedSpecificationId,
+    'selectedGradeId': _selectedGradeId,
+    'temperatureState': _temperatureState,
+    'priceBasis': _priceBasis,
+    'quantityUnit': _quantityUnit,
+    'availabilityStatus': _availabilityStatus,
+    'pieceWeightUnit': _pieceWeightUnit,
+    'pieceSizeKind': _pieceSizeKind,
+    'cartonWeightUnit': _cartonWeightUnit,
+    'halalStatus': _halalStatus,
+    'boneState': _boneState,
+    'lambFatClass': _lambFatClass,
+    'catchWeight': _catchWeight,
+    'active': _active,
+  };
   final _photoDraft = ProductPhotoDraft();
 
   late final TextEditingController _skuController;
@@ -49,6 +101,27 @@ class _EditProductPageState extends State<EditProductPage> {
 
   bool _isLoadingPage = true;
   bool _isSaving = false;
+  bool _hasUnsavedChanges = false;
+  String? _pageLoadError;
+  String? _initialSelections;
+  String get _selectionSnapshot => [
+    _selectedAnimalId,
+    _selectedSectionId,
+    _selectedSpecificationId,
+    _selectedGradeId,
+    _temperatureState,
+    _priceBasis,
+    _quantityUnit,
+    _availabilityStatus,
+    _pieceWeightUnit,
+    _pieceSizeKind,
+    _cartonWeightUnit,
+    _halalStatus,
+    _boneState,
+    _lambFatClass,
+    _catchWeight,
+    _active,
+  ].join('|');
 
   bool _catchWeight = false;
   bool _active = true;
@@ -139,6 +212,113 @@ class _EditProductPageState extends State<EditProductPage> {
   List<Map<String, dynamic>> _priceLists = [];
   List<Map<String, dynamic>> _productPrices = [];
   List<Map<String, dynamic>> _approvedCustomers = [];
+
+  Future<void> _restoreDraftValues(Map<String, dynamic> data) async {
+    if (_usesSpecGradeCatalogue) {
+      final selectedAnimalId = data['selectedAnimalId'];
+      if (selectedAnimalId is String && selectedAnimalId != _selectedAnimalId) {
+        if (!_animals.any((row) => row['id']?.toString() == selectedAnimalId)) {
+          throw StateError('Catalogue selection unavailable');
+        }
+        await _selectAnimalNew(selectedAnimalId);
+        if (!mounted) {
+          return;
+        }
+      }
+      final selectedSectionId = data['selectedSectionId'];
+      if (selectedSectionId is String &&
+          selectedSectionId != _selectedSectionId) {
+        if (!_sections.any(
+          (row) => row['id']?.toString() == selectedSectionId,
+        )) {
+          throw StateError('Catalogue selection unavailable');
+        }
+        await _selectSectionNew(selectedSectionId);
+        if (!mounted) {
+          return;
+        }
+      }
+      final selectedSpecificationId = data['selectedSpecificationId'];
+      if (selectedSpecificationId is String &&
+          selectedSpecificationId != _selectedSpecificationId) {
+        if (!_specifications.any(
+          (row) => row['id']?.toString() == selectedSpecificationId,
+        )) {
+          throw StateError('Catalogue selection unavailable');
+        }
+        await _selectSpecificationNew(selectedSpecificationId);
+        if (!mounted) {
+          return;
+        }
+      }
+      final grade = data['selectedGradeId'];
+      if (grade is String &&
+          _grades.any((row) => row['id']?.toString() == grade)) {
+        _selectedGradeId = grade;
+      } else if (grade is String && _usesGradeStage) {
+        throw StateError('Catalogue grade unavailable');
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _temperatureState = LocalDraftStore.choice(
+        data,
+        'temperatureState',
+        _temperatureState,
+        ['fresh', 'chilled', 'frozen'],
+      );
+      _availabilityStatus = LocalDraftStore.choice(
+        data,
+        'availabilityStatus',
+        _availabilityStatus,
+        ['in_stock', 'limited', 'out_of_stock', 'made_to_order'],
+      );
+      _pieceWeightUnit = LocalDraftStore.choice(
+        data,
+        'pieceWeightUnit',
+        _pieceWeightUnit,
+        ['kg', 'g'],
+      );
+      _pieceSizeKind = LocalDraftStore.choice(
+        data,
+        'pieceSizeKind',
+        _pieceSizeKind,
+        ['none', 'exact', 'range', 'at_least', 'under', 'up_to'],
+      );
+      _cartonWeightUnit = LocalDraftStore.choice(
+        data,
+        'cartonWeightUnit',
+        _cartonWeightUnit,
+        ['kg', 'g'],
+      );
+      _halalStatus = LocalDraftStore.choice(data, 'halalStatus', _halalStatus, [
+        'not_specified',
+        'halal',
+        'not_halal',
+      ]);
+      _boneState = LocalDraftStore.choice(data, 'boneState', _boneState, [
+        'not_specified',
+        'bone_in',
+        'boneless',
+      ]);
+      _lambFatClass = LocalDraftStore.choice(
+        data,
+        'lambFatClass',
+        _lambFatClass,
+        ['not_specified', '1', '2', '3', '4', '5'],
+      );
+      if (data['catchWeight'] is bool) {
+        _catchWeight = data['catchWeight'] as bool;
+      }
+      if (data['active'] is bool) {
+        _active = data['active'] as bool;
+      }
+      _hasUnsavedChanges = true;
+      _formKey = GlobalKey<FormState>();
+    });
+  }
 
   @override
   void initState() {
@@ -321,6 +501,10 @@ class _EditProductPageState extends State<EditProductPage> {
   }
 
   Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoadingPage = true;
+      _pageLoadError = null;
+    });
     try {
       final productId = widget.product['id']?.toString();
 
@@ -349,13 +533,19 @@ class _EditProductPageState extends State<EditProductPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _isLoadingPage = false);
+      setState(() {
+        _isLoadingPage = false;
+        _pageLoadError = error.message;
+      });
       _showMessage(error.message);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      setState(() => _isLoadingPage = false);
+      setState(() {
+        _isLoadingPage = false;
+        _pageLoadError = error.toString();
+      });
       _showMessage(error.toString());
     }
   }
@@ -806,6 +996,18 @@ class _EditProductPageState extends State<EditProductPage> {
   }
 
   Future<void> _saveProduct() async {
+    if (_draftKey.currentState?.awaitingDecision == true) {
+      _showMessage(
+        'Restore or discard the saved draft before saving this product.',
+      );
+      return;
+    }
+    if (_draftKey.currentState?.restoring == true) {
+      return;
+    }
+    if (_isSaving || _isLoadingPage || _pageLoadError != null) {
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState?.validate() != true) {
@@ -1014,7 +1216,33 @@ class _EditProductPageState extends State<EditProductPage> {
         const SnackBar(content: Text('Product updated successfully.')),
       );
 
-      Navigator.of(context).pop(true);
+      // A saved product must not be reported as a failed save if review submission fails.
+      try {
+        await submitSupplierProductChanges(
+          context,
+          productId: widget.product['id'].toString(),
+          quietIfNone: true,
+        );
+      } catch (_) {
+        if (mounted) {
+          _showMessage(
+            'Product saved. Open its support case to confirm the corrections for review.',
+          );
+        }
+      }
+      _hasUnsavedChanges = false;
+      _initialSelections = _selectionSnapshot;
+      try {
+        await _draftKey.currentState?.clearDraft();
+      } catch (_) {
+        _showMessage(
+          'Product saved. The local draft backup could not be cleared.',
+        );
+      }
+      if (mounted) {
+        _isSaving = false;
+        Navigator.of(context).pop(true);
+      }
     } on PostgrestException catch (error) {
       await _photoDraft.discardUpload();
       if (!mounted) {
@@ -2087,7 +2315,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
   Widget _buildPricingTab() {
     if (_isLoadingPricing) {
-      return const Center(child: CircularProgressIndicator());
+      return const WorkspaceLoading(label: 'Loading product prices…');
     }
 
     if (_pricingError != null) {
@@ -2258,957 +2486,1210 @@ class _EditProductPageState extends State<EditProductPage> {
   @override
   Widget build(BuildContext context) {
     const darkRed = Color(0xFF741C1C);
+    if (!_isLoadingPage && _pageLoadError == null) {
+      _initialSelections ??= _selectionSnapshot;
+    }
 
-    return CutLinkWorkspaceTheme(
-      child: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF7F8FA),
-          appBar: phoneAppBar(
-            context,
-            AppBar(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              title: const Text(
-                'Product workspace',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              actions: [
-                Builder(
-                  builder: (context) {
-                    final tabs = DefaultTabController.of(context);
-                    return AnimatedBuilder(
-                      animation: tabs,
-                      builder: (context, _) => tabs.index != 0
-                          ? const SizedBox.shrink()
-                          : Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: FilledButton.icon(
-                                onPressed: _isSaving || _isLoadingPage
-                                    ? null
-                                    : _saveProduct,
-                                icon: const Icon(Icons.save_outlined, size: 18),
-                                label: Text(
-                                  _isSaving ? 'Saving…' : 'Save product',
-                                ),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: darkRed,
-                                ),
-                              ),
-                            ),
-                    );
-                  },
+    return UnsavedChangesGuard(
+      isDirty: () =>
+          _hasUnsavedChanges ||
+          _photoDraft.dirty ||
+          (_initialSelections != null &&
+              _initialSelections != _selectionSnapshot),
+      isBusy: () =>
+          _isSaving ||
+          _isSavingPrice ||
+          _draftKey.currentState?.restoring == true,
+      onDiscard: () async {
+        await _draftKey.currentState?.clearDraft();
+      },
+      child: CutLinkWorkspaceTheme(
+        child: DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF7F8FA),
+            appBar: phoneAppBar(
+              context,
+              AppBar(
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.white,
+                title: const Text(
+                  'Product workspace',
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
-              ],
-              bottom: const TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: darkRed,
-                unselectedLabelColor: Color(0xFF666666),
-                indicatorColor: darkRed,
-                tabs: [
-                  Tab(
-                    icon: Icon(Icons.inventory_2_outlined),
-                    text: 'Product Details',
-                  ),
-                  Tab(icon: Icon(Icons.price_change_outlined), text: 'Pricing'),
-                ],
-              ),
-            ),
-          ),
-          body: TabBarView(
-            children: [
-              _isLoadingPage
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1160),
-                          child: Card(
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              side: const BorderSide(color: Color(0xFFE0E0E0)),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Theme(
-                                data: Theme.of(context).copyWith(
-                                  inputDecorationTheme: InputDecorationTheme(
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 12,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(9),
-                                    ),
+                actions: [
+                  Builder(
+                    builder: (context) {
+                      final tabs = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: tabs,
+                        builder: (context, _) => tabs.index != 0
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: FilledButton.icon(
+                                  onPressed:
+                                      _isSaving ||
+                                          _isLoadingPage ||
+                                          _pageLoadError != null
+                                      ? null
+                                      : _saveProduct,
+                                  icon: const Icon(
+                                    Icons.save_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    _isSaving ? 'Saving…' : 'Save product',
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: darkRed,
                                   ),
                                 ),
-                                child: Form(
-                                  key: _formKey,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      ProductPhotoEditor(
-                                        draft: _photoDraft,
-                                        enabled: !_isSaving,
+                              ),
+                      );
+                    },
+                  ),
+                ],
+                bottom: const TabBar(
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: darkRed,
+                  unselectedLabelColor: Color(0xFF666666),
+                  indicatorColor: darkRed,
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      text: 'Product Details',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.price_change_outlined),
+                      text: 'Pricing',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            body: _isLoadingPage
+                ? const WorkspaceLoading(label: 'Loading product details…')
+                : _pageLoadError != null
+                ? WorkspaceRequestError(
+                    onRetry: _loadInitialData,
+                    title: 'Could not load product details',
+                  )
+                : LocalDraftRecovery(
+                    key: _draftKey,
+                    scope: LocalDraftStore.scope(
+                      _draftUser,
+                      widget.product['supplier_business_id']?.toString() ?? '',
+                      'product',
+                      widget.product['id'].toString(),
+                    ),
+                    controllers: _draftControllers,
+                    values: _draftValues,
+                    restoreValues: _restoreDraftValues,
+                    isBusy: () =>
+                        _isSaving || _isLoadingPage || _pageLoadError != null,
+                    isCurrentUser: () =>
+                        _draftUser.isNotEmpty &&
+                        Supabase.instance.client.auth.currentUser?.id ==
+                            _draftUser,
+                    child: TabBarView(
+                      children: [
+                        _isLoadingPage
+                            ? const WorkspaceLoading(
+                                label: 'Loading product details…',
+                              )
+                            : _pageLoadError != null
+                            ? WorkspaceRequestError(
+                                onRetry: _loadInitialData,
+                                title: 'Could not load product details',
+                              )
+                            : SingleChildScrollView(
+                                padding: const EdgeInsets.all(16),
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1160,
+                                    ),
+                                    child: Card(
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        side: const BorderSide(
+                                          color: Color(0xFFE0E0E0),
+                                        ),
+                                        borderRadius: BorderRadius.circular(18),
                                       ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        _productNameController.text
-                                                .trim()
-                                                .isEmpty
-                                            ? 'Product details'
-                                            : _productNameController.text
-                                                  .trim(),
-                                        style: TextStyle(
-                                          fontSize: 23,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 10),
-
-                                      Text(
-                                        _usesSpecGradeCatalogue
-                                            ? (_usesGradeStage
-                                                  ? 'This product uses CutLink specification + $_gradeStageLabel pricing.'
-                                                  : 'This product uses CutLink animal-specific specification pricing.')
-                                            : 'This is a legacy product. Supplier listing information can still be edited until it is reclassified into the current CutLink catalogue.',
-                                        style: const TextStyle(
-                                          color: Color(0xFF5E5E5E),
-                                          height: 1.4,
-                                        ),
-                                      ),
-
-                                      if (_usesSpecGradeCatalogue) ...[
-                                        const SizedBox(height: 16),
-
-                                        _sectionTitle(
-                                          'Product classification',
-                                          subtitle: _usesGradeStage
-                                              ? 'Choose the animal, section, cut specification and $_gradeStageLabel.'
-                                              : 'Choose the animal, section and cut specification.',
-                                        ),
-
-                                        const SizedBox(height: 16),
-
-                                        _twoColumnFields(
-                                          DropdownButtonFormField<String>(
-                                            key: ValueKey(
-                                              'new-animal-$_selectedAnimalId',
-                                            ),
-                                            initialValue: _selectedAnimalId,
-                                            isExpanded: true,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Animal',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                            items: _animals.map((animal) {
-                                              return DropdownMenuItem<String>(
-                                                value: animal['id'].toString(),
-                                                child: Text(
-                                                  animal['name'].toString(),
-                                                ),
-                                              );
-                                            }).toList(),
-                                            onChanged: _isSaving
-                                                ? null
-                                                : _selectAnimalNew,
-                                          ),
-                                          DropdownButtonFormField<String>(
-                                            key: ValueKey(
-                                              'new-section-$_selectedAnimalId-$_selectedSectionId',
-                                            ),
-                                            initialValue: _selectedSectionId,
-                                            isExpanded: true,
-                                            decoration: InputDecoration(
-                                              labelText: 'Section',
-                                              border:
-                                                  const OutlineInputBorder(),
-                                              suffixIcon: _isLoadingSections
-                                                  ? const Padding(
-                                                      padding: EdgeInsets.all(
-                                                        12,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Theme(
+                                          data: Theme.of(context).copyWith(
+                                            inputDecorationTheme:
+                                                InputDecorationTheme(
+                                                  isDense: true,
+                                                  filled: true,
+                                                  fillColor: Colors.white,
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 12,
                                                       ),
-                                                      child: SizedBox(
-                                                        width: 18,
-                                                        height: 18,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              strokeWidth: 2,
-                                                            ),
-                                                      ),
-                                                    )
-                                                  : null,
-                                            ),
-                                            items: _sections.map((section) {
-                                              final label =
-                                                  section['is_miscellaneous'] ==
-                                                      true
-                                                  ? '${section['name']} • Other'
-                                                  : section['name'].toString();
-
-                                              return DropdownMenuItem<String>(
-                                                value: section['id'].toString(),
-                                                child: Text(label),
-                                              );
-                                            }).toList(),
-                                            onChanged:
-                                                _selectedAnimalId == null ||
-                                                    _isLoadingSections ||
-                                                    _isSaving
-                                                ? null
-                                                : _selectSectionNew,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 12),
-
-                                        DropdownButtonFormField<String>(
-                                          key: ValueKey(
-                                            'new-spec-$_selectedSectionId-$_selectedSpecificationId',
-                                          ),
-                                          initialValue:
-                                              _selectedSpecificationId,
-                                          isExpanded: true,
-                                          decoration: InputDecoration(
-                                            labelText: 'Cut / Specification',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: _isLoadingSpecifications
-                                                ? const Padding(
-                                                    padding: EdgeInsets.all(12),
-                                                    child: SizedBox(
-                                                      width: 18,
-                                                      height: 18,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                            strokeWidth: 2,
-                                                          ),
-                                                    ),
-                                                  )
-                                                : null,
-                                          ),
-                                          items: _specifications.map((
-                                            specification,
-                                          ) {
-                                            return DropdownMenuItem<String>(
-                                              value: specification['id']
-                                                  .toString(),
-                                              child: Text(
-                                                _specificationLabelNew(
-                                                  specification,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged:
-                                              _selectedSectionId == null ||
-                                                  _isLoadingSpecifications ||
-                                                  _isSaving
-                                              ? null
-                                              : _selectSpecificationNew,
-                                        ),
-
-                                        const SizedBox(height: 10),
-
-                                        OutlinedButton.icon(
-                                          onPressed:
-                                              _selectedSectionId == null ||
-                                                  _isSaving
-                                              ? null
-                                              : _addManualSpecificationNew,
-                                          icon: const Icon(Icons.add),
-                                          label: const Text(
-                                            'Add Supplier-Specific Cut',
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 12),
-
-                                        if (_usesGradeStage) ...[
-                                          DropdownButtonFormField<String>(
-                                            key: ValueKey(
-                                              'new-grade-$_selectedSpecificationId-$_selectedGradeId',
-                                            ),
-                                            initialValue: _selectedGradeId,
-                                            isExpanded: true,
-                                            decoration: InputDecoration(
-                                              labelText: _gradeStageLabel,
-                                              helperText:
-                                                  _grades.isEmpty &&
-                                                      !_isLoadingGrades &&
-                                                      _selectedSpecificationId !=
-                                                          null
-                                                  ? 'No $_gradeStageLabel options are mapped to this specification yet.'
-                                                  : 'The price below belongs to this exact $_gradeStageLabel.',
-                                              border:
-                                                  const OutlineInputBorder(),
-                                              suffixIcon: _isLoadingGrades
-                                                  ? const Padding(
-                                                      padding: EdgeInsets.all(
-                                                        12,
-                                                      ),
-                                                      child: SizedBox(
-                                                        width: 18,
-                                                        height: 18,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              strokeWidth: 2,
-                                                            ),
-                                                      ),
-                                                    )
-                                                  : null,
-                                            ),
-                                            items: _grades.map((grade) {
-                                              return DropdownMenuItem<String>(
-                                                value: grade['id'].toString(),
-                                                child: Text(
-                                                  _gradeLabelNew(grade),
-                                                ),
-                                              );
-                                            }).toList(),
-                                            onChanged:
-                                                _grades.isEmpty || _isSaving
-                                                ? null
-                                                : _selectGradeNew,
-                                          ),
-                                        ],
-
-                                        const SizedBox(height: 12),
-
-                                        Container(
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF8F4F4),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFE5D6D6),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Icon(
-                                                Icons.price_change_outlined,
-                                                color: Color(0xFF741C1C),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    const Text(
-                                                      'Prices are managed in the Pricing tab',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      _usesGradeStage
-                                                          ? 'Standard, Trade and Customer-Specific prices all belong to this exact specification and $_gradeStageLabel.'
-                                                          : 'Standard, Trade and Customer-Specific prices all belong to this exact specification.',
-                                                      style: const TextStyle(
-                                                        color: Color(
-                                                          0xFF666666,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          9,
                                                         ),
-                                                        height: 1.4,
+                                                  ),
+                                                ),
+                                          ),
+                                          child: Form(
+                                            onChanged: () {
+                                              if (!_isLoadingPage &&
+                                                  !_isSaving) {
+                                                _hasUnsavedChanges = true;
+                                              }
+                                            },
+                                            key: _formKey,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                ProductPhotoEditor(
+                                                  draft: _photoDraft,
+                                                  enabled: !_isSaving,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Text(
+                                                  _productNameController.text
+                                                          .trim()
+                                                          .isEmpty
+                                                      ? 'Product details'
+                                                      : _productNameController
+                                                            .text
+                                                            .trim(),
+                                                  style: TextStyle(
+                                                    fontSize: 23,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+
+                                                const SizedBox(height: 10),
+
+                                                Text(
+                                                  _usesSpecGradeCatalogue
+                                                      ? (_usesGradeStage
+                                                            ? 'This product uses CutLink specification + $_gradeStageLabel pricing.'
+                                                            : 'This product uses CutLink animal-specific specification pricing.')
+                                                      : 'This is a legacy product. Supplier listing information can still be edited until it is reclassified into the current CutLink catalogue.',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF5E5E5E),
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+
+                                                if (_usesSpecGradeCatalogue) ...[
+                                                  const SizedBox(height: 16),
+
+                                                  _sectionTitle(
+                                                    'Product classification',
+                                                    subtitle: _usesGradeStage
+                                                        ? 'Choose the animal, section, cut specification and $_gradeStageLabel.'
+                                                        : 'Choose the animal, section and cut specification.',
+                                                  ),
+
+                                                  const SizedBox(height: 16),
+
+                                                  _twoColumnFields(
+                                                    DropdownButtonFormField<
+                                                      String
+                                                    >(
+                                                      key: ValueKey(
+                                                        'new-animal-$_selectedAnimalId',
+                                                      ),
+                                                      initialValue:
+                                                          _selectedAnimalId,
+                                                      isExpanded: true,
+                                                      decoration:
+                                                          const InputDecoration(
+                                                            labelText: 'Animal',
+                                                            border:
+                                                                OutlineInputBorder(),
+                                                          ),
+                                                      items: _animals.map((
+                                                        animal,
+                                                      ) {
+                                                        return DropdownMenuItem<
+                                                          String
+                                                        >(
+                                                          value: animal['id']
+                                                              .toString(),
+                                                          child: Text(
+                                                            animal['name']
+                                                                .toString(),
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged: _isSaving
+                                                          ? null
+                                                          : _selectAnimalNew,
+                                                    ),
+                                                    DropdownButtonFormField<
+                                                      String
+                                                    >(
+                                                      key: ValueKey(
+                                                        'new-section-$_selectedAnimalId-$_selectedSectionId',
+                                                      ),
+                                                      initialValue:
+                                                          _selectedSectionId,
+                                                      isExpanded: true,
+                                                      decoration: InputDecoration(
+                                                        labelText: 'Section',
+                                                        border:
+                                                            const OutlineInputBorder(),
+                                                        suffixIcon:
+                                                            _isLoadingSections
+                                                            ? const Padding(
+                                                                padding:
+                                                                    EdgeInsets.all(
+                                                                      12,
+                                                                    ),
+                                                                child: SizedBox(
+                                                                  width: 18,
+                                                                  height: 18,
+                                                                  child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2,
+                                                                  ),
+                                                                ),
+                                                              )
+                                                            : null,
+                                                      ),
+                                                      items: _sections.map((
+                                                        section,
+                                                      ) {
+                                                        final label =
+                                                            section['is_miscellaneous'] ==
+                                                                true
+                                                            ? '${section['name']} • Other'
+                                                            : section['name']
+                                                                  .toString();
+
+                                                        return DropdownMenuItem<
+                                                          String
+                                                        >(
+                                                          value: section['id']
+                                                              .toString(),
+                                                          child: Text(label),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged:
+                                                          _selectedAnimalId ==
+                                                                  null ||
+                                                              _isLoadingSections ||
+                                                              _isSaving
+                                                          ? null
+                                                          : _selectSectionNew,
+                                                    ),
+                                                  ),
+
+                                                  const SizedBox(height: 12),
+
+                                                  DropdownButtonFormField<
+                                                    String
+                                                  >(
+                                                    key: ValueKey(
+                                                      'new-spec-$_selectedSectionId-$_selectedSpecificationId',
+                                                    ),
+                                                    initialValue:
+                                                        _selectedSpecificationId,
+                                                    isExpanded: true,
+                                                    decoration: InputDecoration(
+                                                      labelText:
+                                                          'Cut / Specification',
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                      suffixIcon:
+                                                          _isLoadingSpecifications
+                                                          ? const Padding(
+                                                              padding:
+                                                                  EdgeInsets.all(
+                                                                    12,
+                                                                  ),
+                                                              child: SizedBox(
+                                                                width: 18,
+                                                                height: 18,
+                                                                child:
+                                                                    CircularProgressIndicator(
+                                                                      strokeWidth:
+                                                                          2,
+                                                                    ),
+                                                              ),
+                                                            )
+                                                          : null,
+                                                    ),
+                                                    items: _specifications.map((
+                                                      specification,
+                                                    ) {
+                                                      return DropdownMenuItem<
+                                                        String
+                                                      >(
+                                                        value:
+                                                            specification['id']
+                                                                .toString(),
+                                                        child: Text(
+                                                          _specificationLabelNew(
+                                                            specification,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                                    onChanged:
+                                                        _selectedSectionId ==
+                                                                null ||
+                                                            _isLoadingSpecifications ||
+                                                            _isSaving
+                                                        ? null
+                                                        : _selectSpecificationNew,
+                                                  ),
+
+                                                  const SizedBox(height: 10),
+
+                                                  OutlinedButton.icon(
+                                                    onPressed:
+                                                        _selectedSectionId ==
+                                                                null ||
+                                                            _isSaving
+                                                        ? null
+                                                        : _addManualSpecificationNew,
+                                                    icon: const Icon(Icons.add),
+                                                    label: const Text(
+                                                      'Add Supplier-Specific Cut',
+                                                    ),
+                                                  ),
+
+                                                  const SizedBox(height: 12),
+
+                                                  if (_usesGradeStage) ...[
+                                                    DropdownButtonFormField<
+                                                      String
+                                                    >(
+                                                      key: ValueKey(
+                                                        'new-grade-$_selectedSpecificationId-$_selectedGradeId',
+                                                      ),
+                                                      initialValue:
+                                                          _selectedGradeId,
+                                                      isExpanded: true,
+                                                      decoration: InputDecoration(
+                                                        labelText:
+                                                            _gradeStageLabel,
+                                                        helperText:
+                                                            _grades.isEmpty &&
+                                                                !_isLoadingGrades &&
+                                                                _selectedSpecificationId !=
+                                                                    null
+                                                            ? 'No $_gradeStageLabel options are mapped to this specification yet.'
+                                                            : 'The price below belongs to this exact $_gradeStageLabel.',
+                                                        border:
+                                                            const OutlineInputBorder(),
+                                                        suffixIcon:
+                                                            _isLoadingGrades
+                                                            ? const Padding(
+                                                                padding:
+                                                                    EdgeInsets.all(
+                                                                      12,
+                                                                    ),
+                                                                child: SizedBox(
+                                                                  width: 18,
+                                                                  height: 18,
+                                                                  child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2,
+                                                                  ),
+                                                                ),
+                                                              )
+                                                            : null,
+                                                      ),
+                                                      items: _grades.map((
+                                                        grade,
+                                                      ) {
+                                                        return DropdownMenuItem<
+                                                          String
+                                                        >(
+                                                          value: grade['id']
+                                                              .toString(),
+                                                          child: Text(
+                                                            _gradeLabelNew(
+                                                              grade,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged:
+                                                          _grades.isEmpty ||
+                                                              _isSaving
+                                                          ? null
+                                                          : _selectGradeNew,
+                                                    ),
+                                                  ],
+
+                                                  const SizedBox(height: 12),
+
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          14,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFFF8F4F4,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                          0xFFE5D6D6,
+                                                        ),
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 8),
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        DefaultTabController.of(
-                                                          context,
-                                                        ).animateTo(1);
-                                                      },
-                                                      child: const Text(
-                                                        'Open Pricing',
+                                                    child: Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .price_change_outlined,
+                                                          color: Color(
+                                                            0xFF741C1C,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              const Text(
+                                                                'Prices are managed in the Pricing tab',
+                                                                style: TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w800,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 4,
+                                                              ),
+                                                              Text(
+                                                                _usesGradeStage
+                                                                    ? 'Standard, Trade and Customer-Specific prices all belong to this exact specification and $_gradeStageLabel.'
+                                                                    : 'Standard, Trade and Customer-Specific prices all belong to this exact specification.',
+                                                                style: const TextStyle(
+                                                                  color: Color(
+                                                                    0xFF666666,
+                                                                  ),
+                                                                  height: 1.4,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 8,
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  DefaultTabController.of(
+                                                                    context,
+                                                                  ).animateTo(
+                                                                    1,
+                                                                  );
+                                                                },
+                                                                child: const Text(
+                                                                  'Open Pricing',
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+
+                                                  const SizedBox(height: 32),
+                                                  const Divider(),
+                                                ],
+
+                                                const SizedBox(height: 16),
+
+                                                _sectionTitle(
+                                                  'Product details',
+                                                  subtitle:
+                                                      'Keep the everyday information here. Pricing is managed separately in the Pricing tab.',
+                                                ),
+
+                                                const SizedBox(height: 12),
+
+                                                _twoColumnFields(
+                                                  TextFormField(
+                                                    controller: _skuController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText:
+                                                              'Supplier SKU',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                    validator: (value) {
+                                                      return _requiredValidator(
+                                                        value,
+                                                        'a supplier SKU',
+                                                      );
+                                                    },
+                                                  ),
+                                                  TextFormField(
+                                                    controller:
+                                                        _productNameController,
+                                                    readOnly:
+                                                        _usesSpecGradeCatalogue,
+                                                    decoration: InputDecoration(
+                                                      labelText:
+                                                          'Supplier product name',
+                                                      helperText:
+                                                          _usesSpecGradeCatalogue
+                                                          ? 'Automatically linked to the selected cut / specification.'
+                                                          : null,
+                                                      prefixIcon:
+                                                          _usesSpecGradeCatalogue
+                                                          ? const Icon(
+                                                              Icons
+                                                                  .link_outlined,
+                                                            )
+                                                          : null,
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                    ),
+                                                    validator: (value) {
+                                                      return _requiredValidator(
+                                                        value,
+                                                        'a product name',
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+
+                                                const SizedBox(height: 12),
+
+                                                _twoColumnFields(
+                                                  TextFormField(
+                                                    controller:
+                                                        _quantityController,
+                                                    keyboardType:
+                                                        const TextInputType.numberWithOptions(
+                                                          decimal: true,
+                                                        ),
+                                                    decoration: InputDecoration(
+                                                      labelText: _isWholeLamb
+                                                          ? 'Available carcases'
+                                                          : _usesSpecGradeCatalogue
+                                                          ? 'Available cartons'
+                                                          : 'Available quantity',
+                                                      suffixText: _isWholeLamb
+                                                          ? 'carcases'
+                                                          : _usesSpecGradeCatalogue
+                                                          ? 'cartons'
+                                                          : null,
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                    ),
+                                                    validator:
+                                                        _validateOptionalNonNegativeNumber,
+                                                  ),
+                                                  DropdownButtonFormField<
+                                                    String
+                                                  >(
+                                                    isExpanded: isPhoneLayout(
+                                                      context,
+                                                    ),
+                                                    initialValue:
+                                                        _availabilityStatus,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText:
+                                                              'Availability',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                    items: const [
+                                                      DropdownMenuItem(
+                                                        value: 'in_stock',
+                                                        child: Text('In stock'),
+                                                      ),
+                                                      DropdownMenuItem(
+                                                        value: 'limited',
+                                                        child: Text(
+                                                          'Limited stock',
+                                                        ),
+                                                      ),
+                                                      DropdownMenuItem(
+                                                        value: 'out_of_stock',
+                                                        child: Text(
+                                                          'Out of stock',
+                                                        ),
+                                                      ),
+                                                      DropdownMenuItem(
+                                                        value: 'made_to_order',
+                                                        child: Text(
+                                                          'Made to order',
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    onChanged: (value) {
+                                                      if (value != null) {
+                                                        setState(() {
+                                                          _availabilityStatus =
+                                                              value;
+                                                        });
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
+
+                                                const SizedBox(height: 12),
+
+                                                DropdownButtonFormField<String>(
+                                                  isExpanded: isPhoneLayout(
+                                                    context,
+                                                  ),
+                                                  initialValue:
+                                                      _temperatureState,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText:
+                                                            'Storage condition',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                  items: const [
+                                                    DropdownMenuItem(
+                                                      value: 'fresh',
+                                                      child: Text('Fresh'),
+                                                    ),
+                                                    DropdownMenuItem(
+                                                      value: 'chilled',
+                                                      child: Text('Chilled'),
+                                                    ),
+                                                    DropdownMenuItem(
+                                                      value: 'frozen',
+                                                      child: Text('Frozen'),
+                                                    ),
+                                                  ],
+                                                  onChanged: (value) {
+                                                    if (value != null) {
+                                                      setState(() {
+                                                        _temperatureState =
+                                                            value;
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+
+                                                const SizedBox(height: 12),
+
+                                                SwitchListTile(
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                  value: _active,
+                                                  title: const Text(
+                                                    'Product active',
+                                                  ),
+                                                  subtitle: Text(
+                                                    _active
+                                                        ? 'Visible and available in your catalogue.'
+                                                        : 'Hidden from your active catalogue.',
+                                                  ),
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      _active = value;
+                                                    });
+                                                  },
+                                                ),
+
+                                                const SizedBox(height: 16),
+
+                                                ProductBrandField(
+                                                  controller: _brandController,
+                                                  supplierBusinessId: widget
+                                                      .product['supplier_business_id']
+                                                      ?.toString(),
+                                                  animalCode:
+                                                      _selectedAnimalCode,
+                                                  enabled: !_isSaving,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                ProductSizeFields(
+                                                  supplierBusinessId: widget
+                                                      .product['supplier_business_id']
+                                                      ?.toString(),
+                                                  specificationId:
+                                                      _selectedSpecificationId,
+                                                  minimum:
+                                                      _pieceWeightMinController,
+                                                  maximum:
+                                                      _pieceWeightMaxController,
+                                                  kind: _pieceSizeKind,
+                                                  unit: _pieceWeightUnit,
+                                                  enabled: !_isSaving,
+                                                  onKindChanged: (v) =>
+                                                      setState(
+                                                        () =>
+                                                            _pieceSizeKind = v,
+                                                      ),
+                                                  onUnitChanged: (v) => setState(() {
+                                                    if (v != _pieceWeightUnit) {
+                                                      for (final controller in [
+                                                        _pieceWeightMinController,
+                                                        _pieceWeightMaxController,
+                                                      ]) {
+                                                        final number =
+                                                            double.tryParse(
+                                                              controller.text
+                                                                  .trim(),
+                                                            );
+                                                        if (number != null) {
+                                                          controller.text =
+                                                              ProductPieceSize.number(
+                                                                v == 'g'
+                                                                    ? number *
+                                                                          1000
+                                                                    : number /
+                                                                          1000,
+                                                              );
+                                                        }
+                                                      }
+                                                      _pieceWeightUnit = v;
+                                                    }
+                                                  }),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                ExpansionTile(
+                                                  tilePadding: EdgeInsets.zero,
+                                                  childrenPadding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 8,
+                                                      ),
+                                                  title: const Text(
+                                                    'More product details',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                  subtitle: const Text(
+                                                    'Commercial program, preparation, origin and supplier notes.',
+                                                  ),
+                                                  children: [
+                                                    const SizedBox(height: 12),
+
+                                                    if (_isLamb) ...[
+                                                      _twoColumnFields(
+                                                        TextFormField(
+                                                          controller:
+                                                              _commercialDescriptionController,
+                                                          decoration: const InputDecoration(
+                                                            labelText:
+                                                                'Commercial description (optional)',
+                                                            hintText:
+                                                                'Example: Big & Lean',
+                                                            border:
+                                                                OutlineInputBorder(),
+                                                          ),
+                                                        ),
+                                                        CutLinkPickerField<
+                                                          String
+                                                        >(
+                                                          label: 'Fat Class',
+                                                          value: _lambFatClass,
+                                                          options: const [
+                                                            CutLinkPickerOption(
+                                                              value:
+                                                                  'not_specified',
+                                                              label:
+                                                                  'Not specified',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: '1',
+                                                              label:
+                                                                  'Fat Class 1',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: '2',
+                                                              label:
+                                                                  'Fat Class 2',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: '3',
+                                                              label:
+                                                                  'Fat Class 3',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: '4',
+                                                              label:
+                                                                  'Fat Class 4',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: '5',
+                                                              label:
+                                                                  'Fat Class 5',
+                                                            ),
+                                                          ],
+                                                          onChanged: (value) {
+                                                            if (value != null) {
+                                                              setState(() {
+                                                                _lambFatClass =
+                                                                    value;
+                                                              });
+                                                            }
+                                                          },
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      _twoColumnFields(
+                                                        CutLinkPickerField<
+                                                          String
+                                                        >(
+                                                          label: 'Bone',
+                                                          value: _boneState,
+                                                          options: const [
+                                                            CutLinkPickerOption(
+                                                              value:
+                                                                  'not_specified',
+                                                              label:
+                                                                  'Not specified',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: 'bone_in',
+                                                              label: 'Bone In',
+                                                            ),
+                                                            CutLinkPickerOption(
+                                                              value: 'boneless',
+                                                              label: 'Boneless',
+                                                            ),
+                                                          ],
+                                                          onChanged: (value) {
+                                                            if (value != null) {
+                                                              setState(() {
+                                                                _boneState =
+                                                                    value;
+                                                              });
+                                                            }
+                                                          },
+                                                        ),
+                                                        TextFormField(
+                                                          controller:
+                                                              _lotBatchController,
+                                                          decoration: const InputDecoration(
+                                                            labelText:
+                                                                'Lot / batch (optional)',
+                                                            border:
+                                                                OutlineInputBorder(),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (_isWholeLamb) ...[
+                                                        const SizedBox(
+                                                          height: 12,
+                                                        ),
+                                                        _twoColumnFields(
+                                                          TextFormField(
+                                                            controller:
+                                                                _slaughterDateController,
+                                                            readOnly: true,
+                                                            onTap: () => _pickDate(
+                                                              _slaughterDateController,
+                                                            ),
+                                                            decoration: const InputDecoration(
+                                                              labelText:
+                                                                  'Slaughter date (optional)',
+                                                              suffixIcon: Icon(
+                                                                Icons
+                                                                    .calendar_month_outlined,
+                                                              ),
+                                                              border:
+                                                                  OutlineInputBorder(),
+                                                            ),
+                                                          ),
+                                                          TextFormField(
+                                                            controller:
+                                                                _useByDateController,
+                                                            readOnly: true,
+                                                            onTap: () => _pickDate(
+                                                              _useByDateController,
+                                                            ),
+                                                            decoration: const InputDecoration(
+                                                              labelText:
+                                                                  'Expiry / use-by (optional)',
+                                                              suffixIcon: Icon(
+                                                                Icons
+                                                                    .calendar_month_outlined,
+                                                              ),
+                                                              border:
+                                                                  OutlineInputBorder(),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                    ],
+
+                                                    if (_selectedAnimalCode ==
+                                                        'BEEF') ...[
+                                                      _twoColumnFields(
+                                                        const Text(
+                                                          'Wagyu and Angus are product programs. Select the applicable AUS-MEAT category separately.',
+                                                        ),
+                                                        ProductAttributeField(
+                                                          controller:
+                                                              _marblingScoreController,
+                                                          label:
+                                                              _breedProgramController
+                                                                  .text
+                                                                  .toLowerCase()
+                                                                  .contains(
+                                                                    'wagyu',
+                                                                  )
+                                                              ? 'Wagyu marbling / MB score'
+                                                              : 'Marbling / MB score',
+                                                          choices:
+                                                              productMarblingScores,
+                                                          enabled: !_isSaving,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                    ],
+
+                                                    _twoColumnFields(
+                                                      _isLamb
+                                                          ? ProductAttributeField(
+                                                              controller:
+                                                                  _breedProgramController,
+                                                              label:
+                                                                  'Commercial Type / Program',
+                                                              choices:
+                                                                  productLambPrograms,
+                                                              enabled:
+                                                                  !_isSaving,
+                                                            )
+                                                          : ProductAttributeField(
+                                                              controller:
+                                                                  _breedProgramController,
+                                                              label:
+                                                                  'Breed / program',
+                                                              choices:
+                                                                  productPrograms,
+                                                              enabled:
+                                                                  !_isSaving,
+                                                              onChanged: () =>
+                                                                  setState(
+                                                                    () {},
+                                                                  ),
+                                                            ),
+                                                      CutLinkPickerField<
+                                                        String
+                                                      >(
+                                                        label: 'Halal status',
+                                                        value: _halalStatus,
+                                                        options: const [
+                                                          CutLinkPickerOption(
+                                                            value:
+                                                                'not_specified',
+                                                            label:
+                                                                'Not specified',
+                                                          ),
+                                                          CutLinkPickerOption(
+                                                            value: 'halal',
+                                                            label: 'Halal',
+                                                          ),
+                                                          CutLinkPickerOption(
+                                                            value: 'not_halal',
+                                                            label: 'Not halal',
+                                                          ),
+                                                        ],
+                                                        onChanged: (value) {
+                                                          if (value != null) {
+                                                            setState(() {
+                                                              _halalStatus =
+                                                                  value;
+                                                            });
+                                                          }
+                                                        },
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 12),
+
+                                                    _twoColumnFields(
+                                                      ProductAttributeField(
+                                                        controller:
+                                                            _trimSpecificationController,
+                                                        label:
+                                                            'Trim / preparation',
+                                                        choices:
+                                                            productPreparationOptions,
+                                                      ),
+                                                      TextFormField(
+                                                        controller:
+                                                            _fatSpecificationController,
+                                                        decoration: const InputDecoration(
+                                                          labelText:
+                                                              'Fat specification (optional)',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 12),
+
+                                                    _twoColumnFields(
+                                                      ProductAttributeField(
+                                                        controller:
+                                                            _packagingTypeController,
+                                                        label: 'Packaging',
+                                                        choices:
+                                                            productPackagingOptions,
+                                                      ),
+                                                      TextFormField(
+                                                        controller:
+                                                            _piecesPerCartonController,
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        decoration: const InputDecoration(
+                                                          labelText:
+                                                              'Pieces per carton (optional)',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                        validator:
+                                                            _validateOptionalPositiveInteger,
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 12),
+
+                                                    _twoColumnFields(
+                                                      ProductAttributeField(
+                                                        controller:
+                                                            _originCountryController,
+                                                        label:
+                                                            'Country of origin',
+                                                        choices:
+                                                            productOriginOptions,
+                                                      ),
+                                                      TextFormField(
+                                                        controller:
+                                                            _originStateController,
+                                                        decoration: const InputDecoration(
+                                                          labelText:
+                                                              'State of origin (optional)',
+                                                          hintText: 'NSW',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 12),
+
+                                                    TextFormField(
+                                                      controller:
+                                                          _descriptionController,
+                                                      minLines: 2,
+                                                      maxLines: 4,
+                                                      decoration: const InputDecoration(
+                                                        labelText:
+                                                            'Description (optional)',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 12),
+
+                                                    TextFormField(
+                                                      controller:
+                                                          _supplierSpecificationController,
+                                                      minLines: 3,
+                                                      maxLines: 6,
+                                                      decoration: const InputDecoration(
+                                                        labelText:
+                                                            'Supplier specification / notes (optional)',
+                                                        hintText:
+                                                            'Extra trade information that does not fit the structured fields above',
+                                                        border:
+                                                            OutlineInputBorder(),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
 
-                                        const SizedBox(height: 32),
-                                        const Divider(),
-                                      ],
+                                                const SizedBox(height: 16),
 
-                                      const SizedBox(height: 16),
-
-                                      _sectionTitle(
-                                        'Product details',
-                                        subtitle:
-                                            'Keep the everyday information here. Pricing is managed separately in the Pricing tab.',
-                                      ),
-
-                                      const SizedBox(height: 12),
-
-                                      _twoColumnFields(
-                                        TextFormField(
-                                          controller: _skuController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Supplier SKU',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          validator: (value) {
-                                            return _requiredValidator(
-                                              value,
-                                              'a supplier SKU',
-                                            );
-                                          },
-                                        ),
-                                        TextFormField(
-                                          controller: _productNameController,
-                                          readOnly: _usesSpecGradeCatalogue,
-                                          decoration: InputDecoration(
-                                            labelText: 'Supplier product name',
-                                            helperText: _usesSpecGradeCatalogue
-                                                ? 'Automatically linked to the selected cut / specification.'
-                                                : null,
-                                            prefixIcon: _usesSpecGradeCatalogue
-                                                ? const Icon(
-                                                    Icons.link_outlined,
-                                                  )
-                                                : null,
-                                            border: const OutlineInputBorder(),
-                                          ),
-                                          validator: (value) {
-                                            return _requiredValidator(
-                                              value,
-                                              'a product name',
-                                            );
-                                          },
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 12),
-
-                                      _twoColumnFields(
-                                        TextFormField(
-                                          controller: _quantityController,
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          decoration: InputDecoration(
-                                            labelText: _isWholeLamb
-                                                ? 'Available carcases'
-                                                : _usesSpecGradeCatalogue
-                                                ? 'Available cartons'
-                                                : 'Available quantity',
-                                            suffixText: _isWholeLamb
-                                                ? 'carcases'
-                                                : _usesSpecGradeCatalogue
-                                                ? 'cartons'
-                                                : null,
-                                            border: const OutlineInputBorder(),
-                                          ),
-                                          validator:
-                                              _validateOptionalNonNegativeNumber,
-                                        ),
-                                        DropdownButtonFormField<String>(
-                                          isExpanded: isPhoneLayout(context),
-                                          initialValue: _availabilityStatus,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Availability',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'in_stock',
-                                              child: Text('In stock'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'limited',
-                                              child: Text('Limited stock'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'out_of_stock',
-                                              child: Text('Out of stock'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'made_to_order',
-                                              child: Text('Made to order'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            if (value != null) {
-                                              setState(() {
-                                                _availabilityStatus = value;
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 12),
-
-                                      DropdownButtonFormField<String>(
-                                        isExpanded: isPhoneLayout(context),
-                                        initialValue: _temperatureState,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Storage condition',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        items: const [
-                                          DropdownMenuItem(
-                                            value: 'fresh',
-                                            child: Text('Fresh'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: 'chilled',
-                                            child: Text('Chilled'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: 'frozen',
-                                            child: Text('Frozen'),
-                                          ),
-                                        ],
-                                        onChanged: (value) {
-                                          if (value != null) {
-                                            setState(() {
-                                              _temperatureState = value;
-                                            });
-                                          }
-                                        },
-                                      ),
-
-                                      const SizedBox(height: 12),
-
-                                      SwitchListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        value: _active,
-                                        title: const Text('Product active'),
-                                        subtitle: Text(
-                                          _active
-                                              ? 'Visible and available in your catalogue.'
-                                              : 'Hidden from your active catalogue.',
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _active = value;
-                                          });
-                                        },
-                                      ),
-
-                                      const SizedBox(height: 16),
-
-                                      ProductBrandField(
-                                        controller: _brandController,
-                                        supplierBusinessId: widget
-                                            .product['supplier_business_id']
-                                            ?.toString(),
-                                        animalCode: _selectedAnimalCode,
-                                        enabled: !_isSaving,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ProductSizeFields(
-                                        supplierBusinessId: widget
-                                            .product['supplier_business_id']
-                                            ?.toString(),
-                                        specificationId:
-                                            _selectedSpecificationId,
-                                        minimum: _pieceWeightMinController,
-                                        maximum: _pieceWeightMaxController,
-                                        kind: _pieceSizeKind,
-                                        unit: _pieceWeightUnit,
-                                        enabled: !_isSaving,
-                                        onKindChanged: (v) =>
-                                            setState(() => _pieceSizeKind = v),
-                                        onUnitChanged: (v) => setState(() {
-                                          if (v != _pieceWeightUnit) {
-                                            for (final controller in [
-                                              _pieceWeightMinController,
-                                              _pieceWeightMaxController,
-                                            ]) {
-                                              final number = double.tryParse(
-                                                controller.text.trim(),
-                                              );
-                                              if (number != null) {
-                                                controller.text =
-                                                    ProductPieceSize.number(
-                                                      v == 'g'
-                                                          ? number * 1000
-                                                          : number / 1000,
-                                                    );
-                                              }
-                                            }
-                                            _pieceWeightUnit = v;
-                                          }
-                                        }),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ExpansionTile(
-                                        tilePadding: EdgeInsets.zero,
-                                        childrenPadding: const EdgeInsets.only(
-                                          bottom: 8,
-                                        ),
-                                        title: const Text(
-                                          'More product details',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        subtitle: const Text(
-                                          'Commercial program, preparation, origin and supplier notes.',
-                                        ),
-                                        children: [
-                                          const SizedBox(height: 12),
-
-                                          if (_isLamb) ...[
-                                            _twoColumnFields(
-                                              TextFormField(
-                                                controller:
-                                                    _commercialDescriptionController,
-                                                decoration: const InputDecoration(
-                                                  labelText:
-                                                      'Commercial description (optional)',
-                                                  hintText:
-                                                      'Example: Big & Lean',
-                                                  border: OutlineInputBorder(),
-                                                ),
-                                              ),
-                                              CutLinkPickerField<String>(
-                                                label: 'Fat Class',
-                                                value: _lambFatClass,
-                                                options: const [
-                                                  CutLinkPickerOption(
-                                                    value: 'not_specified',
-                                                    label: 'Not specified',
+                                                FilledButton(
+                                                  onPressed: _isSaving
+                                                      ? null
+                                                      : _saveProduct,
+                                                  style: FilledButton.styleFrom(
+                                                    backgroundColor: darkRed,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 18,
+                                                        ),
                                                   ),
-                                                  CutLinkPickerOption(
-                                                    value: '1',
-                                                    label: 'Fat Class 1',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: '2',
-                                                    label: 'Fat Class 2',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: '3',
-                                                    label: 'Fat Class 3',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: '4',
-                                                    label: 'Fat Class 4',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: '5',
-                                                    label: 'Fat Class 5',
-                                                  ),
-                                                ],
-                                                onChanged: (value) {
-                                                  if (value != null) {
-                                                    setState(() {
-                                                      _lambFatClass = value;
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            _twoColumnFields(
-                                              CutLinkPickerField<String>(
-                                                label: 'Bone',
-                                                value: _boneState,
-                                                options: const [
-                                                  CutLinkPickerOption(
-                                                    value: 'not_specified',
-                                                    label: 'Not specified',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: 'bone_in',
-                                                    label: 'Bone In',
-                                                  ),
-                                                  CutLinkPickerOption(
-                                                    value: 'boneless',
-                                                    label: 'Boneless',
-                                                  ),
-                                                ],
-                                                onChanged: (value) {
-                                                  if (value != null) {
-                                                    setState(() {
-                                                      _boneState = value;
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                              TextFormField(
-                                                controller: _lotBatchController,
-                                                decoration: const InputDecoration(
-                                                  labelText:
-                                                      'Lot / batch (optional)',
-                                                  border: OutlineInputBorder(),
-                                                ),
-                                              ),
-                                            ),
-                                            if (_isWholeLamb) ...[
-                                              const SizedBox(height: 12),
-                                              _twoColumnFields(
-                                                TextFormField(
-                                                  controller:
-                                                      _slaughterDateController,
-                                                  readOnly: true,
-                                                  onTap: () => _pickDate(
-                                                    _slaughterDateController,
-                                                  ),
-                                                  decoration: const InputDecoration(
-                                                    labelText:
-                                                        'Slaughter date (optional)',
-                                                    suffixIcon: Icon(
-                                                      Icons
-                                                          .calendar_month_outlined,
-                                                    ),
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                  ),
-                                                ),
-                                                TextFormField(
-                                                  controller:
-                                                      _useByDateController,
-                                                  readOnly: true,
-                                                  onTap: () => _pickDate(
-                                                    _useByDateController,
-                                                  ),
-                                                  decoration: const InputDecoration(
-                                                    labelText:
-                                                        'Expiry / use-by (optional)',
-                                                    suffixIcon: Icon(
-                                                      Icons
-                                                          .calendar_month_outlined,
-                                                    ),
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                            const SizedBox(height: 12),
-                                          ],
-
-                                          if (_selectedAnimalCode ==
-                                              'BEEF') ...[
-                                            _twoColumnFields(
-                                              const Text(
-                                                'Wagyu and Angus are product programs. Select the applicable AUS-MEAT category separately.',
-                                              ),
-                                              ProductAttributeField(
-                                                controller:
-                                                    _marblingScoreController,
-                                                label:
-                                                    _breedProgramController.text
-                                                        .toLowerCase()
-                                                        .contains('wagyu')
-                                                    ? 'Wagyu marbling / MB score'
-                                                    : 'Marbling / MB score',
-                                                choices: productMarblingScores,
-                                                enabled: !_isSaving,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                          ],
-
-                                          _twoColumnFields(
-                                            _isLamb
-                                                ? ProductAttributeField(
-                                                    controller:
-                                                        _breedProgramController,
-                                                    label:
-                                                        'Commercial Type / Program',
-                                                    choices:
-                                                        productLambPrograms,
-                                                    enabled: !_isSaving,
-                                                  )
-                                                : ProductAttributeField(
-                                                    controller:
-                                                        _breedProgramController,
-                                                    label: 'Breed / program',
-                                                    choices: productPrograms,
-                                                    enabled: !_isSaving,
-                                                    onChanged: () =>
-                                                        setState(() {}),
-                                                  ),
-                                            CutLinkPickerField<String>(
-                                              label: 'Halal status',
-                                              value: _halalStatus,
-                                              options: const [
-                                                CutLinkPickerOption(
-                                                  value: 'not_specified',
-                                                  label: 'Not specified',
-                                                ),
-                                                CutLinkPickerOption(
-                                                  value: 'halal',
-                                                  label: 'Halal',
-                                                ),
-                                                CutLinkPickerOption(
-                                                  value: 'not_halal',
-                                                  label: 'Not halal',
+                                                  child: _isSaving
+                                                      ? const SizedBox(
+                                                          width: 22,
+                                                          height: 22,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth:
+                                                                    2.5,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        )
+                                                      : const Text(
+                                                          'Save Changes',
+                                                          style: TextStyle(
+                                                            fontSize: 17,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
+                                                        ),
                                                 ),
                                               ],
-                                              onChanged: (value) {
-                                                if (value != null) {
-                                                  setState(() {
-                                                    _halalStatus = value;
-                                                  });
-                                                }
-                                              },
                                             ),
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          _twoColumnFields(
-                                            ProductAttributeField(
-                                              controller:
-                                                  _trimSpecificationController,
-                                              label: 'Trim / preparation',
-                                              choices:
-                                                  productPreparationOptions,
-                                            ),
-                                            TextFormField(
-                                              controller:
-                                                  _fatSpecificationController,
-                                              decoration: const InputDecoration(
-                                                labelText:
-                                                    'Fat specification (optional)',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          _twoColumnFields(
-                                            ProductAttributeField(
-                                              controller:
-                                                  _packagingTypeController,
-                                              label: 'Packaging',
-                                              choices: productPackagingOptions,
-                                            ),
-                                            TextFormField(
-                                              controller:
-                                                  _piecesPerCartonController,
-                                              keyboardType:
-                                                  TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                labelText:
-                                                    'Pieces per carton (optional)',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                              validator:
-                                                  _validateOptionalPositiveInteger,
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          _twoColumnFields(
-                                            ProductAttributeField(
-                                              controller:
-                                                  _originCountryController,
-                                              label: 'Country of origin',
-                                              choices: productOriginOptions,
-                                            ),
-                                            TextFormField(
-                                              controller:
-                                                  _originStateController,
-                                              decoration: const InputDecoration(
-                                                labelText:
-                                                    'State of origin (optional)',
-                                                hintText: 'NSW',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          TextFormField(
-                                            controller: _descriptionController,
-                                            minLines: 2,
-                                            maxLines: 4,
-                                            decoration: const InputDecoration(
-                                              labelText:
-                                                  'Description (optional)',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          TextFormField(
-                                            controller:
-                                                _supplierSpecificationController,
-                                            minLines: 3,
-                                            maxLines: 6,
-                                            decoration: const InputDecoration(
-                                              labelText:
-                                                  'Supplier specification / notes (optional)',
-                                              hintText:
-                                                  'Extra trade information that does not fit the structured fields above',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      const SizedBox(height: 16),
-
-                                      FilledButton(
-                                        onPressed: _isSaving
-                                            ? null
-                                            : _saveProduct,
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: darkRed,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 18,
                                           ),
                                         ),
-                                        child: _isSaving
-                                            ? const SizedBox(
-                                                width: 22,
-                                                height: 22,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                      color: Colors.white,
-                                                    ),
-                                              )
-                                            : const Text(
-                                                'Save Changes',
-                                                style: TextStyle(
-                                                  fontSize: 17,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ),
+                        _buildPricingTab(),
+                      ],
                     ),
-              _buildPricingTab(),
-            ],
+                  ),
           ),
         ),
       ),

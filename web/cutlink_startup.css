@@ -1,0 +1,14 @@
+:root { color-scheme: light; font-family: Arial, sans-serif; color: #101d2b; background: #f7f8fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.startup { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.startup-card { width: min(100%, 480px); padding: 36px 28px; border: 1px solid #e3e5e8; border-radius: 20px; background: white; text-align: center; }
+.brand-icon { display: block; margin: 0 auto 20px; }
+.eyebrow { font-size: 11px; letter-spacing: 1.5px; color: #741c1c; font-weight: 700; }
+h1 { font-size: 38px; margin: 10px 0 12px; letter-spacing: -1px; }
+p { line-height: 1.6; color: #536173; }
+#startup-status { border-top: 1px solid #e3e5e8; padding-top: 20px; margin-top: 24px; font-size: 14px; }
+button, .home-link { display: inline-block; background: #741c1c; color: white; border: 0; border-radius: 10px; padding: 13px 20px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+button:focus-visible, a:focus-visible { outline: 3px solid #101d2b; outline-offset: 4px; }
+button:active, .home-link:active { background: #541414; }
+[hidden] { display: none !important; }

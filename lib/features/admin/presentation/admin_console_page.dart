@@ -1,3 +1,6 @@
+import '../../../shared/widgets/workspace_loading.dart';
+import 'admin_notification_settings_page.dart';
+import 'admin_product_notifications_bell.dart';
 import 'admin_billing_panel.dart';
 import '../services/admin_billing_labels.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
@@ -44,6 +47,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'billing': 'Billing',
     'announcements': 'Announcements',
     'audit': 'Audit history',
+    'preferences': 'Settings',
     'support': 'Support inbox',
   };
   @override
@@ -71,7 +75,10 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       _loading = true;
       _error = null;
     });
-    if (_tab == 'analytics' || _tab == 'homepage' || _tab == 'billing') {
+    if (_tab == 'analytics' ||
+        _tab == 'homepage' ||
+        _tab == 'billing' ||
+        _tab == 'preferences') {
       setState(() => _loading = false);
       return;
     }
@@ -351,6 +358,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'billing': 'Memberships, CutLink invoices and payments in one place.',
     'announcements': 'Keep the right businesses informed.',
     'audit': 'A traceable history of administrative actions and trade access.',
+    'preferences': 'Manage your admin notification preferences.',
   };
   Widget _filters() => Padding(
     padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -430,7 +438,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     ),
   );
   Widget _records() => _loading
-      ? const AdminLoading()
+      ? const WorkspaceLoading(label: 'Loading admin workspace…')
       : _error != null
       ? Center(
           child: Padding(
@@ -523,12 +531,20 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
               ],
             ),
             actions: [
+              const AdminProductNotificationsBell(),
+              IconButton(
+                tooltip: 'Admin settings',
+                onPressed: () => _change('preferences'),
+                icon: const Icon(Icons.settings_outlined),
+              ),
               IconButton(
                 tooltip: 'Support inbox',
                 onPressed: () => _change('support'),
                 icon: const Icon(Icons.support_agent),
               ),
-              if (_tab != 'analytics' && _tab != 'homepage')
+              if (_tab != 'analytics' &&
+                  _tab != 'homepage' &&
+                  _tab != 'preferences')
                 IconButton(
                   tooltip: 'Refresh',
                   onPressed: _load,
@@ -600,6 +616,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                               });
                             },
                           )
+                        : _tab == 'preferences'
+                        ? const AdminNotificationSettingsPage(embedded: true)
                         : _tab == 'homepage'
                         ? const AdminFeaturedBusinessesPanel()
                         : _tab == 'analytics'

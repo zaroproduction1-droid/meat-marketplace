@@ -1,7 +1,11 @@
+import 'cutlink_review_theme.dart';
+
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'catalogue_product_image.dart';
 
 const productReportReasons = <String, String>{
@@ -9,7 +13,7 @@ const productReportReasons = <String, String>{
   'copyright': 'Copyright or permission concern',
   'misleading': 'Misleading product information',
   'inappropriate': 'Inappropriate photo',
-  'other': 'Something else',
+  'other': 'Other — describe the concern',
 };
 
 class ProductReportDialog extends StatefulWidget {
@@ -55,7 +59,9 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
       'business_id': widget.businessId,
       'product_id': widget.product['id'],
       'reason': _reason,
-      'description': _description.text.trim(),
+      'description': _reason == 'other'
+          ? _description.text.trim()
+          : "${productReportReasons[_reason]!}.",
       'reference_url': _reference.text.trim(),
       'photo_path': widget.product['photo_path'],
     };
@@ -110,7 +116,7 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
     final preview = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F6F4),
+        color: const Color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -155,39 +161,35 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
+          DropdownButtonFormField<String>(
+            initialValue: _reason,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Reason'),
+            items: [
               for (final entry in productReportReasons.entries)
-                ChoiceChip(
-                  selected: _reason == entry.key,
-                  label: Text(entry.value),
-                  onSelected: _sending
-                      ? null
-                      : (_) => setState(() => _reason = entry.key),
-                ),
+                DropdownMenuItem(value: entry.key, child: Text(entry.value)),
             ],
+            onChanged: _sending ? null : (v) => setState(() => _reason = v!),
           ),
           const SizedBox(height: 18),
-          TextFormField(
-            controller: _description,
-            enabled: !_sending,
-            minLines: 4,
-            maxLines: 7,
-            maxLength: 4000,
-            decoration: InputDecoration(
-              labelText: 'Tell us what is wrong',
-              alignLabelWithHint: true,
-              hintText: _reason == 'copyright'
-                  ? 'Explain your connection to the photo and any permission or ownership concern.'
-                  : 'Explain what you noticed and what you expected to see.',
-              border: const OutlineInputBorder(),
+          if (_reason == 'other')
+            TextFormField(
+              controller: _description,
+              enabled: !_sending,
+              minLines: 4,
+              maxLines: 7,
+              maxLength: 4000,
+              decoration: InputDecoration(
+                labelText: 'Tell us what is wrong',
+                alignLabelWithHint: true,
+                hintText: _reason == 'copyright'
+                    ? 'Explain your connection to the photo and any permission or ownership concern.'
+                    : 'Explain what you noticed and what you expected to see.',
+              ),
+              validator: (value) => (value?.trim().length ?? 0) < 10
+                  ? 'Please give at least 10 characters of detail.'
+                  : null,
             ),
-            validator: (value) => (value?.trim().length ?? 0) < 10
-                ? 'Please give at least 10 characters of detail.'
-                : null,
-          ),
           const SizedBox(height: 10),
           TextFormField(
             controller: _reference,
@@ -196,7 +198,6 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
             decoration: const InputDecoration(
               labelText: 'Supporting link (optional)',
               hintText: 'https://…',
-              border: OutlineInputBorder(),
             ),
             validator: (value) {
               final text = value?.trim() ?? '';
@@ -225,98 +226,110 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
         ],
       ),
     );
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 900,
-          maxHeight: MediaQuery.sizeOf(context).height * .9,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 12, 12),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: Color(0xFFF5E8E8),
-                    child: Icon(Icons.flag_outlined, color: Color(0xFF741C1C)),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Report a product or photo',
-                          style: TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Help us understand the concern',
-                          style: TextStyle(color: Color(0xFF666666)),
-                        ),
-                      ],
+    return CutLinkReviewTheme(
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 900,
+            maxHeight: MediaQuery.sizeOf(context).height * .9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 18, 12, 12),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: Color(0xFFF5E8E8),
+                      child: Icon(
+                        Icons.flag_outlined,
+                        color: Color(0xFF741C1C),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _sending ? null : () => Navigator.pop(context),
-                    tooltip: 'Close report',
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: LayoutBuilder(
-                  builder: (context, box) => box.maxWidth < 650
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [preview, const SizedBox(height: 18), form],
-                        )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 275, child: preview),
-                            const SizedBox(width: 24),
-                            Expanded(child: form),
-                          ],
-                        ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Report a product or photo',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            'Help us understand the concern',
+                            style: TextStyle(color: Color(0xFF666666)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _sending ? null : () => Navigator.pop(context),
+                      tooltip: 'Close report',
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _sending ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    onPressed: _sending ? null : _submit,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+              const Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(22),
+                  child: LayoutBuilder(
+                    builder: (context, box) => box.maxWidth < 650
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              preview,
+                              const SizedBox(height: 18),
+                              form,
+                            ],
                           )
-                        : const Icon(Icons.send_outlined, size: 18),
-                    label: Text(_sending ? 'Submitting…' : 'Send report'),
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 275, child: preview),
+                              const SizedBox(width: 24),
+                              Expanded(child: form),
+                            ],
+                          ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _sending ? null : () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: _sending ? null : _submit,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_outlined, size: 18),
+                      label: Text(_sending ? 'Submitting…' : 'Send report'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

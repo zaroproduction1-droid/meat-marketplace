@@ -1,10 +1,19 @@
+import '../../../shared/widgets/workspace_loading.dart';
+import '../../../shared/widgets/local_draft_recovery.dart';
+import '../../../shared/drafts/local_draft_store.dart';
+import '../../../shared/widgets/workspace_request_error.dart';
+import '../../../shared/widgets/unsaved_changes_guard.dart';
+import '../../../shared/widgets/supplier_product_review_submission.dart';
+import 'supplier_product_moderation_panel.dart';
 import 'product_report_context_panel.dart';
 import '../../../shared/widgets/product_report_dialog.dart';
 import '../../../shared/security/upload_safety.dart';
 import 'support_faq_panel.dart';
+import '../../admin/presentation/admin_product_notifications_bell.dart';
 import '../../admin/presentation/admin_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+import '../../../shared/widgets/workspace_back_button.dart';
 
 import 'dart:async';
 
@@ -39,7 +48,6 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   bool _loading = true;
   bool _initialTicketOpened = false;
   bool _sending = false;
-  bool _uploading = false;
   String? _error;
   String _statusFilter = 'active';
   String _search = '';
@@ -48,9 +56,22 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   List<Map<String, dynamic>> _tickets = [];
   List<Map<String, dynamic>> _messages = [];
   final List<PlatformFile> _pendingAttachments = [];
+  // Page-session only: no support text or attachments written to browser storage.
+  final Map<String, String> _ticketDrafts = {};
+  final Map<String, List<PlatformFile>> _ticketAttachmentDrafts = {};
   Map<String, dynamic>? _selectedTicket;
 
   final _messageController = TextEditingController();
+  var _supportDraftKey = GlobalKey<LocalDraftRecoveryState>();
+  final _draftUser = Supabase.instance.client.auth.currentUser?.id ?? '';
+  final Set<String> _supportDraftScopes = {};
+  String _supportDraftScope(Map<String, dynamic> ticket) =>
+      LocalDraftStore.scope(
+        _draftUser,
+        ticket['business_id']?.toString() ?? widget.businessId,
+        widget.adminMode ? 'admin-support' : 'support',
+        ticket['id'].toString(),
+      );
   final _searchController = TextEditingController();
   final _messagesScrollController = ScrollController();
 
@@ -207,7 +228,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         closed_at,
         created_at,
         updated_at,
-        product_content_reports(ticket_id,reason,snapshot,evidence_status,purged_at)
+        product_content_reports(ticket_id,reason,snapshot,evidence_status,purged_at),
+        supplier_product_moderation_cases(ticket_id,product_id,product_snapshot,change_revision,submitted_revision,last_product_change_at,last_submitted_at,changed_fields,workflow_state)
       ''');
 
       if (!widget.adminMode) {
@@ -217,7 +239,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       final response = await query.order('updated_at', ascending: false);
       final tickets = List<Map<String, dynamic>>.from(response);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       final selectedId = _selectedTicket?['id']?.toString();
       Map<String, dynamic>? refreshedSelected;
@@ -244,13 +268,17 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         }
       }
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -259,19 +287,61 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   Future<void> _openTicket(Map<String, dynamic> ticket) async {
+    if (_sending) {
+      return;
+    }
     final ticketId = ticket['id']?.toString();
-    if (ticketId == null) return;
+    if (ticketId == null) {
+      return;
+    }
+    _rememberDraft();
+    _supportDraftScopes.add(_supportDraftScope(ticket));
 
     setState(() {
       _selectedTicket = ticket;
+      _supportDraftKey = GlobalKey<LocalDraftRecoveryState>();
       _messages = [];
-      _pendingAttachments.clear();
-      _messageController.clear();
+      _pendingAttachments
+        ..clear()
+        ..addAll(_ticketAttachmentDrafts[ticketId] ?? const <PlatformFile>[]);
+      _messageController.text = _ticketDrafts[ticketId] ?? '';
       _activeAdminAction = null;
     });
 
     await _subscribeToMessages(ticketId);
     await _loadMessages(ticketId, markRead: true, scrollToBottom: false);
+  }
+
+  void _rememberDraft() {
+    final id = _selectedTicket?['id']?.toString();
+    if (id == null) {
+      return;
+    }
+    if (_messageController.text.isEmpty) {
+      _ticketDrafts.remove(id);
+    } else {
+      _ticketDrafts[id] = _messageController.text;
+    }
+    if (_pendingAttachments.isEmpty) {
+      _ticketAttachmentDrafts.remove(id);
+    } else {
+      _ticketAttachmentDrafts[id] = List<PlatformFile>.from(
+        _pendingAttachments,
+      );
+    }
+  }
+
+  bool get _hasUnsentDrafts {
+    final current = _selectedTicket?['id']?.toString();
+    return (current != null &&
+            (_messageController.text.trim().isNotEmpty ||
+                _pendingAttachments.isNotEmpty)) ||
+        _ticketDrafts.entries.any(
+          (entry) => entry.key != current && entry.value.trim().isNotEmpty,
+        ) ||
+        _ticketAttachmentDrafts.entries.any(
+          (entry) => entry.key != current && entry.value.isNotEmpty,
+        );
   }
 
   Future<void> _loadMessages(
@@ -289,6 +359,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             sender_role,
             sender_name,
             message,
+            structured_event,
             created_at,
             support_ticket_attachments (
               id,
@@ -309,14 +380,20 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         );
       }
 
-      if (!mounted || _selectedTicket?['id']?.toString() != ticketId) return;
+      if (!mounted || _selectedTicket?['id']?.toString() != ticketId) {
+        return;
+      }
 
       setState(() {
-        _messages = List<Map<String, dynamic>>.from(response);
+        _messages = List<Map<String, dynamic>>.from(
+          response,
+        ).where((m) => m['structured_event'] != true).toList();
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_messagesScrollController.hasClients) return;
+        if (!_messagesScrollController.hasClients) {
+          return;
+        }
         if (!scrollToBottom) {
           _messagesScrollController.jumpTo(
             _messagesScrollController.position.minScrollExtent,
@@ -330,7 +407,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         );
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
@@ -568,7 +647,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
     subjectController.dispose();
     descriptionController.dispose();
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
     setState(() => _sending = true);
     try {
@@ -601,7 +682,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
   }
 
@@ -620,7 +703,6 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
     setState(() {
       _sending = true;
-      _uploading = pendingFiles.isNotEmpty;
     });
     final uploadedPaths = <String>[];
     try {
@@ -669,9 +751,27 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         },
       );
 
+      _ticketDrafts.remove(ticketId);
+      _ticketAttachmentDrafts.remove(ticketId);
+      try {
+        await _supportDraftKey.currentState?.clearDraft();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Message sent. The local draft backup could not be cleared.',
+              ),
+            ),
+          );
+        }
+      }
       _messageController.clear();
       if (mounted) {
-        setState(() => _pendingAttachments.clear());
+        setState(() {
+          _pendingAttachments.clear();
+          _supportDraftKey = GlobalKey<LocalDraftRecoveryState>();
+        });
       }
       await _loadMessages(ticketId, markRead: true);
       await _loadTickets(showLoading: false);
@@ -701,14 +801,15 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       if (mounted) {
         setState(() {
           _sending = false;
-          _uploading = false;
         });
       }
     }
   }
 
   Future<void> _pickAttachments() async {
-    if (_sending) return;
+    if (_sending) {
+      return;
+    }
     final selection = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const [
@@ -726,7 +827,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         'zip',
       ],
     );
-    if (selection.isEmpty) return;
+    if (selection.isEmpty) {
+      return;
+    }
 
     final existingNames = _pendingAttachments
         .map((file) => file.name.toLowerCase())
@@ -750,7 +853,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   Future<void> _removeUnsentUploads(List<String> storagePaths) async {
-    if (storagePaths.isEmpty) return;
+    if (storagePaths.isEmpty) {
+      return;
+    }
     try {
       await Supabase.instance.client.storage
           .from('support-attachments')
@@ -762,7 +867,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   Future<void> _openAttachment(Map<String, dynamic> attachment) async {
     final storagePath = attachment['storage_path']?.toString();
-    if (storagePath == null || storagePath.isEmpty) return;
+    if (storagePath == null || storagePath.isEmpty) {
+      return;
+    }
 
     try {
       final signedUrl = await Supabase.instance.client.storage
@@ -772,7 +879,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         Uri.parse(signedUrl),
         mode: LaunchMode.externalApplication,
       );
-      if (!opened) throw Exception('The attachment could not be opened.');
+      if (!opened) {
+        throw Exception('The attachment could not be opened.');
+      }
     } on StorageException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -796,7 +905,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     bool unassign = false,
   }) async {
     final ticketId = _selectedTicket?['id']?.toString();
-    if (!widget.adminMode || ticketId == null || _sending) return;
+    if (!widget.adminMode || ticketId == null || _sending) {
+      return;
+    }
 
     setState(() => _sending = true);
     try {
@@ -823,12 +934,25 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
   }
 
   Map<String, dynamic>? _productReport(Map<String, dynamic> ticket) {
     final value = ticket['product_content_reports'];
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is List && value.isNotEmpty && value.first is Map) {
+      return Map<String, dynamic>.from(value.first as Map);
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _supplierModerationCase(Map<String, dynamic> ticket) {
+    final value = ticket['supplier_product_moderation_cases'];
     if (value is Map) {
       return Map<String, dynamic>.from(value);
     }
@@ -848,18 +972,24 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               (status != 'resolved' && status != 'closed'),
         'reports' =>
           _productReport(ticket) != null ||
+              _supplierModerationCase(ticket) != null ||
               ticket['subject'] == 'Product or photo content report',
         'reopen' => ticket['reopen_decision'] == 'pending',
         'resolved' => status == 'resolved',
         'closed' => status == 'closed',
         _ => true,
       };
-      if (!statusMatches) return false;
-      if (query.isEmpty) return true;
+      if (!statusMatches) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
       final report = _productReport(ticket);
-      final snapshot = report?['snapshot'] is Map
-          ? report!['snapshot'] as Map
-          : const {};
+      final supplierCase = _supplierModerationCase(ticket);
+      final snapshotValue =
+          report?['snapshot'] ?? supplierCase?['product_snapshot'];
+      final snapshot = snapshotValue is Map ? snapshotValue : const {};
       final text = [
         ticket['ticket_number'],
         ticket['subject'],
@@ -882,98 +1012,114 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           ? ticket['admin_last_read_at']
           : ticket['requester_last_read_at'],
     );
-    if (lastMessageAt == null) return false;
+    if (lastMessageAt == null) {
+      return false;
+    }
     return readAt == null || lastMessageAt.isAfter(readAt);
   }
 
   @override
   Widget build(BuildContext context) {
-    return AdminTheme(
-      enabled: widget.adminMode,
-      child: Scaffold(
-        backgroundColor: widget.adminMode
-            ? AdminTheme.canvas
-            : const Color(0xFFF7F8FA),
-        appBar: phoneAppBar(
-          context,
-          AppBar(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            title: Row(
-              children: [
-                const Icon(Icons.support_agent, color: _darkRed),
-                const SizedBox(width: 10),
-                Text(
-                  widget.adminMode
-                      ? 'Support Administration'
-                      : 'CutLink Support',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-            actions: [
-              if (!widget.adminMode)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  child: FilledButton.icon(
-                    onPressed: _sending ? null : _createTicket,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('New Ticket'),
-                  ),
-                ),
-              IconButton(
-                tooltip: 'Refresh',
-                onPressed: () => _loadTickets(),
-                icon: const Icon(Icons.refresh),
-              ),
-              const SizedBox(width: 8),
-            ],
-            bottom: const PreferredSize(
-              preferredSize: Size.fromHeight(1),
-              child: Divider(height: 1, color: Color(0xFFE2E5E8)),
-            ),
-          ),
-        ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Wrap(
-                spacing: 10,
+    return UnsavedChangesGuard(
+      isDirty: () => _hasUnsentDrafts,
+      isBusy: () => _sending,
+      onDiscard: () async {
+        await _supportDraftKey.currentState?.clearDraft();
+        for (final scope in _supportDraftScopes) {
+          await LocalDraftStore.clear(scope);
+        }
+      },
+      message:
+          'You have unsent support messages or attachments. Stay here to keep them, or discard them and their saved draft backups before leaving.',
+      child: AdminTheme(
+        enabled: widget.adminMode,
+        child: Scaffold(
+          backgroundColor: widget.adminMode
+              ? AdminTheme.canvas
+              : const Color(0xFFF7F8FA),
+          appBar: phoneAppBar(
+            context,
+            AppBar(
+              leading: const WorkspaceBackButton(),
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              title: Row(
                 children: [
-                  ChoiceChip(
-                    label: const Text('Support tickets'),
-                    selected: !_showFaq,
-                    onSelected: (_) => setState(() => _showFaq = false),
-                  ),
-                  ChoiceChip(
-                    avatar: const Icon(Icons.help_outline, size: 18),
-                    label: const Text('Help & FAQ'),
-                    selected: _showFaq,
-                    onSelected: (_) => setState(() => _showFaq = true),
+                  const Icon(Icons.support_agent, color: _darkRed),
+                  const SizedBox(width: 10),
+                  Text(
+                    widget.adminMode
+                        ? 'Support Administration'
+                        : 'CutLink Support',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ],
               ),
+              actions: [
+                if (widget.adminMode) const AdminProductNotificationsBell(),
+                if (!widget.adminMode)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: FilledButton.icon(
+                      onPressed: _sending ? null : _createTicket,
+                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('New Ticket'),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: () => _loadTickets(),
+                  icon: const Icon(Icons.refresh),
+                ),
+                const SizedBox(width: 8),
+              ],
+              bottom: const PreferredSize(
+                preferredSize: Size.fromHeight(1),
+                child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+              ),
             ),
-            Expanded(
-              child: _showFaq
-                  ? widget.adminMode || _faqBusinessType != null
-                        ? SupportFaqPanel(
-                            businessType: _faqBusinessType ?? 'butcher',
-                            adminMode: widget.adminMode,
-                          )
-                        : Center(
-                            child: _faqError == null
-                                ? const CircularProgressIndicator()
-                                : TextButton(
-                                    onPressed: _loadFaqRole,
-                                    child: Text(_faqError!),
-                                  ),
-                          )
-                  : _buildBody(),
-            ),
-          ],
+          ),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Wrap(
+                  spacing: 10,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Support tickets'),
+                      selected: !_showFaq,
+                      onSelected: (_) => setState(() => _showFaq = false),
+                    ),
+                    ChoiceChip(
+                      avatar: const Icon(Icons.help_outline, size: 18),
+                      label: const Text('Help & FAQ'),
+                      selected: _showFaq,
+                      onSelected: (_) => setState(() => _showFaq = true),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _showFaq
+                    ? widget.adminMode || _faqBusinessType != null
+                          ? SupportFaqPanel(
+                              businessType: _faqBusinessType ?? 'butcher',
+                              adminMode: widget.adminMode,
+                            )
+                          : Center(
+                              child: _faqError == null
+                                  ? const CircularProgressIndicator()
+                                  : TextButton(
+                                      onPressed: _loadFaqRole,
+                                      child: Text(_faqError!),
+                                    ),
+                            )
+                    : _buildBody(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -981,27 +1127,13 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const WorkspaceLoading(label: 'Loading support tickets…');
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: _darkRed, size: 56),
-              const SizedBox(height: 14),
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => _loadTickets(),
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
+      return WorkspaceRequestError(
+        onRetry: () => _loadTickets(),
+        title: 'Could not load support tickets',
       );
     }
 
@@ -1128,7 +1260,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_productReport(ticket) != null)
+              if (_productReport(ticket) != null ||
+                  _supplierModerationCase(ticket) != null)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 6),
                   child: Text(
@@ -1137,6 +1270,18 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                       color: _darkRed,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              if (_supplierModerationCase(ticket) != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    supplierCorrectionStatus(_supplierModerationCase(ticket)!),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF846326),
                     ),
                   ),
                 ),
@@ -1360,10 +1505,14 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   Widget _ticketDetail({required bool showBack}) {
     final ticket = _selectedTicket;
-    if (ticket == null) return _emptySelection();
+    if (ticket == null) {
+      return _emptySelection();
+    }
 
     final closed = ['resolved', 'closed'].contains(ticket['status']);
     final hasProductReport = _productReport(ticket) != null;
+    final hasSupplierCase = _supplierModerationCase(ticket) != null;
+    final hasContext = hasProductReport || hasSupplierCase;
     return Column(
       children: [
         Container(
@@ -1375,7 +1524,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               if (showBack) ...[
                 IconButton(
                   tooltip: 'Back to tickets',
-                  onPressed: () => setState(() => _selectedTicket = null),
+                  onPressed: _sending
+                      ? null
+                      : () {
+                          _rememberDraft();
+                          setState(() => _selectedTicket = null);
+                        },
                   icon: const Icon(Icons.arrow_back),
                 ),
                 const SizedBox(width: 4),
@@ -1427,23 +1581,40 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: _messages.isEmpty && !hasProductReport
+          child: _messages.isEmpty && !hasContext
               ? const Center(child: CircularProgressIndicator())
               : ListView.builder(
                   controller: _messagesScrollController,
                   reverse: false,
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                  itemCount: _messages.length + (hasProductReport ? 1 : 0),
+                  itemCount: _messages.length + (hasContext ? 1 : 0),
                   itemBuilder: (_, index) {
-                    if (hasProductReport && index == 0) {
+                    if (hasContext && index == 0) {
+                      if (hasSupplierCase) {
+                        return SupplierProductModerationPanel(
+                          key: ValueKey(
+                            'supplier-${ticket['id']}-${ticket['status']}-${_supplierModerationCase(ticket)?['change_revision']}-${_supplierModerationCase(ticket)?['submitted_revision']}',
+                          ),
+                          ticketId: ticket['id'].toString(),
+                          adminMode: widget.adminMode,
+                        );
+                      }
                       return ProductReportContextPanel(
-                        key: ValueKey(ticket['id']),
+                        key: ValueKey('${ticket['id']}-${ticket['status']}'),
                         ticketId: ticket['id'].toString(),
                         adminMode: widget.adminMode,
+                        onResolved: () async {
+                          await _loadMessages(
+                            ticket['id'].toString(),
+                            markRead: true,
+                            scrollToBottom: false,
+                          );
+                          await _loadTickets(showLoading: false);
+                        },
                       );
                     }
                     return _messageBubble(
-                      _messages[index - (hasProductReport ? 1 : 0)],
+                      _messages[index - (hasContext ? 1 : 0)],
                     );
                   },
                 ),
@@ -1543,27 +1714,41 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            enabled: !_sending,
-                            minLines: 1,
-                            maxLines: 5,
-                            maxLength: 8000,
-                            decoration: InputDecoration(
-                              hintText: widget.adminMode
-                                  ? 'Reply as CutLink Support…'
-                                  : 'Reply to CutLink Support…',
-                              counterText: '',
-                              filled: true,
-                              fillColor: const Color(0xFFF7F8FA),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFDDE1E5),
+                          child: LocalDraftRecovery(
+                            key: _supportDraftKey,
+                            scope: _supportDraftScope(ticket),
+                            controllers: {'message': _messageController},
+                            values: () => const {},
+                            restoreValues: (_) async {},
+                            expand: false,
+                            isBusy: () => _sending,
+                            isCurrentUser: () =>
+                                _draftUser.isNotEmpty &&
+                                Supabase.instance.client.auth.currentUser?.id ==
+                                    _draftUser &&
+                                _selectedTicket?['id'] == ticket['id'],
+                            child: TextField(
+                              controller: _messageController,
+                              enabled: !_sending,
+                              minLines: 1,
+                              maxLines: 5,
+                              maxLength: 8000,
+                              decoration: InputDecoration(
+                                hintText: widget.adminMode
+                                    ? 'Reply as CutLink Support…'
+                                    : 'Reply to CutLink Support…',
+                                counterText: '',
+                                filled: true,
+                                fillColor: const Color(0xFFF7F8FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFDDE1E5),
+                                  ),
                                 ),
                               ),
+                              onSubmitted: (_) => _sendMessage(),
                             ),
-                            onSubmitted: (_) => _sendMessage(),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1575,7 +1760,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             padding: const EdgeInsets.all(14),
                           ),
                           onPressed: _sending ? null : _sendMessage,
-                          icon: _uploading
+                          icon: _sending
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -1765,7 +1950,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   };
 
   String _titleCase(String value) {
-    if (value.isEmpty) return value;
+    if (value.isEmpty) {
+      return value;
+    }
     return '${value.substring(0, 1).toUpperCase()}${value.substring(1)}';
   }
 
@@ -2006,8 +2193,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
@@ -2123,20 +2314,26 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   DateTime? _date(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return DateTime.tryParse(value.toString())?.toLocal();
   }
 
   String _formatDate(dynamic value) {
     final date = _date(value);
-    if (date == null) return '—';
+    if (date == null) {
+      return '—';
+    }
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   String _formatMessageTime(dynamic value) {
     final date = _date(value);
-    if (date == null) return '';
+    if (date == null) {
+      return '';
+    }
     return '${_formatDate(value)} '
         '${date.hour.toString().padLeft(2, '0')}:'
         '${date.minute.toString().padLeft(2, '0')}';
@@ -2144,12 +2341,22 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   String _relativeDate(dynamic value) {
     final date = _date(value);
-    if (date == null) return '';
+    if (date == null) {
+      return '';
+    }
     final difference = DateTime.now().difference(date);
-    if (difference.inMinutes < 1) return 'Now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m';
-    if (difference.inDays < 1) return '${difference.inHours}h';
-    if (difference.inDays < 7) return '${difference.inDays}d';
+    if (difference.inMinutes < 1) {
+      return 'Now';
+    }
+    if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    }
+    if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    }
+    if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    }
     return _formatDate(value);
   }
 

@@ -1,3 +1,5 @@
+import '../../../shared/widgets/cutlink_review_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -168,134 +170,138 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: !_sending,
-      child: Dialog(
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(
-                    Icons.playlist_add_rounded,
-                    color: Color(0xFF741C1C),
-                    size: 36,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Something missing?',
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tell CutLink what you need. We’ll follow up in your support chat.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _kind,
-                    decoration: const InputDecoration(
-                      labelText: 'What is missing?',
+    return CutLinkReviewTheme(
+      child: PopScope(
+        canPop: !_sending,
+        child: Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(
+                      Icons.playlist_add_rounded,
+                      color: Color(0xFF741C1C),
+                      size: 36,
                     ),
-                    items:
-                        const [
-                              'Cut / section',
-                              'Specification / sub-cut',
-                              'Grade / attribute',
-                              'Product',
-                              'Other catalogue option',
-                            ]
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: _sending
-                        ? null
-                        : (value) {
-                            if (value != null) {
-                              setState(() => _kind = value);
-                            }
-                          },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    key: const ValueKey('missing-item-name'),
-                    controller: _name,
-                    enabled: !_sending,
-                    maxLength: 120,
-                    decoration: const InputDecoration(
-                      labelText: 'Item name',
-                      hintText: 'Name the cut, product or option you need',
-                    ),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Enter the item you need.'
-                        : null,
-                  ),
-                  TextFormField(
-                    key: const ValueKey('missing-item-details'),
-                    controller: _details,
-                    enabled: !_sending,
-                    maxLength: 3000,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Extra details (optional)',
-                      hintText:
-                          'Describe the specification or option you expected.',
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
-                      _error!,
-                      style: const TextStyle(color: Color(0xFF741C1C)),
+                      'Something missing?',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
                     ),
-                  ],
-                  const SizedBox(height: 16),
-                  Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TextButton(
-                        onPressed: _sending
-                            ? null
-                            : () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tell CutLink what you need. We’ll follow up in your support chat.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _kind,
+                      decoration: const InputDecoration(
+                        labelText: 'What is missing?',
                       ),
-                      FilledButton.icon(
-                        key: const ValueKey('missing-item-send'),
-                        onPressed: _sending ? null : _send,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF741C1C),
-                        ),
-                        icon: _sending
-                            ? const SizedBox.square(
-                                dimension: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                      items:
+                          const [
+                                'Cut / section',
+                                'Specification / sub-cut',
+                                'Grade / attribute',
+                                'Product',
+                                'Other catalogue option',
+                              ]
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
                                 ),
                               )
-                            : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(_sending ? 'Sending…' : 'Send request'),
+                              .toList(),
+                      onChanged: _sending
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setState(() => _kind = value);
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      key: const ValueKey('missing-item-name'),
+                      controller: _name,
+                      enabled: !_sending,
+                      maxLength: 120,
+                      decoration: const InputDecoration(
+                        labelText: 'Item name',
+                        hintText: 'Name the cut, product or option you need',
+                      ),
+                      validator: (value) => (value?.trim().length ?? 0) < 2
+                          ? 'Enter the item you need.'
+                          : null,
+                    ),
+                    TextFormField(
+                      key: const ValueKey('missing-item-details'),
+                      controller: _details,
+                      enabled: !_sending,
+                      maxLength: 3000,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Extra details (optional)',
+                        hintText:
+                            'Describe the specification or option you expected.',
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Color(0xFF741C1C)),
                       ),
                     ],
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: _sending
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton.icon(
+                          key: const ValueKey('missing-item-send'),
+                          onPressed: _sending ? null : _send,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF741C1C),
+                          ),
+                          icon: _sending
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 18),
+                          label: Text(_sending ? 'Sending…' : 'Send request'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

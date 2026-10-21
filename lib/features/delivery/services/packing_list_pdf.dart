@@ -1,3 +1,4 @@
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
 
@@ -126,11 +127,11 @@ class PackingListPdf {
                         item['comment'],
                       ].map(_text).where((s) => s.isNotEmpty).join('\n'),
                       [
-                        item['quantity'],
+                        CutLinkNumbers.quantity(item['quantity'], fallback: ''),
                         item['unit'],
                       ].map(_text).where((s) => s.isNotEmpty).join(' '),
                       [
-                        item['weight'],
+                        CutLinkNumbers.quantity(item['weight'], fallback: ''),
                         item['weight_unit'],
                       ].map(_text).where((s) => s.isNotEmpty).join(' '),
                     ],

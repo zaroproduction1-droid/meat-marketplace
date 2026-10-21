@@ -1,18 +1,25 @@
+import '../../../shared/widgets/cutlink_review_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../admin/presentation/admin_business_page.dart';
-import '../../admin/presentation/product_photo_moderation_controls.dart';
+
+import '../../admin/presentation/admin_product_review_page.dart';
 import '../../../shared/widgets/product_report_dialog.dart';
+import '../../../shared/widgets/content_reason_dialog.dart';
 
 class ProductReportContextPanel extends StatefulWidget {
   const ProductReportContextPanel({
     super.key,
     required this.ticketId,
     required this.adminMode,
+    this.onResolved,
+    this.showProductReviewLink = true,
   });
   final String ticketId;
   final bool adminMode;
+  final VoidCallback? onResolved;
+  final bool showProductReviewLink;
   @override
   State<ProductReportContextPanel> createState() =>
       _ProductReportContextPanelState();
@@ -21,7 +28,7 @@ class ProductReportContextPanel extends StatefulWidget {
 class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
   Map<String, dynamic>? _context;
   String? _imageUrl, _error;
-  bool _loading = true, _copying = false;
+  bool _loading = true, _copying = false, _resolving = false;
   @override
   void initState() {
     super.initState();
@@ -104,38 +111,99 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
     }
   }
 
+  Future<void> _resolve() async {
+    final note = await requestContentReason(
+      context,
+      title: 'Resolve this report',
+      description:
+          'Use this when no product action is needed. Choose an outcome for the reporting business. Product actions close the report automatically.',
+      submitLabel: 'Resolve report',
+      maxLength: 2000,
+      productReview: true,
+    );
+    if (note == null || !mounted) {
+      return;
+    }
+    setState(() => _resolving = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'resolve_product_content_report',
+        params: {'p_ticket_id': widget.ticketId, 'p_note': note},
+      );
+      await _load();
+      widget.onResolved?.call();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Report resolved. The outcome is shown in the report card and the reporter is notified.',
+            ),
+          ),
+        );
+      }
+    } on PostgrestException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.code == 'P0001'
+                  ? error.message
+                  : 'The report could not be resolved. Please retry.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'The report could not be resolved. Refresh its status before retrying.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _resolving = false);
+      }
+    }
+  }
+
   void _zoom(String url, String title) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => Dialog(
-        child: SizedBox(
-          width: 950,
-          height: MediaQuery.sizeOf(dialogContext).height * .8,
-          child: Column(
-            children: [
-              ListTile(
-                title: Text(title),
-                trailing: IconButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  icon: const Icon(Icons.close),
+      builder: (dialogContext) => CutLinkReviewTheme(
+        child: Dialog(
+          child: SizedBox(
+            width: 950,
+            height: MediaQuery.sizeOf(dialogContext).height * .8,
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(title),
+                  trailing: IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: InteractiveViewer(
-                  minScale: .5,
-                  maxScale: 6,
-                  child: Center(
-                    child: Image.network(
-                      url,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, error, stack) => const Text(
-                        'The photo could not be loaded. Close and refresh the report details.',
+                Expanded(
+                  child: InteractiveViewer(
+                    minScale: .5,
+                    maxScale: 6,
+                    child: Center(
+                      child: Image.network(
+                        url,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, error, stack) => const Text(
+                          'The photo could not be loaded. Close and refresh the report details.',
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -277,6 +345,14 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
         Text(reason, style: const TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 5),
         SelectableText(report['description']?.toString() ?? ''),
+        if (report['resolution_note'] != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              'Review outcome: ${report['resolution_note']}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
         if (report['reference_url'] != null) ...[
           const SizedBox(height: 10),
           const Text(
@@ -290,163 +366,196 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
         ],
       ],
     );
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0D0D0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8EEEE),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.flag_outlined,
-                  color: Color(0xFF741C1C),
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Product & photo report',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                IconButton(
-                  onPressed: _load,
-                  tooltip: 'Refresh report details',
-                  icon: const Icon(Icons.refresh, size: 19),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: LayoutBuilder(
-              builder: (context, box) => box.maxWidth < 540
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [photo, const SizedBox(height: 15), details],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        photo,
-                        const SizedBox(width: 18),
-                        Expanded(child: details),
-                      ],
-                    ),
-            ),
-          ),
-          if (!captured && data['source_path'] != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
+    return CutLinkReviewTheme(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E5E8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8F9FB),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+              ),
+              child: Row(
                 children: [
-                  const Text(
-                    'The original may be replaced or deleted before a copy is saved.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF846326)),
+                  const Icon(
+                    Icons.flag_outlined,
+                    color: Color(0xFF741C1C),
+                    size: 20,
                   ),
-                  if (data['closed'] != true)
-                    TextButton(
-                      onPressed: _copying ? null : _retryCopy,
-                      child: Text(
-                        _copying ? 'Saving copy…' : 'Retry saving photo copy',
-                      ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Product & photo report',
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
+                  ),
+                  IconButton(
+                    onPressed: _load,
+                    tooltip: 'Refresh report details',
+                    icon: const Icon(Icons.refresh, size: 19),
+                  ),
                 ],
               ),
             ),
-          if (widget.adminMode)
             Padding(
-              padding: const EdgeInsets.fromLTRB(15, 4, 15, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (data['photo_changed'] == true)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'The supplier photo has changed or been removed since this report. Review the current photo before taking action.',
+              padding: const EdgeInsets.all(15),
+              child: LayoutBuilder(
+                builder: (context, box) => box.maxWidth < 540
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [photo, const SizedBox(height: 15), details],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          photo,
+                          const SizedBox(width: 18),
+                          Expanded(child: details),
+                        ],
+                      ),
+              ),
+            ),
+            if (!captured && data['source_path'] != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    const Text(
+                      'The original may be replaced or deleted before a copy is saved.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF846326)),
+                    ),
+                    if (data['closed'] != true)
+                      TextButton(
+                        onPressed: _copying ? null : _retryCopy,
+                        child: Text(
+                          _copying ? 'Saving copy…' : 'Retry saving photo copy',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            if (!widget.adminMode && data['closed'] == true)
+              const ListTile(
+                leading: Icon(Icons.task_alt, color: Colors.green),
+                title: Text('Thank you for your report'),
+                subtitle: Text(
+                  'Your report is closed. CutLink has reviewed it and is following up with the supplier where needed.',
+                ),
+              ),
+            if (widget.adminMode)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 4, 15, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (data['photo_changed'] == true)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'The supplier photo has changed or been removed since this report. Review the current photo before taking action.',
+                          style: TextStyle(
+                            color: Color(0xFF846326),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    if (data['restricted'] == true)
+                      const Text(
+                        'Photo uploads are currently blocked for this product.',
                         style: TextStyle(
-                          color: Color(0xFF846326),
+                          color: Color(0xFF741C1C),
+                          fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
                       ),
-                    ),
-                  if (data['restricted'] == true)
-                    const Text(
-                      'Photo uploads are currently blocked for this product.',
-                      style: TextStyle(
-                        color: Color(0xFF741C1C),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      if (currentPath != null)
-                        TextButton.icon(
-                          onPressed: () => _zoom(
-                            Supabase.instance.client.storage
-                                .from('product-photos')
-                                .getPublicUrl(currentPath),
-                            'Current supplier photo',
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        if (currentPath != null)
+                          TextButton.icon(
+                            onPressed: () => _zoom(
+                              Supabase.instance.client.storage
+                                  .from('product-photos')
+                                  .getPublicUrl(currentPath),
+                              'Current supplier photo',
+                            ),
+                            icon: const Icon(Icons.photo_outlined, size: 18),
+                            label: const Text('View current photo'),
                           ),
-                          icon: const Icon(Icons.photo_outlined, size: 18),
-                          label: const Text('View current photo'),
-                        ),
-                      if (snapshot['supplier_business_id'] != null)
+                        if (widget.showProductReviewLink &&
+                            data['product_exists'] == true)
+                          FilledButton.icon(
+                            onPressed: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => AdminProductReviewPage(
+                                    ticketId: widget.ticketId,
+                                  ),
+                                ),
+                              );
+                              if (mounted) {
+                                await _load();
+                                widget.onResolved?.call();
+                              }
+                            },
+                            icon: const Icon(Icons.manage_search, size: 18),
+                            label: const Text('Review this product'),
+                          ),
                         TextButton.icon(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => AdminBusinessPage(
-                                businessId: snapshot['supplier_business_id']
-                                    .toString(),
-                              ),
+                          onPressed: () => Clipboard.setData(
+                            ClipboardData(
+                              text:
+                                  'Ticket ${data['ticket_number']}\nProduct ${snapshot['product_id']}\nSKU ${snapshot['sku'] ?? ''}\nSupplier ${snapshot['supplier_name']}',
                             ),
                           ),
-                          icon: const Icon(Icons.storefront_outlined, size: 18),
-                          label: const Text('Open supplier'),
+                          icon: const Icon(Icons.copy_outlined, size: 17),
+                          label: const Text('Copy case reference'),
                         ),
-                      TextButton.icon(
-                        onPressed: () => Clipboard.setData(
-                          ClipboardData(
-                            text:
-                                'Ticket ${data['ticket_number']}\nProduct ${snapshot['product_id']}\nSKU ${snapshot['sku'] ?? ''}\nSupplier ${snapshot['supplier_name']}',
-                          ),
-                        ),
-                        icon: const Icon(Icons.copy_outlined, size: 17),
-                        label: const Text('Copy case reference'),
-                      ),
-                    ],
-                  ),
-                  if (data['product_exists'] == true &&
-                      report['original_photo_path'] != null)
-                    ProductPhotoModerationControls(
-                      productId: report['product_id'].toString(),
-                      ticketId: widget.ticketId,
-                      onChanged: _load,
+                      ],
                     ),
-                  const Text(
-                    'Record the review reason when taking action. Reply and update the ticket status below.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF666666)),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Review this product to take action. The report will close automatically; supplier follow-up continues separately.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF555555)),
+                    ),
+                    const SizedBox(height: 10),
+                    if (data['closed'] != true)
+                      FilledButton.icon(
+                        onPressed: _resolving ? null : _resolve,
+                        icon: const Icon(Icons.task_alt, size: 18),
+                        label: Text(
+                          _resolving ? 'Resolving…' : 'Resolve report',
+                        ),
+                      )
+                    else
+                      const Text(
+                        'Report resolved or closed. The reporting business may report this product again.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Use the chat below if a conversation is needed.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF666666)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
