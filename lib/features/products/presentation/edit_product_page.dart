@@ -1,4 +1,6 @@
 import '../../../shared/widgets/local_draft_recovery.dart';
+import '../../../shared/widgets/supplier_specification_field.dart';
+import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/drafts/local_draft_store.dart';
 import '../../../shared/widgets/unsaved_changes_guard.dart';
 import '../../../shared/widgets/workspace_loading.dart';
@@ -56,6 +58,8 @@ class _EditProductPageState extends State<EditProductPage> {
     'useByDateController': _useByDateController,
   };
   Map<String, dynamic> _draftValues() => {
+    'supplierAttributes': Map<String, String>.from(_supplierAttributes),
+    'chickenAttributes': Map<String, String>.from(_chickenAttributes),
     'selectedAnimalId': _selectedAnimalId,
     'selectedSectionId': _selectedSectionId,
     'selectedSpecificationId': _selectedSpecificationId,
@@ -74,6 +78,10 @@ class _EditProductPageState extends State<EditProductPage> {
     'active': _active,
   };
   final _photoDraft = ProductPhotoDraft();
+  final Map<String, String> _supplierAttributes = {};
+  final Map<String, String> _chickenAttributes = {};
+  bool get _usesGeneralSubcuts =>
+      SupplierSpecificationField.usesGeneralSubcuts(_selectedAnimalCode);
 
   late final TextEditingController _skuController;
   late final TextEditingController _productNameController;
@@ -105,6 +113,8 @@ class _EditProductPageState extends State<EditProductPage> {
   String? _pageLoadError;
   String? _initialSelections;
   String get _selectionSnapshot => [
+    _supplierAttributes.toString(),
+    _chickenAttributes.toString(),
     _selectedAnimalId,
     _selectedSectionId,
     _selectedSpecificationId,
@@ -214,6 +224,16 @@ class _EditProductPageState extends State<EditProductPage> {
   List<Map<String, dynamic>> _approvedCustomers = [];
 
   Future<void> _restoreDraftValues(Map<String, dynamic> data) async {
+    final restoredAttributes = data['supplierAttributes'];
+    final chicken = data['chickenAttributes'];
+    if (chicken is Map) {
+      for (final key in ChickenProductAttributes.choices.keys) {
+        _chickenAttributes[key] = ChickenProductAttributes.value(
+          key,
+          chicken[key],
+        );
+      }
+    }
     if (_usesSpecGradeCatalogue) {
       final selectedAnimalId = data['selectedAnimalId'];
       if (selectedAnimalId is String && selectedAnimalId != _selectedAnimalId) {
@@ -315,6 +335,14 @@ class _EditProductPageState extends State<EditProductPage> {
       if (data['active'] is bool) {
         _active = data['active'] as bool;
       }
+      _supplierAttributes
+        ..clear()
+        ..addAll(
+          SupplierVariantOptions.normalise(
+            _selectedAnimalCode,
+            restoredAttributes,
+          ),
+        );
       _hasUnsavedChanges = true;
       _formKey = GlobalKey<FormState>();
     });
@@ -384,6 +412,18 @@ class _EditProductPageState extends State<EditProductPage> {
   }
 
   void _applyProductData(Map<String, dynamic> product) {
+    final animal =
+        (product['meat_animals'] as Map?)?['code']?.toString() ??
+        _selectedAnimalCode;
+    _supplierAttributes
+      ..clear()
+      ..addAll(SupplierVariantOptions.fromProduct(animal, product));
+    for (final key in ChickenProductAttributes.choices.keys) {
+      _chickenAttributes[key] = ChickenProductAttributes.value(
+        key,
+        product[key],
+      );
+    }
     _photoDraft.load({...widget.product, ...product});
     _skuController.text = product['sku']?.toString() ?? '';
     _productNameController.text = product['product_name']?.toString() ?? '';
@@ -625,6 +665,7 @@ class _EditProductPageState extends State<EditProductPage> {
     }
 
     setState(() {
+      _supplierAttributes.clear();
       _selectedAnimalId = animalId;
       _selectedSectionId = null;
       _selectedSpecificationId = null;
@@ -1079,6 +1120,9 @@ class _EditProductPageState extends State<EditProductPage> {
         await _photoDraft.prepare(businessId, widget.product['id'].toString());
       }
       final updateData = <String, dynamic>{
+        'supplier_attributes': _usesGeneralSubcuts
+            ? _supplierAttributes
+            : <String, String>{},
         ..._photoDraft.fields,
         'sku': _skuController.text.trim(),
 
@@ -1131,6 +1175,13 @@ class _EditProductPageState extends State<EditProductPage> {
         'supplier_specification': _emptyToNull(
           _supplierSpecificationController.text,
         ),
+        if (_selectedAnimalCode == 'CHICKEN') ...{
+          'chicken_skin': _supplierAttributes['skin'] ?? 'not_applicable',
+          'chicken_bone': _supplierAttributes['bone'] ?? 'not_applicable',
+          'chicken_preparation':
+              _supplierAttributes['preparation'] ?? 'not_applicable',
+          'chicken_production_type': _supplierAttributes['production'],
+        },
 
         'commercial_description': _isLamb
             ? _emptyToNull(_commercialDescriptionController.text)
@@ -1140,7 +1191,9 @@ class _EditProductPageState extends State<EditProductPage> {
             ? int.parse(_lambFatClass)
             : null,
 
-        'bone_state': _isLamb ? _boneState : widget.product['bone_state'],
+        'bone_state': _usesGeneralSubcuts
+            ? _supplierAttributes['bone'] ?? 'not_specified'
+            : widget.product['bone_state'],
 
         'lot_batch': _isLamb
             ? _emptyToNull(_lotBatchController.text)
@@ -2804,7 +2857,9 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     isExpanded: true,
                                                     decoration: InputDecoration(
                                                       labelText:
-                                                          'Cut / Specification',
+                                                          _usesGeneralSubcuts
+                                                          ? 'Sub-cut'
+                                                          : 'Cut / Specification',
                                                       border:
                                                           const OutlineInputBorder(),
                                                       suffixIcon:
@@ -2855,18 +2910,21 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                                   const SizedBox(height: 10),
 
-                                                  OutlinedButton.icon(
-                                                    onPressed:
-                                                        _selectedSectionId ==
-                                                                null ||
-                                                            _isSaving
-                                                        ? null
-                                                        : _addManualSpecificationNew,
-                                                    icon: const Icon(Icons.add),
-                                                    label: const Text(
-                                                      'Add Supplier-Specific Cut',
+                                                  if (!_usesGeneralSubcuts)
+                                                    OutlinedButton.icon(
+                                                      onPressed:
+                                                          _selectedSectionId ==
+                                                                  null ||
+                                                              _isSaving
+                                                          ? null
+                                                          : _addManualSpecificationNew,
+                                                      icon: const Icon(
+                                                        Icons.add,
+                                                      ),
+                                                      label: const Text(
+                                                        'Add Supplier-Specific Cut',
+                                                      ),
                                                     ),
-                                                  ),
 
                                                   const SizedBox(height: 12),
 
@@ -2989,7 +3047,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                               Text(
                                                                 _usesGradeStage
                                                                     ? 'Standard, Trade and Customer-Specific prices all belong to this exact specification and $_gradeStageLabel.'
-                                                                    : 'Standard, Trade and Customer-Specific prices all belong to this exact specification.',
+                                                                    : 'Prices belong to this supplier product, including its own preparation and specification.',
                                                                 style: const TextStyle(
                                                                   color: Color(
                                                                     0xFF666666,
@@ -3025,6 +3083,34 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                                 const SizedBox(height: 16),
 
+                                                if (_usesGeneralSubcuts) ...[
+                                                  _sectionTitle(
+                                                    'Supplier specification',
+                                                    subtitle:
+                                                        'Choose the same standard options butchers use to filter products.',
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  SupplierSpecificationField(
+                                                    values: _supplierAttributes,
+                                                    previousDetails:
+                                                        _supplierSpecificationController
+                                                            .text,
+                                                    onChanged: (field, value) =>
+                                                        setState(() {
+                                                          if (value.isEmpty) {
+                                                            _supplierAttributes
+                                                                .remove(field);
+                                                          } else {
+                                                            _supplierAttributes[field] =
+                                                                value;
+                                                          }
+                                                        }),
+                                                    animalCode:
+                                                        _selectedAnimalCode,
+                                                    enabled: !_isSaving,
+                                                  ),
+                                                  const SizedBox(height: 18),
+                                                ],
                                                 _sectionTitle(
                                                   'Product details',
                                                   subtitle:
@@ -3222,6 +3308,8 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                                 ProductBrandField(
                                                   controller: _brandController,
+                                                  allowCustom:
+                                                      !_usesGeneralSubcuts,
                                                   supplierBusinessId: widget
                                                       .product['supplier_business_id']
                                                       ?.toString(),
@@ -3360,36 +3448,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         height: 12,
                                                       ),
                                                       _twoColumnFields(
-                                                        CutLinkPickerField<
-                                                          String
-                                                        >(
-                                                          label: 'Bone',
-                                                          value: _boneState,
-                                                          options: const [
-                                                            CutLinkPickerOption(
-                                                              value:
-                                                                  'not_specified',
-                                                              label:
-                                                                  'Not specified',
-                                                            ),
-                                                            CutLinkPickerOption(
-                                                              value: 'bone_in',
-                                                              label: 'Bone In',
-                                                            ),
-                                                            CutLinkPickerOption(
-                                                              value: 'boneless',
-                                                              label: 'Boneless',
-                                                            ),
-                                                          ],
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                _boneState =
-                                                                    value;
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
+                                                        const SizedBox.shrink(),
                                                         TextFormField(
                                                           controller:
                                                               _lotBatchController,
@@ -3486,6 +3545,8 @@ class _EditProductPageState extends State<EditProductPage> {
                                                                   'Commercial Type / Program',
                                                               choices:
                                                                   productLambPrograms,
+                                                              allowCustom:
+                                                                  false,
                                                               enabled:
                                                                   !_isSaving,
                                                             )
@@ -3495,7 +3556,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                               label:
                                                                   'Breed / program',
                                                               choices:
-                                                                  productPrograms,
+                                                                  _usesGeneralSubcuts
+                                                                  ? const []
+                                                                  : productPrograms,
+                                                              allowCustom:
+                                                                  !_usesGeneralSubcuts,
                                                               enabled:
                                                                   !_isSaving,
                                                               onChanged: () =>
@@ -3537,26 +3602,27 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                                     const SizedBox(height: 12),
 
-                                                    _twoColumnFields(
-                                                      ProductAttributeField(
-                                                        controller:
-                                                            _trimSpecificationController,
-                                                        label:
-                                                            'Trim / preparation',
-                                                        choices:
-                                                            productPreparationOptions,
-                                                      ),
-                                                      TextFormField(
-                                                        controller:
-                                                            _fatSpecificationController,
-                                                        decoration: const InputDecoration(
-                                                          labelText:
-                                                              'Fat specification (optional)',
-                                                          border:
-                                                              OutlineInputBorder(),
+                                                    if (!_usesGeneralSubcuts)
+                                                      _twoColumnFields(
+                                                        ProductAttributeField(
+                                                          controller:
+                                                              _trimSpecificationController,
+                                                          label:
+                                                              'Trim / preparation',
+                                                          choices:
+                                                              productPreparationOptions,
+                                                        ),
+                                                        TextFormField(
+                                                          controller:
+                                                              _fatSpecificationController,
+                                                          decoration: const InputDecoration(
+                                                            labelText:
+                                                                'Fat specification (optional)',
+                                                            border:
+                                                                OutlineInputBorder(),
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
 
                                                     const SizedBox(height: 12),
 
@@ -3567,6 +3633,8 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         label: 'Packaging',
                                                         choices:
                                                             productPackagingOptions,
+                                                        allowCustom:
+                                                            !_usesGeneralSubcuts,
                                                       ),
                                                       TextFormField(
                                                         controller:
@@ -3626,20 +3694,21 @@ class _EditProductPageState extends State<EditProductPage> {
 
                                                     const SizedBox(height: 12),
 
-                                                    TextFormField(
-                                                      controller:
-                                                          _supplierSpecificationController,
-                                                      minLines: 3,
-                                                      maxLines: 6,
-                                                      decoration: const InputDecoration(
-                                                        labelText:
-                                                            'Supplier specification / notes (optional)',
-                                                        hintText:
-                                                            'Extra trade information that does not fit the structured fields above',
-                                                        border:
-                                                            OutlineInputBorder(),
+                                                    if (!_usesGeneralSubcuts)
+                                                      TextFormField(
+                                                        controller:
+                                                            _supplierSpecificationController,
+                                                        minLines: 3,
+                                                        maxLines: 6,
+                                                        decoration: const InputDecoration(
+                                                          labelText:
+                                                              'Supplier specification / notes (optional)',
+                                                          hintText:
+                                                              'Extra trade information that does not fit the structured fields above',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
                                                       ),
-                                                    ),
                                                   ],
                                                 ),
 

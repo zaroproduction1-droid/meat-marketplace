@@ -1,7 +1,10 @@
 import '../../../shared/widgets/product_content_report_button.dart';
+import '../../../shared/animal_catalogues/supplier_variant_options.dart';
+import '../../../shared/widgets/supplier_specification_field.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1335,11 +1338,21 @@ class _MarketplaceProductDetailsPageState
       MapEntry('Brand', _textValue('brand')),
       MapEntry('Animal', _speciesName()),
       MapEntry('Section', _newSectionName()),
-      MapEntry('Specification', _currentCatalogueProductName()),
       MapEntry(
-        LambProductDetails.isLamb(product) ? 'Sheepmeat Category' : 'Grade',
-        _variantName(),
+        SupplierSpecificationField.usesGeneralSubcuts(
+              LambProductDetails.animalCode(product),
+            )
+            ? 'Sub-cut'
+            : 'Specification',
+        _currentCatalogueProductName(),
       ),
+      if (!SupplierSpecificationField.usesGeneralSubcuts(
+        LambProductDetails.animalCode(product),
+      ))
+        MapEntry(
+          LambProductDetails.isLamb(product) ? 'Sheepmeat Category' : 'Grade',
+          _variantName(),
+        ),
       MapEntry(
         'Temperature',
         _formatTemperature(product['temperature_state'] as String?),
@@ -1351,14 +1364,26 @@ class _MarketplaceProductDetailsPageState
     ];
 
     final meatFields = <MapEntry<String, String>>[
-      MapEntry(
-        LambProductDetails.isLamb(product)
-            ? 'Commercial Type / Program'
-            : 'Grade / category',
-        LambProductDetails.isLamb(product)
-            ? LambProductDetails.program(product)
-            : _variantName(),
-      ),
+      for (final entry in SupplierVariantOptions.normalise(
+        LambProductDetails.animalCode(product),
+        product['supplier_attributes'],
+      ).entries)
+        MapEntry(
+          SupplierVariantOptions.labels[entry.key]!,
+          SupplierVariantOptions.choices[entry.key]![entry.value]!,
+        ),
+      if (LambProductDetails.isLamb(product) ||
+          !SupplierSpecificationField.usesGeneralSubcuts(
+            LambProductDetails.animalCode(product),
+          ))
+        MapEntry(
+          LambProductDetails.isLamb(product)
+              ? 'Commercial Type / Program'
+              : 'Grade / category',
+          LambProductDetails.isLamb(product)
+              ? LambProductDetails.program(product)
+              : _variantName(),
+        ),
       MapEntry(
         'Commercial description',
         LambProductDetails.commercialDescription(product),
@@ -1621,7 +1646,12 @@ class _MarketplaceProductDetailsPageState
         if (supplierSpecification.isNotEmpty) ...[
           const SizedBox(height: 10),
           _compactCard(
-            title: 'Supplier Specification',
+            title:
+                SupplierVariantOptions.supports(
+                  LambProductDetails.animalCode(product),
+                )
+                ? 'Previous supplier details'
+                : 'Supplier Specification',
             icon: Icons.description_outlined,
             child: Text(
               supplierSpecification,

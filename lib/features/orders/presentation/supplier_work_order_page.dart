@@ -1273,7 +1273,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     final suppliedController = TextEditingController(
       text:
           item['supplied_quantity']?.toString() ??
-          (orderedQuantity?.toString() ?? '0'),
+          _formatNumber(orderedQuantity),
     );
 
     final weightController = TextEditingController(

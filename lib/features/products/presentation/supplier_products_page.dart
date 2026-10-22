@@ -1,6 +1,7 @@
 import '../../../shared/widgets/supplier_product_attention_notice.dart';
 import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'dart:async';
 import 'dart:convert';
 

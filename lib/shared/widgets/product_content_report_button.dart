@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../features/support/presentation/support_center_page.dart';
 import 'product_report_dialog.dart';
 

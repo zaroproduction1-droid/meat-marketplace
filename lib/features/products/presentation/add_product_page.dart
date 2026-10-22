@@ -1,4 +1,6 @@
 import '../../../shared/widgets/local_draft_recovery.dart';
+import '../../../shared/widgets/supplier_specification_field.dart';
+import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/drafts/local_draft_store.dart';
 import '../../../shared/widgets/unsaved_changes_guard.dart';
 import '../../../shared/widgets/workspace_loading.dart';
@@ -66,6 +68,7 @@ class _AddProductPageState extends State<AddProductPage> {
     'useByDate': _useByDate,
   };
   Map<String, dynamic> _draftValues() => {
+    'supplierAttributes': Map<String, String>.from(_supplierAttributes),
     'animalId': _animalId,
     'sectionId': _sectionId,
     'specificationId': _specificationId,
@@ -84,6 +87,7 @@ class _AddProductPageState extends State<AddProductPage> {
     'chickenPreparation': _chickenPreparation,
   };
   final _sku = TextEditingController();
+  final Map<String, String> _supplierAttributes = {};
   final _productName = TextEditingController();
   final _standardPrice = TextEditingController();
   final _availableCartons = TextEditingController();
@@ -135,6 +139,7 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _initialSelections;
   String? _loadError;
   String get _selectionSnapshot => [
+    _supplierAttributes.toString(),
     _animalId,
     _sectionId,
     _specificationId,
@@ -172,6 +177,14 @@ class _AddProductPageState extends State<AddProductPage> {
         return;
       }
     }
+    _supplierAttributes
+      ..clear()
+      ..addAll(
+        SupplierVariantOptions.normalise(
+          _selectedAnimalCode,
+          data['supplierAttributes'],
+        ),
+      );
     final sectionId = data['sectionId'];
     if (sectionId is String && sectionId != _sectionId) {
       if (!_sections.any((row) => row['id']?.toString() == sectionId)) {
@@ -479,6 +492,8 @@ class _AddProductPageState extends State<AddProductPage> {
       _animalCatalogue?.gradeStageLabel ?? 'Grade / Category';
 
   bool get _isChicken => _selectedAnimalCode == 'CHICKEN';
+  bool get _usesGeneralSubcuts =>
+      SupplierSpecificationField.usesGeneralSubcuts(_selectedAnimalCode);
   bool get _isGoat => _selectedAnimalCode == 'GOAT';
   bool get _isLamb => _selectedAnimalCode == 'LAMB';
 
@@ -506,6 +521,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     setState(() {
       _animalId = id;
+      _supplierAttributes.clear();
       _sectionId = null;
       _specificationId = null;
       _gradeId = null;
@@ -893,6 +909,7 @@ class _AddProductPageState extends State<AddProductPage> {
           params: {
             'p_details': {
               ...size.fields,
+              'supplier_attributes': _supplierAttributes,
               'p_supplier_business_id': _supplierBusinessId,
               'p_animal_id': _animalId,
               'p_section_id': _sectionId,
@@ -939,6 +956,8 @@ class _AddProductPageState extends State<AddProductPage> {
           params: {
             'p_details': {
               ...size.fields,
+              if (_usesGeneralSubcuts)
+                'supplier_attributes': _supplierAttributes,
               if (_isGoat || _isLamb) ...{
                 'bone_state': _isLamb ? _lambBoneState : _goatBoneState,
                 'carton_weight': cartonWeight,
@@ -1019,8 +1038,8 @@ class _AddProductPageState extends State<AddProductPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isChicken
-                ? 'Chicken product created.'
+            _usesGeneralSubcuts
+                ? 'Product created.'
                 : 'Product and category price created.',
           ),
         ),
@@ -1064,6 +1083,7 @@ class _AddProductPageState extends State<AddProductPage> {
     required String subtitle,
     required Widget child,
     IconData icon = Icons.inventory_2_outlined,
+    bool collapsed = false,
   }) {
     return Container(
       padding: const EdgeInsets.all(22),
@@ -1072,53 +1092,63 @@ class _AddProductPageState extends State<AddProductPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE3E3DF)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4EAEA),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: _darkRed, size: 21),
+      child: collapsed
+          ? ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+              subtitle: Text(subtitle),
+              children: [const SizedBox(height: 14), child],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF2A2A2A),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4EAEA),
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      child: Icon(icon, color: _darkRed, size: 21),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF6B6B6B),
-                        fontSize: 12.5,
-                        height: 1.35,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF2A2A2A),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              color: Color(0xFF6B6B6B),
+                              fontSize: 12.5,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          child,
-        ],
-      ),
+                const SizedBox(height: 20),
+                child,
+              ],
+            ),
     );
   }
 
@@ -1322,143 +1352,23 @@ class _AddProductPageState extends State<AddProductPage> {
     );
   }
 
-  Widget _chickenSpecifications() {
-    CutLinkPickerField<String> picker({
-      required String label,
-      required String value,
-      required List<CutLinkPickerOption<String>> options,
-      required ValueChanged<String> onChanged,
-    }) {
-      return CutLinkPickerField<String>(
-        label: label,
-        value: value,
-        options: options,
-        enabled: !_saving,
-        onChanged: (picked) {
-          if (picked != null) {
-            onChanged(picked);
-          }
-        },
-      );
-    }
-
-    return Column(
-      children: [
-        _twoFields(
-          picker(
-            label: 'Skin',
-            value: _chickenSkin,
-            options: const [
-              CutLinkPickerOption(value: 'skin_on', label: 'Skin On'),
-              CutLinkPickerOption(value: 'skin_off', label: 'Skin Off'),
-              CutLinkPickerOption(
-                value: 'not_applicable',
-                label: 'Not Applicable',
-              ),
-            ],
-            onChanged: (value) => setState(() => _chickenSkin = value),
-          ),
-          picker(
-            label: 'Bone',
-            value: _chickenBone,
-            options: const [
-              CutLinkPickerOption(value: 'bone_in', label: 'Bone In'),
-              CutLinkPickerOption(value: 'boneless', label: 'Boneless'),
-              CutLinkPickerOption(
-                value: 'not_applicable',
-                label: 'Not Applicable',
-              ),
-            ],
-            onChanged: (value) => setState(() => _chickenBone = value),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _twoFields(
-          picker(
-            label: 'Product State',
-            value: _temperature,
-            options: const [
-              CutLinkPickerOption(value: 'fresh', label: 'Fresh'),
-              CutLinkPickerOption(value: 'frozen', label: 'Frozen'),
-            ],
-            onChanged: (value) => setState(() => _temperature = value),
-          ),
-          picker(
-            label: 'Production Type',
-            value: _chickenProductionType,
-            options: const [
-              CutLinkPickerOption(value: 'conventional', label: 'Conventional'),
-              CutLinkPickerOption(value: 'free_range', label: 'Free Range'),
-              CutLinkPickerOption(value: 'organic', label: 'Organic'),
-              CutLinkPickerOption(value: 'other', label: 'Other'),
-            ],
-            onChanged: (value) =>
-                setState(() => _chickenProductionType = value),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _twoFields(
-          picker(
-            label: 'Halal',
-            value: _halal,
-            options: const [
-              CutLinkPickerOption(
-                value: 'not_specified',
-                label: 'Not Specified',
-              ),
-              CutLinkPickerOption(value: 'halal', label: 'Halal'),
-              CutLinkPickerOption(value: 'not_halal', label: 'Not Halal'),
-            ],
-            onChanged: (value) => setState(() => _halal = value),
-          ),
-          picker(
-            label: 'Preparation',
-            value: _chickenPreparation,
-            options: const [
-              CutLinkPickerOption(
-                value: 'not_applicable',
-                label: 'Not Applicable',
-              ),
-              CutLinkPickerOption(value: 'whole', label: 'Whole'),
-              CutLinkPickerOption(value: 'fillet', label: 'Fillet'),
-              CutLinkPickerOption(value: 'diced', label: 'Diced'),
-              CutLinkPickerOption(value: 'strips', label: 'Strips'),
-              CutLinkPickerOption(value: 'sliced', label: 'Sliced'),
-              CutLinkPickerOption(value: 'minced', label: 'Minced'),
-              CutLinkPickerOption(value: 'butterflied', label: 'Butterflied'),
-              CutLinkPickerOption(value: 'schnitzel', label: 'Schnitzel'),
-              CutLinkPickerOption(
-                value: 'portion_controlled',
-                label: 'Portion Controlled',
-              ),
-              CutLinkPickerOption(value: 'other', label: 'Other'),
-            ],
-            onChanged: (value) => setState(() => _chickenPreparation = value),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _twoFields(
-          TextFormField(
-            controller: _chickenSizeWeight,
-            decoration: const InputDecoration(
-              labelText: 'Bird size / other size label (optional)',
-              hintText: 'Example: No. 12, No. 18 or XL',
-              helperText: 'Use Piece size above for weights in kg or g.',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          TextFormField(
-            controller: _chickenCartonSize,
-            decoration: const InputDecoration(
-              labelText: 'Pack / Carton Size (optional)',
-              hintText: 'Example: 5 kg, 10 kg, 12 units',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _chickenSpecifications() => _twoFields(
+    TextFormField(
+      controller: _chickenSizeWeight,
+      decoration: const InputDecoration(
+        labelText: 'Bird size label (optional)',
+        helperText: 'Use Piece size for searchable weight ranges.',
+        border: OutlineInputBorder(),
+      ),
+    ),
+    TextFormField(
+      controller: _chickenCartonSize,
+      decoration: const InputDecoration(
+        labelText: 'Pack label (optional)',
+        border: OutlineInputBorder(),
+      ),
+    ),
+  );
 
   Future<void> _pickDate(TextEditingController controller) async {
     final parsed = DateTime.tryParse(controller.text.trim());
@@ -1508,21 +1418,11 @@ class _AddProductPageState extends State<AddProductPage> {
         _twoFields(
           ProductAttributeField(
             controller: _breed,
-            label: 'Commercial Type / Program',
+            label: 'Commercial program',
             choices: productLambPrograms,
+            allowCustom: false,
             enabled: !_saving,
           ),
-          TextFormField(
-            controller: _commercialDescription,
-            decoration: const InputDecoration(
-              labelText: 'Commercial Description (optional)',
-              hintText: 'Example: Big & Lean',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _twoFields(
           CutLinkPickerField<String>(
             label: 'Fat Class',
             value: _lambFatClass,
@@ -1531,60 +1431,6 @@ class _AddProductPageState extends State<AddProductPage> {
             onChanged: (value) {
               if (value != null) {
                 setState(() => _lambFatClass = value);
-              }
-            },
-          ),
-          CutLinkPickerField<String>(
-            label: 'Bone',
-            value: _lambBoneState,
-            options: const [
-              CutLinkPickerOption(
-                value: 'not_specified',
-                label: 'Not specified',
-              ),
-              CutLinkPickerOption(value: 'bone_in', label: 'Bone-In'),
-              CutLinkPickerOption(value: 'boneless', label: 'Boneless'),
-            ],
-            enabled: !_saving,
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _lambBoneState = value);
-              }
-            },
-          ),
-        ),
-        const SizedBox(height: 14),
-        _twoFields(
-          CutLinkPickerField<String>(
-            label: 'Storage Condition',
-            value: _temperature,
-            options: const [
-              CutLinkPickerOption(value: 'fresh', label: 'Fresh'),
-              CutLinkPickerOption(value: 'chilled', label: 'Chilled'),
-              CutLinkPickerOption(value: 'frozen', label: 'Frozen'),
-            ],
-            enabled: !_saving,
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _temperature = value);
-              }
-            },
-          ),
-          CutLinkPickerField<String>(
-            label: 'Halal Status',
-            value: _halal,
-            options: const [
-              CutLinkPickerOption(
-                value: 'not_specified',
-                label: 'Not specified',
-              ),
-              CutLinkPickerOption(value: 'halal', label: 'Halal'),
-              CutLinkPickerOption(value: 'not_halal', label: 'Not halal'),
-            ],
-            enabled: !_saving,
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _halal = value);
               }
             },
           ),
@@ -1759,7 +1605,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                       : null,
                                 ),
                                 _cutLinkPickerField(
-                                  label: _isChicken
+                                  label: _usesGeneralSubcuts
                                       ? 'Main Cut'
                                       : 'Section / Main Cut',
                                   value: _sectionId,
@@ -1791,7 +1637,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               ),
                               const SizedBox(height: 14),
                               _cutLinkPickerField(
-                                label: _isChicken
+                                label: _usesGeneralSubcuts
                                     ? 'Sub-cut'
                                     : 'Cut / Specification',
                                 value: _specificationId,
@@ -1804,8 +1650,8 @@ class _AddProductPageState extends State<AddProductPage> {
                                             e['specification_type'] ==
                                                 'supplier_custom'
                                             ? 'Supplier custom specification'
-                                            : _isChicken
-                                            ? 'Chicken sub-cut'
+                                            : _usesGeneralSubcuts
+                                            ? 'General sub-cut'
                                             : 'CutLink specification',
                                       },
                                     )
@@ -1824,18 +1670,19 @@ class _AddProductPageState extends State<AddProductPage> {
                                     : null,
                               ),
                               const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: OutlinedButton.icon(
-                                  onPressed: _sectionId == null || _saving
-                                      ? null
-                                      : _addManualSpecification,
-                                  icon: const Icon(Icons.add),
-                                  label: const Text(
-                                    'Add Supplier-Specific Cut',
+                              if (!_usesGeneralSubcuts)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _sectionId == null || _saving
+                                        ? null
+                                        : _addManualSpecification,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text(
+                                      'Add Supplier-Specific Cut',
+                                    ),
                                   ),
                                 ),
-                              ),
                               const SizedBox(height: 14),
                               ProductSizeFields(
                                 supplierBusinessId: _supplierBusinessId,
@@ -1912,10 +1759,88 @@ class _AddProductPageState extends State<AddProductPage> {
                             ],
                           ),
                         ),
+                        if (_usesGeneralSubcuts) ...[
+                          const SizedBox(height: 14),
+                          _sectionCard(
+                            title: 'Supplier specification',
+                            subtitle:
+                                'Standard options used by suppliers and butcher search.',
+                            icon: Icons.tune_outlined,
+                            child: Column(
+                              children: [
+                                SupplierSpecificationField(
+                                  values: _supplierAttributes,
+                                  onChanged: (field, value) => setState(() {
+                                    if (value.isEmpty) {
+                                      _supplierAttributes.remove(field);
+                                    } else {
+                                      _supplierAttributes[field] = value;
+                                    }
+                                  }),
+                                  animalCode: _selectedAnimalCode,
+                                  enabled: !_saving,
+                                ),
+                                const SizedBox(height: 14),
+                                _twoFields(
+                                  CutLinkPickerField<String>(
+                                    label: 'Temperature',
+                                    value: _temperature,
+                                    enabled: !_saving,
+                                    options: [
+                                      const CutLinkPickerOption(
+                                        value: 'fresh',
+                                        label: 'Fresh',
+                                      ),
+                                      if (!_isChicken && !_isGoat)
+                                        const CutLinkPickerOption(
+                                          value: 'chilled',
+                                          label: 'Chilled',
+                                        ),
+                                      const CutLinkPickerOption(
+                                        value: 'frozen',
+                                        label: 'Frozen',
+                                      ),
+                                    ],
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() => _temperature = v);
+                                      }
+                                    },
+                                  ),
+                                  CutLinkPickerField<String>(
+                                    label: 'Halal',
+                                    value: _halal,
+                                    enabled: !_saving,
+                                    options: const [
+                                      CutLinkPickerOption(
+                                        value: 'not_specified',
+                                        label: 'Not specified',
+                                      ),
+                                      CutLinkPickerOption(
+                                        value: 'halal',
+                                        label: 'Halal',
+                                      ),
+                                      CutLinkPickerOption(
+                                        value: 'not_halal',
+                                        label: 'Not halal',
+                                      ),
+                                    ],
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() => _halal = v);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (_isChicken) ...[
                           const SizedBox(height: 14),
                           _sectionCard(
-                            title: 'Chicken Specifications',
+                            title: 'Optional chicken details',
+                            collapsed: true,
                             subtitle:
                                 'These describe the actual product variation without creating duplicate sub-categories.',
                             icon: Icons.tune_outlined,
@@ -1926,8 +1851,9 @@ class _AddProductPageState extends State<AddProductPage> {
                           const SizedBox(height: 14),
                           _sectionCard(
                             title: _isWholeLamb
-                                ? 'Whole Lamb / Carcase Specifications'
-                                : 'Lamb Commercial Specifications',
+                                ? 'Optional carcase details'
+                                : 'Optional lamb details',
+                            collapsed: true,
                             subtitle: _isWholeLamb
                                 ? 'Record only the carcase, program and traceability details supplied for this product.'
                                 : 'Add only the commercial details relevant to this Lamb cut.',
@@ -1971,12 +1897,14 @@ class _AddProductPageState extends State<AddProductPage> {
                               _twoFields(
                                 ProductBrandField(
                                   controller: _brand,
+                                  allowCustom: !_usesGeneralSubcuts,
                                   supplierBusinessId: _supplierBusinessId,
                                   animalCode: _selectedAnimalCode,
                                   enabled: !_saving,
                                 ),
                                 ProductAttributeField(
                                   controller: _packaging,
+                                  allowCustom: !_usesGeneralSubcuts,
                                   label: 'Packaging',
                                   choices: productPackagingOptions,
                                 ),
@@ -2125,111 +2053,21 @@ class _AddProductPageState extends State<AddProductPage> {
                         const SizedBox(height: 14),
                         if (_isGoat)
                           _sectionCard(
-                            title: 'Goat Specifications',
+                            title: 'Pack weight',
                             subtitle:
-                                'Goat attributes used by suppliers and shown to butchers.',
-                            icon: Icons.fact_check_outlined,
-                            child: Column(
-                              children: [
-                                _twoFields(
-                                  CutLinkPickerField<String>(
-                                    label: 'Bone',
-                                    value: _goatBoneState,
-                                    options: const [
-                                      CutLinkPickerOption(
-                                        value: 'bone_in',
-                                        label: 'Bone In',
-                                      ),
-                                      CutLinkPickerOption(
-                                        value: 'boneless',
-                                        label: 'Boneless',
-                                      ),
-                                    ],
-                                    enabled: !_saving,
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() => _goatBoneState = value);
-                                      }
-                                    },
+                                'Weight of the pack. Piece size is recorded separately.',
+                            icon: Icons.inventory_2_outlined,
+                            child: TextFormField(
+                              controller: _goatCartonWeight,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
                                   ),
-                                  CutLinkPickerField<String>(
-                                    label: 'Fresh / Frozen',
-                                    value: _temperature,
-                                    options: const [
-                                      CutLinkPickerOption(
-                                        value: 'fresh',
-                                        label: 'Fresh',
-                                      ),
-                                      CutLinkPickerOption(
-                                        value: 'frozen',
-                                        label: 'Frozen',
-                                      ),
-                                    ],
-                                    enabled: !_saving,
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() => _temperature = value);
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                _twoFields(
-                                  CutLinkPickerField<String>(
-                                    label: 'Halal',
-                                    value: _halal,
-                                    options: const [
-                                      CutLinkPickerOption(
-                                        value: 'not_specified',
-                                        label: 'Not specified',
-                                      ),
-                                      CutLinkPickerOption(
-                                        value: 'halal',
-                                        label: 'Halal',
-                                      ),
-                                      CutLinkPickerOption(
-                                        value: 'not_halal',
-                                        label: 'Not halal',
-                                      ),
-                                    ],
-                                    enabled: !_saving,
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() => _halal = value);
-                                      }
-                                    },
-                                  ),
-                                  ProductAttributeField(
-                                    controller: _breed,
-                                    label: 'Breed / program',
-                                    choices: productPrograms,
-                                    enabled: !_saving,
-                                    onChanged: () => setState(() {}),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-
-                                const SizedBox(height: 14),
-                                _twoFields(
-                                  TextFormField(
-                                    controller: _goatCartonWeight,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Pack / Carton Size',
-                                      suffixText: 'kg',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                  ProductAttributeField(
-                                    controller: _packaging,
-                                    label: 'Packaging',
-                                    choices: productPackagingOptions,
-                                  ),
-                                ),
-                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Pack weight',
+                                suffixText: 'kg',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
                         if (_usesGradeStage)
@@ -2350,22 +2188,23 @@ class _AddProductPageState extends State<AddProductPage> {
                             ),
                           ),
                         if (_usesGradeStage) const SizedBox(height: 14),
-                        _sectionCard(
-                          title: 'Supplier Notes',
-                          subtitle:
-                              'Optional internal/trade specification information.',
-                          icon: Icons.notes_outlined,
-                          child: TextFormField(
-                            controller: _supplierNotes,
-                            minLines: 3,
-                            maxLines: 6,
-                            decoration: const InputDecoration(
-                              labelText:
-                                  'Supplier Specification / Notes (optional)',
-                              border: OutlineInputBorder(),
+                        if (!_usesGeneralSubcuts)
+                          _sectionCard(
+                            title: 'Supplier Notes',
+                            subtitle:
+                                'Optional internal/trade specification information.',
+                            icon: Icons.notes_outlined,
+                            child: TextFormField(
+                              controller: _supplierNotes,
+                              minLines: 3,
+                              maxLines: 6,
+                              decoration: const InputDecoration(
+                                labelText:
+                                    'Supplier Specification / Notes (optional)',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                        ),
                         const SizedBox(height: 18),
                         PhoneRow(
                           mode: PhoneRowMode.wrap,
