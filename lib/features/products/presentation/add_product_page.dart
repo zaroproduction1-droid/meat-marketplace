@@ -88,6 +88,29 @@ class _AddProductPageState extends State<AddProductPage> {
   };
   final _sku = TextEditingController();
   final Map<String, String> _supplierAttributes = {};
+  Map<String, dynamic> get _supplierCutRules {
+    for (final cut in _specifications) {
+      if (cut['id']?.toString() == _specificationId &&
+          cut['supplier_attribute_rules'] is Map) {
+        return Map<String, dynamic>.from(
+          cut['supplier_attribute_rules'] as Map,
+        );
+      }
+    }
+    return const {};
+  }
+
+  void _pruneSupplierAttributes() {
+    final valid = SupplierVariantOptions.normaliseForCut(
+      _selectedAnimalCode,
+      _supplierAttributes,
+      _supplierCutRules,
+    );
+    _supplierAttributes
+      ..clear()
+      ..addAll(valid);
+  }
+
   final _productName = TextEditingController();
   final _standardPrice = TextEditingController();
   final _availableCartons = TextEditingController();
@@ -177,14 +200,6 @@ class _AddProductPageState extends State<AddProductPage> {
         return;
       }
     }
-    _supplierAttributes
-      ..clear()
-      ..addAll(
-        SupplierVariantOptions.normalise(
-          _selectedAnimalCode,
-          data['supplierAttributes'],
-        ),
-      );
     final sectionId = data['sectionId'];
     if (sectionId is String && sectionId != _sectionId) {
       if (!_sections.any((row) => row['id']?.toString() == sectionId)) {
@@ -207,6 +222,15 @@ class _AddProductPageState extends State<AddProductPage> {
         return;
       }
     }
+    _supplierAttributes
+      ..clear()
+      ..addAll(
+        SupplierVariantOptions.normaliseForCut(
+          _selectedAnimalCode,
+          data['supplierAttributes'],
+          _supplierCutRules,
+        ),
+      );
     final grade = data['gradeId'];
     if (grade is String &&
         _grades.any((row) => row['id']?.toString() == grade)) {
@@ -588,6 +612,7 @@ class _AddProductPageState extends State<AddProductPage> {
     }
     setState(() {
       _sectionId = id;
+      _supplierAttributes.clear();
       _specificationId = null;
       _gradeId = null;
       _specifications = [];
@@ -606,7 +631,9 @@ class _AddProductPageState extends State<AddProductPage> {
     try {
       final rows = await Supabase.instance.client
           .from('meat_specifications')
-          .select('id, name, ham_code, specification_type, approval_status')
+          .select(
+            'id, name, ham_code, specification_type, approval_status, supplier_attribute_rules',
+          )
           .eq('section_id', sectionId)
           .eq('is_active', true)
           .order('display_order')
@@ -644,6 +671,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     setState(() {
       _specificationId = id;
+      _pruneSupplierAttributes();
       _gradeId = null;
       _grades = [];
       _loadingGrades = _usesGradeStage;
@@ -858,6 +886,13 @@ class _AddProductPageState extends State<AddProductPage> {
       return;
     }
 
+    if (_usesGeneralSubcuts && _supplierCutRules.isEmpty) {
+      _message(
+        'Specification options are not available. Refresh the catalogue before saving.',
+      );
+      return;
+    }
+    _pruneSupplierAttributes();
     if (_usesGradeStage && _gradeId == null) {
       _message('Select $_gradeStageLabel.');
       return;
@@ -1769,6 +1804,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             child: Column(
                               children: [
                                 SupplierSpecificationField(
+                                  cutRules: _supplierCutRules,
                                   values: _supplierAttributes,
                                   onChanged: (field, value) => setState(() {
                                     if (value.isEmpty) {
@@ -1776,6 +1812,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     } else {
                                       _supplierAttributes[field] = value;
                                     }
+                                    _pruneSupplierAttributes();
                                   }),
                                   animalCode: _selectedAnimalCode,
                                   enabled: !_saving,

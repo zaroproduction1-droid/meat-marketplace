@@ -1,60 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cutlink/shared/widgets/supplier_specification_field.dart';
-import 'package:cutlink/shared/widgets/cutlink_picker.dart';
+import 'package:cutlink/shared/animal_catalogues/supplier_variant_options.dart';
 
 void main() {
-  testWidgets('Supplier specification uses dropdowns instead of free text', (
+  const rack = <String, dynamic>{
+    'bone': {'bone_in': 'Bone in'},
+    'rack_style': {'standard': 'Standard rack', 'frenched': 'Frenched'},
+    'rib_count': {'8': '8 ribs'},
+  };
+  const leg = <String, dynamic>{
+    'bone': {'bone_in': 'Bone in', 'boneless': 'Boneless'},
+    'chump': {'chump_on': 'Chump on', 'chump_off': 'Chump off'},
+  };
+  testWidgets('Rack options disappear when the supplier changes to Leg', (
     tester,
   ) async {
-    final values = <String, String>{};
+    var rules = rack;
+    var values = <String, String>{
+      'bone': 'bone_in',
+      'rack_style': 'frenched',
+      'rib_count': '8',
+    };
+    late StateSetter rebuild;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: StatefulBuilder(
-              builder: (context, update) => SupplierSpecificationField(
-                animalCode: 'CHICKEN',
-                values: values,
-                onChanged: (key, value) => update(() {
-                  values[key] = value;
-                }),
-              ),
+              builder: (context, setState) {
+                rebuild = setState;
+                return SupplierSpecificationField(
+                  animalCode: 'LAMB',
+                  cutRules: rules,
+                  values: values,
+                  onChanged: (key, value) => setState(() {
+                    values[key] = value;
+                  }),
+                );
+              },
             ),
           ),
         ),
       ),
     );
-    expect(find.byType(TextFormField), findsNothing);
-    expect(find.byType(CutLinkPickerField<String>), findsNWidgets(5));
-    await tester.tap(find.text('Bone'));
+    expect(find.text('Rack style'), findsOneWidget);
+    expect(find.text('Rib count'), findsOneWidget);
+    rebuild(() {
+      rules = leg;
+      values = SupplierVariantOptions.normaliseForCut('LAMB', values, leg);
+    });
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Boneless'));
-    await tester.pumpAndSettle();
-    expect(values['bone'], 'boneless');
+    expect(find.text('Rack style'), findsNothing);
+    expect(find.text('Rib count'), findsNothing);
+    expect(find.text('Chump'), findsOneWidget);
+    expect(values, {'bone': 'bone_in'});
   });
-
-  testWidgets('Old written details are preserved for reference', (
+  testWidgets('No selected subcut shows a selection prompt without dropdowns', (
     tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(
-            child: SupplierSpecificationField(
-              animalCode: 'LAMB',
-              values: const {'cap': 'cap_off', 'rib_count': '8'},
-              previousDetails: 'Original saved supplier wording',
-              onChanged: (_, _) {},
-            ),
+          body: SupplierSpecificationField(
+            animalCode: 'LAMB',
+            cutRules: const {},
+            values: const {},
+            onChanged: (_, _) {},
           ),
         ),
       ),
     );
+    expect(find.textContaining('Select a sub-cut'), findsOneWidget);
+    expect(find.text('Rack style'), findsNothing);
     expect(find.byType(TextFormField), findsNothing);
-    await tester.ensureVisible(find.text('Previous written details'));
-    await tester.tap(find.text('Previous written details'));
-    await tester.pumpAndSettle();
-    expect(find.text('Original saved supplier wording'), findsOneWidget);
   });
 }

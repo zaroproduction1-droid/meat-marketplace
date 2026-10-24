@@ -79,6 +79,29 @@ class _EditProductPageState extends State<EditProductPage> {
   };
   final _photoDraft = ProductPhotoDraft();
   final Map<String, String> _supplierAttributes = {};
+  Map<String, dynamic> get _supplierCutRules {
+    for (final cut in _specifications) {
+      if (cut['id']?.toString() == _selectedSpecificationId &&
+          cut['supplier_attribute_rules'] is Map) {
+        return Map<String, dynamic>.from(
+          cut['supplier_attribute_rules'] as Map,
+        );
+      }
+    }
+    return const {};
+  }
+
+  void _pruneSupplierAttributes() {
+    final valid = SupplierVariantOptions.normaliseForCut(
+      _selectedAnimalCode,
+      _supplierAttributes,
+      _supplierCutRules,
+    );
+    _supplierAttributes
+      ..clear()
+      ..addAll(valid);
+  }
+
   final Map<String, String> _chickenAttributes = {};
   bool get _usesGeneralSubcuts =>
       SupplierSpecificationField.usesGeneralSubcuts(_selectedAnimalCode);
@@ -338,9 +361,10 @@ class _EditProductPageState extends State<EditProductPage> {
       _supplierAttributes
         ..clear()
         ..addAll(
-          SupplierVariantOptions.normalise(
+          SupplierVariantOptions.normaliseForCut(
             _selectedAnimalCode,
             restoredAttributes,
+            _supplierCutRules,
           ),
         );
       _hasUnsavedChanges = true;
@@ -607,7 +631,7 @@ class _EditProductPageState extends State<EditProductPage> {
     final specificationsResponse = await Supabase.instance.client
         .from('meat_specifications')
         .select(
-          'id, animal_id, section_id, name, ham_code, specification_type, approval_status, display_order',
+          'id, animal_id, section_id, name, ham_code, specification_type, approval_status, display_order, supplier_attribute_rules',
         )
         .eq('section_id', _selectedSectionId!)
         .eq('is_active', true)
@@ -654,6 +678,7 @@ class _EditProductPageState extends State<EditProductPage> {
       _animals = List<Map<String, dynamic>>.from(animalsResponse);
       _sections = List<Map<String, dynamic>>.from(sectionsResponse);
       _specifications = List<Map<String, dynamic>>.from(specificationsResponse);
+      _pruneSupplierAttributes();
       _grades = grades;
       _isLoadingPage = false;
     });
@@ -707,6 +732,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     setState(() {
       _selectedSectionId = sectionId;
+      _supplierAttributes.clear();
       _selectedSpecificationId = null;
       _selectedGradeId = null;
       _specifications = [];
@@ -728,7 +754,7 @@ class _EditProductPageState extends State<EditProductPage> {
       final rows = await Supabase.instance.client
           .from('meat_specifications')
           .select(
-            'id, animal_id, section_id, name, ham_code, specification_type, approval_status, display_order',
+            'id, animal_id, section_id, name, ham_code, specification_type, approval_status, display_order, supplier_attribute_rules',
           )
           .eq('section_id', sectionId)
           .eq('is_active', true)
@@ -769,6 +795,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     setState(() {
       _selectedSpecificationId = specificationId;
+      _pruneSupplierAttributes();
       _selectedGradeId = null;
       _grades = [];
       _gradeController.clear();
@@ -1119,6 +1146,12 @@ class _EditProductPageState extends State<EditProductPage> {
         }
         await _photoDraft.prepare(businessId, widget.product['id'].toString());
       }
+      if (_usesGeneralSubcuts && _supplierCutRules.isEmpty) {
+        throw StateError(
+          'Specification options are not available. Refresh the catalogue before saving.',
+        );
+      }
+      _pruneSupplierAttributes();
       final updateData = <String, dynamic>{
         'supplier_attributes': _usesGeneralSubcuts
             ? _supplierAttributes
@@ -3091,6 +3124,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                   const SizedBox(height: 12),
                                                   SupplierSpecificationField(
+                                                    cutRules: _supplierCutRules,
                                                     values: _supplierAttributes,
                                                     previousDetails:
                                                         _supplierSpecificationController
@@ -3104,6 +3138,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             _supplierAttributes[field] =
                                                                 value;
                                                           }
+                                                          _pruneSupplierAttributes();
                                                         }),
                                                     animalCode:
                                                         _selectedAnimalCode,

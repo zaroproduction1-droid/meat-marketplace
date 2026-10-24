@@ -93,6 +93,34 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   String _selectedFatClass = '';
   String _selectedTemperature = '';
   final Map<String, String> _supplierAttributeFilters = {};
+  Map<String, dynamic> get _supplierFilterRules {
+    if (_selectedSpecificationId != null) {
+      for (final cut in _catalogueSpecifications) {
+        if (cut['id']?.toString() == _selectedSpecificationId &&
+            cut['supplier_attribute_rules'] is Map) {
+          return Map<String, dynamic>.from(
+            cut['supplier_attribute_rules'] as Map,
+          );
+        }
+      }
+      return const {};
+    }
+    return SupplierVariantOptions.unionRules(
+      _availableSpecifications.map((cut) => cut['supplier_attribute_rules']),
+    );
+  }
+
+  void _pruneSupplierFilters() {
+    final valid = SupplierVariantOptions.normaliseForCut(
+      _selectedAnimalCode,
+      _supplierAttributeFilters,
+      _supplierFilterRules,
+    );
+    _supplierAttributeFilters
+      ..clear()
+      ..addAll(valid);
+  }
+
   bool _stockViewActive = false;
   bool _filtersExpanded = false;
 
@@ -318,8 +346,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               _selectedTemperature = v;
               _selectedCommercialSpecificationKey = null;
             }),
-          for (final field in SupplierVariantOptions.fields(
-            _selectedAnimalCode,
+          for (final field in SupplierVariantOptions.fieldsForCut(
+            _supplierFilterRules,
+            values: _supplierAttributeFilters,
           ))
             SizedBox(
               width: 210,
@@ -330,8 +359,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 showLabelWhenDense: true,
                 options: [
                   const CutLinkPickerOption(value: '', label: 'Any'),
-                  for (final option in SupplierVariantOptions.options(
-                    _selectedAnimalCode,
+                  for (final option in SupplierVariantOptions.cutOptions(
+                    _supplierFilterRules,
                     field,
                   ).entries)
                     CutLinkPickerOption(value: option.key, label: option.value),
@@ -346,6 +375,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     } else {
                       _supplierAttributeFilters[field] = value;
                     }
+                    _pruneSupplierFilters();
                     _selectedCommercialSpecificationKey = null;
                   });
                   _applySearch();
@@ -1140,6 +1170,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Future<void> _loadStock({bool force = false, int offset = 0}) async {
+    if (!_isLoading) {
+      _pruneSupplierFilters();
+    }
     if (_isLoading || !mounted) {
       return;
     }
@@ -1414,7 +1447,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           .from('meat_specifications')
           .select(
             'id, animal_id, section_id, name, slug, display_order, '
-            'specification_type, approval_status, alternate_names',
+            'specification_type, approval_status, alternate_names, supplier_attribute_rules',
           )
           .eq('is_active', true)
           .order('display_order')
@@ -2412,10 +2445,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     if (_animalCode(product) == CutLinkAnimals.chicken) {
       final chickenValues = <String>[
         SupplierVariantOptions.summary(product),
-        _prettyChickenValue(product['chicken_production_type']),
-        _prettyChickenValue(product['chicken_skin']),
-        _prettyChickenValue(product['chicken_bone']),
-        _prettyChickenValue(product['chicken_preparation']),
         _prettyChickenValue(product['temperature_state']),
         _prettyChickenValue(product['halal_status']),
         productSizeLabel(product),
@@ -2440,7 +2469,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         LambProductDetails.program(product),
         LambProductDetails.fatClass(product),
         productSizeLabel(product),
-        _prettyChickenValue(product['bone_state']),
         _prettyChickenValue(product['temperature_state']),
         _prettyChickenValue(product['halal_status']),
         product['brand']?.toString().trim() ?? '',
@@ -2453,7 +2481,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     final values = <String>[
       SupplierVariantOptions.summary(product),
-      _prettyChickenValue(product['bone_state']),
       _prettyChickenValue(product['temperature_state']),
       _prettyChickenValue(product['halal_status']),
       _prettyChickenValue(product['packaging_type']),
@@ -3018,6 +3045,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final brand = product['brand']?.toString().trim() ?? '';
     if (brand.isNotEmpty) {
       parts.add(brand);
+    }
+
+    if (SupplierVariantOptions.supports(_animalCode(product))) {
+      final program = LambProductDetails.isLamb(product)
+          ? LambProductDetails.program(product)
+          : '';
+      if (program.isNotEmpty) {
+        parts.add(program);
+      }
+      return parts.where((value) => value.isNotEmpty).toSet().join(' • ');
     }
 
     final breedProgram = product['breed_program']?.toString().trim() ?? '';

@@ -10,6 +10,7 @@ class SupplierSpecificationField extends StatelessWidget {
     required this.values,
     required this.onChanged,
     required this.animalCode,
+    required this.cutRules,
     this.previousDetails = '',
     this.enabled = true,
   });
@@ -17,6 +18,7 @@ class SupplierSpecificationField extends StatelessWidget {
   final void Function(String field, String value) onChanged;
   final String previousDetails;
   final String? animalCode;
+  final Map<String, dynamic> cutRules;
   final bool enabled;
 
   static bool usesGeneralSubcuts(String? code) =>
@@ -27,7 +29,7 @@ class SupplierSpecificationField extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const Text(
-        'Choose the details that apply. Butchers can filter by these same options. Leave unrelated details as Not specified.',
+        'Choose the specifications for this sub-cut. Butchers use the same options to filter products.',
       ),
       const SizedBox(height: 14),
       LayoutBuilder(
@@ -35,7 +37,10 @@ class SupplierSpecificationField extends StatelessWidget {
           spacing: 14,
           runSpacing: 14,
           children: [
-            for (final field in SupplierVariantOptions.fields(animalCode))
+            for (final field in SupplierVariantOptions.fieldsForCut(
+              cutRules,
+              values: values,
+            ))
               SizedBox(
                 width: constraints.maxWidth < 600
                     ? constraints.maxWidth
@@ -49,8 +54,8 @@ class SupplierSpecificationField extends StatelessWidget {
                       value: '',
                       label: 'Not specified',
                     ),
-                    for (final option in SupplierVariantOptions.options(
-                      animalCode,
+                    for (final option in SupplierVariantOptions.cutOptions(
+                      cutRules,
                       field,
                     ).entries)
                       CutLinkPickerOption(
@@ -68,6 +73,10 @@ class SupplierSpecificationField extends StatelessWidget {
           ],
         ),
       ),
+      if (cutRules.isEmpty)
+        const Text(
+          'Select a sub-cut to see its specifications. If no options load, refresh the catalogue before saving.',
+        ),
       if (previousDetails.trim().isNotEmpty)
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
