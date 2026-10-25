@@ -35,14 +35,46 @@ jobs:
           flutter --version
           xcodebuild -version
 
-      - name: Prepare compilation-only configuration
+      - name: Prepare app configuration
+        env:
+          CUTLINK_APP_ENV: ${{ secrets.CUTLINK_APP_ENV }}
         run: |
-          # This file exists only on the temporary runner. No live credentials
-          # are needed for compilation; this build is not a login/device test.
-          cat > .env <<'ENV'
-          SUPABASE_URL=https://compile-only.invalid
-          SUPABASE_PUBLISHABLE_KEY=compile-only-placeholder
-          ENV
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          # Only these two client settings are included in the application.
+          allowed = {'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY'}
+          values = {}
+          for line in os.environ.get('CUTLINK_APP_ENV', '').splitlines():
+              line = line.strip()
+              if line.startswith('export '):
+                  line = line[7:].strip()
+              name, sep, value = line.partition('=')
+              if sep and name.strip() in allowed:
+                  value = value.strip()
+                  if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                      value = value[1:-1]
+                  values[name.strip()] = value
+          if any(not values.get(name) for name in allowed):
+              raise SystemExit('CUTLINK_APP_ENV must contain SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.')
+          url = urlparse(values['SUPABASE_URL'])
+          if url.scheme != 'https' or url.hostname != 'wqdfimgaqqnhptxyarvm.supabase.co':
+              raise SystemExit('Configuration must use the existing CutLink HTTPS project endpoint.')
+          key = values['SUPABASE_PUBLISHABLE_KEY']
+          if not key.startswith('sb_publishable_'):
+              try:
+                  payload = key.split('.')[1]
+                  role = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))['role']
+              except Exception:
+                  raise SystemExit('The client key must be a publishable key or legacy anon key.')
+              if role != 'anon':
+                  raise SystemExit('Privileged keys cannot be included in an iPhone application.')
+          Path('.env').write_text(''.join(f'{name}={values[name]}\n' for name in sorted(allowed)))
+          PY
 
       - name: Resolve Flutter and native plugin dependencies
         run: flutter pub get
@@ -53,13 +85,35 @@ jobs:
       - name: Compile unsigned iPhone release app
         run: flutter build ios --release --no-codesign
 
-      - name: Record successful compilation
+      - name: Package unsigned IPA for xtool
         run: |
           test -d build/ios/iphoneos/Runner.app
-          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
-          CutLink compiled successfully for a physical iPhone using Flutter 3.44.9.
+          mkdir -p build/xtool/Payload
+          ditto build/ios/iphoneos/Runner.app build/xtool/Payload/Runner.app
+          cd build/xtool
+          /usr/bin/zip -qry CutLink-unsigned.ipa Payload
+          /usr/bin/unzip -tq CutLink-unsigned.ipa
 
-          This is a compilation check only. The application is unsigned and uses
-          placeholder configuration. Signing, real authentication, uploads,
-          printing and physical-device testing remain to be verified.
+      - name: Upload downloadable iPhone package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CutLink-iPhone-unsigned
+          path: build/xtool/CutLink-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Record successful packaging
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          Download the CutLink-iPhone-unsigned artifact and extract its ZIP.
+
+          CutLink-unsigned.ipa contains the real client configuration from
+          CUTLINK_APP_ENV. It still needs local signing and installation through
+          xtool. No Apple credentials were provided to this workflow.
+          Physical-device behavior and authentication remain to be tested.
           SUMMARY
+
+      - name: Clean up temporary configuration
+        if: always()
+        run: rm -f .env
