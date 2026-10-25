@@ -1,0 +1,65 @@
+name: CutLink iOS build check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cutlink-ios-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Compile existing Flutter app for iPhone
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install matching Flutter version
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+
+      - name: Show build tools
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Prepare compilation-only configuration
+        run: |
+          # This file exists only on the temporary runner. No live credentials
+          # are needed for compilation; this build is not a login/device test.
+          cat > .env <<'ENV'
+          SUPABASE_URL=https://compile-only.invalid
+          SUPABASE_PUBLISHABLE_KEY=compile-only-placeholder
+          ENV
+
+      - name: Resolve Flutter and native plugin dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Compile unsigned iPhone release app
+        run: flutter build ios --release --no-codesign
+
+      - name: Record successful compilation
+        run: |
+          test -d build/ios/iphoneos/Runner.app
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          CutLink compiled successfully for a physical iPhone using Flutter 3.44.9.
+
+          This is a compilation check only. The application is unsigned and uses
+          placeholder configuration. Signing, real authentication, uploads,
+          printing and physical-device testing remain to be verified.
+          SUMMARY
