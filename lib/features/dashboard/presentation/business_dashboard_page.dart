@@ -16,6 +16,7 @@ import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../../../shared/widgets/ios_workspace.dart';
 import '../../products/presentation/add_product_page.dart';
+import '../../authentication/presentation/sign_in_page.dart';
 import '../../../shared/navigation/workspace_navigation.dart';
 
 import 'dart:async';
@@ -75,6 +76,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   Widget? _workspacePage;
   String _workspaceKey = 'dashboard';
   final _iosNavigation = WorkspaceNavigation();
+  final List<(String, Widget?)> _iosHistory = [];
 
   int _newSupplierOrderCount = 0;
   int _butcherCartItemCount = 0;
@@ -746,12 +748,22 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     await Supabase.instance.client.auth.signOut();
 
     if (!mounted) return;
+    if (useIosWorkspace(context)) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const SignInPage()),
+        (_) => false,
+      );
+      return;
+    }
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _openDashboard({String workspaceKey = 'dashboard'}) {
     PageLocation.workspace({'page': workspaceKey});
     if (_workspacePage == null && _workspaceKey == workspaceKey) return;
+    if (useIosWorkspace(context)) {
+      _iosHistory.add((_workspaceKey, _workspacePage));
+    }
 
     setState(() {
       _workspaceKey = workspaceKey;
@@ -797,6 +809,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       return;
     }
 
+    if (useIosWorkspace(context)) {
+      _iosHistory.add((_workspaceKey, _workspacePage));
+    }
     setState(() {
       _workspaceKey = nextKey;
       _workspacePage = page;
@@ -1429,6 +1444,24 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     _openPage(_iosAccountHub(), workspaceKey: 'my_cutlink');
   }
 
+  void _iosBack() {
+    if (_iosHistory.isEmpty) {
+      if (_workspaceKey != 'dashboard') {
+        setState(() {
+          _workspaceKey = 'dashboard';
+          _workspacePage = null;
+        });
+      }
+      return;
+    }
+    final previous = _iosHistory.removeLast();
+    setState(() {
+      _workspaceKey = previous.$1;
+      _workspacePage = previous.$2;
+    });
+    PageLocation.workspace({'page': _workspaceKey});
+  }
+
   Future<void> _addIosProduct() async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -1474,80 +1507,90 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     }
     return WorkspaceNavigationScope(
       navigation: _iosNavigation,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
-            ? null
-            : IosBottomBar(
-                index: _iosTabIndex,
-                tabs: [
-                  const IosTab('Home', Icons.home_outlined),
-                  IosTab(
-                    'My CutLink',
-                    Icons.person_outline_rounded,
-                    badge: _notificationUnreadCount + _supportUnreadCount,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            _iosNavigation.navigate(_iosBack);
+          }
+        },
+        child: IosBackSurface(
+          onBack: () => _iosNavigation.navigate(_iosBack),
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+                ? null
+                : IosBottomBar(
+                    index: _iosTabIndex,
+                    tabs: [
+                      const IosTab('Home', Icons.home_outlined),
+                      IosTab(
+                        'My CutLink',
+                        Icons.person_outline_rounded,
+                        badge: _notificationUnreadCount + _supportUnreadCount,
+                      ),
+                      IosTab(
+                        supplier ? 'Add' : 'Search',
+                        supplier
+                            ? Icons.add_circle_outline_rounded
+                            : Icons.search_rounded,
+                      ),
+                      IosTab(
+                        'Orders',
+                        Icons.receipt_long_outlined,
+                        badge: supplier ? _newSupplierOrderCount : 0,
+                      ),
+                      IosTab(
+                        supplier ? 'Inventory' : 'Saved',
+                        supplier
+                            ? Icons.inventory_2_outlined
+                            : Icons.favorite_border_rounded,
+                      ),
+                    ],
+                    onSelected: (index) => _iosNavigation.navigate(() {
+                      switch (index) {
+                        case 0:
+                          _openDashboard();
+                        case 1:
+                          _openIosAccount();
+                        case 2:
+                          supplier ? _addIosProduct() : _iosSearch();
+                        case 3:
+                          _openPage(
+                            supplier
+                                ? const SupplierOrdersPage(embedded: true)
+                                : const SubmittedOrdersPage(),
+                          );
+                        case 4:
+                          _openPage(
+                            supplier
+                                ? const SupplierInventoryPage(embedded: true)
+                                : ButcherFavouritesPage(
+                                    businessId: _businessId!,
+                                  ),
+                          );
+                      }
+                    }),
                   ),
-                  IosTab(
-                    supplier ? 'Add' : 'Search',
-                    supplier
-                        ? Icons.add_circle_outline_rounded
-                        : Icons.search_rounded,
-                  ),
-                  IosTab(
-                    'Orders',
-                    Icons.receipt_long_outlined,
-                    badge: supplier ? _newSupplierOrderCount : 0,
-                  ),
-                  IosTab(
-                    supplier ? 'Inventory' : 'Saved',
-                    supplier
-                        ? Icons.inventory_2_outlined
-                        : Icons.favorite_border_rounded,
+            body: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  PlatformAnnouncementBanner(businessId: _businessId!),
+                  Expanded(
+                    child: page == null
+                        ? _iosHome(supplier)
+                        : KeyedSubtree(
+                            key: ValueKey(_workspaceKey),
+                            child: WorkspaceBackScope(
+                              onBack: () => _iosNavigation.navigate(_iosBack),
+                              child: page,
+                            ),
+                          ),
                   ),
                 ],
-                onSelected: (index) => _iosNavigation.navigate(() {
-                  switch (index) {
-                    case 0:
-                      _openDashboard();
-                    case 1:
-                      _openIosAccount();
-                    case 2:
-                      supplier ? _addIosProduct() : _iosSearch();
-                    case 3:
-                      _openPage(
-                        supplier
-                            ? const SupplierOrdersPage(embedded: true)
-                            : const SubmittedOrdersPage(),
-                      );
-                    case 4:
-                      _openPage(
-                        supplier
-                            ? const SupplierInventoryPage(embedded: true)
-                            : ButcherFavouritesPage(businessId: _businessId!),
-                      );
-                  }
-                }),
               ),
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              PlatformAnnouncementBanner(businessId: _businessId!),
-              Expanded(
-                child: page == null
-                    ? _iosHome(supplier)
-                    : KeyedSubtree(
-                        key: ValueKey(_workspaceKey),
-                        child: WorkspaceBackScope(
-                          onBack:
-                              _workspaceKey == 'my_cutlink' || _iosTabIndex != 1
-                              ? _openDashboard
-                              : _openIosAccount,
-                          child: page,
-                        ),
-                      ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import '../../../shared/widgets/sharp_logo.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
+import '../../../shared/widgets/ios_workspace.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -2872,6 +2873,47 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   @override
   Widget build(BuildContext context) {
     return PhoneStockScaffold(
+      endDrawer: useIosWorkspace(context)
+          ? Drawer(
+              width: MediaQuery.sizeOf(context).width * .92,
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          tooltip: 'Close filters',
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                      title: const Text(
+                        'Filters',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Expanded(child: _buildBody(iosFiltersOnly: true)),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Builder(
+                        builder: (context) => SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              _loadingStock
+                                  ? 'Show results'
+                                  : 'Show $_stockTotal results',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       ready: !_isLoading && _errorMessage == null,
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: phoneAppBar(
@@ -3153,6 +3195,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Widget _buildMarketplaceProductCard(Map<String, dynamic> product) {
+    if (useIosWorkspace(context)) {
+      return _iosProductRow(product);
+    }
     final price = _findVisiblePrice(product);
     final productId = product['id']?.toString();
     final adding = productId != null && _addingProductId == productId;
@@ -3546,7 +3591,127 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
   }
 
-  Widget _buildBody() {
+  Widget _iosProductRow(Map<String, dynamic> product) {
+    final adding = _addingProductId == product['id']?.toString();
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: () => _openProductInfo(product),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 112,
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CatalogueProductImage(
+                        product: product,
+                        thumbnail: true,
+                        imageWidth: 112,
+                        imageHeight: 128,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: ProductFavouriteHeart(
+                        store: _favourites,
+                        product: product,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      LambProductDetails.title(
+                        product,
+                        _specificationName(product),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      _supplierName(product),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: IosWorkspaceStyle.muted,
+                      ),
+                    ),
+                    Text(
+                      _mainCommercialSummary(product),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 5),
+                    CustomerPriceDisplay(
+                      product: product,
+                      visiblePrice: _findVisiblePrice(product),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Reduce quantity',
+                          onPressed: () => _changeCartQuantity(product, -1),
+                          icon: const Icon(Icons.remove, size: 18),
+                        ),
+                        Text('${_cartQuantity(product)}'),
+                        IconButton(
+                          tooltip: 'Increase quantity',
+                          onPressed: () => _changeCartQuantity(product, 1),
+                          icon: const Icon(Icons.add, size: 18),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Add to order',
+                          onPressed: adding
+                              ? null
+                              : () => _addProductToCart(
+                                  product,
+                                  requestedQuantity: _cartQuantity(product),
+                                ),
+                          icon: adding
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.add_shopping_cart,
+                                  color: IosWorkspaceStyle.red,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody({bool iosFiltersOnly = false}) {
     final phone = isPhoneLayout(context);
     if (_isLoading) {
       return const WorkspaceLoading(label: 'Loading marketplace products…');
@@ -4470,6 +4635,62 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
+    if (useIosWorkspace(context)) {
+      if (iosFiltersOnly) {
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            catalogueControls(),
+            const SizedBox(height: 10),
+            filters(),
+            if (!showingStock) stageContent(),
+          ],
+        );
+      }
+      return Column(
+        children: [
+          universalSearchBar(),
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final label in [
+                  'Filter',
+                  'Sort',
+                  'Animal & cut',
+                  'Specifications',
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Builder(
+                      builder: (context) => ActionChip(
+                        avatar: Icon(
+                          label == 'Sort' ? Icons.swap_vert : Icons.tune,
+                          size: 17,
+                        ),
+                        label: Text(label),
+                        onPressed: () => Scaffold.of(context).openEndDrawer(),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          _stockLoadingStatus(),
+          Expanded(
+            child: showingStock
+                ? supplierStockStage()
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [catalogueControls(), stageContent()],
+                    ),
+                  ),
+          ),
+        ],
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         if (phone || constraints.maxWidth < 780) {

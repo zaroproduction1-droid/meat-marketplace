@@ -8,6 +8,7 @@ class PhoneStockScaffold extends StatefulWidget {
     this.phoneHeader,
     this.backgroundColor,
     this.bottomNavigationBar,
+    this.endDrawer,
     required this.body,
     required this.ready,
   });
@@ -16,6 +17,7 @@ class PhoneStockScaffold extends StatefulWidget {
   final Widget? phoneHeader;
   final Color? backgroundColor;
   final Widget? bottomNavigationBar;
+  final Widget? endDrawer;
   final Widget body;
   final bool ready;
 
@@ -41,6 +43,7 @@ class _PhoneStockScaffoldState extends State<PhoneStockScaffold> {
         widget.phoneHeader ??
         SizedBox(height: headerHeight, child: widget.appBar);
     return Scaffold(
+      endDrawer: widget.endDrawer,
       backgroundColor: widget.backgroundColor,
       bottomNavigationBar: widget.bottomNavigationBar,
       body: widget.ready

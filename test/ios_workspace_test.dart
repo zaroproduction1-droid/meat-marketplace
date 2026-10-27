@@ -24,6 +24,43 @@ Widget host(
 );
 
 void main() {
+  testWidgets(
+    'Left-edge swipe requests workspace back without popping the route',
+    (tester) async {
+      var backs = 0;
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: IosBackSurface(
+              onBack: () => backs++,
+              child: const Center(child: Text('Signed in')),
+            ),
+          ),
+        ),
+      );
+      await tester.dragFrom(const Offset(8, 150), const Offset(160, 0));
+      await tester.pumpAndSettle();
+      expect(backs, 1);
+      expect(find.text('Signed in'), findsOneWidget);
+    },
+  );
+
+  testWidgets('A leftward edge gesture does not navigate back', (tester) async {
+    var backs = 0;
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: IosBackSurface(
+            onBack: () => backs++,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    await tester.dragFrom(const Offset(18, 150), const Offset(-12, 0));
+    await tester.pumpAndSettle();
+    expect(backs, 0);
+  });
   testWidgets('Admin More exposes sections outside the five primary tabs', (
     tester,
   ) async {

@@ -105,6 +105,40 @@ abstract final class IosWorkspaceStyle {
   );
 }
 
+class IosBackSurface extends StatefulWidget {
+  const IosBackSurface({super.key, required this.child, required this.onBack});
+  final Widget child;
+  final VoidCallback onBack;
+  @override
+  State<IosBackSurface> createState() => _IosBackSurfaceState();
+}
+
+class _IosBackSurfaceState extends State<IosBackSurface> {
+  double _distance = 0;
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Positioned.fill(child: widget.child),
+      Positioned(
+        left: 0,
+        top: 0,
+        bottom: 100,
+        width: 22,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragStart: (_) => _distance = 0,
+          onHorizontalDragUpdate: (event) => _distance += event.delta.dx,
+          onHorizontalDragEnd: (event) {
+            if (_distance > 60 || (event.primaryVelocity ?? 0) > 400) {
+              widget.onBack();
+            }
+          },
+        ),
+      ),
+    ],
+  );
+}
+
 class IosTab {
   const IosTab(this.label, this.icon, {this.badge = 0});
   final String label;
@@ -280,7 +314,7 @@ class IosAccountHub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
     children: [
       Row(
         children: [
@@ -321,7 +355,7 @@ class IosAccountHub extends StatelessWidget {
           ?trailing,
         ],
       ),
-      const SizedBox(height: 26),
+      const SizedBox(height: 16),
       LayoutBuilder(
         builder: (context, constraints) {
           final columns = MediaQuery.textScalerOf(context).scale(1) > 1.4
@@ -342,7 +376,7 @@ class IosAccountHub extends StatelessWidget {
                       borderRadius: BorderRadius.circular(22),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          vertical: 22,
+                          vertical: 16,
                           horizontal: 5,
                         ),
                         child: Column(
@@ -374,10 +408,10 @@ class IosAccountHub extends StatelessWidget {
         },
       ),
       for (final group in groups) ...[
-        const SizedBox(height: 28),
+        const SizedBox(height: 18),
         Text(
           group.title,
-          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
         for (final link in group.links) IosMenuRow(link: link),

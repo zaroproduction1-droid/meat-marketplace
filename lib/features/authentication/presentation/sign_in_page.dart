@@ -1,4 +1,5 @@
 import '../../../shared/widgets/public_auth_frame.dart';
+import '../../../shared/widgets/ios_workspace.dart';
 import 'restricted_account_page.dart';
 
 import 'package:flutter/material.dart';
@@ -177,7 +178,7 @@ class _SignInPageState extends State<SignInPage> {
     if (access['is_admin'] == true || access['can_enter'] == true) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const BusinessDashboardPage()),
-        (route) => route.isFirst,
+        (route) => !useIosWorkspace(context) && route.isFirst,
       );
       return;
     }
