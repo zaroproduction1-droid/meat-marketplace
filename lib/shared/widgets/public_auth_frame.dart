@@ -1,4 +1,5 @@
 import 'cutlink_logo.dart';
+import 'ios_workspace.dart';
 import '../../features/legal/presentation/legal_info_page.dart';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,56 @@ class PublicAuthFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (useIosWorkspace(context)) {
+      return Theme(
+        data: IosWorkspaceStyle.theme(Theme.of(context)),
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(title: const CutLinkLogo(width: 115, height: 32)),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 540),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (step != null) ...[
+                        Text(
+                          'Step $step of 3',
+                          style: const TextStyle(
+                            color: IosWorkspaceStyle.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: step! / 3,
+                          minHeight: 4,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        const SizedBox(height: 28),
+                      ],
+                      child,
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LegalInfoPage(),
+                          ),
+                        ),
+                        child: const Text('Privacy & policies'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     const ink = PublicPagePalette.background;
     const red = Color(0xFF933744);
     final theme = ThemeData(

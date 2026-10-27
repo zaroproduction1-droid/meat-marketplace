@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'features/landing/presentation/cutlink_landing_content.dart';
 import 'shared/navigation/page_location.dart';
+import 'shared/widgets/ios_workspace.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -69,6 +70,12 @@ class CutLinkApp extends StatelessWidget {
       title: 'CutLink',
       navigatorObservers: [PageLocation.instance],
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => useIosWorkspace(context)
+          ? Theme(
+              data: IosWorkspaceStyle.theme(Theme.of(context)),
+              child: child!,
+            )
+          : child!,
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF7F7F5),
@@ -130,14 +137,26 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   @override
-  Widget build(BuildContext context) => CutLinkLandingContent(
-    onSignIn: () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
-    onRegister: (role) => Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => RegistrationTypePage(initialBusinessType: role),
+  Widget build(BuildContext context) {
+    if (useIosWorkspace(context)) {
+      return IosWelcomePage(
+        onSignIn: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
+        onRegister: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const RegistrationTypePage()),
+        ),
+      );
+    }
+    return CutLinkLandingContent(
+      onSignIn: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
+      onRegister: (role) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RegistrationTypePage(initialBusinessType: role),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

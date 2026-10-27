@@ -268,6 +268,11 @@ class _SignInPageState extends State<SignInPage> {
             const SizedBox(height: 30),
             TextFormField(
               controller: _emailController,
+              autofillHints: const [
+                AutofillHints.username,
+                AutofillHints.email,
+              ],
+              autocorrect: false,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Email address'),
@@ -276,6 +281,9 @@ class _SignInPageState extends State<SignInPage> {
             const SizedBox(height: 18),
             TextFormField(
               controller: _passwordController,
+              autofillHints: const [AutofillHints.password],
+              autocorrect: false,
+              enableSuggestions: false,
               obscureText: _hidePassword,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(

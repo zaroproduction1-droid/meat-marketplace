@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'ios_workspace.dart';
+
 /// Shared commercial workspace styling. Keep new screens consistent with Sales.
 class CutLinkWorkspaceTheme extends StatelessWidget {
   const CutLinkWorkspaceTheme({super.key, required this.child});
@@ -12,6 +14,9 @@ class CutLinkWorkspaceTheme extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
+    if (useIosWorkspace(context)) {
+      return Theme(data: IosWorkspaceStyle.theme(base), child: child);
+    }
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
       side: const BorderSide(color: border),

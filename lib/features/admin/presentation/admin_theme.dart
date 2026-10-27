@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/ios_workspace.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 
 /// Admin-only presentation layer; shared supplier/butcher styling is untouched.
@@ -20,6 +22,9 @@ class AdminTheme extends StatelessWidget {
           return child;
         }
         final base = Theme.of(context);
+        if (useIosWorkspace(context)) {
+          return Theme(data: IosWorkspaceStyle.theme(base), child: child);
+        }
         return Theme(
           data: base.copyWith(
             scaffoldBackgroundColor: canvas,
@@ -136,6 +141,71 @@ class AdminNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
+      if (useIosWorkspace(context)) {
+        final selected = switch (value) {
+          'overview' => 0,
+          'businesses' => 1,
+          'billing' => 3,
+          _ => 4,
+        };
+        return Column(
+          children: [
+            Expanded(child: child),
+            if (MediaQuery.viewInsetsOf(context).bottom == 0)
+              IosBottomBar(
+                index: selected,
+                tabs: const [
+                  IosTab('Home', Icons.home_outlined),
+                  IosTab('Businesses', Icons.business_outlined),
+                  IosTab('Reports', Icons.flag_outlined),
+                  IosTab('Billing', Icons.account_balance_wallet_outlined),
+                  IosTab('More', Icons.person_outline_rounded),
+                ],
+                onSelected: (index) {
+                  if (index < 4) {
+                    onChanged(
+                      ['overview', 'businesses', 'support', 'billing'][index],
+                    );
+                    return;
+                  }
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (sheetContext) => SafeArea(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Admin tools',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            for (final entry in items.entries)
+                              IosMenuRow(
+                                link: IosMenuLink(
+                                  entry.value,
+                                  icon(entry.key),
+                                  () {
+                                    Navigator.pop(sheetContext);
+                                    onChanged(entry.key);
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        );
+      }
       if (c.maxWidth < 1050) {
         return Column(
           children: [

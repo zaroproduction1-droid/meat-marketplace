@@ -14,6 +14,9 @@ import '../../orders/presentation/supplier_work_order_page.dart';
 import '../../orders/presentation/supplier_marketplace_order_detail_page.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+import '../../../shared/widgets/ios_workspace.dart';
+import '../../products/presentation/add_product_page.dart';
+import '../../../shared/navigation/workspace_navigation.dart';
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -71,6 +74,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Widget? _workspacePage;
   String _workspaceKey = 'dashboard';
+  final _iosNavigation = WorkspaceNavigation();
 
   int _newSupplierOrderCount = 0;
   int _butcherCartItemCount = 0;
@@ -1402,6 +1406,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (_isAdmin && _businessId == null) {
       return const AdminConsolePage();
     }
+    if (useIosWorkspace(context) && _businessId != null) {
+      return _buildIosDashboard();
+    }
     final dashboard = _businessType == 'butcher'
         ? _buildButcherDashboard()
         : _businessType == 'supplier'
@@ -1417,6 +1424,429 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       ],
     );
   }
+
+  void _openIosAccount() {
+    _openPage(_iosAccountHub(), workspaceKey: 'my_cutlink');
+  }
+
+  Future<void> _addIosProduct() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddProductPage(supplierBusinessId: _businessId),
+      ),
+    );
+    if (mounted) {
+      await _loadDashboard(showLoading: false);
+    }
+  }
+
+  void _iosSearch() {
+    _openPage(MarketplaceProductsPage(onBack: _openDashboard));
+  }
+
+  int get _iosTabIndex {
+    if (_workspaceKey == 'dashboard') {
+      return 0;
+    }
+    if (_businessType == 'butcher' && _workspaceKey == 'browse') {
+      return 2;
+    }
+    if (_workspaceKey == 'orders' || _workspaceKey == 'work_orders') {
+      return 3;
+    }
+    if (_businessType == 'supplier' && _workspaceKey == 'inventory') {
+      return 4;
+    }
+    if (_businessType == 'butcher' && _workspaceKey == 'favourites') {
+      return 4;
+    }
+    return 1;
+  }
+
+  Widget _buildIosDashboard() {
+    final supplier = _businessType == 'supplier';
+    final page = _workspaceKey == 'my_cutlink'
+        ? _iosAccountHub()
+        : _workspacePage;
+    // The admin console owns its own five-tab navigation.
+    if (_workspaceKey == 'admin' && page != null) {
+      return WorkspaceBackScope(onBack: _openIosAccount, child: page);
+    }
+    return WorkspaceNavigationScope(
+      navigation: _iosNavigation,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+            ? null
+            : IosBottomBar(
+                index: _iosTabIndex,
+                tabs: [
+                  const IosTab('Home', Icons.home_outlined),
+                  IosTab(
+                    'My CutLink',
+                    Icons.person_outline_rounded,
+                    badge: _notificationUnreadCount + _supportUnreadCount,
+                  ),
+                  IosTab(
+                    supplier ? 'Add' : 'Search',
+                    supplier
+                        ? Icons.add_circle_outline_rounded
+                        : Icons.search_rounded,
+                  ),
+                  IosTab(
+                    'Orders',
+                    Icons.receipt_long_outlined,
+                    badge: supplier ? _newSupplierOrderCount : 0,
+                  ),
+                  IosTab(
+                    supplier ? 'Inventory' : 'Saved',
+                    supplier
+                        ? Icons.inventory_2_outlined
+                        : Icons.favorite_border_rounded,
+                  ),
+                ],
+                onSelected: (index) => _iosNavigation.navigate(() {
+                  switch (index) {
+                    case 0:
+                      _openDashboard();
+                    case 1:
+                      _openIosAccount();
+                    case 2:
+                      supplier ? _addIosProduct() : _iosSearch();
+                    case 3:
+                      _openPage(
+                        supplier
+                            ? const SupplierOrdersPage(embedded: true)
+                            : const SubmittedOrdersPage(),
+                      );
+                    case 4:
+                      _openPage(
+                        supplier
+                            ? const SupplierInventoryPage(embedded: true)
+                            : ButcherFavouritesPage(businessId: _businessId!),
+                      );
+                  }
+                }),
+              ),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              PlatformAnnouncementBanner(businessId: _businessId!),
+              Expanded(
+                child: page == null
+                    ? _iosHome(supplier)
+                    : KeyedSubtree(
+                        key: ValueKey(_workspaceKey),
+                        child: WorkspaceBackScope(
+                          onBack:
+                              _workspaceKey == 'my_cutlink' || _iosTabIndex != 1
+                              ? _openDashboard
+                              : _openIosAccount,
+                          child: page,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iosAccountHub() {
+    final supplier = _businessType == 'supplier';
+    final notifications = IosMenuLink(
+      'Notifications',
+      Icons.notifications_none_rounded,
+      () => _openPage(_notificationsPage(), workspaceKey: 'notifications'),
+      badge: _notificationUnreadCount,
+    );
+    final support = IosMenuLink(
+      'Messages',
+      Icons.chat_bubble_outline_rounded,
+      _openSupport,
+      badge: _supportUnreadCount,
+    );
+    final accounts = IosMenuLink(
+      supplier ? 'Customers' : 'Accounts',
+      Icons.account_balance_wallet_outlined,
+      () => _openPage(
+        supplier
+            ? const SupplierCustomerRequestsPage()
+            : const ButcherAccountsPage(),
+      ),
+    );
+    return IosAccountHub(
+      name: _businessName ?? 'My CutLink',
+      role: supplier ? 'Supplier account' : 'Butcher account',
+      avatar: _businessLogoBadge(size: 60, fallback: supplier ? 'S' : 'B'),
+      trailing: supplier
+          ? null
+          : IconButton(
+              tooltip: 'My cart',
+              onPressed: _openButcherCart,
+              icon: Badge(
+                isLabelVisible: _butcherCartItemCount > 0,
+                label: Text('$_butcherCartItemCount'),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+            ),
+      shortcuts: [accounts, notifications, support],
+      groups: [
+        IosMenuGroup(
+          supplier ? 'Selling' : 'Buying',
+          supplier
+              ? [
+                  IosMenuLink(
+                    'Add a product',
+                    Icons.add_rounded,
+                    _addIosProduct,
+                    subtitle: 'Create a new inventory item',
+                  ),
+                  IosMenuLink(
+                    'Inventory & pricing',
+                    Icons.inventory_2_outlined,
+                    () =>
+                        _openPage(const SupplierInventoryPage(embedded: true)),
+                    subtitle: 'Stock, prices and VIP customer prices',
+                  ),
+                  IosMenuLink(
+                    'New sale',
+                    Icons.point_of_sale_outlined,
+                    () => _openPage(const SupplierSalesPage(embedded: true)),
+                  ),
+                  IosMenuLink(
+                    'Orders & work orders',
+                    Icons.assignment_outlined,
+                    () => _openPage(const SupplierOrdersPage(embedded: true)),
+                  ),
+                  IosMenuLink(
+                    'Invoices, quotes & credit notes',
+                    Icons.receipt_long_outlined,
+                    () => _openPage(
+                      const SupplierUnifiedOrdersPage(embedded: true),
+                    ),
+                  ),
+                  IosMenuLink(
+                    'Customers & accounts',
+                    Icons.people_outline_rounded,
+                    () => _openPage(const SupplierCustomerRequestsPage()),
+                  ),
+                  IosMenuLink(
+                    'Delivery',
+                    Icons.local_shipping_outlined,
+                    () => _openPage(const SupplierDeliverySettingsPage()),
+                  ),
+                ]
+              : [
+                  IosMenuLink(
+                    'Search products',
+                    Icons.search_rounded,
+                    _iosSearch,
+                  ),
+                  IosMenuLink(
+                    'Saved products',
+                    Icons.favorite_border_rounded,
+                    () => _openPage(
+                      ButcherFavouritesPage(businessId: _businessId!),
+                    ),
+                  ),
+                  IosMenuLink(
+                    'Suppliers',
+                    Icons.people_outline_rounded,
+                    () => _openPage(const ButcherVipSuppliersPage()),
+                  ),
+                  IosMenuLink(
+                    'My cart',
+                    Icons.shopping_cart_outlined,
+                    _openButcherCart,
+                    badge: _butcherCartItemCount,
+                  ),
+                  IosMenuLink(
+                    'Order history',
+                    Icons.receipt_long_outlined,
+                    () => _openPage(const SubmittedOrdersPage()),
+                  ),
+                  IosMenuLink(
+                    'Accounts & invoices',
+                    Icons.account_balance_wallet_outlined,
+                    () => _openPage(const ButcherAccountsPage()),
+                  ),
+                ],
+        ),
+        IosMenuGroup('Business', [
+          IosMenuLink(
+            'Customise home',
+            Icons.dashboard_customize_outlined,
+            _showDashboardCustomiser,
+            subtitle: 'Choose and arrange your dashboard cards',
+          ),
+          IosMenuLink('Analytics', Icons.insights_outlined, _openAnalytics),
+          IosMenuLink(
+            'Settings',
+            Icons.settings_outlined,
+            _openSettings,
+            subtitle: 'Profile, billing and notification preferences',
+          ),
+          notifications,
+          support,
+          if (_isAdmin)
+            IosMenuLink(
+              'Admin workspace',
+              Icons.admin_panel_settings_outlined,
+              () => _openPage(const AdminConsolePage()),
+            ),
+        ]),
+      ],
+      onSignOut: () async {
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Sign out of CutLink?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sign out'),
+              ),
+            ],
+          ),
+        );
+        if (leave == true && mounted) {
+          _signOut();
+        }
+      },
+    );
+  }
+
+  Widget _iosHome(bool supplier) => RefreshIndicator(
+    onRefresh: _loadDashboard,
+    child: ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: CutLinkLogo(width: 145, height: 42),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Notifications',
+              onPressed: () => _openPage(
+                _notificationsPage(),
+                workspaceKey: 'notifications',
+              ),
+              icon: Badge(
+                isLabelVisible: _notificationUnreadCount > 0,
+                label: Text('$_notificationUnreadCount'),
+                child: const Icon(Icons.notifications_none_rounded),
+              ),
+            ),
+            if (!supplier)
+              IconButton(
+                tooltip: 'My cart',
+                onPressed: _openButcherCart,
+                icon: Badge(
+                  isLabelVisible: _butcherCartItemCount > 0,
+                  label: Text('$_butcherCartItemCount'),
+                  child: const Icon(Icons.shopping_cart_outlined),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        IosSearchEntry(
+          label: supplier
+              ? 'Add a product to your inventory'
+              : 'Search cuts, specifications and suppliers',
+          icon: supplier ? Icons.add_rounded : Icons.search_rounded,
+          onTap: supplier ? _addIosProduct : _iosSearch,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ActionChip(
+              avatar: const Icon(Icons.receipt_long_outlined, size: 18),
+              label: const Text('Orders'),
+              onPressed: () => _openPage(
+                supplier
+                    ? const SupplierOrdersPage(embedded: true)
+                    : const SubmittedOrdersPage(),
+              ),
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.person_outline_rounded, size: 18),
+              label: const Text('My CutLink'),
+              onPressed: _openIosAccount,
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.support_agent_outlined, size: 18),
+              label: const Text('Support'),
+              onPressed: _openSupport,
+            ),
+          ],
+        ),
+        const SizedBox(height: 26),
+        Text(
+          '${_greeting()},',
+          style: const TextStyle(fontSize: 17, color: IosWorkspaceStyle.muted),
+        ),
+        Text(
+          _businessName ?? 'Welcome to CutLink',
+          style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          supplier ? 'Your business today' : 'Your buying overview',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 12),
+        if (supplier)
+          _supplierSummaryGrid()
+        else ...[
+          IosMenuRow(
+            link: IosMenuLink(
+              'Recent orders',
+              Icons.receipt_long_outlined,
+              () => _openPage(const SubmittedOrdersPage()),
+              subtitle: '${_butcherOrders.length} recent orders',
+            ),
+          ),
+          IosMenuRow(
+            link: IosMenuLink(
+              'Outstanding balance',
+              Icons.account_balance_wallet_outlined,
+              () => _openPage(const ButcherAccountsPage()),
+              subtitle: _money(_outstandingTotal),
+            ),
+          ),
+          IosMenuRow(
+            link: IosMenuLink(
+              'Saved products',
+              Icons.favorite_border_rounded,
+              () => _openPage(ButcherFavouritesPage(businessId: _businessId!)),
+              subtitle: 'Find your favourites and order again',
+            ),
+          ),
+        ],
+        const SizedBox(height: 26),
+        const Text(
+          'Your workspace',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 10),
+        _buildCustomDashboardGrid(),
+      ],
+    ),
+  );
 
   Widget _buildButcherDashboard() {
     return Scaffold(

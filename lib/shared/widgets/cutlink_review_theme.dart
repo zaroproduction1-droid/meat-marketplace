@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'cutlink_workspace_theme.dart';
+import 'ios_workspace.dart';
 
 /// Apply explicitly inside dialog routes, which can sit above a workspace theme.
 class CutLinkReviewTheme extends StatelessWidget {
@@ -11,6 +12,9 @@ class CutLinkReviewTheme extends StatelessWidget {
     child: Builder(
       builder: (context) {
         final base = Theme.of(context);
+        if (useIosWorkspace(context)) {
+          return Theme(data: IosWorkspaceStyle.theme(base), child: child);
+        }
         return Theme(
           data: base.copyWith(
             textTheme: base.textTheme

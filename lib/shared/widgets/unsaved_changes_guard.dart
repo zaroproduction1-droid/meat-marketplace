@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'workspace_back_button.dart';
+import '../navigation/workspace_navigation.dart';
 
 /// Protects in-app back navigation without persisting business data on a device.
 class UnsavedChangesGuard extends StatefulWidget {
@@ -26,6 +27,26 @@ class UnsavedChangesGuard extends StatefulWidget {
 class _UnsavedChangesGuardState extends State<UnsavedChangesGuard> {
   bool _allowExit = false;
   bool _prompting = false;
+  WorkspaceNavigation? _navigation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final navigation = context
+        .dependOnInheritedWidgetOfExactType<WorkspaceNavigationScope>()
+        ?.navigation;
+    if (navigation != _navigation) {
+      _navigation?.unregister(this);
+      _navigation = navigation;
+      navigation?.register(this, (onLeave) => _requestExit(null, onLeave));
+    }
+  }
+
+  @override
+  void dispose() {
+    _navigation?.unregister(this);
+    super.dispose();
+  }
 
   Future<void> _requestExit(Object? result, [VoidCallback? onLeave]) async {
     if (_prompting) {

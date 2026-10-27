@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'ios_workspace.dart';
+
 /// Desktop widgets are returned unchanged. All adaptations are phone-only.
 bool isPhoneLayout(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
@@ -271,9 +273,18 @@ AppBar phoneAppBar(BuildContext context, AppBar desktop) {
   final controls = actions.where((action) => action is! SizedBox).toList();
   final separateActions =
       controls.length > 2 || controls.any((action) => action is! IconButton);
+  final ios = useIosWorkspace(context);
   final bottom = desktop.bottom;
   final title = desktop.title;
-  final phoneTitle = title is Row
+  final rowLabel = title is Row
+      ? title.children
+            .whereType<Text>()
+            .map((text) => text.data ?? '')
+            .join(' ')
+      : '';
+  final phoneTitle = ios && rowLabel.isNotEmpty
+      ? Text(rowLabel, maxLines: 1, overflow: TextOverflow.ellipsis)
+      : title is Row
       ? Row(
           children: [
             for (final child in title.children)
@@ -286,9 +297,60 @@ AppBar phoneAppBar(BuildContext context, AppBar desktop) {
     leading: desktop.leading,
     automaticallyImplyLeading: desktop.automaticallyImplyLeading,
     title: phoneTitle,
-    actions: separateActions ? null : desktop.actions,
+    actions: ios && separateActions
+        ? [
+            ...controls.take(2),
+            IconButton(
+              tooltip: 'More actions',
+              icon: const Icon(Icons.more_horiz_rounded),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (sheetContext) => SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Page actions',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        for (final action in controls)
+                          if (action is IconButton)
+                            ListTile(
+                              leading: action.icon,
+                              title: Text(action.tooltip ?? 'Open action'),
+                              enabled: action.onPressed != null,
+                              onTap: action.onPressed == null
+                                  ? null
+                                  : () {
+                                      Navigator.pop(sheetContext);
+                                      action.onPressed!();
+                                    },
+                            )
+                          else
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: action,
+                            ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ]
+        : separateActions
+        ? null
+        : desktop.actions,
     flexibleSpace: desktop.flexibleSpace,
-    bottom: separateActions
+    bottom: separateActions && !ios
         ? PreferredSize(
             preferredSize: Size.fromHeight(
               52 + (bottom?.preferredSize.height ?? 0),
@@ -320,7 +382,7 @@ AppBar phoneAppBar(BuildContext context, AppBar desktop) {
     iconTheme: desktop.iconTheme,
     actionsIconTheme: desktop.actionsIconTheme,
     primary: desktop.primary,
-    centerTitle: desktop.centerTitle,
+    centerTitle: ios ? true : desktop.centerTitle,
     excludeHeaderSemantics: desktop.excludeHeaderSemantics,
     titleSpacing: 12,
     toolbarHeight: desktop.toolbarHeight,
