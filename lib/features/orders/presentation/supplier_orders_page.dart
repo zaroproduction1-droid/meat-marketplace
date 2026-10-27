@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
@@ -600,7 +601,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             _customerDetailLine(
               'Trading name',
               _displayValue(butcher['trading_name']),
@@ -647,7 +648,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               'Supplier customer',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             _customerDetailLine(
               'Customer',
               _displayValue(account['customer_name'] ?? account['legal_name']),
@@ -665,7 +666,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   }
 
   Widget _customerDetailLine(String label, String value) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(bottom: 7),
       child: PhoneRow(
         mode: PhoneRowMode.stack,
@@ -1090,7 +1091,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     final createdAt = _formatDate(entry['created_at']);
 
     if (kind == 'system') {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(
           children: [
@@ -1136,7 +1137,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.end,
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 5),
               child: Text(
                 butcher ? 'Butcher' : 'You',
@@ -1149,7 +1150,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
               ),
             ),
-            const SizedBox(height: 3),
+            const IosGap(height: 3),
             Container(
               padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
               decoration: BoxDecoration(
@@ -1174,8 +1175,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ),
             ),
             if (createdAt.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Padding(
+              const IosGap(height: 3),
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 5),
                 child: Text(
                   createdAt,
@@ -1517,13 +1518,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             '${_unitLabel(item['quantity_unit']?.toString())}',
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 6),
+                          const IosGap(height: 6),
                           Text(
                             'Locked rate: ${_money(item['unit_price'])}'
                             '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'}',
                           ),
                           if (catchWeight) ...[
-                            const SizedBox(height: 14),
+                            const IosGap(height: 14),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(14),
@@ -1540,7 +1541,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                               ),
                             ),
                           ],
-                          const SizedBox(height: 16),
+                          const IosGap(height: 16),
                           TextField(
                             controller: suppliedController,
                             enabled: !saving,
@@ -1554,7 +1555,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             ),
                           ),
                           if (catchWeight) ...[
-                            const SizedBox(height: 16),
+                            const IosGap(height: 16),
                             TextField(
                               controller: weightController,
                               enabled: !saving,
@@ -1568,7 +1569,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                 border: OutlineInputBorder(),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             Text(
                               'Final amount will be calculated automatically as actual kg × locked rate.',
                               style: TextStyle(
@@ -2034,7 +2035,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const IosGap(height: 2),
                                 Text(
                                   'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                   maxLines: 1,
@@ -2074,7 +2075,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           size: 56,
                           color: Color(0xFF2E7D32),
                         ),
-                        SizedBox(height: 12),
+                        IosGap(height: 12),
                         Text(
                           'No open marketplace issues',
                           style: TextStyle(
@@ -2105,7 +2106,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
                         child: PhoneRow(
                           mode: PhoneRowMode.wrap,
@@ -2124,7 +2125,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const IosGap(height: 2),
                                     Text(
                                       'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                       style: const TextStyle(
@@ -2239,7 +2240,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           selectedIssueId = null;
                         }),
                       ),
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.only(right: 12),
                         child: Center(
                           child: Text(
@@ -2257,7 +2258,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 body: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1320),
-                    child: Padding(
+                    child: IosPadding(
                       padding: const EdgeInsets.all(14),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -2274,7 +2275,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const Padding(
+                                const IosPadding(
                                   padding: EdgeInsets.fromLTRB(12, 10, 12, 8),
                                   child: Text(
                                     'Open Issues',
@@ -2299,7 +2300,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                           padding: const EdgeInsets.all(8),
                                           itemCount: entries.length,
                                           separatorBuilder: (_, _) =>
-                                              const SizedBox(height: 6),
+                                              const IosGap(height: 6),
                                           itemBuilder: (_, index) =>
                                               queueRow(entries[index]),
                                         ),
@@ -2312,7 +2313,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             return ListView(
                               children: [
                                 SizedBox(height: 300, child: queue),
-                                const SizedBox(height: 10),
+                                const IosGap(height: 10),
                                 SizedBox(height: 650, child: workspace()),
                               ],
                             );
@@ -2409,7 +2410,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             child: InkWell(
               onTap: () => _completeOrder(order),
               borderRadius: BorderRadius.circular(9),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.only(
                   left: 5,
                   right: 12,
@@ -2514,7 +2515,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   'Orders',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
                 ),
-                if (!isPhoneLayout(context)) const SizedBox(height: 1),
+                if (!isPhoneLayout(context)) const IosGap(height: 1),
                 if (!isPhoneLayout(context))
                   const Text(
                     'Marketplace orders, work orders, invoices and fulfilment',
@@ -2658,7 +2659,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2668,14 +2669,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               const Text(
                 'Customer orders could not be loaded',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadOrders,
                 child: const Text('Try Again'),
@@ -2707,13 +2708,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.55,
               child: Center(
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(28),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(tab.icon, size: 70, color: const Color(0xFF741C1C)),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       Text(
                         _emptyTitle(tab.key),
                         style: const TextStyle(
@@ -2721,7 +2722,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 9),
+                      const IosGap(height: 9),
                       Text(
                         _emptyDescription(tab.key),
                         textAlign: TextAlign.center,
@@ -2749,7 +2750,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             itemCount: orders.length,
             separatorBuilder: (context, index) {
-              return const SizedBox(height: 10);
+              return const IosGap(height: 10);
             },
             itemBuilder: (context, index) {
               final order = orders[index];
@@ -2961,7 +2962,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Row(
                           children: [
                             _sourceBadge(order),
@@ -3016,7 +3017,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           totalText,
                           style: const TextStyle(
@@ -3041,14 +3042,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     identity,
-                    const SizedBox(height: 11),
+                    const IosGap(height: 11),
                     facts,
-                    const SizedBox(height: 9),
+                    const IosGap(height: 9),
                     Align(alignment: Alignment.centerRight, child: trailing),
                     if (tabKey == 'invoices' ||
                         tabKey == 'dispatched_ready' ||
                         tabKey == 'completed') ...[
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       Align(
                         alignment: Alignment.centerRight,
                         child: _actionButtons(order, tabKey: tabKey),
@@ -3078,7 +3079,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   row,
-                  const SizedBox(height: 10),
+                  const IosGap(height: 10),
                   Align(
                     alignment: Alignment.centerRight,
                     child: _actionButtons(order, tabKey: tabKey),
@@ -3157,7 +3158,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           _sourceBadge(order),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       Text(
                         _customerName(order),
                         maxLines: 1,
@@ -3207,7 +3208,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   ),
                 ),
                 if (_hasOpenIssues(order))
-                  const Padding(
+                  const IosPadding(
                     padding: EdgeInsets.only(right: 10),
                     child: Tooltip(
                       message: 'Open issue',
@@ -3244,7 +3245,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   letterSpacing: 0.4,
                 ),
               ),
-              const SizedBox(height: 2),
+              const IosGap(height: 2),
               Text(
                 value,
                 maxLines: 1,
@@ -3293,7 +3294,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   Text(
                     _customerName(order),
                     style: const TextStyle(
@@ -3302,7 +3303,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     ),
                   ),
                   if (_isReplacementOrder(order)) ...[
-                    const SizedBox(height: 6),
+                    const IosGap(height: 6),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
@@ -3378,7 +3379,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             ),
           ],
         ),
-        subtitle: Padding(
+        subtitle: IosPadding(
           padding: const EdgeInsets.only(top: 8),
           child: Wrap(
             spacing: 16,
@@ -3401,7 +3402,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ),
         children: [
           const Divider(),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
 
           _customerIdentityCard(order),
 
@@ -3436,7 +3437,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             ),
 
           if (issues.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             if (issues.any((issue) => !_isIssueClosed(issue))) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -3445,14 +3446,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               for (final issue in issues.where(
                 (issue) => !_isIssueClosed(issue),
               ))
                 _buildIssueCard(order, issue),
             ],
             if (issues.any(_isIssueClosed)) ...[
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -3464,11 +3465,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               for (final issue in issues.where(_isIssueClosed))
                 _buildIssueCard(order, issue),
             ],
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
           ],
 
           for (final item in items)
@@ -3501,13 +3502,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                               .toString()
                               .trim()
                               .isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Text(
                           'SKU: ${item['sku_snapshot']}',
                           style: const TextStyle(color: Color(0xFF666666)),
                         ),
                       ],
-                      const SizedBox(height: 7),
+                      const IosGap(height: 7),
                       if (catchWeight)
                         Text(
                           '${_formatNumber(item['quantity'])} '
@@ -3524,7 +3525,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           style: const TextStyle(color: Color(0xFF555555)),
                         ),
                       if (catchWeight) ...[
-                        const SizedBox(height: 7),
+                        const IosGap(height: 7),
                         if (item['actual_weight'] == null)
                           const Text(
                             'Actual supplied kg and final product total pending.',
@@ -3538,13 +3539,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             'Supplied: ${_formatNumber(item['supplied_quantity'])} '
                             '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
                           ),
-                          const SizedBox(height: 4),
+                          const IosGap(height: 4),
                           Text(
                             'Actual weight: ${_formatNumber(item['actual_weight'])} kg',
                           ),
                         ],
                       ] else if (item['supplied_quantity'] != null) ...[
-                        const SizedBox(height: 7),
+                        const IosGap(height: 7),
                         Text(
                           'Supplied: ${_formatNumber(item['supplied_quantity'])} '
                           '${_unitLabel(item['supplied_quantity_unit']?.toString())}',
@@ -3552,14 +3553,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       ],
                       if (item['notes'] != null &&
                           item['notes'].toString().trim().isNotEmpty) ...[
-                        const SizedBox(height: 7),
+                        const IosGap(height: 7),
                         Text(
                           'Notes: ${item['notes']}',
                           style: const TextStyle(color: Color(0xFF666666)),
                         ),
                       ],
                       if (status == 'accepted' || status == 'processing') ...[
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         OutlinedButton.icon(
                           onPressed: () => _editFulfilment(order, item),
                           icon: const Icon(Icons.scale_outlined),
@@ -3596,7 +3597,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   if (narrow) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [left, const SizedBox(height: 10), right],
+                      children: [left, const IosGap(height: 10), right],
                     );
                   }
 
@@ -3612,7 +3613,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               ),
             ),
 
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
 
           Align(
             alignment: Alignment.centerRight,
@@ -3664,7 +3665,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           value: _money(order['total_amount']),
                           bold: true,
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         const Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -3762,11 +3763,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           ),
           if (issue['description'] != null &&
               issue['description'].toString().trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Text(issue['description'].toString()),
           ],
           if (_formatDate(issue['reported_at']).isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Text(
               'Reported ${_formatDate(issue['reported_at'])}',
               style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
@@ -3774,21 +3775,21 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           ],
           if (issue['supplier_response'] != null &&
               issue['supplier_response'].toString().trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             Text(
               'Your response: ${issue['supplier_response']}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ],
           if (resolutionType != null) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               'Resolution: ${_resolutionLabel(resolutionType)}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ],
           if (status == 'resolved') ...[
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
@@ -3830,27 +3831,27 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             ),
           ],
           if (_asDouble(issue['credit_amount']) > 0) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               'Credit: ${_money(issue['credit_amount'])}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ],
           if (issue['pickup_required'] == true) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             const Text('Supplier pickup required'),
           ],
           if (issue['replacement_required'] == true) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             const Text('Replacement required'),
           ],
           if (_issueMessages(issue).isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'Conversation',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             for (final message in _issueMessages(issue))
               Container(
                 width: double.infinity,
@@ -3868,7 +3869,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
               ),
           ],
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
@@ -3904,7 +3905,7 @@ class _CompactOrderFact extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             maxLines: 1,
@@ -3950,7 +3951,7 @@ class _InfoBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 5),
+          const IosGap(height: 5),
           Text(value),
         ],
       ),
@@ -3976,7 +3977,7 @@ class _TotalRow extends StatelessWidget {
       fontSize: bold ? 17 : 15,
     );
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [

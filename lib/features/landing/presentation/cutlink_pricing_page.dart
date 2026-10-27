@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/cutlink_logo.dart';
@@ -97,13 +99,13 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
         : '$remaining places left';
     return _MembershipPanel(
       founding: true,
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const _FoundingSeal(),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Text(
               first ? 'First 10 $role' : 'Next ${limit - 10} $role',
               textAlign: TextAlign.center,
@@ -113,7 +115,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Semantics(
               liveRegion: true,
               child: Text(
@@ -122,7 +124,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),
-            const SizedBox(height: 24),
+            const IosGap(height: 24),
             const Text(
               'FREE',
               style: TextStyle(
@@ -133,13 +135,13 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                 height: 1.05,
               ),
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             const Text(
               'for your first 6 months',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white, fontSize: 15),
             ),
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Divider(color: Color(0xFFB6757F), height: 1),
             ),
@@ -148,7 +150,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                 label: 'Next 12 months',
                 amount: MembershipService.money(data.discounted),
               ),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
             ],
             _PriceStage(
               label: first ? 'After that' : 'After your free months',
@@ -194,7 +196,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                 'Standard membership',
                 style: TextStyle(color: PublicPagePalette.muted, fontSize: 13),
               ),
-              const SizedBox(height: 5),
+              const IosGap(height: 5),
               Text(
                 '${MembershipService.money(data.standard)} / month',
                 textAlign: TextAlign.center,
@@ -207,7 +209,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        const IosGap(height: 28),
         const Text(
           'Founding membership',
           textAlign: TextAlign.center,
@@ -217,7 +219,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 7),
+        const IosGap(height: 7),
         Semantics(
           liveRegion: true,
           child: Text(
@@ -231,23 +233,21 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           ),
         ),
         if (!unavailable && !data.enabled)
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.only(top: 6),
             child: Text(
               'The offers below are a preview.',
               style: TextStyle(color: PublicPagePalette.muted, fontSize: 12),
             ),
           ),
-        const SizedBox(height: 20),
+        const IosGap(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {
             final first = _foundingCard(data, first: true, supplier: supplier);
             final later = _foundingCard(data, first: false, supplier: supplier);
             if (constraints.maxWidth < 660 ||
                 MediaQuery.textScalerOf(context).scale(1) > 1.4) {
-              return Column(
-                children: [first, const SizedBox(height: 16), later],
-              );
+              return Column(children: [first, const IosGap(height: 16), later]);
             }
             return IntrinsicHeight(
               child: Row(
@@ -261,13 +261,13 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             );
           },
         ),
-        const SizedBox(height: 18),
+        const IosGap(height: 18),
         const Text(
           'All prices are AUD and include GST.',
           textAlign: TextAlign.center,
           style: TextStyle(color: PublicPagePalette.muted, fontSize: 12),
         ),
-        const SizedBox(height: 22),
+        const IosGap(height: 22),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: SizedBox(
@@ -296,7 +296,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         const Text(
           'Signing up doesn’t reserve a founding place.',
           textAlign: TextAlign.center,
@@ -306,7 +306,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             height: 1.4,
           ),
         ),
-        const SizedBox(height: 20),
+        const IosGap(height: 20),
         Container(
           decoration: BoxDecoration(
             color: const Color(0xFFFAF8F7),
@@ -378,7 +378,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 940),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
@@ -406,7 +406,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                         height: 1.15,
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    const IosGap(height: 22),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 440),
                       child: SizedBox(
@@ -457,7 +457,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    const IosGap(height: 22),
                     AnimatedSwitcher(
                       duration: Duration(milliseconds: reducedMotion ? 0 : 200),
                       child: KeyedSubtree(
@@ -465,7 +465,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                         child: _plans(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     TextButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
@@ -501,7 +501,7 @@ class _PriceStage extends StatelessWidget {
         textAlign: TextAlign.center,
         style: const TextStyle(color: _gold, fontSize: 13),
       ),
-      const SizedBox(height: 5),
+      const IosGap(height: 5),
       Text(
         '$amount / month',
         textAlign: TextAlign.center,
@@ -521,7 +521,7 @@ class _Note extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => IosPadding(
     padding: const EdgeInsets.only(top: 16),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,

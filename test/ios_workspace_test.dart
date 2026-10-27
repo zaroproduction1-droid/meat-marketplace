@@ -1,5 +1,6 @@
 import 'package:cutlink/shared/navigation/workspace_navigation.dart';
 import 'package:cutlink/shared/widgets/ios_workspace.dart';
+import 'package:cutlink/shared/widgets/ios_density.dart';
 import 'package:cutlink/shared/widgets/phone_layout.dart';
 import 'package:cutlink/shared/widgets/unsaved_changes_guard.dart';
 import 'package:cutlink/features/admin/presentation/admin_theme.dart';
@@ -24,6 +25,68 @@ Widget host(
 );
 
 void main() {
+  testWidgets('Compact supplier identity gets full width above its action', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: IosAdaptiveRow(
+            desktop: Row(
+              children: [
+                Container(width: 52, height: 52, color: Colors.transparent),
+                const SizedBox(width: 15),
+                const Expanded(child: Text('Australian Wholesale Meats')),
+                FilledButton(
+                  onPressed: () {},
+                  child: const Text('VIP + Credit Active'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSize(find.text('Australian Wholesale Meats')).width,
+      greaterThan(220),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Workspace navigation visibly transitions before settling', (
+    tester,
+  ) async {
+    final page = ValueNotifier(false);
+    addTearDown(page.dispose);
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: ValueListenableBuilder<bool>(
+            valueListenable: page,
+            builder: (context, value, _) => IosWorkspaceTransition(
+              child: SizedBox.expand(
+                key: ValueKey(value),
+                child: Text(value ? 'Next page' : 'First page'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    page.value = true;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('First page'), findsOneWidget);
+    expect(find.text('Next page'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('First page'), findsNothing);
+  });
+
   testWidgets(
     'Left-edge swipe requests workspace back without popping the route',
     (tester) async {

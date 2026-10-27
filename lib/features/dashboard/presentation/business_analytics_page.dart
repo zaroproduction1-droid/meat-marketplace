@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -491,7 +492,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   const Text(
                     'Drag sections into order, choose their width or hide them. Your PDF export remains the complete report.',
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   Expanded(
                     child: ReorderableListView.builder(
                       buildDefaultDragHandles: false,
@@ -504,13 +505,13 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         final item = local[i];
                         return Card(
                           key: ValueKey(item['id']),
-                          child: Padding(
+                          child: IosPadding(
                             padding: const EdgeInsets.all(8),
                             child: Row(
                               children: [
                                 ReorderableDragStartListener(
                                   index: i,
-                                  child: const Padding(
+                                  child: const IosPadding(
                                     padding: EdgeInsets.all(8),
                                     child: Icon(Icons.drag_indicator_rounded),
                                   ),
@@ -690,7 +691,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  const IosGap(height: 1),
                   Text(
                     _isSupplier
                         ? 'Sales, customers, stock and fulfilment performance'
@@ -886,7 +887,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 13),
+          const IosGap(height: 13),
           Text(
             label,
             style: const TextStyle(
@@ -895,7 +896,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -912,7 +913,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             ),
           ),
           if (caption != null) ...[
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             Text(
               caption,
               maxLines: 1,
@@ -939,7 +940,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       title: 'Credits, refunds & returns',
       subtitle:
           'Selected period • refunds are part of credits, not an additional deduction.',
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -990,7 +991,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       SizedBox(width: width, child: metric),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const IosGap(height: 20),
                 Text(
                   _isSupplier
                       ? 'Customers with the most returns'
@@ -1001,13 +1002,13 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const IosGap(height: 4),
                 const Text(
                   'Ranked by return cases. Values show associated credit notes.',
                   style: TextStyle(fontSize: 12, color: _muted),
                 ),
                 if (leaders.isEmpty)
-                  const Padding(
+                  const IosPadding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Text(
                       'No returned goods recorded in this period.',
@@ -1015,7 +1016,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     ),
                   ),
                 for (var i = 0; i < leaders.length; i++) ...[
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   Row(
                     children: [
                       Container(
@@ -1046,7 +1047,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const IosGap(height: 3),
                             Text(
                               '${CutLinkNumbers.integer(_integer(leaders[i]['cases']))} returns • ${CutLinkNumbers.number(_number(leaders[i]['kg']), decimals: 2)} kg',
                               style: const TextStyle(
@@ -1067,7 +1068,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
@@ -1199,7 +1200,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
             child: Row(
               children: [
@@ -1215,7 +1216,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         subtitle,
                         style: const TextStyle(
@@ -1243,7 +1244,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return _sectionCard(
       title: _isSupplier ? 'Sales trend' : 'Purchasing trend',
       subtitle: 'Hover or tap any day to see the exact value • $_periodLabel',
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
         child: SizedBox(
           height: 235,
@@ -1273,7 +1274,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           : Column(
               children: [
                 for (var i = 0; i < data.length; i++) ...[
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 15,
                       vertical: 11,
@@ -1313,7 +1314,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              const SizedBox(height: 5),
+                              const IosGap(height: 5),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: LinearProgressIndicator(
@@ -1375,7 +1376,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       subtitle: 'Where order value is concentrated',
       child: data.isEmpty
           ? SizedBox(height: 220, child: _emptyState('No category data yet'))
-          : Padding(
+          : IosPadding(
               padding: const EdgeInsets.all(15),
               child: Column(
                 children: [
@@ -1427,7 +1428,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         ),
                       ],
                     ),
-                    if (i != data.length - 1) const SizedBox(height: 13),
+                    if (i != data.length - 1) const IosGap(height: 13),
                   ],
                 ],
               ),
@@ -1459,7 +1460,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               height: 180,
               child: _emptyState('No orders in this period'),
             )
-          : Padding(
+          : IosPadding(
               padding: const EdgeInsets.all(15),
               child: Column(
                 children: [
@@ -1507,7 +1508,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         ),
                       ],
                     ),
-                    if (i != rows.length - 1) const SizedBox(height: 12),
+                    if (i != rows.length - 1) const IosGap(height: 12),
                   ],
                 ],
               ),
@@ -1558,7 +1559,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return _sectionCard(
       title: 'Inventory health',
       subtitle: 'Availability across your active catalogue',
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1601,7 +1602,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 15),
+            const IosGap(height: 15),
             Row(
               children: [
                 const Text(
@@ -1618,7 +1619,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -1628,7 +1629,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 valueColor: const AlwaysStoppedAnimation(_positive),
               ),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Row(
               children: [
                 const Icon(
@@ -1672,7 +1673,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return _sectionCard(
       title: 'Supplier concentration',
       subtitle: 'Share of spend going to your largest supplier',
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1692,7 +1693,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.only(bottom: 5),
                     child: Text(
                       concentration >= 60
@@ -1710,7 +1711,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -1720,7 +1721,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 valueColor: AlwaysStoppedAnimation(riskColor),
               ),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'A very high share can increase exposure to price changes, stock shortages or service disruption from one supplier.',
               style: TextStyle(color: _muted, fontSize: 12, height: 1.45),
@@ -1749,7 +1750,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             label,
             maxLines: 1,
@@ -1872,7 +1873,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return _sectionCard(
       title: 'Business insights',
       subtitle: 'Automatic highlights from your CutLink activity',
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(15),
         child: Column(
           children: [
@@ -1905,7 +1906,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           insights[i].body,
                           style: const TextStyle(
@@ -1920,9 +1921,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 ],
               ),
               if (i != insights.length - 1) ...[
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 const Divider(height: 1),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
               ],
             ],
           ],
@@ -1941,7 +1942,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             color: Color(0xFFB0B3B7),
             size: 34,
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -1965,24 +1966,24 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.error_outline, color: _darkRed, size: 46),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 const Text(
                   'Analytics could not be loaded',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 6),
+                const IosGap(height: 6),
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: _muted, fontSize: 11),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 FilledButton.icon(
                   onPressed: _load,
                   icon: const Icon(Icons.refresh_rounded, size: 17),
@@ -2025,7 +2026,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                   letterSpacing: -0.4,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const IosGap(height: 4),
                               Text(
                                 _isSupplier
                                     ? 'Track the numbers that drive sales, cash flow, stock availability and service.'
@@ -2043,9 +2044,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   _customisedSections(),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -2355,7 +2356,7 @@ class _BusinessAnalyticsOverviewPanelState
       return SizedBox(
         height: 240,
         child: Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(20),
             child: Text(
               _error!,
@@ -2410,7 +2411,7 @@ class _BusinessAnalyticsOverviewPanelState
               ),
             ),
             if (_loading)
-              const Padding(
+              const IosPadding(
                 padding: EdgeInsets.only(top: 6),
                 child: SizedBox(
                   width: 15,
@@ -2420,7 +2421,7 @@ class _BusinessAnalyticsOverviewPanelState
               ),
           ],
         ),
-        const SizedBox(height: 14),
+        const IosGap(height: 14),
         PhoneRow(
           mode: PhoneRowMode.metrics,
           desktop: Row(
@@ -2448,7 +2449,7 @@ class _BusinessAnalyticsOverviewPanelState
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Wrap(
           spacing: 14,
           runSpacing: 6,
@@ -2467,7 +2468,7 @@ class _BusinessAnalyticsOverviewPanelState
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const IosGap(height: 14),
         Text(
           '$_periodLabel • Hover or tap the graph for the exact daily value',
           style: const TextStyle(
@@ -2476,7 +2477,7 @@ class _BusinessAnalyticsOverviewPanelState
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 8),
+        const IosGap(height: 8),
         SizedBox(
           height: 190,
           child: trend.isEmpty
@@ -2522,7 +2523,7 @@ class _OverviewMetric extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 3),
+          const IosGap(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -2650,7 +2651,7 @@ class _TrendChartState extends State<_TrendChart> {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const IosGap(height: 12),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -2689,7 +2690,7 @@ class _TrendChartState extends State<_TrendChart> {
             },
           ),
         ),
-        const SizedBox(height: 6),
+        const IosGap(height: 6),
         Row(
           children: [
             Expanded(

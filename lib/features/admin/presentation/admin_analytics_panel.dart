@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 
 import 'package:flutter/material.dart';
@@ -73,12 +74,12 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
               title,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 5),
+            const IosGap(height: 5),
             Text(
               note,
               style: const TextStyle(color: AdminTheme.muted, fontSize: 12),
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             ...children,
           ],
         ),
@@ -162,9 +163,9 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
         runSpacing: 6,
         children: [_legend(firstLabel, _blue), _legend(secondLabel, _green)],
       ),
-      const SizedBox(height: 14),
+      const IosGap(height: 14),
       if (maximum == 0)
-        const Padding(
+        const IosPadding(
           padding: EdgeInsets.only(bottom: 12),
           child: Text(
             'No activity in this period.',
@@ -172,7 +173,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
           ),
         ),
       for (final row in rows)
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Semantics(
             label:
@@ -198,7 +199,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                         _blue,
                         money: money,
                       ),
-                      const SizedBox(height: 7),
+                      const IosGap(height: 7),
                       _bar(
                         PlatformAdminService.amount(row[second]),
                         maximum,
@@ -247,7 +248,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
     final overdue = PlatformAdminService.rows(_data['overdue_accounts']);
     return Column(
       children: [
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           child: Wrap(
             spacing: 8,
@@ -281,7 +282,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
               ? const AdminLoading(label: 'Preparing platform analytics…')
               : _error != null
               ? Center(
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -354,7 +355,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const IosGap(height: 20),
                     _pair(
                       _chart(
                         'Subscription billing',

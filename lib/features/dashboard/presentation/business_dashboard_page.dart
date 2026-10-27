@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../admin/presentation/admin_product_notifications_bell.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
@@ -77,6 +78,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String _workspaceKey = 'dashboard';
   final _iosNavigation = WorkspaceNavigation();
   final List<(String, Widget?)> _iosHistory = [];
+  bool _iosGoingBack = false;
 
   int _newSupplierOrderCount = 0;
   int _butcherCartItemCount = 0;
@@ -763,6 +765,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (_workspacePage == null && _workspaceKey == workspaceKey) return;
     if (useIosWorkspace(context)) {
       _iosHistory.add((_workspaceKey, _workspacePage));
+      _iosGoingBack = false;
     }
 
     setState(() {
@@ -811,6 +814,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
     if (useIosWorkspace(context)) {
       _iosHistory.add((_workspaceKey, _workspacePage));
+      _iosGoingBack = false;
     }
     setState(() {
       _workspaceKey = nextKey;
@@ -1397,15 +1401,15 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.error_outline, size: 56, color: _darkRed),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   Text(_errorMessage!, textAlign: TextAlign.center),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   FilledButton(
                     onPressed: _loadDashboard,
                     child: const Text('Try Again'),
@@ -1445,6 +1449,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   void _iosBack() {
+    _iosGoingBack = true;
     if (_iosHistory.isEmpty) {
       if (_workspaceKey != 'dashboard') {
         setState(() {
@@ -1578,15 +1583,22 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                 children: [
                   PlatformAnnouncementBanner(businessId: _businessId!),
                   Expanded(
-                    child: page == null
-                        ? _iosHome(supplier)
-                        : KeyedSubtree(
-                            key: ValueKey(_workspaceKey),
-                            child: WorkspaceBackScope(
-                              onBack: () => _iosNavigation.navigate(_iosBack),
-                              child: page,
-                            ),
-                          ),
+                    child: IosWorkspaceTransition(
+                      reverse: _iosGoingBack,
+                      child: KeyedSubtree(
+                        key: ValueKey(_workspaceKey),
+                        child: page == null
+                            ? _iosHome(supplier)
+                            : KeyedSubtree(
+                                key: ValueKey(_workspaceKey),
+                                child: WorkspaceBackScope(
+                                  onBack: () =>
+                                      _iosNavigation.navigate(_iosBack),
+                                  child: page,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1803,7 +1815,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               ),
           ],
         ),
-        const SizedBox(height: 18),
+        const IosGap(height: 18),
         IosSearchEntry(
           label: supplier
               ? 'Add a product to your inventory'
@@ -1811,7 +1823,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           icon: supplier ? Icons.add_rounded : Icons.search_rounded,
           onTap: supplier ? _addIosProduct : _iosSearch,
         ),
-        const SizedBox(height: 16),
+        const IosGap(height: 16),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1837,7 +1849,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
           ],
         ),
-        const SizedBox(height: 26),
+        const IosGap(height: 26),
         Text(
           '${_greeting()},',
           style: const TextStyle(fontSize: 17, color: IosWorkspaceStyle.muted),
@@ -1846,12 +1858,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           _businessName ?? 'Welcome to CutLink',
           style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 24),
+        const IosGap(height: 24),
         Text(
           supplier ? 'Your business today' : 'Your buying overview',
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 12),
+        const IosGap(height: 12),
         if (supplier)
           _supplierSummaryGrid()
         else ...[
@@ -1880,12 +1892,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
           ),
         ],
-        const SizedBox(height: 26),
+        const IosGap(height: 26),
         const Text(
           'Your workspace',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         _buildCustomDashboardGrid(),
       ],
     ),
@@ -1942,9 +1954,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                             subtitle:
                                                 'Here’s what’s happening with your purchasing today.',
                                           ),
-                                          const SizedBox(height: 18),
+                                          const IosGap(height: 18),
                                           _summaryGrid(),
-                                          const SizedBox(height: 16),
+                                          const IosGap(height: 16),
                                           _buildCustomDashboardGrid(),
                                         ],
                                       ),
@@ -1993,7 +2005,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   letterSpacing: -0.4,
                 ),
               ),
-              const SizedBox(height: 4),
+              const IosGap(height: 4),
               Text(
                 subtitle,
                 style: const TextStyle(
@@ -2001,7 +2013,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   fontSize: 13.5,
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               controls,
             ],
           );
@@ -2022,7 +2034,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const IosGap(height: 4),
                   Text(
                     subtitle,
                     style: const TextStyle(
@@ -2203,7 +2215,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       child: InkWell(
         onTap: _openSupport,
         borderRadius: BorderRadius.circular(10),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(
             children: [
@@ -2230,7 +2242,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const IosGap(height: 3),
                     Text(
                       _isAdmin
                           ? 'Review supplier and butcher support requests.'
@@ -2311,7 +2323,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             children: [
               for (var i = 0; i < metrics.length; i++) ...[
                 metrics[i],
-                if (i != metrics.length - 1) const SizedBox(height: 10),
+                if (i != metrics.length - 1) const IosGap(height: 10),
               ],
             ],
           );
@@ -2335,17 +2347,17 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               size: 34,
               color: _darkRed,
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             const Text(
               'Your dashboard is empty',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             const Text(
               'Choose which cards you want to see.',
               style: TextStyle(color: Color(0xFF6A6E75)),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             OutlinedButton.icon(
               onPressed: _showDashboardCustomiser,
               icon: const Icon(Icons.add_rounded),
@@ -2363,7 +2375,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             children: [
               for (var i = 0; i < visible.length; i++) ...[
                 _dashboardTileWidget(visible[i].id),
-                if (i != visible.length - 1) const SizedBox(height: 14),
+                if (i != visible.length - 1) const IosGap(height: 14),
               ],
             ],
           );
@@ -2400,7 +2412,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           }
 
           if (index < visible.length) {
-            rows.add(const SizedBox(height: 14));
+            rows.add(const IosGap(height: 14));
           }
         }
 
@@ -2460,7 +2472,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         'Drag cards to change their order. Hide cards you do not need, or make important cards full width.',
                         style: TextStyle(color: Color(0xFF666A70), height: 1.4),
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                       Expanded(
                         child: ReorderableListView.builder(
                           buildDefaultDragHandles: false,
@@ -2491,7 +2503,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                 children: [
                                   ReorderableDragStartListener(
                                     index: index,
-                                    child: const Padding(
+                                    child: const IosPadding(
                                       padding: EdgeInsets.all(8),
                                       child: Icon(
                                         Icons.drag_indicator_rounded,
@@ -2707,7 +2719,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const IosGap(height: 3),
                 Text(
                   value,
                   maxLines: 1,
@@ -2718,7 +2730,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const IosGap(height: 3),
                 Text(
                   support,
                   maxLines: 1,
@@ -2819,7 +2831,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _attentionRow(_AttentionItem item) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
@@ -3067,7 +3079,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               MarketplaceProductsPage(onBack: () => _openDashboard()),
             ),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.scale_outlined,
             'Compare Suppliers',
@@ -3076,19 +3088,19 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               workspaceKey: 'compare',
             ),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.shopping_bag_outlined,
             'View Orders',
             () => _openPage(const SubmittedOrdersPage()),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.account_balance_wallet_outlined,
             'View Accounts',
             () => _openPage(const ButcherAccountsPage()),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.workspace_premium_outlined,
             'Supplier Access',
@@ -3129,7 +3141,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(15, 13, 15, 10),
             child: Flex(
               direction: _useBottomNavigation ? Axis.vertical : Axis.horizontal,
@@ -3168,7 +3180,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE7E8EA)),
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(15, 8, 15, 14),
             child: child,
           ),
@@ -3193,17 +3205,17 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   Widget _emptyState(IconData icon, String title, String description) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFF9A9DA2), size: 32),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             title,
             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5),
           ),
-          const SizedBox(height: 3),
+          const IosGap(height: 3),
           Text(
             description,
             textAlign: TextAlign.center,
@@ -3217,7 +3229,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   Widget _tableCell(String text, {required int flex, bool strong = false}) {
     return Expanded(
       flex: flex,
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.only(right: 8),
         child: Text(
           text,
@@ -3300,7 +3312,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             ),
           );
 
-          return Padding(
+          return IosPadding(
             padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
             child: compact
                 ? Row(
@@ -3437,7 +3449,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           child: InkWell(
                             onTap: _openSettings,
                             borderRadius: BorderRadius.circular(11),
-                            child: Padding(
+                            child: IosPadding(
                               padding: const EdgeInsets.all(8),
                               child: Row(
                                 children: [
@@ -3549,7 +3561,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       color: Colors.white,
       child: SafeArea(
         bottom: false,
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
@@ -3619,7 +3631,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       };
       return SizedBox(
         width: 88,
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
           child: Material(
             color: selected ? _darkRed : Colors.transparent,
@@ -3650,8 +3662,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Padding(
+                      const IosGap(height: 6),
+                      IosPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 3),
                         child: Text(
                           shortLabel,
@@ -3677,7 +3689,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       builder: (context, constraints) {
         final showLabel = !_sidebarCollapsed && constraints.maxWidth >= 120;
 
-        return Padding(
+        return IosPadding(
           padding: const EdgeInsets.symmetric(vertical: 2),
           child: Material(
             color: selected ? _darkRed : Colors.transparent,
@@ -3756,7 +3768,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(3),
           child: Text(
             count > 99 ? '99+' : count.toString(),
@@ -4235,9 +4247,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                             subtitle:
                                                 'Here’s what’s happening across your sales and fulfilment today.',
                                           ),
-                                          const SizedBox(height: 18),
+                                          const IosGap(height: 18),
                                           _supplierSummaryGrid(),
-                                          const SizedBox(height: 16),
+                                          const IosGap(height: 16),
                                           _buildCustomDashboardGrid(),
                                         ],
                                       ),
@@ -4703,20 +4715,20 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             'Active products',
             _supplierActiveProductCount.toString(),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _supplierInventoryMetric(
             Icons.check_circle_outline,
             'Available',
             availableCount.toString(),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _supplierInventoryMetric(
             Icons.warning_amber_rounded,
             'Needs stock attention',
             _supplierLowStockCount.toString(),
             warning: _supplierLowStockCount > 0,
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           OutlinedButton.icon(
             onPressed: () =>
                 _openPage(const SupplierInventoryPage(embedded: true)),
@@ -4802,31 +4814,31 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             'New Sale',
             () => _openPage(const SupplierSalesPage(embedded: true)),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.shopping_cart_checkout_outlined,
             'Review Orders',
             () => _openSalesOrders('new'),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.build_outlined,
             'Open Work Orders',
             () => _openSalesOrders('work_orders'),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.request_quote_outlined,
             'Issue Invoices',
             () => _openSalesOrders('invoices'),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.people_alt_outlined,
             'Customers & Accounts',
             () => _openPage(const SupplierCustomerRequestsPage()),
           ),
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           _quickAction(
             Icons.inventory_2_outlined,
             'Manage Inventory',
@@ -4943,7 +4955,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           child: InkWell(
                             onTap: _openSettings,
                             borderRadius: BorderRadius.circular(11),
-                            child: Padding(
+                            child: IosPadding(
                               padding: const EdgeInsets.all(8),
                               child: Row(
                                 children: [
@@ -5161,7 +5173,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               const Text(
                 'Supplier',
                 style: TextStyle(
@@ -5170,7 +5182,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 32),
+              const IosGap(height: 32),
               LayoutBuilder(
                 builder: (context, constraints) {
                   double cardWidth;
@@ -5304,14 +5316,14 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           for (final cell in cells)
             Expanded(
               flex: cell.flex,
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Text(
                   cell.label,
@@ -5366,7 +5378,7 @@ class _LegacyDashboardCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -5418,7 +5430,7 @@ class _LegacyDashboardCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const IosGap(height: 20),
                 Text(
                   title,
                   style: const TextStyle(
@@ -5426,7 +5438,7 @@ class _LegacyDashboardCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 Text(
                   description,
                   style: const TextStyle(color: Color(0xFF666666), height: 1.4),

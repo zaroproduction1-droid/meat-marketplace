@@ -1,7 +1,11 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'announcement_style.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../services/platform_admin_service.dart';
 
 /// One lightweight refresh per minute, with no unfiltered realtime listener.
@@ -112,7 +116,7 @@ class _PlatformAnnouncementBannerState extends State<PlatformAnnouncementBanner>
       color: const Color(0xFFF5F6F8),
       child: SafeArea(
         bottom: false,
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Container(
             decoration: BoxDecoration(
@@ -144,7 +148,7 @@ class _PlatformAnnouncementBannerState extends State<PlatformAnnouncementBanner>
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           '${row['body']}',
                           maxLines: 2,

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import 'admin_notification_settings_page.dart';
 import 'admin_product_notifications_bell.dart';
@@ -187,7 +188,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             'Business access, platform billing and customer communications.',
         icon: Icons.admin_panel_settings_outlined,
       ),
-      const SizedBox(height: 20),
+      const IosGap(height: 20),
       AdminTileGrid(
         children: [
           _metric(
@@ -228,7 +229,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           ),
         ],
       ),
-      const SizedBox(height: 20),
+      const IosGap(height: 20),
       AdminCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,11 +238,11 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
               '${_data['suppliers'] ?? 0} suppliers · ${_data['butchers'] ?? 0} butchers',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             const Text(
               'Use Billing for CutLink memberships, invoices and received payments.',
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             Wrap(
               spacing: 10,
               runSpacing: 8,
@@ -281,7 +282,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${row['business_type']} · ${row['business_email'] ?? ''}'),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               AdminStatus('${row['verification_status']}'),
             ],
           ),
@@ -302,9 +303,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
               '${row['title']}',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Text('${row['body']}'),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Wrap(
               spacing: 10,
               runSpacing: 6,
@@ -360,7 +361,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     'audit': 'A traceable history of administrative actions and trade access.',
     'preferences': 'Manage your admin notification preferences.',
   };
-  Widget _filters() => Padding(
+  Widget _filters() => IosPadding(
     padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
     child: Column(
       children: [
@@ -381,8 +382,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             });
           },
         ),
-        const SizedBox(height: 10),
-        Padding(
+        const IosGap(height: 10),
+        IosPadding(
           padding: EdgeInsets.zero,
           child: Wrap(
             runSpacing: 6,
@@ -411,7 +412,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                       ]
                     : ['unpaid', 'part_paid', 'paid', 'overdue', 'void']),
               ])
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(right: 7),
                   child: ChoiceChip(
                     label: Text(
@@ -441,7 +442,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       ? const WorkspaceLoading(label: 'Loading admin workspace…')
       : _error != null
       ? Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -451,7 +452,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                   size: 34,
                   color: AdminTheme.muted,
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 Text(_error!),
                 TextButton(onPressed: _load, child: const Text('Try again')),
               ],
@@ -466,7 +467,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             else ...[
               if (_rows.isEmpty)
                 AdminCard(
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.symmetric(vertical: 36),
                     child: Column(
                       children: [
@@ -475,7 +476,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                           size: 38,
                           color: AdminTheme.muted,
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         const Text(
                           'Nothing to show yet',
                           style: TextStyle(
@@ -483,7 +484,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                             fontSize: 18,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const IosGap(height: 6),
                         Text(
                           _search.isNotEmpty || _filter != null
                               ? 'Try changing your search or filter.'
@@ -564,7 +565,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                     child: Wrap(
                       alignment: WrapAlignment.spaceBetween,
@@ -583,7 +584,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                                 letterSpacing: -.5,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const IosGap(height: 4),
                             Text(
                               _subtitles[_tab] ?? '',
                               style: const TextStyle(

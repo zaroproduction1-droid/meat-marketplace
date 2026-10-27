@@ -1,7 +1,11 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import 'notification_activity_tile.dart';
 
@@ -186,7 +190,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
       builder: (dialogContext) => CutLinkWorkspaceTheme(
         child: Align(
           alignment: Alignment.topRight,
-          child: Padding(
+          child: IosPadding(
             padding: EdgeInsets.only(
               top: math.min(top, screen.height * .25),
               right: 12,
@@ -227,7 +231,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                         color: CutLinkWorkspaceTheme.ink,
                                       ),
                                     ),
-                                    SizedBox(height: 3),
+                                    IosGap(height: 3),
                                     Text(
                                       'Today in Sydney • live activity',
                                       style: TextStyle(
@@ -247,7 +251,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                           ),
                         ),
                         if (data['error'] != null)
-                          Padding(
+                          IosPadding(
                             padding: const EdgeInsets.all(12),
                             child: TextButton(
                               onPressed: _load,
@@ -267,14 +271,14 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                         size: 36,
                                         color: CutLinkWorkspaceTheme.red,
                                       ),
-                                      SizedBox(height: 10),
+                                      IosGap(height: 10),
                                       Text(
                                         'No activity today yet',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
+                                      IosGap(height: 4),
                                       Text(
                                         'New updates will appear here.',
                                         style: TextStyle(
@@ -288,7 +292,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                   padding: const EdgeInsets.all(12),
                                   itemCount: rows.length,
                                   separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 8),
+                                      const IosGap(height: 8),
                                   itemBuilder: (_, i) =>
                                       NotificationActivityTile(
                                         row: rows[i],

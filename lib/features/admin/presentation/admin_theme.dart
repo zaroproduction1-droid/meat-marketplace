@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/ios_workspace.dart';
@@ -184,7 +186,7 @@ class AdminNavigation extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             for (final entry in items.entries)
                               IosMenuRow(
                                 link: IosMenuLink(
@@ -209,7 +211,7 @@ class AdminNavigation extends StatelessWidget {
       if (c.maxWidth < 1050) {
         return Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
               child: c.maxWidth < 600
                   ? DropdownButtonFormField<String>(
@@ -243,7 +245,7 @@ class AdminNavigation extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         for (final entry in items.entries)
-                          Padding(
+                          IosPadding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
                               avatar: Icon(icon(entry.key), size: 17),
@@ -271,7 +273,7 @@ class AdminNavigation extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.fromLTRB(12, 12, 12, 18),
                   child: Text(
                     'ADMIN WORKSPACE',
@@ -284,7 +286,7 @@ class AdminNavigation extends StatelessWidget {
                   ),
                 ),
                 for (final entry in items.entries)
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.only(bottom: 5),
                     child: Material(
                       color: value == entry.key
@@ -345,7 +347,7 @@ class AdminStatTile extends StatelessWidget {
     child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +371,7 @@ class AdminStatTile extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             Text(
               value,
               style: const TextStyle(
@@ -378,7 +380,7 @@ class AdminStatTile extends StatelessWidget {
                 letterSpacing: -.6,
               ),
             ),
-            const SizedBox(height: 5),
+            const IosGap(height: 5),
             Text(
               label,
               style: const TextStyle(
@@ -388,7 +390,7 @@ class AdminStatTile extends StatelessWidget {
               ),
             ),
             if (note != null)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.only(top: 7),
                 child: Text(
                   note!,
@@ -434,7 +436,7 @@ class AdminLoading extends StatelessWidget {
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 280),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -444,9 +446,9 @@ class AdminLoading extends StatelessWidget {
               color: AdminTheme.muted,
               size: 34,
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             Text(label, style: const TextStyle(color: AdminTheme.muted)),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             const LinearProgressIndicator(minHeight: 3),
           ],
         ),

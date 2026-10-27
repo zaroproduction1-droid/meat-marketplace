@@ -1,6 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../landing/presentation/featured_businesses_section.dart';
 
 class AdminFeaturedBusinessesPanel extends StatefulWidget {
@@ -107,11 +111,11 @@ class _AdminFeaturedBusinessesPanelState
         'Choose who appears on the front page',
         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
       ),
-      const SizedBox(height: 8),
+      const IosGap(height: 8),
       const Text(
         'Choose up to five suppliers and five butchers. Changes publish immediately. Only approved, active businesses with a logo can be selected. Selecting an existing business moves it to the chosen position. Totals count all registered businesses.',
       ),
-      const SizedBox(height: 18),
+      const IosGap(height: 18),
       TextField(
         enabled: !_saving,
         decoration: const InputDecoration(
@@ -131,7 +135,7 @@ class _AdminFeaturedBusinessesPanelState
         TextButton(onPressed: _load, child: const Text('Retry')),
       ],
       for (final role in ['supplier', 'butcher']) ...[
-        const SizedBox(height: 24),
+        const IosGap(height: 24),
         Text(
           role == 'supplier'
               ? 'Suppliers — five positions'
@@ -155,7 +159,7 @@ class _AdminFeaturedBusinessesPanelState
       options[selected['id'] as String] = selected;
     }
     return Card(
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +168,7 @@ class _AdminFeaturedBusinessesPanelState
               'Position $slot',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             if (selected != null) ...[
               Row(
                 children: [
@@ -180,7 +184,7 @@ class _AdminFeaturedBusinessesPanelState
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
             ],
             DropdownButtonFormField<String>(
               key: ValueKey('$role-$slot-${selected?['id']}-$_request'),

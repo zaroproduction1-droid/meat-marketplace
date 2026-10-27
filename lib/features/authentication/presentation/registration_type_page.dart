@@ -1,5 +1,8 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../landing/presentation/public_page_palette.dart';
 
 import 'account_details_page.dart';
@@ -65,7 +68,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
               color: PublicPagePalette.text,
             ),
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           const Text(
             'Choose your business type. You will provide your '
             'business and verification details in the following steps.',
@@ -76,7 +79,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
               color: PublicPagePalette.muted,
             ),
           ),
-          const SizedBox(height: 40),
+          const IosGap(height: 40),
           LayoutBuilder(
             builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 580;
@@ -115,7 +118,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
                 return Column(
                   children: [
                     supplierCard,
-                    const SizedBox(height: 20),
+                    const IosGap(height: 20),
                     butcherCard,
                   ],
                 );
@@ -131,7 +134,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
               );
             },
           ),
-          const SizedBox(height: 32),
+          const IosGap(height: 32),
           FilledButton(
             onPressed: continueRegistration,
             style: FilledButton.styleFrom(
@@ -143,7 +146,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
           ),
-          const SizedBox(height: 18),
+          const IosGap(height: 18),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
@@ -224,7 +227,7 @@ class _BusinessTypeCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 25),
+            const IosGap(height: 25),
             Text(
               title,
               style: const TextStyle(
@@ -233,7 +236,7 @@ class _BusinessTypeCard extends StatelessWidget {
                 color: PublicPagePalette.text,
               ),
             ),
-            const SizedBox(height: 13),
+            const IosGap(height: 13),
             Text(
               description,
               style: const TextStyle(

@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../services/membership_service.dart';
@@ -14,7 +16,7 @@ class MembershipSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     if (membership.isEmpty) {
       return const Card(
-        child: Padding(
+        child: IosPadding(
           padding: EdgeInsets.all(16),
           child: Text('Your CutLink membership is awaiting admin review.'),
         ),
@@ -24,7 +26,7 @@ class MembershipSummary extends StatelessWidget {
     final price =
         membership['effective_total'] ?? membership['scheduled_total'];
     return Card(
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +37,7 @@ class MembershipSummary extends StatelessWidget {
                   : MembershipService.stage(membership['stage']),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Text(
               '${MembershipService.money(price)} AUD / month · ${membership['gst_inclusive'] == true ? 'GST inclusive' : 'excluding GST'}',
               style: const TextStyle(fontWeight: FontWeight.w700),

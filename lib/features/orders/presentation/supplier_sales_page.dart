@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -328,7 +329,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_facetsLoading)
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
               'Loading filter choices…',
@@ -1626,7 +1627,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         if (catchWeight) ...[
                           Container(
                             width: double.infinity,
@@ -1657,7 +1658,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             border: const OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         TextField(
                           controller: rateController,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -1676,7 +1677,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             border: const OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         TextField(
                           controller: notesController,
                           minLines: 2,
@@ -1757,7 +1758,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return SafeArea(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 560),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1767,12 +1768,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     'Add to Sale',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   Text(
                     'Choose one of your $_openSaleCount open sales or start another.',
                     style: const TextStyle(color: Color(0xFF666666)),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   Flexible(
                     child: ListView(
                       shrinkWrap: true,
@@ -1936,7 +1937,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               child: Row(
                 children: [
                   if (_activeSale != null)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         selected: true,
@@ -1945,7 +1946,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       ),
                     ),
                   for (var i = 0; i < _parkedSales.length; i++)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ActionChip(
                         avatar: const Icon(
@@ -2017,7 +2018,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 _activeSaleMinimized = !_activeSaleMinimized;
               });
             },
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
@@ -2045,7 +2046,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const IosGap(height: 3),
                         Text(
                           '${_activeSaleLines.length} item'
                           '${_activeSaleLines.length == 1 ? '' : 's'}'
@@ -2081,7 +2082,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           if (!_activeSaleMinimized) ...[
             const Divider(height: 1),
             if (_activeSaleLines.isEmpty)
-              const Padding(
+              const IosPadding(
                 padding: EdgeInsets.all(22),
                 child: Text(
                   'No products added yet. Use Add to Sale from the '
@@ -2148,7 +2149,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         ),
                 ),
             const Divider(height: 1),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.all(16),
               child: PhoneRow(
                 mode: PhoneRowMode.wrap,
@@ -2393,7 +2394,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             insetPadding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2426,7 +2427,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              SizedBox(height: 2),
+                              IosGap(height: 2),
                               Text(
                                 'This sale would take the customer '
                                 'over their approved account limit.',
@@ -2440,7 +2441,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
+                    const IosGap(height: 18),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -2450,14 +2451,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       child: Column(
                         children: [
                           _creditLimitRow('Customer', _activeSaleCustomerName),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           _creditLimitRow('Credit limit', _money(creditLimit)),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           _creditLimitRow(
                             'Current exposure',
                             _money(currentExposure),
                           ),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           _creditLimitRow(
                             'This sale',
                             _money(proposedKnownAmount),
@@ -2468,7 +2469,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             _money(projected),
                             strong: true,
                           ),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           _creditLimitRow(
                             'Over limit by',
                             _money(overBy),
@@ -2479,7 +2480,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       ),
                     ),
                     if (hasCatchWeight) ...[
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       const Text(
                         'This order contains catch-weight items. '
                         'The final invoice value may be higher after '
@@ -2494,7 +2495,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 18),
+                    const IosGap(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -2792,7 +2793,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 ...children,
               ],
             ),
@@ -2857,11 +2858,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   'Items',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 Expanded(
                   child: ListView.separated(
                     itemCount: _activeSaleLines.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 7),
+                    separatorBuilder: (_, _) => const IosGap(height: 7),
                     itemBuilder: (context, index) {
                       final line = _activeSaleLines[index];
                       final catchWeight = line['catch_weight_snapshot'] == true;
@@ -2977,7 +2978,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   'Totals',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 Text(
                   hasCatchWeight
                       ? _money(_saleEstimatedTotal())
@@ -2989,7 +2990,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     color: _darkRed,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   hasCatchWeight
                       ? 'Fixed-price items only. Catch-weight totals are finalised after weighing.'
@@ -3004,7 +3005,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 const Spacer(),
                 if (!isWorkOrderAddition) ...[
                   quoteButton,
-                  const SizedBox(height: 9),
+                  const IosGap(height: 9),
                 ],
                 workOrderButton,
               ],
@@ -3043,11 +3044,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     padding: const EdgeInsets.all(14),
                     children: [
                       customerPanel(),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       summaryPanel(),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       SizedBox(height: 420, child: itemsPanel()),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       SizedBox(height: 270, child: totalsActionsPanel()),
                     ],
                   );
@@ -3056,7 +3057,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 return Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1240),
-                    child: Padding(
+                    child: IosPadding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         children: [
@@ -3068,7 +3069,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               Expanded(child: summaryPanel()),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const IosGap(height: 10),
                           Expanded(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3183,7 +3184,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           Text(
             value,
             style: const TextStyle(fontWeight: FontWeight.w800, height: 1.3),
@@ -3301,7 +3302,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 6),
       child: Material(
         color: Colors.transparent,
@@ -3591,7 +3592,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         insetPadding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -3626,7 +3627,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           product: product,
                           imageHeight: 230,
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         LayoutBuilder(
                           builder: (context, constraints) => Wrap(
                             spacing: 12,
@@ -3673,12 +3674,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             'Supplier specification',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 5),
+                          const IosGap(height: 5),
                           SelectableText(
                             product['supplier_specification'].toString(),
                           ),
                         ],
-                        const SizedBox(height: 16),
+                        const IosGap(height: 16),
                         const Text(
                           'Use Add to Sale to choose quantity and confirm the customer rate.',
                           style: TextStyle(color: Color(0xFF6D7177)),
@@ -3712,7 +3713,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: Color(0xFFE3E5E8)),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(10),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -3755,7 +3756,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 5),
+                      const IosGap(height: 5),
                       Text(
                         'SKU ${product['sku'] ?? 'Not set'} • ${product['temperature_state'] ?? 'Not specified'}',
                         style: const TextStyle(
@@ -3764,7 +3765,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         ),
                       ),
                       if (summary.isNotEmpty) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           summary,
                           maxLines: 2,
@@ -3775,7 +3776,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 6),
+                      const IosGap(height: 6),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
@@ -3830,7 +3831,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -3859,7 +3860,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             return narrow
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [identity, const SizedBox(height: 10), actions],
+                    children: [identity, const IosGap(height: 10), actions],
                   )
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -3923,7 +3924,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               height: MediaQuery.sizeOf(context).height * .86,
               child: Column(
                 children: [
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                     child: Row(
                       children: [
@@ -3976,10 +3977,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const IosGap(height: 8),
                             for (final specification
                                 in _availableSpecifications)
-                              Padding(
+                              IosPadding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: OutlinedButton(
                                   onPressed: () {
@@ -3993,7 +3994,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                   },
                                   child: Align(
                                     alignment: Alignment.centerLeft,
-                                    child: Padding(
+                                    child: IosPadding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 10,
                                       ),
@@ -4115,7 +4116,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           onChanged: _selectAnimal,
                           onBrowse: _openSalesCatalogue,
                         ),
-                        const SizedBox(height: 6),
+                        const IosGap(height: 6),
                         _buildAnimalCutStrip(),
                         if (_selectedAnimalRegionKey != null)
                           _buildAnimalSubcutStrip(),
@@ -4151,7 +4152,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             Widget search(
@@ -4187,7 +4188,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                         _searchController,
                                         'Search products, brands or specifications…',
                                       ),
-                                      const SizedBox(height: 8),
+                                      const IosGap(height: 8),
                                       search(
                                         _skuSearchController,
                                         'Search SKU…',
@@ -4214,9 +4215,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                   );
                           },
                         ),
-                        const SizedBox(height: 10),
+                        const IosGap(height: 10),
                         _salesStockFilters(),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         _stockPagination(),
                         if (_pageLoading)
                           const LinearProgressIndicator(minHeight: 3),
@@ -4241,7 +4242,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           ),
           if (!_pageLoading && _pageError == null && products.isEmpty)
             const SliverToBoxAdapter(
-              child: Padding(
+              child: IosPadding(
                 padding: EdgeInsets.all(28),
                 child: Center(
                   child: Text(
@@ -4261,7 +4262,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           ),
           if (products.isNotEmpty)
             SliverToBoxAdapter(
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: _stockPagination(),
               ),
@@ -4307,7 +4308,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   'Sales',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
-                SizedBox(height: 1),
+                IosGap(height: 1),
                 Text(
                   'Direct sales, quotes and active sales workspace',
                   style: TextStyle(

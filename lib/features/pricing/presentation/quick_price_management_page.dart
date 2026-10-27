@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/widgets/supplier_product_attention_notice.dart';
@@ -455,7 +456,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     if (!statuses.containsKey(status)) {
       statuses[status] = status;
     }
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
@@ -1270,7 +1271,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     }
 
     return _arrowStrip(_cutScroll, [
-      Padding(
+      IosPadding(
         padding: const EdgeInsets.only(right: 6),
         child: ChoiceChip(
           selected: _selectedSectionId == null,
@@ -1297,7 +1298,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         ),
       ),
       for (final section in sections)
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.only(right: 6),
           child: ChoiceChip(
             selected: _selectedSectionId == section['id']?.toString(),
@@ -1327,7 +1328,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     }
 
     return _arrowStrip(_specScroll, [
-      Padding(
+      IosPadding(
         padding: const EdgeInsets.only(right: 6),
         child: ChoiceChip(
           selected: _selectedSpecificationId == null,
@@ -1350,7 +1351,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         ),
       ),
       for (final specification in specifications)
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.only(right: 6),
           child: ChoiceChip(
             selected:
@@ -1392,7 +1393,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         side: const BorderSide(color: Color(0xFFE2E2DE)),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1434,7 +1435,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const IosGap(height: 3),
                       Text(
                         '${_sectionName(product)}'
                         '${product['sku']?.toString().trim().isNotEmpty == true ? '  •  SKU ${product['sku']}' : ''}',
@@ -1450,7 +1451,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                         productProgram(product),
                         product['marbling_score']?.toString() ?? '',
                       ].where((v) => v.isNotEmpty).join(' • ').isNotEmpty) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           [
                             product['brand']?.toString() ?? '',
@@ -1466,7 +1467,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                         ),
                       ],
                       if (lambSummary.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Text(
                           lambSummary,
                           style: const TextStyle(
@@ -1488,7 +1489,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       ),
                       _stockEditor(product),
                       if (_isCatchWeight(product)) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         const Text(
                           r'Carton order • $/kg catch-weight pricing',
                           style: TextStyle(
@@ -1509,7 +1510,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   productInfo,
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   const Text(
                     'STANDARD PRICE',
                     style: TextStyle(
@@ -1518,9 +1519,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   _priceCell(product: product, visibility: 'public'),
-                  const SizedBox(height: 10),
+                  const IosGap(height: 10),
                   const Text(
                     'TRADE PRICE',
                     style: TextStyle(
@@ -1529,12 +1530,12 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   _priceCell(
                     product: product,
                     visibility: 'approved_customers',
                   ),
-                  const SizedBox(height: 10),
+                  const IosGap(height: 10),
                   const Text(
                     'CUSTOMER SPECIFIC',
                     style: TextStyle(
@@ -1543,7 +1544,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   _customerPriceCell(product),
                 ],
               );
@@ -1599,7 +1600,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   title,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 2),
+                const IosGap(height: 2),
                 Text(
                   subtitle,
                   style: const TextStyle(
@@ -1755,7 +1756,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
               icon: const Icon(Icons.menu_book_outlined),
               onPressed: _isLoading ? null : _browseDiagram,
             ),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.only(right: 8),
               child: FilledButton.icon(
                 onPressed: _isLoading || _isSavingChanges ? null : _addProduct,
@@ -1887,7 +1888,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                 );
                 if (box.maxWidth < 600) {
                   return Column(
-                    children: [query, const SizedBox(height: 10), sku],
+                    children: [query, const IosGap(height: 10), sku],
                   );
                 }
                 return Row(
@@ -1899,24 +1900,24 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                 );
               },
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             AnimalCatalogueControls(
               selectedCode: _selectedAnimalCode,
               onChanged: _selectAnimal,
               onBrowse: _browseDiagram,
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             _buildSectionStrip(),
             if (_selectedSectionId != null ||
                 _selectedAnimalRegionKey != null) ...[
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               _buildSpecificationStrip(),
             ],
           ],
         ),
       ),
-      const SizedBox(height: 8),
-      Padding(
+      const IosGap(height: 8),
+      IosPadding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: SupplierStockFilterBar(
           rows: const [],
@@ -1933,7 +1934,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           icon: const Icon(Icons.refresh),
           label: Text('$_filterChoiceError Retry'),
         ),
-      const SizedBox(height: 6),
+      const IosGap(height: 6),
       if (_loadingStock) const LinearProgressIndicator(minHeight: 2),
       if (_stockError != null)
         Row(
@@ -1947,7 +1948,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           if (constraints.maxWidth < 880) {
             return const SizedBox.shrink();
           }
-          return Padding(
+          return IosPadding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: Row(
               children: [
@@ -2019,7 +2020,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         ),
         if (waiting || _stockError != null || products.isEmpty)
           SliverToBoxAdapter(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: waiting
@@ -2037,7 +2038,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => Padding(
+                (context, index) => IosPadding(
                   key: ValueKey(products[index]['id']),
                   padding: const EdgeInsets.only(bottom: 6),
                   child: _buildQuickPriceProductCard(products[index]),
@@ -2047,7 +2048,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             ),
           ),
         SliverToBoxAdapter(child: pager),
-        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        const SliverToBoxAdapter(child: IosGap(height: 8)),
       ],
     );
   }

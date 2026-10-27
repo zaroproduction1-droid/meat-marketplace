@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -130,7 +132,7 @@ class _SupplierFulfilmentActionsState extends State<SupplierFulfilmentActions> {
       'completed',
     ].contains(status);
     final canStart = ['accepted', 'processing'].contains(status);
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -139,7 +141,7 @@ class _SupplierFulfilmentActionsState extends State<SupplierFulfilmentActions> {
             'Fulfilment',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             complete
                 ? 'Completed'
@@ -149,7 +151,7 @@ class _SupplierFulfilmentActionsState extends State<SupplierFulfilmentActions> {
                       ? 'Out for delivery / delivered'
                       : 'Preparing delivery'),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           if (!complete && canStart && (delivery || (pickup && !ready)))
             FilledButton.icon(
               onPressed: _busy

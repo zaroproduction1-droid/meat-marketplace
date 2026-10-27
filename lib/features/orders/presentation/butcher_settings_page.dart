@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
@@ -79,14 +80,14 @@ class ButcherSettingsPage extends StatelessWidget {
                     'Make CutLink yours',
                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 6),
+                  const IosGap(height: 6),
                   const Text(
                     'Manage your business identity, purchasing details and preferences.',
                     style: TextStyle(color: Color(0xFF6D7177)),
                   ),
-                  const SizedBox(height: 20),
+                  const IosGap(height: 20),
                   _ButcherBrandingCard(onChanged: onBrandingChanged),
-                  const SizedBox(height: 20),
+                  const IosGap(height: 20),
                   LayoutBuilder(
                     builder: (context, c) => Wrap(
                       spacing: 16,
@@ -262,7 +263,7 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
 
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(
+    child: IosPadding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +301,7 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    IosGap(height: 6),
                     Text(
                       'Add your business logo to your CutLink identity. PNG or JPG, up to 5 MB.',
                     ),
@@ -309,7 +310,7 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           if (_error != null)
             TextButton(onPressed: _load, child: Text('$_error Retry')),
           Wrap(
@@ -369,7 +370,7 @@ class _SettingsTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
@@ -394,7 +395,7 @@ class _SettingsTile extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
@@ -625,9 +626,9 @@ class _ButcherProfileSettingsPageState
       child: Column(
         children: [
           const PersonalAccountSettingsPage(embedded: true),
-          const SizedBox(height: 20),
+          const IosGap(height: 20),
           const Divider(),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -635,7 +636,7 @@ class _ButcherProfileSettingsPageState
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           _field(_tradingName, 'Trading Name'),
           _field(_legalName, 'Legal Name'),
           _field(
@@ -1147,7 +1148,7 @@ class _ButcherDeliveryAddressesPageState
                                 const Chip(label: Text('Default')),
                             ],
                           ),
-                          subtitle: Padding(
+                          subtitle: IosPadding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
                               [
@@ -1173,7 +1174,7 @@ class _ButcherDeliveryAddressesPageState
           ),
           SafeArea(
             top: false,
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
               child: SizedBox(
                 width: double.infinity,
@@ -1526,13 +1527,13 @@ class _SettingsFormScaffold extends StatelessWidget {
       return Scaffold(
         appBar: phoneAppBar(context, AppBar(title: Text(title))),
         body: Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(error!, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 FilledButton(
                   onPressed: onRetry,
                   child: const Text('Try Again'),
@@ -1551,7 +1552,7 @@ class _SettingsFormScaffold extends StatelessWidget {
           AppBar(
             title: Text(title),
             actions: [
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.only(right: 12),
                 child: FilledButton.icon(
                   onPressed: saving ? null : onSave,
@@ -1575,19 +1576,19 @@ class _SettingsFormScaffold extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const IosGap(height: 6),
                 const Text(
                   'Keep your business details and preferences up to date.',
                   style: TextStyle(color: Color(0xFF6D7177)),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 Card(
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.all(22),
                     child: child,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const IosGap(height: 24),
               ],
             ),
           ),
@@ -1604,7 +1605,7 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         text,
@@ -1620,7 +1621,7 @@ Widget _field(
   TextInputType? keyboardType,
   int maxLines = 1,
 }) {
-  return Padding(
+  return IosPadding(
     padding: const EdgeInsets.only(bottom: 12),
     child: TextField(
       controller: controller,

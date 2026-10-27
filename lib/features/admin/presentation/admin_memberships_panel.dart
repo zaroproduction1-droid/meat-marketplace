@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../memberships/services/membership_service.dart';
@@ -86,7 +88,7 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
             supplier ? 'Suppliers' : 'Butchers',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             '${MembershipService.money(plan['standard_total'])} / month',
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
@@ -98,7 +100,7 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
             color: Color(0xFF906B2B),
             size: 30,
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           const Text(
             'Founding offer',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
@@ -107,7 +109,7 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
           Text(
             'First 10: then ${MembershipService.money(plan['discounted_total'])}/month for a year.',
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             '${plan['remaining'] ?? '—'} of ${plan['founding_limit'] ?? '—'} founding places left',
           ),
@@ -116,7 +118,7 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
                 ? 'Open for new members'
                 : 'Paused for new members',
           ),
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           OutlinedButton(
             onPressed: plan.isEmpty ? null : () => _offer(role, plan),
             child: Text(
@@ -151,11 +153,11 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
           'Regular prices & founding offers',
           style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
+        const IosGap(height: 6),
         const Text(
           'Start or change a business’s membership from its billing account.',
         ),
-        const SizedBox(height: 16),
+        const IosGap(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth < 700 ||
@@ -172,7 +174,7 @@ class _AdminMembershipsPanelState extends State<AdminMembershipsPanel> {
             );
           },
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         const Text(
           'Remaining founding places: 6 months free, then the regular monthly price. Places follow confirmation order and are not recycled.',
         ),

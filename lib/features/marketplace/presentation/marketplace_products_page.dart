@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/customer_price_display.dart';
@@ -295,7 +296,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         },
       ),
     );
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.fromLTRB(11, 0, 11, 10),
       child: Wrap(
         spacing: 8,
@@ -1373,7 +1374,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   Widget _stockLoadingStatus() {
     if (_stockError != null) {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.all(8),
         child: Row(
           children: [
@@ -1396,19 +1397,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         );
       }
       return _loadingFacets
-          ? const Padding(
+          ? const IosPadding(
               padding: EdgeInsets.all(8),
               child: Text('Loading filter options…'),
             )
           : const SizedBox.shrink();
     }
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const LinearProgressIndicator(),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           const Text('Loading matching products…'),
         ],
       ),
@@ -2604,7 +2605,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 6),
       child: Material(
         color: Colors.transparent,
@@ -2808,7 +2809,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           },
         ),
         for (final grade in grades)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(right: 7),
             child: ChoiceChip(
               selected: _selectedGradeId == grade['id']?.toString(),
@@ -2893,7 +2894,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       ),
                     ),
                     Expanded(child: _buildBody(iosFiltersOnly: true)),
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.all(12),
                       child: Builder(
                         builder: (context) => SizedBox(
@@ -3259,9 +3260,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const IosGap(height: 2),
                     _supplierIdentity(product),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}',
                       style: const TextStyle(
@@ -3271,7 +3272,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       ),
                     ),
                     if (product['halal_status'] == 'halal') ...[
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       const Text(
                         'HALAL • Supplier declared',
                         style: TextStyle(
@@ -3282,7 +3283,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       ),
                     ],
                     if (commercialSummary.isNotEmpty) ...[
-                      const SizedBox(height: 5),
+                      const IosGap(height: 5),
                       Text(
                         commercialSummary,
                         maxLines: 2,
@@ -3297,7 +3298,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     ],
                     if (supplierSpecification != null &&
                         supplierSpecification.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       Text(
                         supplierSpecification.trim(),
                         maxLines: 1,
@@ -3334,7 +3335,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     ? CrossAxisAlignment.start
                     : CrossAxisAlignment.end,
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Wrap(
                 spacing: 7,
                 runSpacing: 7,
@@ -3419,7 +3420,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [identity, const SizedBox(height: 10), actions],
+              children: [identity, const IosGap(height: 10), actions],
             );
           }
 
@@ -3478,7 +3479,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 '1. Choose a cut',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -3494,26 +3495,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               const Text(
                 '2. Choose a sub-cut',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 6),
+              const IosGap(height: 6),
               const Text(
                 'Choose a sub-cut to view supplier offers. Refine grade, size and brand on the results page.',
                 style: TextStyle(fontSize: 12, color: Color(0xFF666A70)),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               if (specifications.isEmpty)
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
                     'Select a cut on the diagram or above to see its sub-cuts.',
                   ),
                 ),
               for (final specification in specifications)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
@@ -3550,7 +3551,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
                     child: Row(
                       children: [
@@ -3597,7 +3598,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       color: Colors.white,
       child: InkWell(
         onTap: () => _openProductInfo(product),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3659,7 +3660,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     CustomerPriceDisplay(
                       product: product,
                       visiblePrice: _findVisiblePrice(product),
@@ -3719,7 +3720,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3729,9 +3730,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadProducts,
                 child: const Text('Try Again'),
@@ -3758,7 +3759,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     // ignore: unused_element
     Widget filterLabel(String label) {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Text(
           label,
@@ -3956,7 +3957,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 );
               },
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             Wrap(
               spacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -4033,7 +4034,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         ),
                       ),
                       if (subtitle != null && subtitle.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           subtitle,
                           maxLines: 2,
@@ -4077,7 +4078,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
       if (specifications.isEmpty) {
         return Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(26),
             child: Text(
               query.isEmpty
@@ -4098,7 +4099,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        separatorBuilder: (_, _) => const IosGap(height: 7),
         itemBuilder: (_, index) {
           final specification = specifications[index];
           final name = specification['name']?.toString() ?? 'Subcategory';
@@ -4143,7 +4144,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             },
           ),
           for (final size in sizes.where((v) => v.isNotEmpty))
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.only(top: 7),
               child: rightChoiceCard(
                 icon: Icons.straighten,
@@ -4179,7 +4180,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
       if (grades.isEmpty) {
         return Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(26),
             child: Text(
               query.isEmpty
@@ -4200,7 +4201,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: grades.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        separatorBuilder: (_, _) => const IosGap(height: 7),
         itemBuilder: (_, index) {
           final grade = grades[index];
           final code = grade['code']?.toString() ?? 'N/A';
@@ -4229,7 +4230,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
       if (specifications.isEmpty) {
         return const Center(
-          child: Padding(
+          child: IosPadding(
             padding: EdgeInsets.all(26),
             child: Text(
               'No product specifications are available for this sub-cut.',
@@ -4248,7 +4249,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        separatorBuilder: (_, _) => const IosGap(height: 7),
         itemBuilder: (_, index) {
           final specification = specifications[index];
           return rightChoiceCard(
@@ -4271,7 +4272,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       if (_stockTotal <= _stockPageSize && _stockPageOffset == 0) {
         return const SizedBox.shrink();
       }
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.all(8),
         child: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -4320,7 +4321,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       }
       if (_filteredProducts.isEmpty) {
         return const Center(
-          child: Padding(
+          child: IosPadding(
             padding: EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -4330,12 +4331,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   size: 46,
                   color: Color(0xFFAAAAAA),
                 ),
-                SizedBox(height: 10),
+                IosGap(height: 10),
                 Text(
                   'No supplier offers match this selection',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
-                SizedBox(height: 4),
+                IosGap(height: 4),
                 Text(
                   'No active supplier product matches these cut and specification choices.',
                   textAlign: TextAlign.center,
@@ -4354,7 +4355,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               key: ValueKey('$_stockScope:$_stockPageOffset'),
               padding: const EdgeInsets.all(10),
               itemCount: _filteredProducts.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 7),
+              separatorBuilder: (_, _) => const IosGap(height: 7),
               itemBuilder: (_, index) =>
                   _buildMarketplaceProductCard(_filteredProducts[index]),
             ),
@@ -4370,7 +4371,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         ? supplierStockStage()
         : !cutSelected
         ? const Center(
-            child: Padding(
+            child: IosPadding(
               padding: EdgeInsets.all(28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -4380,7 +4381,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     size: 48,
                     color: Color(0xFFAAAAAA),
                   ),
-                  SizedBox(height: 12),
+                  IosGap(height: 12),
                   Text(
                     'Select a cut or search above',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
@@ -4400,7 +4401,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget filters() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.fromLTRB(11, 0, 11, 8),
           child: Wrap(
             spacing: 8,
@@ -4483,7 +4484,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             final mainPanel = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
                   child: Row(
                     children: [
@@ -4498,7 +4499,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const IosGap(height: 2),
                             Text(
                               subtitle,
                               style: const TextStyle(
@@ -4575,14 +4576,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             onChanged: _selectAnimal,
             onBrowse: _openAnimalCatalogue,
           ),
-          const SizedBox(height: 6),
+          const IosGap(height: 6),
           _buildSectionStrip(),
           if (cutSelected) ...[
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             _buildSpecificationStrip(),
           ],
           if (subcategorySelected) ...[
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             _usesGradeStage
                 ? _buildGradeStrip()
                 : _buildCommercialSpecificationStrip(),
@@ -4605,7 +4606,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 catalogueControls(),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 resultsPanel(sideFilters: sideFilters),
               ],
             ),
@@ -4616,7 +4617,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             padding: const EdgeInsets.all(10),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => Padding(
+                (context, index) => IosPadding(
                   padding: const EdgeInsets.only(bottom: 7),
                   child: _buildMarketplaceProductCard(_filteredProducts[index]),
                 ),
@@ -4627,12 +4628,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           SliverToBoxAdapter(child: stockPagination()),
         ] else
           SliverToBoxAdapter(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(10),
               child: stageContent(),
             ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        const SliverToBoxAdapter(child: IosGap(height: 16)),
       ],
     );
     if (useIosWorkspace(context)) {
@@ -4641,7 +4642,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           padding: const EdgeInsets.all(12),
           children: [
             catalogueControls(),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             filters(),
             if (!showingStock) stageContent(),
           ],
@@ -4662,7 +4663,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   'Animal & cut',
                   'Specifications',
                 ])
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Builder(
                       builder: (context) => ActionChip(
@@ -4712,7 +4713,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Padding(
+                    const IosPadding(
                       padding: EdgeInsets.fromLTRB(12, 0, 12, 14),
                       child: Text(
                         'Filters & sorting',

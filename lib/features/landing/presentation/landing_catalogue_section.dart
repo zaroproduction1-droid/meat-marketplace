@@ -1,4 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
+
 import 'public_page_palette.dart';
 import '../../../shared/animal_catalogues/animal_catalogue_registry.dart';
 import '../../../shared/widgets/interactive_beef_cuts_map.dart';
@@ -161,7 +164,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
           fontWeight: FontWeight.w800,
         ),
       ),
-      const SizedBox(height: 18),
+      const IosGap(height: 18),
       AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         child: Text(
@@ -175,12 +178,12 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
           ),
         ),
       ),
-      const SizedBox(height: 14),
+      const IosGap(height: 14),
       const Text(
         'The same visual catalogue is used inside CutLink. Start with the animal and cut, then narrow down exactly what you need.',
         style: TextStyle(color: _muted, height: 1.6),
       ),
-      const SizedBox(height: 22),
+      const IosGap(height: 22),
       for (final step in [
         ('01', 'Choose the cut', 'Select the main section, then the sub-cut.'),
         (
@@ -216,7 +219,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   Text(
                     step.$3,
                     style: const TextStyle(
@@ -230,7 +233,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const IosGap(height: 18),
       ],
       FilledButton.icon(
         onPressed: widget.onBrowse,
@@ -253,7 +256,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
           child: SafeArea(
             child: Column(
               children: [
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
@@ -302,7 +305,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                     ),
                   ),
                 ),
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     '$_label • Pinch or use your trackpad to zoom.',
@@ -346,7 +349,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           header,
-          const SizedBox(height: 18),
+          const IosGap(height: 18),
           if (desktop)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +358,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                 const SizedBox(width: 30),
                 Expanded(
                   flex: 3,
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.only(top: 12),
                     child: _details(),
                   ),
@@ -364,7 +367,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
             )
           else ...[
             _map(mapHeight),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             Text(
               _label,
               style: const TextStyle(
@@ -373,13 +376,13 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                 fontSize: 18,
               ),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             const Text(
               'Choose a cut, then refine its specification and compare suppliers inside CutLink.',
               style: TextStyle(color: _muted, height: 1.5),
             ),
           ],
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Row(
             children: [
               const Expanded(

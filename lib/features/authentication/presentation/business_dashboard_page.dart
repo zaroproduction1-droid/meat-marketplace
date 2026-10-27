@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -57,7 +58,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -67,13 +68,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   size: 80,
                   color: Color(0xFF741C1C),
                 ),
-                const SizedBox(height: 24),
+                const IosGap(height: 24),
                 const Text(
                   'Business dashboard',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 const Text(
                   'Your business has been approved. '
                   'Supplier and butcher dashboard features '
@@ -85,7 +86,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     color: Color(0xFF5E5E5E),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const IosGap(height: 32),
                 Wrap(
                   spacing: 18,
                   runSpacing: 18,
@@ -133,7 +134,7 @@ class _DashboardCard extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, size: 42, color: const Color(0xFF741C1C)),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Text(
             title,
             style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
@@ -892,7 +893,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 5),
+            const IosGap(height: 5),
             Text(
               _money(value),
               style: TextStyle(
@@ -942,7 +943,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 1),
+                const IosGap(height: 1),
                 Text(
                   _date(value),
                   style: const TextStyle(
@@ -979,7 +980,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Text(
               'Statement Activity',
@@ -988,7 +989,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
           ),
           const Divider(height: 1),
           if (displayRows.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
@@ -1129,7 +1130,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1139,7 +1140,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: _darkRed),
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     FilledButton(
                       onPressed: _loadStatement,
                       child: const Text('Try Again'),
@@ -1188,7 +1189,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                                                   fontWeight: FontWeight.w900,
                                                 ),
                                               ),
-                                              const SizedBox(height: 3),
+                                              const IosGap(height: 3),
                                               Text(
                                                 widget.supplierName,
                                                 style: const TextStyle(
@@ -1213,7 +1214,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                                                   fontWeight: FontWeight.w900,
                                                 ),
                                               ),
-                                              const SizedBox(height: 3),
+                                              const IosGap(height: 3),
                                               Text(
                                                 widget.customerName,
                                                 style: const TextStyle(
@@ -1244,7 +1245,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const IosGap(height: 10),
                         PhoneRow(
                           mode: PhoneRowMode.metrics,
                           desktop: Row(
@@ -1281,7 +1282,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         _transactionsTable(),
                       ],
                     ),

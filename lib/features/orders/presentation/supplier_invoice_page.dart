@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../delivery/presentation/packing_list_page.dart';
 import '../../delivery/presentation/supplier_fulfilment_actions.dart';
 import '../../credits/presentation/credit_notes_page.dart';
@@ -5,6 +6,7 @@ import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -564,7 +566,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Outstanding: ${_money(_amountOutstanding)}'),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -669,7 +671,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     ? 'The customer says they paid ${_money(claimedAmount)}. Confirm only after checking that the payment has arrived.'
                     : 'Reject this payment claim if the funds have not arrived or the details are incorrect.',
               ),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               TextField(
                 controller: noteController,
                 maxLines: 2,
@@ -976,7 +978,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   Widget _workspaceTab(int index, IconData icon, String label) {
     final selected = _workspaceTabIndex == index;
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 6),
       child: TextButton.icon(
         onPressed: () => setState(() => _workspaceTabIndex = index),
@@ -1164,12 +1166,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 'Order History',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 3),
+              const IosGap(height: 3),
               const Text(
                 'Recorded order, warehouse and invoice milestones.',
                 style: TextStyle(color: Color(0xFF73777D), fontSize: 12),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               if (events.isEmpty)
                 const Text('No recorded milestones yet.')
               else
@@ -1224,7 +1226,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1233,7 +1235,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     event.title,
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 2),
+                  const IosGap(height: 2),
                   Text(
                     date,
                     style: const TextStyle(
@@ -1257,15 +1259,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -1302,7 +1304,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
 
     Widget sectionTitle(String title, {IconData? icon}) {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.only(bottom: 8),
         child: PhoneRow(
           mode: PhoneRowMode.wrap,
@@ -1326,7 +1328,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     }
 
     Widget fact(String label, String value) {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1461,7 +1463,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         ),
         child: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
               child: PhoneRow(
                 mode: PhoneRowMode.wrap,
@@ -1600,7 +1602,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               ),
 
               if (_hasPendingCustomerPaymentClaim) ...[
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 Container(
                   padding: const EdgeInsets.all(11),
                   decoration: BoxDecoration(
@@ -1618,7 +1620,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const IosGap(height: 5),
                       Text(
                         'Claimed ${_money(_asDouble(_invoice?['customer_payment_claimed_amount']))}',
                         style: const TextStyle(fontWeight: FontWeight.w800),
@@ -1627,13 +1629,13 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                         _invoice?['customer_payment_claimed_note'],
                         fallback: '',
                       ).isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Text(
                           clean(_invoice?['customer_payment_claimed_note']),
                           style: const TextStyle(fontSize: 11.5),
                         ),
                       ],
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -1663,7 +1665,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ),
               ],
 
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               FilledButton.icon(
                 onPressed: _canSendToButcher && !_isSaving
                     ? _sendInvoiceToButcher
@@ -1689,7 +1691,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                       : 'Send to Butcher',
                 ),
               ),
-              const SizedBox(height: 7),
+              const IosGap(height: 7),
               OutlinedButton.icon(
                 onPressed: _canRecordPayment && !_isSaving
                     ? _recordPayment
@@ -1720,9 +1722,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     _invoice?['payment_instructions_snapshot'],
                     fallback: '',
                   ).isNotEmpty) ...[
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 const Divider(height: 1),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 sectionTitle(
                   'Payment Details',
                   icon: Icons.account_balance_outlined,
@@ -1763,9 +1765,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   ),
               ],
 
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               const Divider(height: 1),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               sectionTitle('Invoice Notes', icon: Icons.notes_outlined),
               for (final entry in invoiceCommercialNotices(_invoice!).entries)
                 fact(entry.key, entry.value),
@@ -1780,13 +1782,13 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 7),
+              const IosGap(height: 7),
               OutlinedButton.icon(
                 onPressed: status != 'void' && !_isSaving ? _saveNotes : null,
                 icon: const Icon(Icons.save_outlined),
                 label: const Text('Save Notes'),
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -1859,7 +1861,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const IosGap(height: 2),
                 Text(
                   clean(_invoice?['customer_name_snapshot']),
                   style: const TextStyle(
@@ -1913,22 +1915,22 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             padding: const EdgeInsets.all(14),
             children: [
               header,
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               customerSummaryPanel(),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               invoiceSummaryPanel(),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               SizedBox(
                 height: isPhoneLayout(context) ? null : 460,
                 child: itemsPanel(),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               totalsActionsPanel(),
             ],
           );
         }
 
-        return Padding(
+        return IosPadding(
           padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1937,7 +1939,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 child: Column(
                   children: [
                     header,
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1946,7 +1948,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                         Expanded(child: invoiceSummaryPanel()),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Expanded(child: itemsPanel()),
                   ],
                 ),
@@ -2016,7 +2018,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 2),
+            const IosGap(height: 2),
             Text(
               value,
               style: const TextStyle(
@@ -2075,7 +2077,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ),
               if ((item['sku_snapshot']?.toString().trim() ?? '')
                   .isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const IosGap(height: 2),
                 Text(
                   'SKU ${item['sku_snapshot']}',
                   style: const TextStyle(
@@ -2088,7 +2090,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   specificationLabel.isNotEmpty ||
                   section.isNotEmpty ||
                   animal.isNotEmpty) ...[
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 Wrap(
                   spacing: 5,
                   runSpacing: 5,
@@ -2100,7 +2102,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ),
               ],
               if (_asDouble(item['discount_amount']) > 0) ...[
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 Text(
                   'Discount: ${_money(item['discount_amount'])}',
                   style: const TextStyle(
@@ -2112,7 +2114,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               ],
               if ((item['public_comment']?.toString().trim() ?? '')
                   .isNotEmpty) ...[
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   'Public: ${item['public_comment']}',
                   maxLines: 2,
@@ -2151,7 +2153,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 3),
+              const IosGap(height: 3),
               Text(
                 _money(item['line_amount']),
                 style: const TextStyle(
@@ -2167,9 +2169,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 identity,
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 metrics,
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 amount,
               ],
             );
@@ -2209,7 +2211,7 @@ class _TotalRow extends StatelessWidget {
       fontSize: bold ? 17 : 14,
     );
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,

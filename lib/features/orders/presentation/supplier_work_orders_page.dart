@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -520,7 +522,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () => _openWorkOrder(workOrder),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(18),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -545,7 +547,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                       _statusChip(status),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const IosGap(height: 6),
                   Text(
                     _customerName(workOrder),
                     style: const TextStyle(
@@ -554,7 +556,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const IosGap(height: 10),
                   Wrap(
                     spacing: 24,
                     runSpacing: 8,
@@ -589,7 +591,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   if ((workOrder['warehouse_instructions']?.toString().trim() ??
                           '')
                       .isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     Text(
                       workOrder['warehouse_instructions'].toString(),
                       maxLines: 2,
@@ -612,7 +614,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
               if (narrow) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [details, const SizedBox(height: 16), action],
+                  children: [details, const IosGap(height: 16), action],
                 );
               }
 
@@ -638,15 +640,15 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadWorkOrders,
                 child: const Text('Try Again'),
@@ -664,7 +666,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
         constraints: const BoxConstraints(maxWidth: 1320),
         child: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 12),
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -695,7 +697,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          SizedBox(height: 3),
+                          IosGap(height: 3),
                           Text(
                             'Pick, weigh and finalise orders before handoff to delivery or pickup.',
                             style: TextStyle(
@@ -710,7 +712,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 ),
               ),
             ),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
                 controller: _searchController,
@@ -737,8 +739,8 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Padding(
+            const IosGap(height: 14),
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
                 decoration: BoxDecoration(
@@ -776,7 +778,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
             Expanded(
               child: filtered.isEmpty
                   ? Center(
-                      child: Padding(
+                      child: IosPadding(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -786,7 +788,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                               size: 64,
                               color: Color(0xFFAAAAAA),
                             ),
-                            const SizedBox(height: 14),
+                            const IosGap(height: 14),
                             Text(
                               _searchController.text.trim().isEmpty
                                   ? 'No work orders in this section.'
@@ -880,7 +882,7 @@ class _MiniInfo extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             maxLines: 2,

@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -161,7 +163,7 @@ class _PersonalAccountSettingsPageState
             : null) ??
         '';
     final content = _loading
-        ? const Padding(
+        ? const IosPadding(
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
           )
@@ -182,12 +184,12 @@ class _PersonalAccountSettingsPageState
                   'Your contact details',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 6),
+                const IosGap(height: 6),
                 const Text(
                   'Your name appears on new support tickets and messages.',
                   style: TextStyle(fontSize: 13, color: Color(0xFF6D7177)),
                 ),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final firstName = TextFormField(
@@ -235,12 +237,12 @@ class _PersonalAccountSettingsPageState
                     labelText: 'Personal phone (optional)',
                   ),
                 ),
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 InputDecorator(
                   decoration: const InputDecoration(labelText: 'Sign-in email'),
                   child: SelectableText(email),
                 ),
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 const Text(
                   'Previously sent messages keep their original name. '
                   'Save your contact details here; use the business save action '
@@ -248,13 +250,13 @@ class _PersonalAccountSettingsPageState
                   style: TextStyle(fontSize: 12, color: Color(0xFF6D7177)),
                 ),
                 if (_saveError != null) ...[
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   Text(
                     _saveError!,
                     style: const TextStyle(color: Color(0xFF741C1C)),
                   ),
                 ],
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: FilledButton.icon(

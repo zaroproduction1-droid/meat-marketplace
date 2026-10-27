@@ -1,5 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -302,7 +304,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                               fontSize: 15,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const IosGap(height: 4),
                           if (draft.priceError() == null)
                             CustomerPriceDisplay(
                               fontSize: 16,
@@ -324,7 +326,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                                 },
                               },
                             ),
-                          const SizedBox(height: 4),
+                          const IosGap(height: 4),
                           Text(
                             dirty
                                 ? 'Unsaved change'
@@ -376,7 +378,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                 );
                 if (constraints.maxWidth < 590) {
                   return Column(
-                    children: [identity, const SizedBox(height: 14), field],
+                    children: [identity, const IosGap(height: 14), field],
                   );
                 }
                 return Row(
@@ -388,7 +390,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                 );
               },
             ),
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             SizedBox(
               width: double.infinity,
               child: Wrap(
@@ -422,7 +424,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
               ),
             ),
             if (expanded) ...[
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               if (!widget.catchWeight) ...[
                 DropdownButtonFormField<String>(
                   key: ValueKey('vip-basis-$id-${_bases[id]}'),
@@ -452,7 +454,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                           }
                         },
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
               ],
               TextField(
                 key: ValueKey('vip-minimum-$id'),
@@ -508,7 +510,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
           height: height,
           child: Column(
             children: [
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 10, 12),
                 child: Row(
                   children: [
@@ -523,7 +525,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const IosGap(height: 4),
                           Text(
                             widget.productName,
                             maxLines: 1,
@@ -544,7 +546,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                   ],
                 ),
               ),
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
                 child: TextField(
                   key: const ValueKey('vip-customer-search'),
@@ -572,18 +574,18 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                     : ListView.separated(
                         padding: const EdgeInsets.all(18),
                         itemCount: customers.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const IosGap(height: 12),
                         itemBuilder: (_, index) => _row(customers[index]),
                       ),
               ),
               const Divider(height: 1),
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (_saveFailed)
-                      const Padding(
+                      const IosPadding(
                         padding: EdgeInsets.only(bottom: 10),
                         child: Text(
                           'Save failed. Your edits are kept. Check the queued prices and try again.',
@@ -591,7 +593,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                         ),
                       ),
                     if (_saveSucceeded)
-                      const Padding(
+                      const IosPadding(
                         padding: EdgeInsets.only(bottom: 10),
                         child: Text(
                           'All price changes saved.',
@@ -610,7 +612,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     FilledButton.icon(
                       key: const ValueKey('vip-save-all'),
                       onPressed: _saving || count == 0 ? null : _saveAll,

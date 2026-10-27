@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
 import 'package:flutter/material.dart';
@@ -367,7 +368,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const IosGap(height: 16),
                         TextField(
                           controller: businessNameController,
                           autofocus: true,
@@ -376,7 +377,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: contactNameController,
                           decoration: const InputDecoration(
@@ -384,7 +385,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: abnController,
                           decoration: const InputDecoration(
@@ -392,7 +393,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         PhoneRow(
                           mode: PhoneRowMode.stack,
                           desktop: Row(
@@ -419,7 +420,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: address1Controller,
                           decoration: const InputDecoration(
@@ -427,7 +428,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: address2Controller,
                           decoration: const InputDecoration(
@@ -435,7 +436,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         PhoneRow(
                           mode: PhoneRowMode.stack,
                           desktop: Row(
@@ -473,7 +474,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         DropdownButtonFormField<String>(
                           isExpanded: isPhoneLayout(context),
                           initialValue: paymentMethod,
@@ -507,7 +508,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                           },
                         ),
                         if (paymentMethod == 'account') ...[
-                          const SizedBox(height: 12),
+                          const IosGap(height: 12),
                           DropdownButtonFormField<int>(
                             isExpanded: isPhoneLayout(context),
                             initialValue: paymentTermsDays == 0
@@ -884,7 +885,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: const OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const IosGap(height: 16),
                         TextField(
                           controller: rateController,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -901,7 +902,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             border: const OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const IosGap(height: 16),
                         TextField(
                           controller: notesController,
                           minLines: 2,
@@ -1003,7 +1004,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                     ],
                     TextField(
                       controller: quantityController,
@@ -1020,7 +1021,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     TextField(
                       controller: rateController,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -1034,7 +1035,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     TextField(
                       controller: notesController,
                       minLines: 2,
@@ -1455,15 +1456,15 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
     }
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -1483,7 +1484,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               'Order details',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             PhoneRow(
               mode: PhoneRowMode.stack,
               desktop: Row(
@@ -1534,7 +1535,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               ),
             ),
             if (_selectedCustomer() != null) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -1559,7 +1560,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             DropdownButtonFormField<String>(
               isExpanded: isPhoneLayout(context),
               initialValue: _orderSource,
@@ -1581,12 +1582,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       }
                     },
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             const Text(
               'Commercial details',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -1721,7 +1722,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             TextField(
               controller: _sourceReferenceController,
               decoration: const InputDecoration(
@@ -1731,7 +1732,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             TextField(
               controller: _customerReferenceController,
               decoration: InputDecoration(
@@ -1742,7 +1743,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             TextField(
               controller: _deliveryNotesController,
               minLines: 2,
@@ -1752,7 +1753,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             TextField(
               controller: _internalNotesController,
               minLines: 2,
@@ -1762,14 +1763,14 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 28),
+            const IosGap(height: 28),
             const Divider(),
-            const SizedBox(height: 24),
+            const IosGap(height: 24),
             const Text(
               'Products',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             TextField(
               controller: _productSearchController,
               decoration: const InputDecoration(
@@ -1778,7 +1779,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Container(
               constraints: const BoxConstraints(maxHeight: 260),
               decoration: BoxDecoration(
@@ -1788,7 +1789,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               ),
               child: _filteredProducts.isEmpty
                   ? const Center(
-                      child: Padding(
+                      child: IosPadding(
                         padding: EdgeInsets.all(20),
                         child: Text('No matching products.'),
                       ),
@@ -1828,7 +1829,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       },
                     ),
             ),
-            const SizedBox(height: 22),
+            const IosGap(height: 22),
             if (_lines.isEmpty)
               Container(
                 padding: const EdgeInsets.all(20),
@@ -1846,7 +1847,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             else
               for (var i = 0; i < _lines.length; i++)
                 _buildLineCard(i, _lines[i]),
-            const SizedBox(height: 26),
+            const IosGap(height: 26),
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -1861,12 +1862,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                     'Finish the phone call',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 5),
+                  const IosGap(height: 5),
                   const Text(
                     'Save a pricing enquiry as a quote, or create the sale and warehouse work order immediately.',
                     style: TextStyle(color: Color(0xFF666666), height: 1.4),
                   ),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final narrow = constraints.maxWidth < 620;
@@ -1910,7 +1911,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             quoteButton,
-                            const SizedBox(height: 10),
+                            const IosGap(height: 10),
                             workOrderButton,
                           ],
                         );
@@ -1967,7 +1968,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
           line['product_name']?.toString() ?? 'Product',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        subtitle: Padding(
+        subtitle: IosPadding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             catchWeight

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/widgets/cutlink_picker.dart';
@@ -151,7 +152,7 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
             constraints: const BoxConstraints(maxWidth: 1400),
             child: Column(
               children: [
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: CutLinkSectionHeading(
                     title: 'Credits & refunds',
@@ -160,7 +161,7 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                     icon: Icons.assignment_return_outlined,
                   ),
                 ),
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: TextField(
                     controller: _search,
@@ -539,7 +540,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
           bottomNavigationBar: _invoice == null
               ? null
               : SafeArea(
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.all(12),
                     child: FilledButton.icon(
                       onPressed: _busy ? null : _issue,
@@ -562,7 +563,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                   ),
                   if (_busy) const LinearProgressIndicator(),
                   if (_error != null)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
                         _error!,
@@ -582,7 +583,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     for (final i in _invoices)
                       Card(
                         child: ListTile(
@@ -603,11 +604,11 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     const Text(
                       'Select the affected items and credit amount. Returned units and kg are optional for price adjustments. Restock only goods physically received and approved for resale.',
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     CutLinkPickerField<String>(
                       value: _reason,
                       label: 'Credit reason',
@@ -632,10 +633,10 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                         }
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     for (final l in _lines)
                       Card(
-                        child: Padding(
+                        child: IosPadding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -800,7 +801,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                   const Text(
                     'Record a refund only after returning the money. This does not send money through a bank or card provider.',
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   TextField(
                     controller: amount,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -812,7 +813,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                       prefixText: '\$ ',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   CutLinkPickerField<String>(
                     value: method,
                     label: 'Refund method',
@@ -1082,7 +1083,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
             : Column(
                 children: [
                   if (_busy) const LinearProgressIndicator(),
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.all(12),
                     child: Wrap(
                       spacing: 8,
@@ -1120,7 +1121,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                     ),
                   ),
                   if (_error != null)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
                         _error!,
@@ -1152,7 +1153,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const IosGap(height: 12),
                                   LayoutBuilder(
                                     builder: (context, constraints) {
                                       final columns =
@@ -1202,11 +1203,11 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                                       );
                                     },
                                   ),
-                                  const SizedBox(height: 16),
+                                  const IosGap(height: 16),
                                   Text('Reason: ${n['reason']}'),
                                   if ((n['notes']?.toString() ?? '').isNotEmpty)
                                     Text(n['notes'].toString()),
-                                  const SizedBox(height: 16),
+                                  const IosGap(height: 16),
                                   for (final l
                                       in n['supplier_credit_note_lines']
                                           as List)
@@ -1223,7 +1224,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                                         ),
                                       ),
                                     ),
-                                  const SizedBox(height: 16),
+                                  const IosGap(height: 16),
                                   const Text(
                                     'Refund history',
                                     style: TextStyle(
@@ -1233,7 +1234,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                                   ),
                                   if ((n['supplier_credit_refunds'] as List)
                                       .isEmpty)
-                                    const Padding(
+                                    const IosPadding(
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
                                       ),

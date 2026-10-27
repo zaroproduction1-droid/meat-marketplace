@@ -1,6 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:async';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -263,7 +267,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       DropdownButtonFormField<String>(
                         isExpanded: isPhoneLayout(context),
                         initialValue: priceBasis,
@@ -295,7 +299,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                                 }
                               },
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       TextField(
                         controller: minimumQuantityController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -306,7 +310,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         value: isActive,
@@ -396,7 +400,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
         ),
         body: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -416,7 +420,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                       );
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -458,7 +462,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -468,9 +472,9 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadProductsAndPrices,
                 child: const Text('Try Again'),
@@ -483,7 +487,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
 
     if (_products.isEmpty) {
       return const Center(
-        child: Padding(
+        child: IosPadding(
           padding: EdgeInsets.all(24),
           child: Text(
             'No matching active products. Try another name or SKU.',
@@ -498,7 +502,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
       padding: const EdgeInsets.all(24),
       itemCount: _products.length,
       separatorBuilder: (context, index) {
-        return const SizedBox(height: 14);
+        return const IosGap(height: 14);
       },
       itemBuilder: (context, index) {
         final product = _products[index];
@@ -536,7 +540,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
               product['product_name'] as String? ?? 'Unnamed product',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
-            subtitle: Padding(
+            subtitle: IosPadding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '${product['sku']} • '

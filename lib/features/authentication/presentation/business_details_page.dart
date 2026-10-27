@@ -1,7 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'pending_verification_page.dart';
 import 'registration_type_page.dart';
 
@@ -211,11 +214,11 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
               'Tell us about your business',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'These details will be reviewed before marketplace access is approved.',
             ),
-            const SizedBox(height: 30),
+            const IosGap(height: 30),
             TextFormField(
               controller: _legalNameController,
               decoration: const InputDecoration(
@@ -225,14 +228,14 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                 return _requiredValidator(value, 'the legal business name');
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _tradingNameController,
               decoration: const InputDecoration(
                 labelText: 'Trading name (optional)',
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _abnController,
               keyboardType: TextInputType.number,
@@ -242,14 +245,14 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
               ),
               validator: _validateAbn,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _businessEmailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Business email'),
               validator: _validateEmail,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _businessPhoneController,
               keyboardType: TextInputType.phone,
@@ -258,7 +261,7 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                 return _requiredValidator(value, 'the business phone number');
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _addressLine1Controller,
               decoration: const InputDecoration(labelText: 'Address line 1'),
@@ -266,14 +269,14 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                 return _requiredValidator(value, 'the business address');
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _addressLine2Controller,
               decoration: const InputDecoration(
                 labelText: 'Address line 2 (optional)',
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _suburbController,
               decoration: const InputDecoration(labelText: 'Suburb'),
@@ -281,7 +284,7 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                 return _requiredValidator(value, 'the suburb');
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             DropdownButtonFormField<String>(
               isExpanded: isPhoneLayout(context),
               initialValue: _state,
@@ -295,14 +298,14 @@ class _BusinessDetailsPageState extends State<BusinessDetailsPage> {
                 }
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _postcodeController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Postcode'),
               validator: _validatePostcode,
             ),
-            const SizedBox(height: 28),
+            const IosGap(height: 28),
             FilledButton(
               onPressed: _isLoading ? null : _submitBusinessDetails,
               style: FilledButton.styleFrom(

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
 import 'package:flutter/material.dart';
@@ -298,7 +299,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     TextField(
                       controller: contactNameController,
                       decoration: const InputDecoration(
@@ -306,7 +307,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     StatefulBuilder(
                       builder: (context, setIdentificationState) {
                         return Column(
@@ -319,7 +320,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                                 style: TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const IosGap(height: 10),
                             SegmentedButton<String>(
                               segments: const [
                                 ButtonSegment(
@@ -341,7 +342,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                                 });
                               },
                             ),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             TextField(
                               controller: identificationNumberController,
                               keyboardType: identificationType == 'abn'
@@ -361,7 +362,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     PhoneRow(
                       mode: PhoneRowMode.stack,
                       desktop: Row(
@@ -388,7 +389,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const IosGap(height: 18),
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -396,7 +397,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     TextField(
                       controller: address1Controller,
                       decoration: const InputDecoration(
@@ -404,7 +405,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     TextField(
                       controller: address2Controller,
                       decoration: const InputDecoration(
@@ -412,7 +413,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     PhoneRow(
                       mode: PhoneRowMode.stack,
                       desktop: Row(
@@ -756,12 +757,12 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             title,
             style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 5),
+          const IosGap(height: 5),
           Text(
             subtitle,
             style: const TextStyle(color: Color(0xFF666666), height: 1.4),
           ),
-          const SizedBox(height: 18),
+          const IosGap(height: 18),
           child,
         ],
       ),
@@ -818,7 +819,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             ),
           ),
           if (_selectedCustomer != null) ...[
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -855,7 +856,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           if (_selectedCustomer == null &&
               _searchCommitted &&
               query.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Container(
               constraints: const BoxConstraints(maxHeight: 270),
               decoration: BoxDecoration(
@@ -863,7 +864,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: matches.isEmpty
-                  ? Padding(
+                  ? IosPadding(
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         children: [
@@ -871,7 +872,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                             'No customer found for "$query".',
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 12),
+                          const IosGap(height: 12),
                           FilledButton.icon(
                             onPressed: _isSavingCustomer ? null : _addCustomer,
                             style: FilledButton.styleFrom(
@@ -923,7 +924,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     ),
             ),
             if (matches.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -953,7 +954,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             'Payment method',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           SegmentedButton<String>(
             segments: [
               const ButtonSegment(
@@ -992,7 +993,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                   },
           ),
           if (customer != null && _customerHasAccount(customer)) ...[
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1021,14 +1022,14 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
               ),
             ),
           ],
-          const SizedBox(height: 22),
+          const IosGap(height: 22),
           const Divider(),
-          const SizedBox(height: 18),
+          const IosGap(height: 18),
           const Text(
             'Fulfilment',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(
@@ -1050,7 +1051,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                   },
           ),
           if (_fulfilmentMethod == 'delivery' && customer != null) ...[
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1073,7 +1074,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 650;
@@ -1108,11 +1109,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
               if (narrow) {
                 return Column(
-                  children: [
-                    dateButton,
-                    const SizedBox(height: 10),
-                    timeButton,
-                  ],
+                  children: [dateButton, const IosGap(height: 10), timeButton],
                 );
               }
 
@@ -1128,7 +1125,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
               );
             },
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1142,7 +1139,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                   border: const OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               TextField(
                 controller: _deliveryNotesController,
                 enabled: customer != null,
@@ -1157,7 +1154,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           TextField(
             controller: _internalNotesController,
             enabled: customer != null,
@@ -1180,15 +1177,15 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -1212,17 +1209,17 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                   'Start New Sale',
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 6),
+                const IosGap(height: 6),
                 const Text(
                   'Choose the customer and sale details first. '
                   'The next step will keep this sale open while you continue adding products from the Sales page.',
                   style: TextStyle(color: Color(0xFF666666), height: 1.4),
                 ),
-                const SizedBox(height: 22),
+                const IosGap(height: 22),
                 _customerSearchSection(),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 _saleDetailsSection(),
-                const SizedBox(height: 20),
+                const IosGap(height: 20),
                 PhoneRow(
                   mode: PhoneRowMode.wrap,
                   desktop: Row(

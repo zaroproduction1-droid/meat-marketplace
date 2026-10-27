@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -141,7 +143,7 @@ class _SupportFaqPanelState extends State<SupportFaqPanel> {
                 ),
             ],
           ),
-        const SizedBox(height: 14),
+        const IosGap(height: 14),
         TextField(
           decoration: const InputDecoration(
             labelText: 'Search help',
@@ -149,9 +151,9 @@ class _SupportFaqPanelState extends State<SupportFaqPanel> {
           ),
           onChanged: (v) => setState(() => _search = v),
         ),
-        const SizedBox(height: 14),
+        const IosGap(height: 14),
         if (rows.isEmpty)
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.all(20),
             child: Text(
               'No matching guide. Open a support ticket and we can help.',

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/security/retry_safe_payments.dart';
 import '../../credits/presentation/credit_notes_page.dart';
 import '../../../shared/navigation/page_location.dart';
@@ -709,7 +710,7 @@ class _SupplierCustomerAccountPageState
           insetPadding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -742,7 +743,7 @@ class _SupplierCustomerAccountPageState
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            IosGap(height: 2),
                             Text(
                               'Apply the selected payment to the selected invoice.',
                               style: TextStyle(
@@ -755,7 +756,7 @@ class _SupplierCustomerAccountPageState
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -771,14 +772,14 @@ class _SupplierCustomerAccountPageState
                               ? payment['reference'].toString()
                               : 'Payment ${_formatDate(payment['payment_date'])}',
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         _allocationSummaryRow('Available', _money(available)),
                         const Divider(height: 20),
                         _allocationSummaryRow(
                           'Invoice',
                           invoice['invoice_number']?.toString() ?? 'Invoice',
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         _allocationSummaryRow(
                           'Outstanding',
                           _money(outstanding),
@@ -786,7 +787,7 @@ class _SupplierCustomerAccountPageState
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   TextField(
                     controller: amountController,
                     autofocus: true,
@@ -808,7 +809,7 @@ class _SupplierCustomerAccountPageState
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   PhoneRow(
                     mode: PhoneRowMode.wrap,
                     desktop: Row(
@@ -938,7 +939,7 @@ class _SupplierCustomerAccountPageState
               insetPadding: const EdgeInsets.all(24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 580),
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(22),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -971,7 +972,7 @@ class _SupplierCustomerAccountPageState
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                IosGap(height: 2),
                                 Text(
                                   'Record money received from this customer. '
                                   'You can allocate it to invoices afterwards.',
@@ -986,7 +987,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -1001,7 +1002,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                       TextField(
                         controller: amountController,
                         autofocus: true,
@@ -1023,7 +1024,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       PhoneRow(
                         mode: PhoneRowMode.stack,
                         desktop: Row(
@@ -1103,7 +1104,7 @@ class _SupplierCustomerAccountPageState
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       TextField(
                         controller: referenceController,
                         decoration: InputDecoration(
@@ -1116,7 +1117,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       TextField(
                         controller: notesController,
                         maxLines: 2,
@@ -1129,7 +1130,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       PhoneRow(
                         mode: PhoneRowMode.wrap,
                         desktop: Row(
@@ -1320,7 +1321,7 @@ class _SupplierCustomerAccountPageState
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         Expanded(
                           child: candidates.isEmpty
                               ? const Center(
@@ -1337,7 +1338,7 @@ class _SupplierCustomerAccountPageState
                                       invoice['outstanding_amount'],
                                     );
 
-                                    return Padding(
+                                    return IosPadding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 9,
                                       ),
@@ -1360,7 +1361,7 @@ class _SupplierCustomerAccountPageState
                                                           FontWeight.w900,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 2),
+                                                  const IosGap(height: 2),
                                                   Text(
                                                     'Due ${_formatDate(invoice['due_date'])}',
                                                     style: const TextStyle(
@@ -1415,7 +1416,7 @@ class _SupplierCustomerAccountPageState
                                   },
                                 ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         Builder(
                           builder: (_) {
                             final entered = enteredTotal();
@@ -1611,9 +1612,9 @@ class _SupplierCustomerAccountPageState
                   const Text(
                     'CutLink will apply this payment to the oldest outstanding invoices first.',
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   for (final row in preview)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: PhoneRow(
                         mode: PhoneRowMode.wrap,
@@ -1741,7 +1742,7 @@ class _SupplierCustomerAccountPageState
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         DropdownButtonFormField<String>(
                           isExpanded: isPhoneLayout(context),
                           initialValue: type,
@@ -1777,7 +1778,7 @@ class _SupplierCustomerAccountPageState
                             }
                           },
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         InkWell(
                           onTap: () async {
                             final picked = await showDatePicker(
@@ -1800,7 +1801,7 @@ class _SupplierCustomerAccountPageState
                             child: Text(_formatDate(date)),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: referenceController,
                           decoration: const InputDecoration(
@@ -1808,7 +1809,7 @@ class _SupplierCustomerAccountPageState
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: reasonController,
                           maxLines: 3,
@@ -1977,7 +1978,7 @@ class _SupplierCustomerAccountPageState
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         Expanded(
                           child: candidates.isEmpty
                               ? const Center(
@@ -1994,7 +1995,7 @@ class _SupplierCustomerAccountPageState
                                       invoice['outstanding_amount'],
                                     );
 
-                                    return Padding(
+                                    return IosPadding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 9,
                                       ),
@@ -2017,7 +2018,7 @@ class _SupplierCustomerAccountPageState
                                                           FontWeight.w900,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 2),
+                                                  const IosGap(height: 2),
                                                   Text(
                                                     'Due ${_formatDate(invoice['due_date'])}',
                                                     style: const TextStyle(
@@ -2072,7 +2073,7 @@ class _SupplierCustomerAccountPageState
                                   },
                                 ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         Builder(
                           builder: (_) {
                             final entered = enteredTotal();
@@ -2227,7 +2228,7 @@ class _SupplierCustomerAccountPageState
                 'This will remove the payment from the active account balance '
                 'and reopen any invoice balance covered by its allocations.',
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               TextField(
                 controller: controller,
                 maxLines: 2,
@@ -2311,7 +2312,7 @@ class _SupplierCustomerAccountPageState
                 'This will remove the credit from the active account balance '
                 'and reopen any invoice balance covered by its allocations.',
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               TextField(
                 controller: controller,
                 maxLines: 2,
@@ -2419,7 +2420,7 @@ class _SupplierCustomerAccountPageState
           insetPadding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2460,7 +2461,7 @@ class _SupplierCustomerAccountPageState
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   Text(
                     confirm
                         ? 'Confirm only after the funds have arrived. '
@@ -2474,7 +2475,7 @@ class _SupplierCustomerAccountPageState
                     ),
                   ),
                   if (willLeaveUnallocated) ...[
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -2510,7 +2511,7 @@ class _SupplierCustomerAccountPageState
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -2523,12 +2524,12 @@ class _SupplierCustomerAccountPageState
                           'Amount',
                           _money(submission['amount']),
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         _allocationSummaryRow(
                           'Payment date',
                           _formatDate(submission['payment_date']),
                         ),
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         _allocationSummaryRow(
                           'Reference',
                           submission['reference']
@@ -2542,7 +2543,7 @@ class _SupplierCustomerAccountPageState
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   TextField(
                     controller: noteController,
                     maxLines: 2,
@@ -2557,7 +2558,7 @@ class _SupplierCustomerAccountPageState
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   PhoneRow(
                     mode: PhoneRowMode.wrap,
                     desktop: Row(
@@ -2668,7 +2669,7 @@ class _SupplierCustomerAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Row(
               children: [
@@ -2698,7 +2699,7 @@ class _SupplierCustomerAccountPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      IosGap(height: 2),
                       Text(
                         'The customer says these payments were made. '
                         'Confirm only after the funds arrive.',
@@ -2777,7 +2778,7 @@ class _SupplierCustomerAccountPageState
                         : 'Customer Payment Submission',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 3),
+                  const IosGap(height: 3),
                   Text(
                     '${_formatDate(submission['payment_date'])} • '
                     '${_paymentMethodLabel(submission['payment_method']?.toString())}',
@@ -2786,7 +2787,7 @@ class _SupplierCustomerAccountPageState
                       fontSize: 10.5,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const IosGap(height: 3),
                   Text(
                     allocationText,
                     maxLines: 2,
@@ -2913,7 +2914,7 @@ class _SupplierCustomerAccountPageState
         children: [
           if (icon != null) ...[
             Icon(icon, size: 18, color: valueColor ?? _darkRed),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
           ],
           Text(
             label,
@@ -2923,7 +2924,7 @@ class _SupplierCustomerAccountPageState
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 5),
+          const IosGap(height: 5),
           Text(
             value,
             style: TextStyle(
@@ -3023,7 +3024,7 @@ class _SupplierCustomerAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: PhoneRow(
               mode: PhoneRowMode.wrap,
@@ -3045,7 +3046,7 @@ class _SupplierCustomerAccountPageState
           ),
           const Divider(height: 1),
           if (rows.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
@@ -3208,7 +3209,7 @@ class _SupplierCustomerAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Text(
               'Unallocated Payments & Credits',
@@ -3217,7 +3218,7 @@ class _SupplierCustomerAccountPageState
           ),
           const Divider(height: 1),
           if (entries.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
@@ -3466,7 +3467,7 @@ class _SupplierCustomerAccountPageState
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
@@ -3522,15 +3523,15 @@ class _SupplierCustomerAccountPageState
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 58, color: _darkRed),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -3626,7 +3627,7 @@ class _SupplierCustomerAccountPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const IosGap(height: 3),
                       Text(
                         _paymentTerms(),
                         style: const TextStyle(
@@ -3634,7 +3635,7 @@ class _SupplierCustomerAccountPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         _paymentTermsPlainEnglish(),
                         style: const TextStyle(
@@ -3704,7 +3705,7 @@ class _SupplierCustomerAccountPageState
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
-                                    const SizedBox(height: 3),
+                                    const IosGap(height: 3),
                                     Text(
                                       'Manage open invoices, payments, credits, adjustments and account allocations for ${_customerName()}.',
                                       style: const TextStyle(
@@ -3720,7 +3721,7 @@ class _SupplierCustomerAccountPageState
                           ),
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       if (_account?['account_hold'] == true) ...[
                         const Text(
                           'ACCOUNT ON HOLD',
@@ -3729,22 +3730,22 @@ class _SupplierCustomerAccountPageState
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                       ],
                       summary,
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       termsPanel,
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       if (_pendingPaymentSubmissions.isNotEmpty) ...[
                         _pendingPaymentSubmissionsPanel(),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                       ],
                       _selectionAllocationBanner(),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       _invoiceTable(),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       _paymentsAndCredits(),
-                      if (!desktop) const SizedBox(height: 20),
+                      if (!desktop) const IosGap(height: 20),
                     ],
                   ),
                 ),

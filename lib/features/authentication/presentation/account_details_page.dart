@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/supplier_photo_policy.dart';
 import '../../legal/presentation/legal_info_page.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
@@ -264,7 +265,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               'Create your login details',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Text(
               'You are registering as a $businessTypeName business.',
               style: const TextStyle(
@@ -272,7 +273,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                 color: PublicPagePalette.muted,
               ),
             ),
-            const SizedBox(height: 32),
+            const IosGap(height: 32),
             LayoutBuilder(
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 550;
@@ -299,7 +300,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                   return Column(
                     children: [
                       firstNameField,
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       lastNameField,
                     ],
                   );
@@ -315,7 +316,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                 );
               },
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -327,7 +328,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               ),
               validator: validateEmail,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
@@ -339,7 +340,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               ),
               validator: validatePhone,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _passwordController,
               obscureText: _hidePassword,
@@ -366,7 +367,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               ),
               validator: validatePassword,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _hideConfirmPassword,
@@ -394,7 +395,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                 continueRegistration();
               },
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             CheckboxListTile(
               value: _acknowledged,
               onChanged: _isLoading
@@ -414,7 +415,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
               ),
               child: const Text('Read Terms and Privacy notice'),
             ),
-            const SizedBox(height: 28),
+            const IosGap(height: 28),
             FilledButton(
               onPressed: _isLoading ? null : continueRegistration,
               style: FilledButton.styleFrom(
@@ -438,7 +439,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
                       ),
                     ),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();

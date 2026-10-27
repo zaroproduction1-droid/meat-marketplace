@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -61,7 +63,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                 side: const BorderSide(color: Color(0xFFE0E0E0)),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(40),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -79,7 +81,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                         color: darkRed,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const IosGap(height: 28),
                     const Text(
                       'Verification pending',
                       textAlign: TextAlign.center,
@@ -88,7 +90,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     const Text(
                       'Your business details have been submitted. '
                       'The marketplace administrator must review and '
@@ -101,7 +103,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                         color: Color(0xFF5E5E5E),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const IosGap(height: 24),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
@@ -128,7 +130,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const IosGap(height: 30),
                     OutlinedButton.icon(
                       onPressed: _isSigningOut ? null : _signOut,
                       icon: _isSigningOut

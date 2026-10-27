@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -510,7 +511,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   TextField(
                     controller: deliveryController,
                     minLines: 3,
@@ -838,7 +839,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900),
           ),
           if (address.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               address,
               style: const TextStyle(
@@ -848,7 +849,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               ),
             ),
           ],
-          const SizedBox(height: 9),
+          const IosGap(height: 9),
           Wrap(
             spacing: 7,
             runSpacing: 7,
@@ -1008,7 +1009,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const IosGap(height: 4),
                 Text(
                   subtitle,
                   style: const TextStyle(
@@ -1353,7 +1354,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
+              const IosGap(height: 4),
               Text(
                 'Choose the requested $fulfilmentLabel day. Time is optional and defaults to 12:00 PM if left blank.',
                 style: const TextStyle(
@@ -1361,7 +1362,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   fontSize: 11.5,
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               if (compact)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1555,7 +1556,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 3),
+            const IosGap(height: 3),
             Text(
               '${_orders.length} supplier order${_orders.length == 1 ? '' : 's'}',
               style: const TextStyle(
@@ -1583,13 +1584,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           );
         }
 
-        return Padding(
+        return IosPadding(
           padding: const EdgeInsets.fromLTRB(2, 2, 2, 6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               heading,
-              const SizedBox(height: 7),
+              const IosGap(height: 7),
               _buildSupplierOrderSelector(),
               const Divider(height: 1),
             ],
@@ -1644,7 +1645,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         '$itemCount product line${itemCount == 1 ? '' : 's'}',
                         style: const TextStyle(
@@ -1660,7 +1661,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     child: InkWell(
                       onTap: () => _cancelSupplierDraft(order),
                       borderRadius: BorderRadius.circular(20),
-                      child: const Padding(
+                      child: const IosPadding(
                         padding: EdgeInsets.all(5),
                         child: Icon(
                           Icons.close_rounded,
@@ -1758,7 +1759,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       'Order $reference  •  ${items.length} product line${items.length == 1 ? '' : 's'}',
                       style: const TextStyle(
@@ -1783,9 +1784,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           const Divider(height: 1),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Row(
             children: [
               const Text(
@@ -1803,9 +1804,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           if (items.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Text(
                 'This draft order has no products.',
@@ -1825,7 +1826,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               ),
           _buildMinimumOrderNotice(order),
           if (_orderHasCatchWeightItems(order)) ...[
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -1902,7 +1903,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             value: _money(order['total_amount']),
             bold: true,
           ),
-          const SizedBox(height: 6),
+          const IosGap(height: 6),
           _TotalRow(label: 'Total ex GST', value: _money(_exGstAmount(order))),
           _TotalRow(label: 'GST included', value: _money(order['gst_amount'])),
         ],
@@ -1930,7 +1931,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             'Checkout • $reference',
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           const Text(
             'Choose how and when you want this order fulfilled.',
             style: TextStyle(
@@ -1939,11 +1940,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               height: 1.35,
             ),
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           _buildFulfilmentMethodCard(order),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _buildRequestedScheduleCard(order),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           if (pickup)
             Container(
               padding: const EdgeInsets.all(12),
@@ -1976,7 +1977,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             )
           else
             _buildDeliverySnapshotCard(order),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2012,7 +2013,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     fontSize: 11.5,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   'Notes: ${order['delivery_notes'] == null || order['delivery_notes'].toString().trim().isEmpty ? 'Not provided' : order['delivery_notes']}',
                   style: const TextStyle(
@@ -2024,14 +2025,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           const Text(
             'Order summary',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           summary(),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           FilledButton.icon(
             onPressed: items.isEmpty || !_meetsMinimumOrder(order)
                 ? null
@@ -2058,7 +2059,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2068,14 +2069,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               const Text(
                 'Draft orders could not be loaded',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadDraftOrders,
                 child: const Text('Try Again'),
@@ -2102,12 +2103,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.shopping_cart_outlined, size: 58, color: _darkRed),
-                SizedBox(height: 18),
+                IosGap(height: 18),
                 Text(
                   'Your cart is ready when you are',
                   style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
                 ),
-                SizedBox(height: 8),
+                IosGap(height: 8),
                 Text(
                   'Products added from the marketplace are grouped into a separate draft for each supplier.',
                   textAlign: TextAlign.center,
@@ -2132,7 +2133,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         final desktop = constraints.maxWidth >= 1050 && order != null;
 
         if (desktop) {
-          return Padding(
+          return IosPadding(
             padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
             child: Center(
               child: ConstrainedBox(
@@ -2141,7 +2142,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildCartOverview(),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Expanded(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2183,9 +2184,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 children: [
                   _buildCartOverview(),
                   if (order != null) ...[
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     _buildOrderProductsPane(order),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     _buildCheckoutPane(order),
                   ],
                 ],
@@ -2249,14 +2250,14 @@ class _OrderItemCard extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 5),
+              const IosGap(height: 5),
               if (item['sku_snapshot'] != null &&
                   item['sku_snapshot'].toString().trim().isNotEmpty)
                 Text(
                   'SKU: ${item['sku_snapshot']}',
                   style: const TextStyle(color: Color(0xFF666666)),
                 ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Text(
                 isCatchWeight
                     ? '$quantity $quantityUnit ordered at '
@@ -2266,7 +2267,7 @@ class _OrderItemCard extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFF555555)),
               ),
               if (isCatchWeight) ...[
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 const Text(
                   'Final kilograms and product total pending supplier weight.',
                   style: TextStyle(
@@ -2292,7 +2293,7 @@ class _OrderItemCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Wrap(
                 spacing: 6,
                 children: [
@@ -2314,7 +2315,7 @@ class _OrderItemCard extends StatelessWidget {
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [details, const SizedBox(height: 12), actions],
+              children: [details, const IosGap(height: 12), actions],
             );
           }
 
@@ -2350,7 +2351,7 @@ class _TotalRow extends StatelessWidget {
       fontSize: bold ? 17 : 15,
     );
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../notifications/presentation/notification_activity_tile.dart';
@@ -86,7 +87,7 @@ class _AdminProductNotificationsBellState
               builder: (_, data, _) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
                     child: Row(
                       children: [
@@ -137,7 +138,7 @@ class _AdminProductNotificationsBellState
                   ),
                   const Divider(height: 1),
                   if (data['enabled'] == false)
-                    const Padding(
+                    const IosPadding(
                       padding: EdgeInsets.all(12),
                       child: Text(
                         'Alerts are muted. Your notification history is shown below.',
@@ -163,7 +164,7 @@ class _AdminProductNotificationsBellState
                                     size: 36,
                                     color: CutLinkWorkspaceTheme.red,
                                   ),
-                                  SizedBox(height: 10),
+                                  IosGap(height: 10),
                                   Text(
                                     'You’re up to date',
                                     style: TextStyle(
@@ -177,7 +178,7 @@ class _AdminProductNotificationsBellState
                               padding: const EdgeInsets.all(14),
                               itemCount: (data['notifications'] as List).length,
                               separatorBuilder: (_, i) =>
-                                  const SizedBox(height: 8),
+                                  const IosGap(height: 8),
                               itemBuilder: (_, i) {
                                 final row = Map<String, dynamic>.from(
                                   (data['notifications'] as List)[i] as Map,
@@ -193,7 +194,7 @@ class _AdminProductNotificationsBellState
                     ),
                   ),
                   const Divider(height: 1),
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,

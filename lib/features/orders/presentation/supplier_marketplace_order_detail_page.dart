@@ -1,5 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -308,7 +310,7 @@ class _SupplierMarketplaceOrderDetailPageState
                           height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -337,7 +339,7 @@ class _SupplierMarketplaceOrderDetailPageState
                           ],
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       const Text(
                         'SUPPLIER CONFIRMED SCHEDULE',
                         style: TextStyle(
@@ -347,7 +349,7 @@ class _SupplierMarketplaceOrderDetailPageState
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       PhoneRow(
                         mode: PhoneRowMode.stack,
                         desktop: Row(
@@ -356,7 +358,7 @@ class _SupplierMarketplaceOrderDetailPageState
                               child: OutlinedButton.icon(
                                 onPressed: pickDate,
                                 icon: const Icon(Icons.calendar_month_outlined),
-                                label: Padding(
+                                label: IosPadding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 12,
                                   ),
@@ -373,7 +375,7 @@ class _SupplierMarketplaceOrderDetailPageState
                               child: OutlinedButton.icon(
                                 onPressed: pickTime,
                                 icon: const Icon(Icons.schedule_outlined),
-                                label: Padding(
+                                label: IosPadding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 12,
                                   ),
@@ -388,7 +390,7 @@ class _SupplierMarketplaceOrderDetailPageState
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                       const Text(
                         'Keep the butcher’s requested schedule or change it. '
                         'The confirmed date and time will follow the order into fulfilment.',
@@ -483,7 +485,7 @@ class _SupplierMarketplaceOrderDetailPageState
                     'Give the butcher a clear reason. They will see it before '
                     'the cancelled order is removed from their Orders page.',
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   TextField(
                     controller: controller,
                     autofocus: true,
@@ -572,7 +574,7 @@ class _SupplierMarketplaceOrderDetailPageState
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const IosGap(height: 4),
                 Text(
                   value,
                   style: const TextStyle(fontWeight: FontWeight.w800),
@@ -608,15 +610,15 @@ class _SupplierMarketplaceOrderDetailPageState
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.error_outline, size: 54, color: _darkRed),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     FilledButton(
                       onPressed: _load,
                       child: const Text('Try Again'),
@@ -674,7 +676,7 @@ class _SupplierMarketplaceOrderDetailPageState
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Text(
                           _customerName(),
                           style: const TextStyle(
@@ -713,7 +715,7 @@ class _SupplierMarketplaceOrderDetailPageState
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -786,14 +788,14 @@ class _SupplierMarketplaceOrderDetailPageState
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
                 side: const BorderSide(color: Color(0xFFE0E0DD)),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -805,34 +807,34 @@ class _SupplierMarketplaceOrderDetailPageState
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     Text(
                       'Trading name: ${business?['trading_name'] ?? 'Not provided'}',
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       'Legal name: ${business?['legal_name'] ?? 'Not provided'}',
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       'Email: ${business?['business_email'] ?? 'Not provided'}',
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       'Phone: ${business?['business_phone'] ?? 'Not provided'}',
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text('Address: ${_address()}'),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             const Text(
               'Ordered Products',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             for (final item in items)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -864,7 +866,7 @@ class _SupplierMarketplaceOrderDetailPageState
                                     .trim()
                                     .isNotEmpty ==
                                 true) ...[
-                              const SizedBox(height: 4),
+                              const IosGap(height: 4),
                               Text(
                                 'SKU ${item['sku_snapshot']}',
                                 style: const TextStyle(
@@ -872,7 +874,7 @@ class _SupplierMarketplaceOrderDetailPageState
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 7),
+                            const IosGap(height: 7),
                             Text(
                               '${_quantity(item['quantity'])} ${_unit(item['quantity_unit']?.toString())} ordered',
                               style: const TextStyle(
@@ -880,7 +882,7 @@ class _SupplierMarketplaceOrderDetailPageState
                               ),
                             ),
                             if (item['catch_weight_snapshot'] == true) ...[
-                              const SizedBox(height: 4),
+                              const IosGap(height: 4),
                               const Text(
                                 'Catch weight — actual kilograms are entered during warehouse fulfilment.',
                                 style: TextStyle(
@@ -920,10 +922,10 @@ class _SupplierMarketplaceOrderDetailPageState
               ),
             if (order['delivery_notes']?.toString().trim().isNotEmpty ==
                 true) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Card(
                 elevation: 0,
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -932,14 +934,14 @@ class _SupplierMarketplaceOrderDetailPageState
                         'Delivery / Order Notes',
                         style: TextStyle(fontWeight: FontWeight.w900),
                       ),
-                      const SizedBox(height: 7),
+                      const IosGap(height: 7),
                       Text(order['delivery_notes'].toString()),
                     ],
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 22),
+            const IosGap(height: 22),
             if (submitted)
               PhoneRow(
                 mode: PhoneRowMode.wrap,

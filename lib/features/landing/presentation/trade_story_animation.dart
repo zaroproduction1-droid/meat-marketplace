@@ -1,5 +1,9 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
+
 import 'public_page_palette.dart';
 
 /// A labelled example of a delivery order, never a live customer record.
@@ -140,7 +144,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
             size: 30,
           ),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Text(
           title,
           textAlign: TextAlign.center,
@@ -234,7 +238,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                             color: PublicPagePalette.primary,
                             size: 26,
                           ),
-                          const SizedBox(height: 4),
+                          const IosGap(height: 4),
                           Text(
                             stage == 2
                                 ? '${(_reduced || _selected != null ? 9.4 : 9.4 * travel).toStringAsFixed(1)} kg'
@@ -254,7 +258,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
             );
           },
         ),
-        const SizedBox(height: 12),
+        const IosGap(height: 12),
         Text(
           _steps[stage].$4,
           textAlign: TextAlign.center,
@@ -299,7 +303,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Wrap(
           spacing: 16,
           runSpacing: 8,
@@ -391,11 +395,11 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                 height: 1.2,
               ),
             ),
-            const SizedBox(height: 24),
+            const IosGap(height: 24),
             _scene(stage, position - position.floor()),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             _summary(stage),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             AnimatedSwitcher(
               duration: _reduced
                   ? Duration.zero
@@ -417,7 +421,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                       letterSpacing: .5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   Text(
                     step.$1,
                     style: const TextStyle(
@@ -426,7 +430,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 9),
+                  const IosGap(height: 9),
                   Text(
                     step.$3,
                     style: const TextStyle(
@@ -438,7 +442,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             Wrap(
               spacing: 7,
               runSpacing: 7,
@@ -473,7 +477,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'Illustrative delivery order. Product value excludes delivery and other adjustments. Pickup uses ready/collected stages. Payment remains subject to supplier confirmation.',
               style: TextStyle(

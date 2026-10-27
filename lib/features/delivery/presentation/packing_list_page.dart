@@ -1,7 +1,11 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/zoomable_pdf_preview.dart';
 import '../services/packing_list_pdf.dart';
 
@@ -106,13 +110,13 @@ class _PackingListPageState extends State<PackingListPage> {
     ),
     body: _error != null
         ? Center(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_error!),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   OutlinedButton(onPressed: _load, child: const Text('Retry')),
                 ],
               ),

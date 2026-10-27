@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/product_content_report_button.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
@@ -103,7 +104,7 @@ class _MarketplaceProductDetailsPageState
         value('postcode'),
       ].where((v) => v.isNotEmpty).join(' '),
     ].where((v) => v.isNotEmpty).join('\n');
-    Widget contact(IconData icon, String text, String fallback) => Padding(
+    Widget contact(IconData icon, String text, String fallback) => IosPadding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +159,7 @@ class _MarketplaceProductDetailsPageState
                       'SUPPLIER',
                       style: TextStyle(fontSize: 10, color: Color(0xFF666666)),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       name,
                       style: const TextStyle(
@@ -172,7 +173,7 @@ class _MarketplaceProductDetailsPageState
             ],
           ),
           if (_loadingSupplierProfile)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.only(top: 12),
               child: LinearProgressIndicator(minHeight: 2),
             )
@@ -674,7 +675,7 @@ class _MarketplaceProductDetailsPageState
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           Text(
             code,
             textAlign: TextAlign.center,
@@ -686,7 +687,7 @@ class _MarketplaceProductDetailsPageState
             ),
           ),
           if (name.isNotEmpty && name.toLowerCase() != code.toLowerCase()) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               name,
               maxLines: 2,
@@ -1105,7 +1106,7 @@ class _MarketplaceProductDetailsPageState
   }) {
     return SizedBox(
       width: width,
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1119,7 +1120,7 @@ class _MarketplaceProductDetailsPageState
                 letterSpacing: .45,
               ),
             ),
-            const SizedBox(height: 3),
+            const IosGap(height: 3),
             Text(
               value,
               maxLines: prominent ? 4 : 2,
@@ -1168,7 +1169,7 @@ class _MarketplaceProductDetailsPageState
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           child,
         ],
       ),
@@ -1217,13 +1218,13 @@ class _MarketplaceProductDetailsPageState
             priceFontSize: 25,
           ),
           if (minimum != null) ...[
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             Text(
               'Minimum ${_formatNumber(minimum)} $unitLabel',
               style: const TextStyle(color: Color(0xFF666666), fontSize: 11),
             ),
           ],
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           if (unitPrice == null)
             const Text(
               'A visible price is required before ordering.',
@@ -1255,7 +1256,7 @@ class _MarketplaceProductDetailsPageState
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
               decoration: BoxDecoration(
@@ -1292,7 +1293,7 @@ class _MarketplaceProductDetailsPageState
               ),
             ),
             if (catchWeightKgPricing) ...[
-              const SizedBox(height: 7),
+              const IosGap(height: 7),
               const Text(
                 'The supplier confirms actual kilograms during preparation.',
                 style: TextStyle(
@@ -1302,7 +1303,7 @@ class _MarketplaceProductDetailsPageState
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             FilledButton.icon(
               onPressed: _isAddingToOrder ? null : _addToOrder,
               style: FilledButton.styleFrom(
@@ -1486,7 +1487,7 @@ class _MarketplaceProductDetailsPageState
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           _supplierName(),
                           style: const TextStyle(
@@ -1500,7 +1501,7 @@ class _MarketplaceProductDetailsPageState
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               Text(
                 _fullCataloguePath(),
                 style: const TextStyle(
@@ -1509,13 +1510,13 @@ class _MarketplaceProductDetailsPageState
                   height: 1.35,
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               _buildCustomerPriceDisplay(
                 visiblePrice: visiblePrice,
                 alignment: CrossAxisAlignment.start,
                 priceFontSize: 23,
               ),
-              const SizedBox(height: 11),
+              const IosGap(height: 11),
               Wrap(
                 spacing: 7,
                 runSpacing: 7,
@@ -1551,9 +1552,9 @@ class _MarketplaceProductDetailsPageState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 image,
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 information,
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 _supplierContactPanel(),
               ],
             );
@@ -1577,7 +1578,7 @@ class _MarketplaceProductDetailsPageState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     productRow,
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     _supplierContactPanel(),
                   ],
                 );
@@ -1592,7 +1593,7 @@ class _MarketplaceProductDetailsPageState
           icon: Icons.fact_check_outlined,
           child: fields(detailFields),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         _compactCard(
           title: 'Specifications',
           icon: Icons.tune_outlined,
@@ -1605,7 +1606,7 @@ class _MarketplaceProductDetailsPageState
                   entry.value != 'Not specified' &&
                   entry.value != 'Not provided',
             )) ...[
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           _compactCard(
             title: 'Traceability',
             icon: Icons.manage_search_outlined,
@@ -1614,7 +1615,7 @@ class _MarketplaceProductDetailsPageState
         ],
         if (product['halal_status'] == 'halal' ||
             product['halal_status'] == 'not_halal') ...[
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           _compactCard(
             title: 'Halal',
             icon: Icons.verified_outlined,
@@ -1631,7 +1632,7 @@ class _MarketplaceProductDetailsPageState
                         : const Color(0xFF555B61),
                   ),
                 ),
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   product['halal_status'] == 'halal'
                       ? 'Declared Halal by the supplier. Contact the supplier for certification details.'
@@ -1648,7 +1649,7 @@ class _MarketplaceProductDetailsPageState
           ),
         ],
         if (supplierSpecification.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           _compactCard(
             title:
                 SupplierVariantOptions.supports(
@@ -1669,7 +1670,7 @@ class _MarketplaceProductDetailsPageState
     final side = Column(
       children: [
         _compactOrderCard(product),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         _compactCard(
           title: 'Supplier Access',
           icon: Icons.verified_user_outlined,
@@ -1684,7 +1685,7 @@ class _MarketplaceProductDetailsPageState
                   height: 1.35,
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               _buildRelationshipButton(),
             ],
           ),
@@ -1725,7 +1726,7 @@ class _MarketplaceProductDetailsPageState
                 child: Column(
                   children: [
                     identity,
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     if (desktop)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1737,7 +1738,7 @@ class _MarketplaceProductDetailsPageState
                       )
                     else ...[
                       side,
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       details,
                     ],
                   ],

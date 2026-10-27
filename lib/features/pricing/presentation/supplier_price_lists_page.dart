@@ -1,5 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -178,7 +180,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const IosGap(height: 20),
                       DropdownButtonFormField<String>(
                         isExpanded: isPhoneLayout(context),
                         initialValue: visibility,
@@ -210,7 +212,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                                 }
                               },
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                       Text(
                         _visibilityDescription(visibility),
                         style: const TextStyle(
@@ -339,7 +341,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -349,9 +351,9 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadPriceLists,
                 child: const Text('Try Again'),
@@ -364,7 +366,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
 
     if (_priceLists.isEmpty) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -374,17 +376,17 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                 size: 80,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 24),
+              const IosGap(height: 24),
               const Text(
                 'No price lists yet',
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               const Text(
                 'Create a price list to begin setting product prices.',
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 26),
+              const IosGap(height: 26),
               FilledButton.icon(
                 onPressed: _openCreatePriceListDialog,
                 icon: const Icon(Icons.add),
@@ -419,7 +421,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
           ),
           onChanged: (v) => setState(() => _search = v),
         ),
-        const SizedBox(height: 12),
+        const IosGap(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -437,13 +439,13 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        const IosGap(height: 16),
         if (lists.isEmpty) const Text('No price lists match your search.'),
         for (final list in lists)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Card(
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -471,11 +473,11 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     Text(
                       '${_formatVisibility(list['visibility']?.toString())} · ${_visibilityDescription('${list['visibility']}')}',
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,

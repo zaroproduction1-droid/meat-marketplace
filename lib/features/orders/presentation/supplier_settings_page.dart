@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
 import '../../memberships/presentation/membership_settings_link.dart';
@@ -74,7 +75,7 @@ class SupplierSettingsPage extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          IosGap(height: 2),
                           Text(
                             'Manage your business profile, invoice configuration, privacy and notification preferences.',
                             style: TextStyle(color: _muted, fontSize: 12),
@@ -85,7 +86,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
             ],
             LayoutBuilder(
               builder: (context, constraints) {
@@ -167,7 +168,7 @@ class SupplierSettingsPage extends StatelessWidget {
                     children: [
                       for (var i = 0; i < cards.length; i++) ...[
                         cards[i],
-                        if (i != cards.length - 1) const SizedBox(height: 10),
+                        if (i != cards.length - 1) const IosGap(height: 10),
                       ],
                     ],
                   );
@@ -183,7 +184,7 @@ class SupplierSettingsPage extends StatelessWidget {
                         Expanded(child: cards[1]),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -235,7 +236,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   'Settings',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
-                SizedBox(height: 1),
+                IosGap(height: 1),
                 Text(
                   'Manage your business profile, account preferences and platform settings',
                   maxLines: 1,
@@ -363,7 +364,7 @@ class _SettingsTile extends StatelessWidget {
                         color: Color(0xFF1E2329),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
@@ -376,7 +377,7 @@ class _SettingsTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Padding(
+              const IosPadding(
                 padding: EdgeInsets.only(top: 7),
                 child: Icon(
                   Icons.chevron_right,
@@ -610,9 +611,9 @@ class _SupplierProfileSettingsPageState
       child: Column(
         children: [
           const PersonalAccountSettingsPage(embedded: true),
-          const SizedBox(height: 20),
+          const IosGap(height: 20),
           const Divider(),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -620,7 +621,7 @@ class _SupplierProfileSettingsPageState
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           _field(_tradingName, 'Trading Name'),
           _field(_legalName, 'Legal Name'),
           _field(
@@ -981,7 +982,7 @@ class _SupplierInvoiceConfigurationPageState
                     'Company Logo',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 4),
+                  const IosGap(height: 4),
                   const Text(
                     'Used automatically on your CutLink supplier identity, quotes and invoices. PNG or JPG, up to 5 MB.',
                     style: TextStyle(
@@ -990,7 +991,7 @@ class _SupplierInvoiceConfigurationPageState
                       height: 1.35,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const IosGap(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -1139,7 +1140,7 @@ class _SupplierInvoiceConfigurationPageState
           const Text(
             'These defaults apply to new invoices only. Override the sales contact on a Quote or Work Order before invoicing. Account numbers use each customer’s Account Reference.',
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _field(_salesName, 'Default salesperson name'),
           _field(
             _salesPhone,
@@ -1598,7 +1599,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.error_outline, color: _darkRed, size: 30),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   Text(
                     error!,
                     textAlign: TextAlign.center,
@@ -1607,7 +1608,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const IosGap(height: 18),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: _darkRed,
@@ -1679,7 +1680,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const IosGap(height: 3),
                           Text(
                             _pageDescription,
                             style: const TextStyle(
@@ -1694,7 +1695,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -1711,7 +1712,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                 ),
                 child: child,
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Align(
                 alignment: Alignment.centerRight,
                 child: SizedBox(
@@ -1762,7 +1763,7 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(bottom: 12),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -1798,7 +1799,7 @@ Widget _field(
   TextInputType? keyboardType,
   int maxLines = 1,
 }) {
-  return Padding(
+  return IosPadding(
     padding: const EdgeInsets.only(bottom: 14),
     child: TextField(
       controller: controller,

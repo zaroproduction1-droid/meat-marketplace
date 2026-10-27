@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/ios_workspace.dart';
 import 'restricted_account_page.dart';
@@ -242,7 +243,7 @@ class _SignInPageState extends State<SignInPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
-              SizedBox(height: 18),
+              IosGap(height: 18),
               Text('Opening your CutLink account…'),
             ],
           ),
@@ -261,12 +262,12 @@ class _SignInPageState extends State<SignInPage> {
               'Welcome back',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'Sign in using your confirmed email address.',
               style: TextStyle(color: PublicPagePalette.muted),
             ),
-            const SizedBox(height: 30),
+            const IosGap(height: 30),
             TextFormField(
               controller: _emailController,
               autofillHints: const [
@@ -279,7 +280,7 @@ class _SignInPageState extends State<SignInPage> {
               decoration: const InputDecoration(labelText: 'Email address'),
               validator: _validateEmail,
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextFormField(
               controller: _passwordController,
               autofillHints: const [AutofillHints.password],
@@ -309,7 +310,7 @@ class _SignInPageState extends State<SignInPage> {
                 _signIn();
               },
             ),
-            const SizedBox(height: 28),
+            const IosGap(height: 28),
             FilledButton(
               onPressed: _isLoading ? null : _signIn,
               style: FilledButton.styleFrom(
@@ -333,7 +334,7 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                     ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             TextButton(
               onPressed: _isLoading
                   ? null

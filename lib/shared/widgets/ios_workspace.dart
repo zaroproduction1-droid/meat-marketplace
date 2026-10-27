@@ -105,6 +105,46 @@ abstract final class IosWorkspaceStyle {
   );
 }
 
+class IosWorkspaceTransition extends StatelessWidget {
+  const IosWorkspaceTransition({
+    super.key,
+    required this.child,
+    this.reverse = false,
+  });
+  final Widget child;
+  final bool reverse;
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return ClipRect(
+      child: AnimatedSwitcher(
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 290),
+        reverseDuration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 290),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (page, animation) {
+          final entering = page.key == child.key;
+          final offset = entering
+              ? (reverse ? -1.0 : 1.0)
+              : (reverse ? 1.0 : -.25);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(offset, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: IgnorePointer(ignoring: !entering, child: page),
+          );
+        },
+        child: child,
+      ),
+    );
+  }
+}
+
 class IosBackSurface extends StatefulWidget {
   const IosBackSurface({super.key, required this.child, required this.onBack});
   final Widget child;
@@ -118,7 +158,17 @@ class _IosBackSurfaceState extends State<IosBackSurface> {
   @override
   Widget build(BuildContext context) => Stack(
     children: [
-      Positioned.fill(child: widget.child),
+      Positioned.fill(
+        child: Transform.translate(
+          offset: Offset(
+            _distance
+                .clamp(0, MediaQuery.sizeOf(context).width * .4)
+                .toDouble(),
+            0,
+          ),
+          child: widget.child,
+        ),
+      ),
       Positioned(
         left: 0,
         top: 0,
@@ -126,13 +176,16 @@ class _IosBackSurfaceState extends State<IosBackSurface> {
         width: 22,
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onHorizontalDragStart: (_) => _distance = 0,
-          onHorizontalDragUpdate: (event) => _distance += event.delta.dx,
+          onHorizontalDragStart: (_) => setState(() => _distance = 0),
+          onHorizontalDragUpdate: (event) =>
+              setState(() => _distance += event.delta.dx),
           onHorizontalDragEnd: (event) {
             if (_distance > 60 || (event.primaryVelocity ?? 0) > 400) {
               widget.onBack();
             }
+            setState(() => _distance = 0);
           },
+          onHorizontalDragCancel: () => setState(() => _distance = 0),
         ),
       ),
     ],

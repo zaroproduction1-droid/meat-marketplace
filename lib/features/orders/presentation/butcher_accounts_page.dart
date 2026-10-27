@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/security/retry_safe_payments.dart';
 import '../../../shared/navigation/page_location.dart';
@@ -196,7 +197,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         children: [
           if (icon != null) ...[
             Icon(icon, size: 18, color: valueColor ?? _darkRed),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
           ],
           Text(
             label,
@@ -206,7 +207,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           Text(
             value,
             style: TextStyle(
@@ -216,7 +217,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 3),
+            const IosGap(height: 3),
             Text(
               subtitle,
               style: const TextStyle(color: Color(0xFF777777), fontSize: 10.5),
@@ -332,7 +333,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 3),
+          const IosGap(height: 3),
           Text(
             value,
             maxLines: 1,
@@ -344,7 +345,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 1),
+            const IosGap(height: 1),
             Text(
               subtitle,
               style: const TextStyle(color: Color(0xFF777777), fontSize: 9.5),
@@ -368,7 +369,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
           AppBar(title: const Text('Accounts & Invoices')),
         ),
         body: Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -378,7 +379,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: _darkRed),
                 ),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 FilledButton(
                   onPressed: _loadAccounts,
                   child: const Text('Try Again'),
@@ -476,7 +477,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
@@ -495,7 +496,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     const Text(
                       'Supplier Accounts',
                       style: TextStyle(
@@ -503,7 +504,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 9),
+                    const IosGap(height: 9),
                     if (_filteredAccounts.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(30),
@@ -530,7 +531,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                       for (var i = 0; i < _filteredAccounts.length; i++) ...[
                         _supplierAccountRow(_filteredAccounts[i]),
                         if (i != _filteredAccounts.length - 1)
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                       ],
                   ],
                 ),
@@ -1058,7 +1059,7 @@ class _ButcherSupplierAccountPageState
               insetPadding: const EdgeInsets.all(24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 680),
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(22),
                   child: SingleChildScrollView(
                     child: Column(
@@ -1092,7 +1093,7 @@ class _ButcherSupplierAccountPageState
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const IosGap(height: 2),
                                   Text(
                                     selected.isEmpty
                                         ? 'Submit a general account / statement payment. '
@@ -1112,7 +1113,7 @@ class _ButcherSupplierAccountPageState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         TextField(
                           controller: amountController,
                           autofocus: true,
@@ -1130,7 +1131,7 @@ class _ButcherSupplierAccountPageState
                           ),
                           onChanged: (_) => setDialogState(() {}),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         PhoneRow(
                           mode: PhoneRowMode.stack,
                           desktop: Row(
@@ -1212,7 +1213,7 @@ class _ButcherSupplierAccountPageState
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: referenceController,
                           decoration: InputDecoration(
@@ -1225,7 +1226,7 @@ class _ButcherSupplierAccountPageState
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         TextField(
                           controller: notesController,
                           maxLines: 2,
@@ -1239,7 +1240,7 @@ class _ButcherSupplierAccountPageState
                           ),
                         ),
                         if (selected.isNotEmpty) ...[
-                          const SizedBox(height: 16),
+                          const IosGap(height: 16),
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -1253,7 +1254,7 @@ class _ButcherSupplierAccountPageState
                                   'Proposed Invoice Allocations',
                                   style: TextStyle(fontWeight: FontWeight.w900),
                                 ),
-                                const SizedBox(height: 4),
+                                const IosGap(height: 4),
                                 const Text(
                                   'You can change how much of the payment you '
                                   'want applied to each selected invoice.',
@@ -1262,7 +1263,7 @@ class _ButcherSupplierAccountPageState
                                     fontSize: 11,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const IosGap(height: 10),
                                 for (final invoice in selected) ...[
                                   PhoneRow(
                                     mode: PhoneRowMode.stack,
@@ -1318,7 +1319,7 @@ class _ButcherSupplierAccountPageState
                                   if (invoice != selected.last)
                                     const Divider(height: 18),
                                 ],
-                                const SizedBox(height: 8),
+                                const IosGap(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
@@ -1335,7 +1336,7 @@ class _ButcherSupplierAccountPageState
                             ),
                           ),
                         ],
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         PhoneRow(
                           mode: PhoneRowMode.wrap,
                           desktop: Row(
@@ -1494,7 +1495,7 @@ class _ButcherSupplierAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: PhoneRow(
               mode: PhoneRowMode.wrap,
@@ -1563,7 +1564,7 @@ class _ButcherSupplierAccountPageState
                         : 'Payment Submitted',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 2),
+                  const IosGap(height: 2),
                   Text(
                     '${_date(submission['payment_date'])} • $allocationText',
                     maxLines: 2,
@@ -1640,7 +1641,7 @@ class _ButcherSupplierAccountPageState
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 5),
+            const IosGap(height: 5),
             Text(
               _money(value),
               style: TextStyle(
@@ -1711,7 +1712,7 @@ class _ButcherSupplierAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Row(
               children: [
@@ -1727,7 +1728,7 @@ class _ButcherSupplierAccountPageState
           ),
           const Divider(height: 1),
           if (rows.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(28),
               child: Center(
                 child: Text(
@@ -1917,7 +1918,7 @@ class _ButcherSupplierAccountPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Text(
               'Unallocated Payments & Credits',
@@ -1926,7 +1927,7 @@ class _ButcherSupplierAccountPageState
           ),
           const Divider(height: 1),
           if (entries.isEmpty)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(28),
               child: Center(
                 child: Text(
@@ -2088,7 +2089,7 @@ class _ButcherSupplierAccountPageState
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             _money(amount),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
@@ -2149,13 +2150,13 @@ class _ButcherSupplierAccountPageState
       return Scaffold(
         appBar: phoneAppBar(context, AppBar(title: Text(widget.supplierName))),
         body: Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(_error!, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 FilledButton(
                   onPressed: _loadPage,
                   child: const Text('Try Again'),
@@ -2314,7 +2315,7 @@ class _ButcherSupplierAccountPageState
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -2343,7 +2344,7 @@ class _ButcherSupplierAccountPageState
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 3),
+                                  const IosGap(height: 3),
                                   Text(
                                     _terms(),
                                     style: const TextStyle(
@@ -2351,7 +2352,7 @@ class _ButcherSupplierAccountPageState
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const IosGap(height: 2),
                                   Text(
                                     _termsExplanation(),
                                     style: const TextStyle(
@@ -2366,15 +2367,15 @@ class _ButcherSupplierAccountPageState
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     if (_paymentSubmissions.isNotEmpty) ...[
                       _pendingPaymentSubmissions(),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                     ],
                     _paymentSelectionBanner(),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     _invoiceTable(),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     _paymentsAndCredits(),
                   ],
                 ),
@@ -2637,7 +2638,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               const Text(
                 'This tells the supplier you have paid. The invoice will not clear until the supplier confirms the payment was received.',
               ),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               TextField(
                 controller: controller,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -2649,7 +2650,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               TextField(
                 controller: noteController,
                 maxLines: 2,
@@ -2803,7 +2804,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               ),
               body: Column(
                 children: [
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.all(10),
                     child: Wrap(
                       spacing: 8,
@@ -2887,7 +2888,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         ),
         child: Column(
           children: [
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.fromLTRB(14, 11, 14, 9),
               child: Row(
                 children: [
@@ -2916,7 +2917,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                   final unitPrice = _asDouble(item['locked_unit_price']);
                   final lineAmount = _asDouble(item['line_amount']);
 
-                  return Padding(
+                  return IosPadding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 4,
                       vertical: 9,
@@ -2962,7 +2963,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                                     'Discount: -${_money(_asDouble(item['discount_amount']))}',
                                     style: const TextStyle(fontSize: 11),
                                   ),
-                                const SizedBox(height: 3),
+                                const IosGap(height: 3),
                                 Text(
                                   actualWeight > 0
                                       ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
@@ -3014,7 +3015,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                   alignment: Alignment.centerLeft,
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
             ],
             Text(
               widget.supplierName,
@@ -3024,9 +3025,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             for (final entry in invoiceCommercialReferences(_invoice).entries)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _DetailValue(label: entry.key, value: entry.value),
               ),
@@ -3046,7 +3047,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                 ),
               ),
             for (final entry in invoiceCommercialNotices(_invoice).entries)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _DetailValue(label: entry.key, value: entry.value),
               ),
@@ -3054,16 +3055,16 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               label: 'Invoice date',
               value: _date(_invoice['invoice_date']),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             _DetailValue(label: 'Due date', value: _date(_invoice['due_date'])),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             _DetailValue(
               label: 'Payment method',
               value: _invoice['payment_method_snapshot']?.toString() ?? '—',
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             const Divider(height: 1),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             _amountRow(
               'Products inc GST',
               _asDouble(_invoice['products_subtotal']),
@@ -3094,16 +3095,16 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               balance:
                   _invoice['account_balance_summary'] as Map<String, dynamic>?,
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             const Divider(height: 1),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             const Text(
               'Payment Allocations',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             ..._buildAllocationRows(),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             FilledButton.icon(
               onPressed: _canClaimPaid ? _markAsPaid : null,
               style: FilledButton.styleFrom(backgroundColor: _darkRed),
@@ -3116,14 +3117,14 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                     : 'Mark as Paid',
               ),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             OutlinedButton.icon(
               onPressed: _pdfBusy ? null : _openInvoicePreview,
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: Text(_pdfBusy ? 'Loading preview…' : 'Preview invoice'),
             ),
             if (_paymentSubmissionPending) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Text(
                 'Payment submitted for '
                 '${_money(_asDouble(_pendingPaymentSubmission?['proposed_invoice_amount']))} '
@@ -3189,7 +3190,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                   height: isPhoneLayout(context) ? null : 430,
                   child: itemsPanel(),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 SizedBox(
                   height: isPhoneLayout(context) ? null : 500,
                   child: summaryPanel(),
@@ -3201,7 +3202,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
@@ -3233,7 +3234,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             : <String, dynamic>{};
 
         rows.add(
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
@@ -3274,7 +3275,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             : <String, dynamic>{};
 
         rows.add(
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
@@ -3318,7 +3319,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
   }
 
   Widget _amountRow(String label, double value, {bool strong = false}) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
@@ -3363,7 +3364,7 @@ class _DetailValue extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 3),
+          const IosGap(height: 3),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),

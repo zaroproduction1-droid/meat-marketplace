@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import 'notification_activity_tile.dart';
 import '../../customers/presentation/supplier_customer_requests_page.dart';
@@ -361,7 +362,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const IosGap(height: 8),
                               SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: Row(
@@ -379,7 +380,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                                       'moderation',
                                       'platform',
                                     ])
-                                      Padding(
+                                      IosPadding(
                                         padding: const EdgeInsets.only(
                                           right: 7,
                                         ),
@@ -409,11 +410,11 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         if (_loading || _opening)
                           const LinearProgressIndicator(minHeight: 2),
                         if (_error != null)
-                          Padding(
+                          IosPadding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Text(
                               _error!,
@@ -426,7 +427,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                 ),
                 if (_rows.isEmpty && !_loading)
                   const SliverToBoxAdapter(
-                    child: Padding(
+                    child: IosPadding(
                       padding: EdgeInsets.all(40),
                       child: Column(
                         children: [
@@ -435,7 +436,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                             size: 38,
                             color: CutLinkWorkspaceTheme.red,
                           ),
-                          SizedBox(height: 12),
+                          IosGap(height: 12),
                           Text(
                             'You’re all caught up',
                             style: TextStyle(
@@ -443,7 +444,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          SizedBox(height: 6),
+                          IosGap(height: 6),
                           Text(
                             'No notifications match this view.',
                             style: TextStyle(color: Color(0xFF6A6E75)),
@@ -456,7 +457,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (_, i) => Padding(
+                      (_, i) => IosPadding(
                         padding: const EdgeInsets.only(bottom: 9),
                         child: NotificationActivityTile(
                           row: _rows[i],
@@ -471,7 +472,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -486,7 +487,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                           icon: const Icon(Icons.chevron_left_rounded),
                           label: const Text('Previous'),
                         ),
-                        Padding(
+                        IosPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'Page ${_page + 1}',

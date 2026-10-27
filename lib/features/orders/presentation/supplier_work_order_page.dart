@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
 import '../../../shared/pdf/document_pdf_theme.dart';
@@ -686,7 +687,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                         : 'This removes the warehouse work order, cancels the underlying order and restores any stock reserved for it. This cannot be undone.',
                   ),
                   if (marketplace) ...[
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     TextField(
                       controller: reasonController,
                       autofocus: true,
@@ -1370,7 +1371,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 insetPadding: const EdgeInsets.all(20),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 560),
-                  child: Padding(
+                  child: IosPadding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1408,7 +1409,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const IosGap(height: 2),
                                   Text(
                                     productName,
                                     maxLines: 1,
@@ -1430,7 +1431,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -1463,7 +1464,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         TextField(
                           controller: suppliedController,
                           enabled: !saving,
@@ -1489,7 +1490,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           ),
                         ),
                         if (catchWeight) ...[
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: weightController,
                             enabled: !saving,
@@ -1510,7 +1511,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                               border: const OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const IosGap(height: 6),
                           Container(
                             padding: const EdgeInsets.all(11),
                             decoration: BoxDecoration(
@@ -1541,7 +1542,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         Row(
                           children: [
                             Expanded(
@@ -2098,7 +2099,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Widget _workspaceTab(int index, IconData icon, String label) {
     final selected = _workspaceTabIndex == index;
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 6),
       child: TextButton.icon(
         onPressed: () => setState(() => _workspaceTabIndex = index),
@@ -2259,12 +2260,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 3),
+              const IosGap(height: 3),
               Text(
                 subtitle,
                 style: const TextStyle(color: Color(0xFF73777D), fontSize: 12),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               if (events.isEmpty)
                 const Text('No recorded milestones yet.')
               else
@@ -2311,7 +2312,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2320,7 +2321,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     event.title,
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 2),
+                  const IosGap(height: 2),
                   Text(
                     date,
                     style: const TextStyle(
@@ -2344,15 +2345,15 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -2424,7 +2425,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 Wrap(
                   spacing: gap,
                   runSpacing: 2,
@@ -2503,7 +2504,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 Wrap(
                   spacing: gap,
                   runSpacing: 2,
@@ -2541,13 +2542,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 22),
             children: [
               _buildCompactWorkOrderHeader(status),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               customerPanel(),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               workOrderSummaryPanel(),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               pickPanel,
-              const SizedBox(height: 6),
+              const IosGap(height: 6),
               warehousePanel,
             ],
           );
@@ -2556,12 +2557,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1480),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 children: [
                   _buildCompactWorkOrderHeader(status),
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2570,7 +2571,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       Expanded(child: workOrderSummaryPanel()),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2647,7 +2648,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const IosGap(height: 4),
                   Text(
                     '${_customerName()} • ${_order?['order_number'] ?? 'Order'}',
                     maxLines: 1,
@@ -2709,7 +2710,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const IosGap(height: 2),
                   Text(
                     value,
                     maxLines: 1,
@@ -2736,7 +2737,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       physics: boundedHeight
           ? const ClampingScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      separatorBuilder: (_, _) => const SizedBox(height: 5),
+      separatorBuilder: (_, _) => const IosGap(height: 5),
       itemBuilder: (_, index) => _buildItemCard(_items[index]),
     );
 
@@ -2749,7 +2750,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       child: Column(
         mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
             child: Row(
               children: [
@@ -2933,7 +2934,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           if (_lineAction != null &&
               _lineAction != 'pick' &&
               _lineAction != 'remove') ...[
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             _buildWorkOrderLineInlineEditor(item),
           ],
         ],
@@ -3015,10 +3016,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               children: [
                 typeField(),
                 if (_selectedDiscountType != null) ...[
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   amountField(),
                 ],
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 Align(alignment: Alignment.centerRight, child: saveButton()),
               ],
             );
@@ -3108,7 +3109,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         border: Border.all(color: const Color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3123,7 +3124,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             if (!pickup) ...[
               DropdownButtonFormField<String>(
                 isExpanded: isPhoneLayout(context),
@@ -3154,7 +3155,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     : _assignDeliveryDriver,
               ),
               if (_deliveryDrivers.isEmpty) ...[
-                const SizedBox(height: 7),
+                const IosGap(height: 7),
                 const Text(
                   'No active drivers. Add one in Delivery → Drivers & Vehicles.',
                   style: TextStyle(
@@ -3164,7 +3165,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 11),
+              const IosGap(height: 11),
             ],
             if (!canEnterWeights)
               Container(
@@ -3184,7 +3185,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   ),
                 ),
               ),
-            if (!canEnterWeights) const SizedBox(height: 10),
+            if (!canEnterWeights) const IosGap(height: 10),
             TextField(
               controller: _instructionsController,
               minLines: 1,
@@ -3196,7 +3197,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Row(
               children: [
                 Expanded(
@@ -3224,13 +3225,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             OutlinedButton.icon(
               onPressed: _isSaving ? null : () => _saveWorkOrderDetails(),
               icon: const Icon(Icons.save_outlined, size: 18),
               label: const Text('Save Details'),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             if (status == 'created' || status == 'printed')
               FilledButton.icon(
                 onPressed: _isSaving ? null : _startPickingAndOpenPreview,
@@ -3284,7 +3285,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 'Delivery Notes',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 6),
+              const IosGap(height: 6),
               Text(
                 _order!['delivery_notes'].toString(),
                 style: const TextStyle(
@@ -3294,7 +3295,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               pickup ? 'Pickup order' : 'Delivery order',
               textAlign: TextAlign.right,
@@ -3313,7 +3314,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   Widget _compactInfoLine(String label, String value) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3466,7 +3467,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     ),
                     const SizedBox(width: 8),
                     if (_lineDiscountAmount(item) > 0)
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.only(right: 6),
                         child: Text(
                           '-${_money(_lineDiscountAmount(item))}',
@@ -3486,7 +3487,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 ),
               ),
               if (publicComment.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const IosGap(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 9,
@@ -3527,7 +3528,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Widget _lineMetric(String label, String value) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3541,7 +3542,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               letterSpacing: 0.35,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             maxLines: 1,

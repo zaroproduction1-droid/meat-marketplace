@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'cutlink_pricing_page.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import '../../legal/presentation/legal_info_page.dart';
@@ -89,7 +90,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   Widget _frame(Widget child, {double vertical = 48}) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 1240),
-      child: Padding(
+      child: IosPadding(
         padding: EdgeInsets.symmetric(
           horizontal: MediaQuery.sizeOf(context).width < 600 ? 20 : 40,
           vertical: vertical,
@@ -175,7 +176,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
           color: PublicPagePalette.primary,
         ),
       ),
-      const SizedBox(height: 18),
+      const IosGap(height: 18),
       Text(
         'Your meat trade.\nOne connected place.',
         style: TextStyle(
@@ -186,7 +187,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
           color: PublicPagePalette.text,
         ),
       ),
-      const SizedBox(height: 18),
+      const IosGap(height: 18),
       const Text(
         'Buying, selling and running your business — together in CutLink.',
         style: TextStyle(
@@ -220,7 +221,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
           child: CutLinkExplainerVideo(),
         ),
       ),
-      const SizedBox(height: 14),
+      const IosGap(height: 14),
       const Wrap(
         spacing: 8,
         runSpacing: 4,
@@ -254,9 +255,9 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _intro(true),
-              const SizedBox(height: 28),
+              const IosGap(height: 28),
               _film(),
-              const SizedBox(height: 26),
+              const IosGap(height: 26),
               _actions(),
             ],
           );
@@ -268,11 +269,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
               flex: 4,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _intro(false),
-                  const SizedBox(height: 28),
-                  _actions(),
-                ],
+                children: [_intro(false), const IosGap(height: 28), _actions()],
               ),
             ),
             const SizedBox(width: 40),
@@ -302,7 +299,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                 letterSpacing: -.8,
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -323,7 +320,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             Semantics(
               image: true,
               label:
@@ -345,7 +342,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             Text(
               _supplier
                   ? 'Sales · Inventory · Buyer approvals · Accounting · Analytics'
@@ -397,7 +394,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Divider(color: PublicPagePalette.border),
-                          const SizedBox(height: 20),
+                          const IosGap(height: 20),
                           Wrap(
                             spacing: 32,
                             runSpacing: 16,

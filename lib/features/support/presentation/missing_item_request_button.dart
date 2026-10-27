@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -59,7 +60,7 @@ class MissingItemRequestButton extends StatelessWidget {
         icon: const Icon(Icons.playlist_add_rounded, color: Color(0xFF741C1C)),
       );
     }
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: OutlinedButton.icon(
         onPressed: enabled ? () => _open(context) : null,
@@ -194,18 +195,18 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
                       color: Color(0xFF741C1C),
                       size: 36,
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     Text(
                       'Something missing?',
                       style: Theme.of(context).textTheme.titleLarge,
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     const Text(
                       'Tell CutLink what you need. We’ll follow up in your support chat.',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
+                    const IosGap(height: 20),
                     DropdownButtonFormField<String>(
                       isExpanded: true,
                       initialValue: _kind,
@@ -235,7 +236,7 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
                               }
                             },
                     ),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     TextFormField(
                       key: const ValueKey('missing-item-name'),
                       controller: _name,
@@ -263,13 +264,13 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
                       ),
                     ),
                     if (_error != null) ...[
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       Text(
                         _error!,
                         style: const TextStyle(color: Color(0xFF741C1C)),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     Wrap(
                       alignment: WrapAlignment.end,
                       spacing: 8,

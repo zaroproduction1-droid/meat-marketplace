@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -566,7 +568,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                             _statusChip(status),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           invoice['customer_name_snapshot']?.toString() ??
                               'Customer',
@@ -617,7 +619,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         total == null ? 'Pending' : _money(total),
                         style: const TextStyle(
@@ -637,9 +639,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     identity,
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     facts,
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     Align(alignment: Alignment.centerRight, child: trailing),
                   ],
                 );
@@ -668,15 +670,15 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(
                 onPressed: _loadInvoices,
                 child: const Text('Try Again'),
@@ -695,7 +697,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         child: Column(
           children: [
             if (!widget.embedded)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
                 child: Container(
                   padding: const EdgeInsets.all(14),
@@ -730,7 +732,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            IosGap(height: 2),
                             Text(
                               'Create, send and track customer invoices and receivables.',
                               style: TextStyle(
@@ -745,7 +747,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   ),
                 ),
               ),
-            Padding(
+            IosPadding(
               padding: EdgeInsets.fromLTRB(18, widget.embedded ? 14 : 0, 18, 0),
               child: TextField(
                 controller: _searchController,
@@ -774,8 +776,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            Padding(
+            const IosGap(height: 10),
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
                 decoration: BoxDecoration(
@@ -807,11 +809,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Expanded(
               child: filtered.isEmpty
                   ? Center(
-                      child: Padding(
+                      child: IosPadding(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -821,7 +823,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                               size: 42,
                               color: Color(0xFFAAAAAA),
                             ),
-                            const SizedBox(height: 10),
+                            const IosGap(height: 10),
                             Text(
                               _searchController.text.trim().isEmpty
                                   ? 'No invoices in this section.'
@@ -841,7 +843,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 7),
+                        separatorBuilder: (_, _) => const IosGap(height: 7),
                         itemBuilder: (context, index) {
                           return _buildInvoiceCard(filtered[index]);
                         },
@@ -887,7 +889,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   'Invoices',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                 ),
-                SizedBox(height: 1),
+                IosGap(height: 1),
                 Text(
                   'Create, send and track customer invoices and receivables',
                   maxLines: 1,
@@ -985,7 +987,7 @@ class _MiniInfo extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             maxLines: 2,

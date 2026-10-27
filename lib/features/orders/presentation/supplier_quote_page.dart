@@ -1,8 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import 'order_sales_contact.dart';
 import '../services/document_product_details.dart';
 import '../services/document_product_loader.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -489,7 +491,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     ),
   );
 
-  Widget _tabButton(int index, IconData icon, String label) => Padding(
+  Widget _tabButton(int index, IconData icon, String label) => IosPadding(
     padding: const EdgeInsets.only(right: 6),
     child: TextButton.icon(
       onPressed: () => setState(() => _tab = index),
@@ -519,7 +521,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         _customer['legal_name']?.toString() ??
         'Customer';
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: PhoneColumn(
         desktop: Column(
@@ -534,7 +536,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                   Widget metric(String label, String value, {int flex = 1}) {
                     return Expanded(
                       flex: flex,
-                      child: Padding(
+                      child: IosPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 9),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,7 +550,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                 letterSpacing: .35,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const IosGap(height: 2),
                             Text(
                               value,
                               maxLines: 1,
@@ -617,13 +619,13 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                 },
               ),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Expanded(
               child: Container(
                 decoration: _panel(),
                 child: Column(
                   children: [
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
                       child: PhoneRow(
                         mode: PhoneRowMode.wrap,
@@ -664,7 +666,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                             : null,
                         padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                         itemCount: _items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 5),
+                        separatorBuilder: (_, _) => const IosGap(height: 5),
                         itemBuilder: (context, i) {
                           final item = _items[i];
                           final selected =
@@ -755,7 +757,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                             ),
                                           ),
                                           if (discount > 0)
-                                            Padding(
+                                            IosPadding(
                                               padding: const EdgeInsets.only(
                                                 right: 12,
                                               ),
@@ -788,7 +790,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                       ),
                                     ),
                                     if (publicComment.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
+                                      const IosGap(height: 6),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 9,
@@ -843,7 +845,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
             if ((quote['delivery_notes']?.toString().trim() ?? '').isNotEmpty ||
                 (quote['internal_notes']?.toString().trim() ?? '')
                     .isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const IosGap(height: 6),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -974,7 +976,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
             ],
           ),
           if (_lineAction != null && _lineAction != 'remove') ...[
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             _buildQuoteLineInlineEditor(),
           ],
         ],
@@ -1052,10 +1054,10 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
               children: [
                 typeField(),
                 if (_selectedDiscountType != null) ...[
-                  const SizedBox(height: 8),
+                  const IosGap(height: 8),
                   amountField(),
                 ],
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 Align(alignment: Alignment.centerRight, child: saveButton()),
               ],
             );
@@ -1152,7 +1154,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 4),
+        const IosGap(height: 4),
         Text(
           value?.toString() ?? '—',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
@@ -1217,12 +1219,12 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                 'Order History',
                 style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 4),
+              const IosGap(height: 4),
               const Text(
                 'Activity recorded for this quote.',
                 style: TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               for (final event in events)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -1324,7 +1326,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_error!, textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   FilledButton(
                     onPressed: _load,
                     child: const Text('Try Again'),

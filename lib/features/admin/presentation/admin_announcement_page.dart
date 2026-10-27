@@ -1,7 +1,11 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'admin_theme.dart';
 import 'announcement_style.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
 import '../services/platform_admin_service.dart';
@@ -88,7 +92,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 Text(
                   _title.text.trim(),
                   style: const TextStyle(
@@ -96,7 +100,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 Text(_body.text.trim()),
                 const Divider(),
                 Text(
@@ -183,7 +187,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                   subtitle: 'Publish a CutLink notice to the right audience.',
                   icon: Icons.campaign_outlined,
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 AdminCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -205,14 +209,14 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                             ? null
                             : (value) => setState(() => _tone = value!),
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       TextField(
                         controller: _title,
                         enabled: !_saving,
                         maxLength: 160,
                         decoration: const InputDecoration(labelText: 'Title'),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       TextField(
                         controller: _body,
                         enabled: !_saving,
@@ -221,7 +225,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                         maxLength: 5000,
                         decoration: const InputDecoration(labelText: 'Message'),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: _audience,
                         isExpanded: true,
@@ -251,7 +255,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                             : (v) => setState(() => _audience = v!),
                       ),
                       if (_audience == 'selected') ...[
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         OutlinedButton.icon(
                           onPressed: _saving ? null : _targets,
                           icon: const Icon(Icons.business_outlined),
@@ -274,7 +278,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _channel,
                         isExpanded: true,
@@ -299,7 +303,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                             ? null
                             : (v) => setState(() => _channel = v!),
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       Wrap(
                         spacing: 10,
                         crossAxisAlignment: WrapCrossAlignment.center,
@@ -349,19 +353,19 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       const Text(
                         'Notifications remain in the inbox until the user deletes them. Archiving removes the banner; it does not recall delivered notifications.',
                       ),
                       if (_error != null)
-                        Padding(
+                        IosPadding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Text(
                             _error!,
                             style: const TextStyle(color: Colors.red),
                           ),
                         ),
-                      const SizedBox(height: 20),
+                      const IosGap(height: 20),
                       FilledButton.icon(
                         onPressed: _saving ? null : _publish,
                         icon: const Icon(Icons.visibility_outlined),
@@ -460,7 +464,7 @@ class _BusinessTargetsState extends State<_BusinessTargets> {
               });
             },
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Expanded(
             child: _loading
                 ? const AdminLoading()

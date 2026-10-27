@@ -1,5 +1,9 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../../shared/widgets/supplier_photo_policy.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Pre-launch notices. Replace operator/contact details before public release.
@@ -54,7 +58,7 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
         builder: (dialogContext) => SimpleDialog(
           title: Text('Request $kind'),
           children: [
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(16),
               child: Text(
                 'Choose the business for this request. CutLink Support will verify your identity and review it. Deletion is subject to financial, dispute and other lawful retention requirements; this does not immediately erase your account.',
@@ -155,23 +159,23 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
               'CutLink development notices',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             const Text(
               'Pre-launch • NSW, Australia • Version development-2026-10-17',
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             for (final entry in notices.entries)
               ExpansionTile(
                 title: Text(entry.key),
                 childrenPadding: const EdgeInsets.all(16),
                 children: [SelectableText(entry.value)],
               ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             const Text(
               'Your information',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             Wrap(
               spacing: 12,
               runSpacing: 8,

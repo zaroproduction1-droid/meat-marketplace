@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -87,9 +89,9 @@ class _AdminNotificationSettingsPageState
           'Notifications',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
+        const IosGap(height: 6),
         const Text('Choose the alerts shown in your admin notification bell.'),
-        const SizedBox(height: 20),
+        const IosGap(height: 20),
         if (_loading)
           const LinearProgressIndicator()
         else

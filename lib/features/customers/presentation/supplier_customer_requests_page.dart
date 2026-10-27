@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
 import 'package:flutter/material.dart';
@@ -787,7 +788,7 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ],
                 ),
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   hasPending
                       ? 'You have VIP or credit applications waiting for review.'
@@ -911,7 +912,7 @@ class _SupplierCustomerRequestsPageState
             ],
           ),
           actions: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: FilledButton.icon(
                 onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
@@ -957,15 +958,15 @@ class _SupplierCustomerRequestsPageState
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadPage,
                 child: const Text('Try Again'),
@@ -998,7 +999,7 @@ class _SupplierCustomerRequestsPageState
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const IosGap(height: 8),
             itemBuilder: (_, index) => _buildRelationshipCard(rows[index]),
           );
         }
@@ -1021,7 +1022,7 @@ class _SupplierCustomerRequestsPageState
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const IosGap(height: 8),
             itemBuilder: (_, index) => _buildAccountCard(rows[index]),
           );
         }
@@ -1047,7 +1048,7 @@ class _SupplierCustomerRequestsPageState
             ),
             child: Column(
               children: [
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
                   child: PhoneRow(
                     mode: PhoneRowMode.wrap,
@@ -1064,7 +1065,7 @@ class _SupplierCustomerRequestsPageState
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const IosGap(height: 2),
                               Text(
                                 subtitle,
                                 style: const TextStyle(
@@ -1094,9 +1095,9 @@ class _SupplierCustomerRequestsPageState
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             children: [
               vip,
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               _buildCustomerSearchBar(),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               SizedBox(
                 height: 420,
                 child: panel(
@@ -1106,7 +1107,7 @@ class _SupplierCustomerRequestsPageState
                   child: cutLinkList(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               SizedBox(
                 height: 420,
                 child: panel(
@@ -1132,14 +1133,14 @@ class _SupplierCustomerRequestsPageState
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1320),
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               child: Column(
                 children: [
                   vip,
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   _buildCustomerSearchBar(),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   Expanded(
                     child: Row(
                       children: [
@@ -1192,17 +1193,17 @@ class _SupplierCustomerRequestsPageState
         side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(28),
         child: Column(
           children: [
             Icon(icon, size: 54, color: _darkRed),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Text(
               title,
               style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             Text(
               description,
               textAlign: TextAlign.center,
@@ -1268,7 +1269,7 @@ class _SupplierCustomerRequestsPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const IosGap(height: 3),
                       Row(
                         children: [
                           Icon(
@@ -1348,7 +1349,7 @@ class _SupplierCustomerRequestsPageState
               ],
             ),
             if (summary != null) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -1414,7 +1415,7 @@ class _SupplierCustomerRequestsPageState
               ),
             ],
             if (status == 'requested') ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               PhoneRow(
                 mode: PhoneRowMode.wrap,
                 desktop: Row(
@@ -1462,7 +1463,7 @@ class _SupplierCustomerRequestsPageState
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 3),
+        const IosGap(height: 3),
         Text(
           value,
           maxLines: 2,
@@ -1531,7 +1532,7 @@ class _SupplierCustomerRequestsPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const IosGap(height: 3),
                       Text(
                         '${active ? 'Active' : 'Inactive'} • ${_paymentText(account)}',
                         maxLines: 1,
@@ -1568,7 +1569,7 @@ class _SupplierCustomerRequestsPageState
               ],
             ),
             if (summary != null) ...[
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,

@@ -1,6 +1,9 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'subscription_billing_page.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../dashboard/presentation/business_dashboard_page.dart';
@@ -117,7 +120,7 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                       size: 52,
                       color: CutLinkWorkspaceTheme.red,
                     ),
-                    const SizedBox(height: 18),
+                    const IosGap(height: 18),
                     Text(
                       restrictions.any((r) => r['status'] == 'suspended')
                           ? 'Account suspended'
@@ -128,15 +131,15 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     const Text(
                       'You are signed in. Your business workspace is currently unavailable, but you can still contact CutLink Support.',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const IosGap(height: 24),
                     for (final r in restrictions)
                       Card(
-                        child: Padding(
+                        child: IosPadding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,16 +151,16 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const IosGap(height: 12),
                               const Text(
                                 'Reason',
                                 style: TextStyle(fontWeight: FontWeight.w700),
                               ),
-                              const SizedBox(height: 6),
+                              const IosGap(height: 6),
                               SelectableText(
                                 '${r['reason'] ?? 'Please contact CutLink Support for details.'}',
                               ),
-                              const SizedBox(height: 18),
+                              const IosGap(height: 18),
                               OutlinedButton.icon(
                                 onPressed: () => Navigator.push(
                                   context,
@@ -170,7 +173,7 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                                 icon: const Icon(Icons.receipt_long_outlined),
                                 label: const Text('View subscription invoices'),
                               ),
-                              const SizedBox(height: 10),
+                              const IosGap(height: 10),
                               FilledButton.icon(
                                 onPressed: _busy
                                     ? null
@@ -191,14 +194,14 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                         ),
                       ),
                     if (_error != null)
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           _error!,
                           style: const TextStyle(color: Colors.red),
                         ),
                       ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 12,

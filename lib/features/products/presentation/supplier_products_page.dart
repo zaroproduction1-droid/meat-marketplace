@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/supplier_product_attention_notice.dart';
 import '../../../shared/widgets/supplier_photo_terms_notice.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -284,7 +285,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
   Widget _stockLoadingStatus() {
     if (_stockError != null) {
-      return Padding(
+      return IosPadding(
         padding: const EdgeInsets.all(8),
         child: Row(
           children: [
@@ -300,13 +301,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     if (!_loadingStock) {
       return const SizedBox.shrink();
     }
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const LinearProgressIndicator(),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           Text('Loading products… ${_products.length} loaded'),
         ],
       ),
@@ -1202,7 +1203,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             SizedBox(
               height: 38,
               child: ListView(
@@ -1232,7 +1233,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 ],
               ),
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
           ],
       ],
     );
@@ -1324,7 +1325,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 4),
+            const IosGap(height: 4),
             SizedBox(
               height: 38,
               child: ListView(
@@ -1352,7 +1353,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 ],
               ),
             ),
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
           ],
       ],
     );
@@ -1520,20 +1521,20 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               const Text(
                 'My Stock could not be loaded',
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadProducts,
                 child: const Text('Try Again'),
@@ -1568,14 +1569,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.fromLTRB(14, 11, 14, 0),
               child: Text(
                 'Browse by Animal',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
             ),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(14, 2, 14, 7),
               child: Text(
                 _usesGradeStage
@@ -1600,7 +1601,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                       onRegionSelected: _selectAnimalRegion,
                       maxWidth: 650,
                     ),
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     const Text(
                       'CUT',
                       style: TextStyle(
@@ -1609,10 +1610,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     _buildSectionStrip(),
                     if (cutSelected) ...[
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       Text(
                         'SUBCATEGORY',
                         style: const TextStyle(
@@ -1621,19 +1622,19 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       _buildSpecificationStrip(),
                       if (_isChickenSelection) ...[
-                        const SizedBox(height: 10),
+                        const IosGap(height: 10),
                         _buildChickenAttributeStrip(),
                       ],
                       if (_isGoatSelection) ...[
-                        const SizedBox(height: 10),
+                        const IosGap(height: 10),
                         _buildGoatAttributeStrip(),
                       ],
                     ],
                     if (subcategorySelected && _usesGradeStage) ...[
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       Text(
                         _gradeStageLabel.toUpperCase(),
                         style: TextStyle(
@@ -1642,7 +1643,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       _buildGradeStrip(),
                     ],
                   ],
@@ -1698,7 +1699,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         ),
                       ),
                       if (subtitle != null && subtitle.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           subtitle,
                           maxLines: 2,
@@ -1729,7 +1730,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
       if (specifications.isEmpty) {
         return Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(26),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1742,7 +1743,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 FilledButton.icon(
                   onPressed: _selectedSectionId == null
                       ? null
@@ -1765,7 +1766,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         key: ValueKey(_stockScope),
         padding: const EdgeInsets.all(10),
         itemCount: specifications.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        separatorBuilder: (_, _) => const IosGap(height: 7),
         itemBuilder: (_, index) {
           final specification = specifications[index];
           final name = specification['name']?.toString() ?? 'Subcategory';
@@ -1797,7 +1798,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       }
       if (grades.isEmpty) {
         return Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(26),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1810,7 +1811,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 FilledButton.icon(
                   onPressed: _selectedSectionId == null
                       ? null
@@ -1834,7 +1835,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       return ListView.separated(
         padding: const EdgeInsets.all(10),
         itemCount: grades.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 7),
+        separatorBuilder: (_, _) => const IosGap(height: 7),
         itemBuilder: (_, index) {
           final grade = grades[index];
           final code = grade['code']?.toString() ?? 'N/A';
@@ -1866,7 +1867,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       }
       if (_filteredProducts.isEmpty) {
         return Center(
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1876,18 +1877,18 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   size: 46,
                   color: Color(0xFFAAAAAA),
                 ),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 const Text(
                   'No stock matches this selection',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 4),
+                const IosGap(height: 4),
                 const Text(
                   'Add a product for this cut, subcategory or grade.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF777777), height: 1.35),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 FilledButton.icon(
                   onPressed: () => _openAddProductPage(
                     sectionId: _selectedSectionId,
@@ -1911,7 +1912,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       return ListView.separated(
         padding: const EdgeInsets.all(10),
         itemCount: groups.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const IosGap(height: 10),
         itemBuilder: (_, index) {
           final group = groups[index];
           return _buildGradeMatrixCard(group.key, group.value);
@@ -1993,7 +1994,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(14, 11, 14, 7),
               child: Row(
                 children: [
@@ -2008,7 +2009,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           subtitle,
                           style: const TextStyle(
@@ -2042,7 +2043,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               ),
             ),
             searchBar(),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Wrap(
                 spacing: 8,
@@ -2078,7 +2079,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   ? stockStage()
                   : !cutSelected
                   ? const Center(
-                      child: Padding(
+                      child: IosPadding(
                         padding: EdgeInsets.all(28),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -2088,7 +2089,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                               size: 48,
                               color: Color(0xFFAAAAAA),
                             ),
-                            SizedBox(height: 12),
+                            IosGap(height: 12),
                             Text(
                               'Select a cut or search above',
                               style: TextStyle(
@@ -2114,7 +2115,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1600),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -2168,7 +2169,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 6),
       child: ChoiceChip(
         selected: selected,
@@ -2362,7 +2363,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
           },
         ),
         for (final grade in grades)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(right: 7),
             child: ChoiceChip(
               selected: _selectedGradeId == grade['id']?.toString(),
@@ -2418,7 +2419,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         side: const BorderSide(color: Color(0xFFE0E0DC)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2439,7 +2440,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const IosGap(height: 3),
                     Text(
                       '$section • ${products.length} '
                       '${products.length == 1 ? itemWord : itemWordPlural}',
@@ -2497,7 +2498,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             LayoutBuilder(
               builder: (context, constraints) {
                 if (constraints.maxWidth < 800) {
@@ -2579,7 +2580,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 );
               },
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             for (var index = 0; index < products.length; index++) ...[
               _buildGradeMatrixRow(products[index]),
               if (index != products.length - 1)
@@ -2625,7 +2626,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (variant.isNotEmpty)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(top: 8, bottom: 5),
             child: Text(
               variant,
@@ -2743,7 +2744,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(children: [gradeBadge, const Spacer(), editButton]),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Row(
                       children: [
                         Expanded(child: stockField),
@@ -2751,7 +2752,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         Expanded(child: standardField),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     Row(
                       children: [
                         Expanded(child: tradeField),
@@ -2764,7 +2765,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               );
             }
 
-            return Padding(
+            return IosPadding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [

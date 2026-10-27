@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'product_photo_moderation_controls.dart';
 import 'admin_billing_panel.dart';
 import 'admin_theme.dart';
@@ -295,7 +296,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                   for (final item in PlatformAdminService.rows(
                     invoice['items'],
                   ))
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
                         '${item['product_name_snapshot'] ?? item['product_name'] ?? item['description'] ?? item['sku_snapshot'] ?? 'Invoice item'}\n${item['public_comment'] ?? ''}',
@@ -339,7 +340,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Text(
               '${_business['legal_name'] ?? ''}',
               style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
@@ -348,7 +349,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               SelectableText('${_business['business_email']}'),
             if ('${_business['business_phone'] ?? ''}'.isNotEmpty)
               SelectableText('${_business['business_phone']}'),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -378,7 +379,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
           ],
         ),
       ),
-      const Padding(
+      const IosPadding(
         padding: EdgeInsets.symmetric(vertical: 10),
         child: Text(
           'Business members',
@@ -510,7 +511,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
         ),
         body: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.all(12),
               child: Wrap(
                 runSpacing: 6,
@@ -524,7 +525,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                       'products': 'Inventory',
                     'audit': 'Audit',
                   }.entries)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         label: Text(entry.value),
@@ -536,7 +537,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
               ),
             ),
             if (_tab != 'business' && _tab != 'billing' && _tab != 'audit')
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   key: ValueKey(_tab),
@@ -572,7 +573,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
                           _profile()
                         else ...[
                           if (_rows.isEmpty)
-                            const Padding(
+                            const IosPadding(
                               padding: EdgeInsets.all(20),
                               child: Text('No records found.'),
                             ),

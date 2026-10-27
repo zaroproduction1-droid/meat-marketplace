@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
@@ -912,7 +913,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   TextField(
                     controller: detailsController,
                     minLines: 3,
@@ -1637,7 +1638,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           amountController: amountController,
                         ),
                       if (_customerIdsForPriceList(priceList).length > 1)
-                        const Padding(
+                        const IosPadding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: Text(
                             'This is a shared private price list. Changes apply to every customer assigned to it.',
@@ -1655,7 +1656,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       DropdownButtonFormField<String>(
                         isExpanded: isPhoneLayout(context),
                         initialValue: basis,
@@ -1697,7 +1698,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                 }
                               },
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       TextField(
                         controller: minimumController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -1876,7 +1877,7 @@ class _EditProductPageState extends State<EditProductPage> {
           side: const BorderSide(color: Color(0xFFE0E0E0)),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1894,7 +1895,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 7),
+                    const IosGap(height: 7),
                     Text(
                       description,
                       style: const TextStyle(
@@ -1902,7 +1903,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const IosGap(height: 14),
                     FilledButton.icon(
                       onPressed: _isSavingPrice
                           ? null
@@ -1934,7 +1935,7 @@ class _EditProductPageState extends State<EditProductPage> {
         side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(20),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1954,7 +1955,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const IosGap(height: 6),
                       Text(
                         description,
                         style: const TextStyle(
@@ -1962,7 +1963,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 13),
+                      const IosGap(height: 13),
                       Text(
                         priceText,
                         style: TextStyle(
@@ -1974,7 +1975,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         ),
                       ),
                       if (price?['minimum_quantity'] != null) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           'Minimum quantity: ${price!['minimum_quantity']}',
                           style: const TextStyle(color: Color(0xFF666666)),
@@ -1997,7 +1998,7 @@ class _EditProductPageState extends State<EditProductPage> {
             if (constraints.maxWidth < 650) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [details, const SizedBox(height: 16), editButton],
+                children: [details, const IosGap(height: 16), editButton],
               );
             }
 
@@ -2220,7 +2221,7 @@ class _EditProductPageState extends State<EditProductPage> {
           ),
           onChanged: (v) => setState(() => _vipSearch = v),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Align(
           alignment: Alignment.centerLeft,
           child: FilterChip(
@@ -2229,15 +2230,15 @@ class _EditProductPageState extends State<EditProductPage> {
             onSelected: (v) => setState(() => _vipAssignedOnly = v),
           ),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         if (customers.isEmpty)
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.all(20),
             child: Text('No customers match these filters.'),
           ),
         for (final customer in customers) ...[
           _buildCustomerPriceCard(customer),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
         ],
       ],
     );
@@ -2300,7 +2301,7 @@ class _EditProductPageState extends State<EditProductPage> {
         ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -2324,7 +2325,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const IosGap(height: 5),
                       Text(
                         priceText,
                         style: TextStyle(
@@ -2338,7 +2339,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         ),
                       ),
                       if (savingText != null) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           savingText,
                           style: const TextStyle(
@@ -2381,7 +2382,7 @@ class _EditProductPageState extends State<EditProductPage> {
             if (constraints.maxWidth < 680) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [details, const SizedBox(height: 14), actions],
+                children: [details, const IosGap(height: 14), actions],
               );
             }
 
@@ -2406,7 +2407,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     if (_pricingError != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2416,9 +2417,9 @@ class _EditProductPageState extends State<EditProductPage> {
                 size: 56,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_pricingError!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               FilledButton(
                 onPressed: _loadPricing,
                 child: const Text('Try Again'),
@@ -2444,7 +2445,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 icon: Icons.price_change_outlined,
               ),
               Card(
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: Wrap(
                     spacing: 12,
@@ -2466,7 +2467,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   ),
                 ),
               ),
-              const Padding(
+              const IosPadding(
                 padding: EdgeInsets.symmetric(vertical: 10),
                 child: Text(
                   'The first applicable price is used. All prices include GST where applicable.',
@@ -2486,9 +2487,9 @@ class _EditProductPageState extends State<EditProductPage> {
                   icon: Icons.handshake_outlined,
                 ),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Card(
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2540,7 +2541,7 @@ class _EditProductPageState extends State<EditProductPage> {
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             subtitle,
             style: const TextStyle(color: Color(0xFF666666), height: 1.4),
@@ -2554,7 +2555,7 @@ class _EditProductPageState extends State<EditProductPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 650) {
-          return Column(children: [left, const SizedBox(height: 12), right]);
+          return Column(children: [left, const IosGap(height: 12), right]);
         }
 
         return Row(
@@ -2611,7 +2612,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         animation: tabs,
                         builder: (context, _) => tabs.index != 0
                             ? const SizedBox.shrink()
-                            : Padding(
+                            : IosPadding(
                                 padding: const EdgeInsets.only(right: 12),
                                 child: FilledButton.icon(
                                   onPressed:
@@ -2705,7 +2706,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                         ),
                                         borderRadius: BorderRadius.circular(18),
                                       ),
-                                      child: Padding(
+                                      child: IosPadding(
                                         padding: const EdgeInsets.all(20),
                                         child: Theme(
                                           data: Theme.of(context).copyWith(
@@ -2743,7 +2744,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   draft: _photoDraft,
                                                   enabled: !_isSaving,
                                                 ),
-                                                const SizedBox(height: 16),
+                                                const IosGap(height: 16),
                                                 Text(
                                                   _productNameController.text
                                                           .trim()
@@ -2758,7 +2759,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                 ),
 
-                                                const SizedBox(height: 10),
+                                                const IosGap(height: 10),
 
                                                 Text(
                                                   _usesSpecGradeCatalogue
@@ -2773,7 +2774,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 ),
 
                                                 if (_usesSpecGradeCatalogue) ...[
-                                                  const SizedBox(height: 16),
+                                                  const IosGap(height: 16),
 
                                                   _sectionTitle(
                                                     'Product classification',
@@ -2782,7 +2783,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         : 'Choose the animal, section and cut specification.',
                                                   ),
 
-                                                  const SizedBox(height: 16),
+                                                  const IosGap(height: 16),
 
                                                   _twoColumnFields(
                                                     DropdownButtonFormField<
@@ -2833,7 +2834,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             const OutlineInputBorder(),
                                                         suffixIcon:
                                                             _isLoadingSections
-                                                            ? const Padding(
+                                                            ? const IosPadding(
                                                                 padding:
                                                                     EdgeInsets.all(
                                                                       12,
@@ -2877,7 +2878,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     ),
                                                   ),
 
-                                                  const SizedBox(height: 12),
+                                                  const IosGap(height: 12),
 
                                                   DropdownButtonFormField<
                                                     String
@@ -2897,7 +2898,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                           const OutlineInputBorder(),
                                                       suffixIcon:
                                                           _isLoadingSpecifications
-                                                          ? const Padding(
+                                                          ? const IosPadding(
                                                               padding:
                                                                   EdgeInsets.all(
                                                                     12,
@@ -2941,7 +2942,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         : _selectSpecificationNew,
                                                   ),
 
-                                                  const SizedBox(height: 10),
+                                                  const IosGap(height: 10),
 
                                                   if (!_usesGeneralSubcuts)
                                                     OutlinedButton.icon(
@@ -2959,7 +2960,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       ),
                                                     ),
 
-                                                  const SizedBox(height: 12),
+                                                  const IosGap(height: 12),
 
                                                   if (_usesGradeStage) ...[
                                                     DropdownButtonFormField<
@@ -2985,7 +2986,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             const OutlineInputBorder(),
                                                         suffixIcon:
                                                             _isLoadingGrades
-                                                            ? const Padding(
+                                                            ? const IosPadding(
                                                                 padding:
                                                                     EdgeInsets.all(
                                                                       12,
@@ -3024,7 +3025,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     ),
                                                   ],
 
-                                                  const SizedBox(height: 12),
+                                                  const IosGap(height: 12),
 
                                                   Container(
                                                     padding:
@@ -3110,11 +3111,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     ),
                                                   ),
 
-                                                  const SizedBox(height: 32),
+                                                  const IosGap(height: 32),
                                                   const Divider(),
                                                 ],
 
-                                                const SizedBox(height: 16),
+                                                const IosGap(height: 16),
 
                                                 if (_usesGeneralSubcuts) ...[
                                                   _sectionTitle(
@@ -3122,7 +3123,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     subtitle:
                                                         'Choose the same standard options butchers use to filter products.',
                                                   ),
-                                                  const SizedBox(height: 12),
+                                                  const IosGap(height: 12),
                                                   SupplierSpecificationField(
                                                     cutRules: _supplierCutRules,
                                                     values: _supplierAttributes,
@@ -3144,7 +3145,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         _selectedAnimalCode,
                                                     enabled: !_isSaving,
                                                   ),
-                                                  const SizedBox(height: 18),
+                                                  const IosGap(height: 18),
                                                 ],
                                                 _sectionTitle(
                                                   'Product details',
@@ -3152,7 +3153,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       'Keep the everyday information here. Pricing is managed separately in the Pricing tab.',
                                                 ),
 
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
 
                                                 _twoColumnFields(
                                                   TextFormField(
@@ -3202,7 +3203,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                 ),
 
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
 
                                                 _twoColumnFields(
                                                   TextFormField(
@@ -3279,7 +3280,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                 ),
 
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
 
                                                 DropdownButtonFormField<String>(
                                                   isExpanded: isPhoneLayout(
@@ -3318,7 +3319,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   },
                                                 ),
 
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
 
                                                 SwitchListTile(
                                                   contentPadding:
@@ -3339,7 +3340,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   },
                                                 ),
 
-                                                const SizedBox(height: 16),
+                                                const IosGap(height: 16),
 
                                                 ProductBrandField(
                                                   controller: _brandController,
@@ -3352,7 +3353,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       _selectedAnimalCode,
                                                   enabled: !_isSaving,
                                                 ),
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
                                                 ProductSizeFields(
                                                   supplierBusinessId: widget
                                                       .product['supplier_business_id']
@@ -3397,7 +3398,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     }
                                                   }),
                                                 ),
-                                                const SizedBox(height: 12),
+                                                const IosGap(height: 12),
                                                 ExpansionTile(
                                                   tilePadding: EdgeInsets.zero,
                                                   childrenPadding:
@@ -3415,7 +3416,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     'Commercial program, preparation, origin and supplier notes.',
                                                   ),
                                                   children: [
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     if (_isLamb) ...[
                                                       _twoColumnFields(
@@ -3635,7 +3636,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       ),
                                                     ),
 
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     if (!_usesGeneralSubcuts)
                                                       _twoColumnFields(
@@ -3659,7 +3660,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         ),
                                                       ),
 
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     _twoColumnFields(
                                                       ProductAttributeField(
@@ -3688,7 +3689,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       ),
                                                     ),
 
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     _twoColumnFields(
                                                       ProductAttributeField(
@@ -3712,7 +3713,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       ),
                                                     ),
 
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     TextFormField(
                                                       controller:
@@ -3727,7 +3728,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       ),
                                                     ),
 
-                                                    const SizedBox(height: 12),
+                                                    const IosGap(height: 12),
 
                                                     if (!_usesGeneralSubcuts)
                                                       TextFormField(
@@ -3747,7 +3748,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ],
                                                 ),
 
-                                                const SizedBox(height: 16),
+                                                const IosGap(height: 16),
 
                                                 FilledButton(
                                                   onPressed: _isSaving

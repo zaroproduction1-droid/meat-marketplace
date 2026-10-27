@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
@@ -756,7 +757,7 @@ class _AddProductPageState extends State<AddProductPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 TextField(
                   controller: details,
                   minLines: 3,
@@ -1135,7 +1136,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               subtitle: Text(subtitle),
-              children: [const SizedBox(height: 14), child],
+              children: [const IosGap(height: 14), child],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1166,7 +1167,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               color: Color(0xFF2A2A2A),
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const IosGap(height: 3),
                           Text(
                             subtitle,
                             style: const TextStyle(
@@ -1180,7 +1181,7 @@ class _AddProductPageState extends State<AddProductPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const IosGap(height: 20),
                 child,
               ],
             ),
@@ -1310,7 +1311,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const IosGap(height: 2),
                           Text(
                             hasValue
                                 ? selected['label'] ?? hint
@@ -1340,8 +1341,8 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
             ),
             if (helperText != null && helperText.trim().isNotEmpty) ...[
-              const SizedBox(height: 5),
-              Padding(
+              const IosGap(height: 5),
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   helperText,
@@ -1354,8 +1355,8 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
             ],
             if (field.hasError) ...[
-              const SizedBox(height: 5),
-              Padding(
+              const IosGap(height: 5),
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   field.errorText!,
@@ -1373,7 +1374,7 @@ class _AddProductPageState extends State<AddProductPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 620) {
-          return Column(children: [left, const SizedBox(height: 14), right]);
+          return Column(children: [left, const IosGap(height: 14), right]);
         }
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1470,7 +1471,7 @@ class _AddProductPageState extends State<AddProductPage> {
             },
           ),
         ),
-        const SizedBox(height: 14),
+        const IosGap(height: 14),
         _twoFields(
           TextFormField(
             controller: _goatCartonWeight,
@@ -1490,7 +1491,7 @@ class _AddProductPageState extends State<AddProductPage> {
           ),
         ),
         if (_isWholeLamb) ...[
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           _twoFields(
             TextFormField(
               controller: _lotBatch,
@@ -1501,7 +1502,7 @@ class _AddProductPageState extends State<AddProductPage> {
             ),
             dateField('Slaughter Date', _slaughterDate),
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Align(
             alignment: Alignment.centerLeft,
             child: ConstrainedBox(
@@ -1510,7 +1511,7 @@ class _AddProductPageState extends State<AddProductPage> {
             ),
           ),
         ],
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         const Align(
           alignment: Alignment.centerLeft,
           child: Text(
@@ -1599,7 +1600,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             color: Color(0xFF262626),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const IosGap(height: 4),
                         Text(
                           _isChicken
                               ? 'Chicken uses cut, sub-cut and practical product specifications instead of beef-style grades.'
@@ -1609,7 +1610,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         _sectionCard(
                           title: 'Product Classification',
                           subtitle: _isChicken
@@ -1670,7 +1671,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                       : null,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const IosGap(height: 14),
                               _cutLinkPickerField(
                                 label: _usesGeneralSubcuts
                                     ? 'Sub-cut'
@@ -1704,7 +1705,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     ? 'Sub-cut is required.'
                                     : null,
                               ),
-                              const SizedBox(height: 10),
+                              const IosGap(height: 10),
                               if (!_usesGeneralSubcuts)
                                 Align(
                                   alignment: Alignment.centerLeft,
@@ -1718,7 +1719,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     ),
                                   ),
                                 ),
-                              const SizedBox(height: 14),
+                              const IosGap(height: 14),
                               ProductSizeFields(
                                 supplierBusinessId: _supplierBusinessId,
                                 specificationId: _specificationId,
@@ -1752,7 +1753,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 }),
                               ),
                               if (_usesGradeStage) ...[
-                                const SizedBox(height: 14),
+                                const IosGap(height: 14),
                                 _cutLinkPickerField(
                                   label: _gradeStageLabel,
                                   value: _gradeId,
@@ -1795,7 +1796,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           ),
                         ),
                         if (_usesGeneralSubcuts) ...[
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           _sectionCard(
                             title: 'Supplier specification',
                             subtitle:
@@ -1817,7 +1818,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   animalCode: _selectedAnimalCode,
                                   enabled: !_saving,
                                 ),
-                                const SizedBox(height: 14),
+                                const IosGap(height: 14),
                                 _twoFields(
                                   CutLinkPickerField<String>(
                                     label: 'Temperature',
@@ -1874,7 +1875,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           ),
                         ],
                         if (_isChicken) ...[
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           _sectionCard(
                             title: 'Optional chicken details',
                             collapsed: true,
@@ -1885,7 +1886,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           ),
                         ],
                         if (_isLamb) ...[
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           _sectionCard(
                             title: _isWholeLamb
                                 ? 'Optional carcase details'
@@ -1898,7 +1899,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             child: _lambSpecifications(),
                           ),
                         ],
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         _sectionCard(
                           title: 'Product Details',
                           subtitle:
@@ -1930,7 +1931,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                       _required(v, 'Product name'),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const IosGap(height: 14),
                               _twoFields(
                                 ProductBrandField(
                                   controller: _brand,
@@ -1946,7 +1947,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   choices: productPackagingOptions,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const IosGap(height: 14),
                               TextFormField(
                                 controller: _description,
                                 minLines: 2,
@@ -1959,7 +1960,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final narrow = constraints.maxWidth < 820;
@@ -2022,7 +2023,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                       validator: _optionalPositive,
                                     ),
                                   ),
-                                  const SizedBox(height: 14),
+                                  const IosGap(height: 14),
                                   _twoFields(
                                     TextFormField(
                                       controller: _piecesPerCarton,
@@ -2069,7 +2070,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               return Column(
                                 children: [
                                   pricing,
-                                  const SizedBox(height: 14),
+                                  const IosGap(height: 14),
                                   inventory,
                                 ],
                               );
@@ -2085,9 +2086,9 @@ class _AddProductPageState extends State<AddProductPage> {
                             );
                           },
                         ),
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
 
-                        const SizedBox(height: 14),
+                        const IosGap(height: 14),
                         if (_isGoat)
                           _sectionCard(
                             title: 'Pack weight',
@@ -2165,7 +2166,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 14),
+                                const IosGap(height: 14),
                                 _twoFields(
                                   ProductAttributeField(
                                     controller: _marbling,
@@ -2186,7 +2187,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     onChanged: () => setState(() {}),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
+                                const IosGap(height: 14),
                                 _twoFields(
                                   TextFormField(
                                     controller: _trim,
@@ -2204,7 +2205,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
+                                const IosGap(height: 14),
                                 _twoFields(
                                   TextFormField(
                                     controller: _originCountry,
@@ -2224,7 +2225,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               ],
                             ),
                           ),
-                        if (_usesGradeStage) const SizedBox(height: 14),
+                        if (_usesGradeStage) const IosGap(height: 14),
                         if (!_usesGeneralSubcuts)
                           _sectionCard(
                             title: 'Supplier Notes',
@@ -2242,7 +2243,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               ),
                             ),
                           ),
-                        const SizedBox(height: 18),
+                        const IosGap(height: 18),
                         PhoneRow(
                           mode: PhoneRowMode.wrap,
                           desktop: Row(

@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -44,7 +46,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
               letterSpacing: 1.8,
             ),
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Text(
             'The CutLink community.',
             textAlign: TextAlign.center,
@@ -56,9 +58,9 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
               letterSpacing: -.8,
             ),
           ),
-          const SizedBox(height: 32),
+          const IosGap(height: 32),
           if (snapshot.connectionState == ConnectionState.waiting)
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.all(24),
               child: CircularProgressIndicator(color: PublicPagePalette.accent),
             )
@@ -80,7 +82,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             )
           else ...[
             _role(true, data, rows),
-            const Padding(
+            const IosPadding(
               padding: EdgeInsets.symmetric(vertical: 30),
               child: Divider(color: PublicPagePalette.border),
             ),
@@ -111,9 +113,9 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 20),
+        const IosGap(height: 20),
         if (featured.isEmpty)
-          const Padding(
+          const IosPadding(
             padding: EdgeInsets.all(24),
             child: Text(
               'Community businesses will appear here when selected.',
@@ -159,7 +161,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
                               path: row['logo_path'] as String?,
                               size: 82,
                             ),
-                            const SizedBox(height: 18),
+                            const IosGap(height: 18),
                             Expanded(
                               child: Center(
                                 child: Text(
@@ -185,7 +187,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             },
           ),
         if (count != null)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(top: 18),
             child: Text(
               '$count registered ${supplier ? 'suppliers' : 'butchers'} in total',
@@ -197,7 +199,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             ),
           ),
         if (widget.onRegister != null)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(top: 6),
             child: TextButton.icon(
               onPressed: () => widget.onRegister!(

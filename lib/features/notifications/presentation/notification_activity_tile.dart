@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -44,7 +46,7 @@ class NotificationActivityTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
+        child: IosPadding(
           padding: EdgeInsets.all(compact ? 12 : 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +115,7 @@ class NotificationActivityTile extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       row['title']?.toString() ?? 'Activity',
                       style: TextStyle(
@@ -123,7 +125,7 @@ class NotificationActivityTile extends StatelessWidget {
                       ),
                     ),
                     if ((row['detail']?.toString() ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       Text(
                         row['detail'].toString(),
                         maxLines: compact ? 2 : null,

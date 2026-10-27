@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'admin_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -130,12 +131,12 @@ class _AdminFormState extends State<_AdminForm> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (widget.explanation != null)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Text(widget.explanation!),
                     ),
                   for (final f in widget.fields)
-                    Padding(
+                    IosPadding(
                       padding: const EdgeInsets.only(bottom: 14),
                       child: f.checkbox
                           ? FormField<bool>(
@@ -304,7 +305,7 @@ class AdminCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     margin: const EdgeInsets.only(bottom: 12),
-    child: Padding(padding: const EdgeInsets.all(20), child: child),
+    child: IosPadding(padding: const EdgeInsets.all(20), child: child),
   );
 }
 

@@ -1,4 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../memberships/services/membership_service.dart';
@@ -150,11 +153,11 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
               'Your CutLink invoice details',
               style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             const Text(
               'Set this up once. These details appear on invoices you send to businesses.',
             ),
-            const SizedBox(height: 16),
+            const IosGap(height: 16),
             if ('${_details['legal_name'] ?? ''}'.isEmpty ||
                 '${_details['email'] ?? ''}'.isEmpty)
               const Text(
@@ -171,13 +174,13 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
               'address': 'Address',
             }.entries)
               if ('${_details[field.key] ?? ''}'.isNotEmpty)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(top: 8),
                   child: SelectableText(
                     '${field.value}: ${_details[field.key]}',
                   ),
                 ),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
                 _details['gst_registered'] == true
@@ -204,7 +207,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const IosGap(height: 12),
             FilledButton.icon(
               onPressed: () async {
                 if (await editCutLinkInvoiceDetails(
@@ -235,7 +238,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                   child: Wrap(
                     spacing: 8,
@@ -251,7 +254,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
                   ),
                 ),
                 if (['accounts', 'invoices'].contains(_view)) ...[
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Wrap(
                       spacing: 10,
@@ -278,7 +281,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
                       ],
                     ),
                   ),
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                     child: TextField(
                       controller: _searchController,
@@ -301,7 +304,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
                       },
                     ),
                   ),
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                     child: Wrap(
                       spacing: 8,
@@ -371,7 +374,7 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const IosGap(height: 8),
                             Text(
                               _view == 'accounts'
                                   ? 'Choose a business to start membership or review its billing.'
@@ -441,11 +444,11 @@ class BillingAccountCard extends StatelessWidget {
             '${account['billing_name'] ?? 'Business'}',
             style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 6),
+          const IosGap(height: 6),
           Text(
             'CL-${account['account_number']} · ${adminOfferLabel(membership)}',
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           Wrap(
             spacing: 24,
             runSpacing: 12,
@@ -467,21 +470,21 @@ class BillingAccountCard extends StatelessWidget {
             ],
           ),
           if (membership['stage'] == 'free_founding')
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 'Free until ${PlatformAdminService.date(membership['free_end'])}. Your next invoice uses the price for its billing period.',
               ),
             ),
           if (membership['stage'] == 'founding_half_price')
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 'Half-price until ${PlatformAdminService.date(membership['discount_end'])}.',
               ),
             ),
           if (PlatformAdminService.amount(account['overdue']) > 0)
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 '${PlatformAdminService.money(account['overdue'])} overdue',
@@ -491,7 +494,7 @@ class BillingAccountCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 8,
@@ -532,7 +535,7 @@ class BillingValue extends StatelessWidget {
         label,
         style: const TextStyle(color: AdminTheme.muted, fontSize: 12),
       ),
-      const SizedBox(height: 4),
+      const IosGap(height: 4),
       Text(
         value.isEmpty ? 'Not set' : value,
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
@@ -573,7 +576,7 @@ class BillingError extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
+    child: IosPadding(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -715,7 +718,7 @@ class _AdminBusinessBillingState extends State<AdminBusinessBilling> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 Text(
                   eligible
                       ? 'Choose a membership once. The offer, dates and billing account are set up together.'
@@ -723,7 +726,7 @@ class _AdminBusinessBillingState extends State<AdminBusinessBilling> {
                       ? 'Admin businesses use custom billing and cannot take founding places.'
                       : 'Approve and activate this business before starting its membership.',
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 if (eligible)
                   FilledButton(
                     onPressed: _enrol,
@@ -806,7 +809,7 @@ class _AdminBusinessBillingState extends State<AdminBusinessBilling> {
               ],
             ),
           ),
-        const Padding(
+        const IosPadding(
           padding: EdgeInsets.symmetric(vertical: 12),
           child: Text(
             'CutLink invoices',
@@ -921,7 +924,7 @@ class _BillingBusinessPickerState extends State<_BillingBusinessPicker> {
               });
             },
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Expanded(
             child: _loading
                 ? const AdminLoading()

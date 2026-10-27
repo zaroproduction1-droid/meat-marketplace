@@ -1,5 +1,8 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../shared/widgets/phone_layout.dart';
 
 /// Order-only attribution. Never changes the customer's business profile.
@@ -94,7 +97,7 @@ class _OrderSalesContactState extends State<OrderSalesContact> {
                 const Text(
                   'Printed on the invoice. Locked when the invoice is created. Leave blank to use your supplier default.',
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 TextField(
                   controller: name,
                   maxLength: 120,
@@ -164,7 +167,7 @@ class _OrderSalesContactState extends State<OrderSalesContact> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => IosPadding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,

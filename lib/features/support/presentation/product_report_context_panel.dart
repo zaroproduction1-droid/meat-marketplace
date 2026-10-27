@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -213,7 +214,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Padding(
+      return const IosPadding(
         padding: EdgeInsets.all(16),
         child: LinearProgressIndicator(),
       );
@@ -232,7 +233,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
     final report = Map<String, dynamic>.from(data['report'] as Map);
     if (report['purged_at'] != null) {
       return const Card(
-        child: Padding(
+        child: IosPadding(
           padding: EdgeInsets.all(16),
           child: Text(
             'The report details and photo evidence have expired under the support retention policy.',
@@ -291,7 +292,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const IosGap(height: 6),
           Text(
             captured
                 ? 'Private copy saved with this report'
@@ -312,7 +313,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
               'Reported product',
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 3),
+        const IosGap(height: 3),
         Text(
           snapshot['supplier_name']?.toString() ?? 'Supplier',
           style: const TextStyle(
@@ -320,7 +321,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
             color: Color(0xFF741C1C),
           ),
         ),
-        const SizedBox(height: 7),
+        const IosGap(height: 7),
         Wrap(
           spacing: 10,
           runSpacing: 4,
@@ -341,12 +342,12 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
               Text(grade, style: const TextStyle(fontSize: 12)),
           ],
         ),
-        const SizedBox(height: 12),
+        const IosGap(height: 12),
         Text(reason, style: const TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 5),
+        const IosGap(height: 5),
         SelectableText(report['description']?.toString() ?? ''),
         if (report['resolution_note'] != null)
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.only(top: 10),
             child: Text(
               'Review outcome: ${report['resolution_note']}',
@@ -354,7 +355,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
             ),
           ),
         if (report['reference_url'] != null) ...[
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           const Text(
             'Supporting link',
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
@@ -405,13 +406,13 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                 ],
               ),
             ),
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.all(15),
               child: LayoutBuilder(
                 builder: (context, box) => box.maxWidth < 540
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [photo, const SizedBox(height: 15), details],
+                        children: [photo, const IosGap(height: 15), details],
                       )
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +425,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
               ),
             ),
             if (!captured && data['source_path'] != null)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 15),
                 child: Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -453,13 +454,13 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                 ),
               ),
             if (widget.adminMode)
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.fromLTRB(15, 4, 15, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (data['photo_changed'] == true)
-                      const Padding(
+                      const IosPadding(
                         padding: EdgeInsets.only(bottom: 8),
                         child: Text(
                           'The supplier photo has changed or been removed since this report. Review the current photo before taking action.',
@@ -523,12 +524,12 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     const Text(
                       'Review this product to take action. The report will close automatically; supplier follow-up continues separately.',
                       style: TextStyle(fontSize: 12, color: Color(0xFF555555)),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     if (data['closed'] != true)
                       FilledButton.icon(
                         onPressed: _resolving ? null : _resolve,
@@ -546,7 +547,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                           color: Color(0xFF2E7D32),
                         ),
                       ),
-                    const SizedBox(height: 6),
+                    const IosGap(height: 6),
                     const Text(
                       'Use the chat below if a conversation is needed.',
                       style: TextStyle(fontSize: 11, color: Color(0xFF666666)),

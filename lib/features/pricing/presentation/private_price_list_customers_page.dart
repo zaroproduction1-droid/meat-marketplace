@@ -1,7 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'price_list_products_page.dart';
 
 class PrivatePriceListCustomersPage extends StatefulWidget {
@@ -210,7 +213,7 @@ class _PrivatePriceListCustomersPageState
         ),
         body: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.all(16),
               child: TextField(
                 decoration: const InputDecoration(
@@ -234,7 +237,7 @@ class _PrivatePriceListCustomersPageState
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -244,9 +247,9 @@ class _PrivatePriceListCustomersPageState
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadCustomers,
                 child: const Text('Try Again'),
@@ -259,18 +262,18 @@ class _PrivatePriceListCustomersPageState
 
     if (_customers.isEmpty) {
       return const Center(
-        child: Padding(
+        child: IosPadding(
           padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.people_outline, size: 72, color: Color(0xFF741C1C)),
-              SizedBox(height: 20),
+              IosGap(height: 20),
               Text(
                 'No approved customers',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
-              SizedBox(height: 10),
+              IosGap(height: 10),
               Text(
                 'Approve a butcher customer first before assigning private pricing.',
                 textAlign: TextAlign.center,
@@ -292,7 +295,7 @@ class _PrivatePriceListCustomersPageState
         child: ListView.separated(
           padding: const EdgeInsets.all(24),
           itemCount: customers.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          separatorBuilder: (context, index) => const IosGap(height: 12),
           itemBuilder: (context, index) {
             final customer = customers[index];
 

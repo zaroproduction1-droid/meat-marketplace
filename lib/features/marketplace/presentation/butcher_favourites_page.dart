@@ -1,5 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -540,12 +542,12 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         if (_kind == 'dashboard') ...[
           const Text(
             'Choose up to four favourite products for your dashboard. Removing a selection keeps it in Favourites.',
           ),
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
         ],
         TextField(
           onChanged: (value) => setState(() => _query = value),
@@ -558,7 +560,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
             border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -629,7 +631,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: Color(0xFFE3E5E8)),
         ),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,7 +657,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       isProduct ? _supplierFor(row) : row['summary'].toString(),
                       style: const TextStyle(color: Color(0xFF646A70)),
@@ -670,7 +672,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
                           const Text('Out of stock'),
                       ],
                     ],
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     Wrap(
                       spacing: 6,
                       runSpacing: 5,
@@ -754,13 +756,13 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
           )
         : rows.isEmpty
         ? Center(
-            child: Padding(
+            child: IosPadding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.favorite_border, size: 40, color: _brand),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   Text(
                     source.isEmpty
                         ? 'Use the search or product heart in Browse Products to save a favourite.'
@@ -812,14 +814,14 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 slivers: [
                   SliverToBoxAdapter(
-                    child: Padding(
+                    child: IosPadding(
                       padding: const EdgeInsets.all(14),
                       child: header,
                     ),
                   ),
                   if (status != null)
                     SliverToBoxAdapter(
-                      child: Padding(
+                      child: IosPadding(
                         padding: const EdgeInsets.all(24),
                         child: status,
                       ),

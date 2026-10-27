@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_theme.dart';
@@ -241,7 +243,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                 'Payment history',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               if (payments.isEmpty) const Text('No payments recorded.'),
               for (final p in payments)
                 AdminCard(
@@ -349,7 +351,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
             ? const AdminLoading()
             : _error != null
             ? Center(
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(24),
                   child: Text(_error!),
                 ),
@@ -361,7 +363,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                       maxHeight: MediaQuery.sizeOf(context).height * .45,
                     ),
                     child: SingleChildScrollView(
-                      child: Padding(
+                      child: IosPadding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -373,7 +375,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             Wrap(
                               spacing: 24,
                               runSpacing: 10,
@@ -406,7 +408,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
+                            const IosGap(height: 14),
                             Wrap(
                               spacing: 10,
                               runSpacing: 8,
@@ -473,7 +475,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const IosGap(height: 8),
                             Wrap(
                               spacing: 8,
                               crossAxisAlignment: WrapCrossAlignment.center,
@@ -492,7 +494,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
                                 ),
                                 PopupMenuButton<AdminRow>(
                                   tooltip: 'View original invoice or reminder',
-                                  child: Padding(
+                                  child: IosPadding(
                                     padding: const EdgeInsets.all(8),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -706,7 +708,7 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_loading)
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.all(24),
                   child: Center(child: CircularProgressIndicator()),
                 ),
@@ -718,11 +720,11 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 Text(
                   '${PlatformAdminService.date(_quote!['period_start'])} – ${PlatformAdminService.date(_quote!['period_end'])}',
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 Text(
                   PlatformAdminService.money(_quote!['total']),
                   style: const TextStyle(
@@ -737,7 +739,7 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
                 Text(
                   'Payment due ${PlatformAdminService.date(_quote!['due_date'])}',
                 ),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 if (_quote!['stage'] == 'free_founding')
                   const Text('This period is free under the founding offer.'),
                 if (_quote!['stage'] == 'founding_half_price')
@@ -772,7 +774,7 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const IosGap(height: 12),
                     TextField(
                       controller: _end,
                       enabled: !_saving && !_loading,
@@ -796,13 +798,13 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const IosGap(height: 8),
                 const Text(
                   'Creates an invoice only. Download its PDF to send to the business. No money is charged.',
                 ),
               ],
               if (_error != null)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(
                     _error!,

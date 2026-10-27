@@ -1,6 +1,8 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -570,18 +572,18 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ],
           ),
           if (runDate.isNotEmpty) ...[
-            const SizedBox(height: 9),
+            const IosGap(height: 9),
             Text(
               'Scheduled delivery: $runDate',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ],
           if (address.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(address, style: const TextStyle(fontSize: 11.5, height: 1.35)),
           ],
           if (instructions.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               'Delivery instructions: $instructions',
               style: const TextStyle(
@@ -592,14 +594,14 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ),
           ],
           if (stopStatus == 'out_for_delivery') ...[
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             const Text(
               'Your order is with the supplier’s delivery driver.',
               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
             ),
           ],
           if (stopStatus == 'delivered') ...[
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             Text(
               recipient.isEmpty
                   ? 'Delivery confirmed ${_formatDate(stop['delivered_at'])}'
@@ -611,7 +613,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ),
           ],
           if (stopStatus == 'failed') ...[
-            const SizedBox(height: 7),
+            const IosGap(height: 7),
             Text(
               failedReason.isEmpty
                   ? 'The supplier could not complete this delivery attempt.'
@@ -1018,7 +1020,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 Text(
                   'Cancel ${order['order_number'] ?? 'this order'} with ${_supplierName(order)}?',
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 TextField(
                   controller: reason,
                   maxLength: 500,
@@ -1179,7 +1181,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.end,
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.symmetric(horizontal: 5),
               child: Text(
                 supplier ? 'Supplier' : 'You',
@@ -1192,7 +1194,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 ),
               ),
             ),
-            const SizedBox(height: 3),
+            const IosGap(height: 3),
             Container(
               padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
               decoration: BoxDecoration(
@@ -1221,8 +1223,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               ),
             ),
             if (date.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Padding(
+              const IosGap(height: 3),
+              IosPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 5),
                 child: Text(
                   date,
@@ -1281,7 +1283,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               ?trailing,
             ],
           ),
-          const SizedBox(height: 11),
+          const IosGap(height: 11),
           child,
         ],
       ),
@@ -1582,12 +1584,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const IosGap(height: 18),
                           const Text(
                             'Affected products',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           for (final item in items)
                             CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
@@ -1621,7 +1623,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                       });
                                     },
                             ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           DropdownButtonFormField<String>(
                             isExpanded: isPhoneLayout(context),
                             initialValue: reason,
@@ -1673,7 +1675,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     }
                                   },
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           DropdownButtonFormField<String>(
                             isExpanded: isPhoneLayout(context),
                             initialValue: requestedOutcome,
@@ -1710,7 +1712,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     }
                                   },
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: descriptionController,
                             minLines: 4,
@@ -1723,7 +1725,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const IosGap(height: 12),
                           const Text(
                             'The supplier will review this report and confirm the final resolution. '
                             'Submitting a request does not automatically create a refund or credit.',
@@ -1825,7 +1827,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             'Order progress',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1990,7 +1992,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(height: 3),
+                              const IosGap(height: 3),
                               Text(
                                 'Reported ${_formatDate(issue['reported_at'])}',
                                 style: const TextStyle(
@@ -2025,9 +2027,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     _buildIssueProgress(issue),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
 
                     _issueSectionCard(
                       title: 'Issue Summary',
@@ -2044,7 +2046,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const IosGap(height: 4),
                             Text(
                               affectedNames.join(', '),
                               style: const TextStyle(
@@ -2052,7 +2054,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 9),
+                            const IosGap(height: 9),
                           ],
                           if (issue['description']
                                   ?.toString()
@@ -2067,7 +2069,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const IosGap(height: 4),
                             Text(
                               issue['description'].toString(),
                               style: const TextStyle(
@@ -2079,7 +2081,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 9),
+                    const IosGap(height: 9),
 
                     _issueSectionCard(
                       title: 'Conversation',
@@ -2092,7 +2094,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         label: Text(sending ? 'Sending' : 'Reply'),
                       ),
                       child: messages.isEmpty
-                          ? const Padding(
+                          ? const IosPadding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Text(
                                 'No messages yet. Send the supplier a message if you need an update.',
@@ -2109,7 +2111,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               ],
                             ),
                     ),
-                    const SizedBox(height: 9),
+                    const IosGap(height: 9),
 
                     _issueSectionCard(
                       title: 'Resolution',
@@ -2130,7 +2132,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                       height: 1.4,
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
+                                  const IosGap(height: 10),
                                 ],
                                 Wrap(
                                   spacing: 18,
@@ -2164,7 +2166,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   ],
                                 ),
                                 if (_issueUpdateDate(issue).isNotEmpty) ...[
-                                  const SizedBox(height: 8),
+                                  const IosGap(height: 8),
                                   Text(
                                     'Updated ${_issueUpdateDate(issue)}',
                                     style: const TextStyle(
@@ -2199,7 +2201,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     ),
 
                     if (replacement != null) ...[
-                      const SizedBox(height: 9),
+                      const IosGap(height: 9),
                       Container(
                         padding: const EdgeInsets.all(11),
                         decoration: BoxDecoration(
@@ -2227,7 +2229,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const IosGap(height: 2),
                                   Text(
                                     '${replacement['order_number'] ?? 'Replacement'} • ${_statusLabel(replacement['status']?.toString())}',
                                     style: const TextStyle(
@@ -2805,7 +2807,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const IosGap(height: 2),
                                 Text(
                                   _supplierName(order),
                                   maxLines: 1,
@@ -2855,7 +2857,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           size: 56,
                           color: Color(0xFF2E7D32),
                         ),
-                        SizedBox(height: 12),
+                        IosGap(height: 12),
                         Text(
                           'No issues or returns',
                           style: TextStyle(
@@ -2879,7 +2881,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                         child: PhoneRow(
                           mode: PhoneRowMode.wrap,
@@ -2897,7 +2899,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const IosGap(height: 2),
                                     Text(
                                       _supplierName(order),
                                       style: const TextStyle(
@@ -2942,7 +2944,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     actions: [
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.only(right: 14),
                         child: Center(
                           child: Text(
@@ -2960,7 +2962,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 body: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1240),
-                    child: Padding(
+                    child: IosPadding(
                       padding: const EdgeInsets.all(14),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -2977,7 +2979,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const Padding(
+                                const IosPadding(
                                   padding: EdgeInsets.fromLTRB(13, 11, 13, 9),
                                   child: Text(
                                     'Orders with Issues',
@@ -3002,7 +3004,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                           padding: const EdgeInsets.all(8),
                                           itemCount: issueOrders.length,
                                           separatorBuilder: (_, _) =>
-                                              const SizedBox(height: 6),
+                                              const IosGap(height: 6),
                                           itemBuilder: (_, index) =>
                                               queueRow(issueOrders[index]),
                                         ),
@@ -3015,7 +3017,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             return ListView(
                               children: [
                                 SizedBox(height: 310, child: queue),
-                                const SizedBox(height: 10),
+                                const IosGap(height: 10),
                                 SizedBox(height: 620, child: workspace()),
                               ],
                             );
@@ -3135,7 +3137,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   preferredSize: const Size.fromHeight(112),
                   child: Column(
                     children: [
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1240),
@@ -3249,7 +3251,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3259,14 +3261,14 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 size: 60,
                 color: Color(0xFF741C1C),
               ),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               const Text(
                 'Orders could not be loaded',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
+              const IosGap(height: 20),
               FilledButton(
                 onPressed: _loadOrders,
                 child: const Text('Try Again'),
@@ -3288,13 +3290,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
     if (orders.isEmpty) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(tab.icon, size: 68, color: const Color(0xFF741C1C)),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(
                 'No ${tab.label.toLowerCase()} orders',
                 style: const TextStyle(
@@ -3316,7 +3318,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
             itemCount: orders.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const IosGap(height: 8),
             itemBuilder: (context, index) {
               return _buildOrderCard(orders[index]);
             },
@@ -3412,7 +3414,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             ],
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const IosGap(height: 3),
                         Text(
                           _supplierName(order),
                           maxLines: 1,
@@ -3479,7 +3481,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_issues(order).any(_hasSupplierUpdate))
-                    const Padding(
+                    const IosPadding(
                       padding: EdgeInsets.only(right: 10),
                       child: Icon(
                         Icons.mark_chat_unread_outlined,
@@ -3488,7 +3490,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       ),
                     )
                   else if (_hasOpenIssues(order))
-                    const Padding(
+                    const IosPadding(
                       padding: EdgeInsets.only(right: 10),
                       child: Icon(
                         Icons.report_problem_outlined,
@@ -3507,7 +3509,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         totalText,
                         style: const TextStyle(
@@ -3527,9 +3529,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     identity,
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     facts,
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     Align(alignment: Alignment.centerRight, child: trailing),
                   ],
                 );
@@ -3586,7 +3588,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         ),
         child: Column(
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
               child: Row(
                 children: [
@@ -3621,7 +3623,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     : null,
                 padding: const EdgeInsets.all(10),
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 7),
+                separatorBuilder: (_, _) => const IosGap(height: 7),
                 itemBuilder: (_, index) {
                   final item = items[index];
 
@@ -3658,7 +3660,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                         .trim()
                                         .isNotEmpty ==
                                     true) ...[
-                                  const SizedBox(height: 2),
+                                  const IosGap(height: 2),
                                   Text(
                                     'SKU ${item['sku_snapshot']}',
                                     style: const TextStyle(
@@ -3667,7 +3669,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 4),
+                                const IosGap(height: 4),
                                 Text(
                                   '${_formatNumber(item['quantity'])} '
                                   '${_unitLabel(item['quantity_unit']?.toString())}'
@@ -3734,7 +3736,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   'Open Invoice ${invoice['invoice_number'] ?? ''}'.trim(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
             ],
 
             if (status == 'declined' &&
@@ -3758,7 +3760,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const IosGap(height: 6),
                     Text(
                       order['supplier_rejection_reason']
                                   ?.toString()
@@ -3769,7 +3771,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           : 'The supplier was unable to accept this order.',
                       style: const TextStyle(fontSize: 12, height: 1.35),
                     ),
-                    const SizedBox(height: 9),
+                    const IosGap(height: 9),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -3796,9 +3798,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
             _buildIssues(order),
 
-            const SizedBox(height: 10),
+            const IosGap(height: 10),
             const Divider(height: 1),
-            const SizedBox(height: 9),
+            const IosGap(height: 9),
 
             _TotalRow(
               label: 'Products (inc GST)',
@@ -3822,7 +3824,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ),
 
             if (_canMarkReceived(order)) ...[
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               FilledButton.icon(
                 onPressed: _updatingOrderId == orderId
                     ? null
@@ -3838,7 +3840,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ],
 
             if (status == 'submitted') ...[
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               OutlinedButton.icon(
                 onPressed: _updatingOrderId == orderId
                     ? null
@@ -3856,7 +3858,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
             if ((status == 'delivered' || status == 'completed') &&
                 !_isReplacementOrder(order)) ...[
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               Builder(
                 builder: (context) {
                   final existingIssue = _activeIssueForOrder(order);
@@ -3935,7 +3937,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         pickup ? 'Pickup order' : 'Delivery order',
                         style: const TextStyle(
@@ -3973,12 +3975,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               padding: const EdgeInsets.all(14),
               children: [
                 header,
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 SizedBox(
                   height: isPhoneLayout(context) ? null : 430,
                   child: productsPanel(),
                 ),
-                const SizedBox(height: 10),
+                const IosGap(height: 10),
                 SizedBox(
                   height: isPhoneLayout(context) ? null : 650,
                   child: controlPanel(),
@@ -3990,12 +3992,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1240),
-              child: Padding(
+              child: IosPadding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   children: [
                     header,
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     Expanded(
                       child: Row(
                         children: [
@@ -4037,7 +4039,7 @@ class _CompactBuyerOrderFact extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const IosGap(height: 2),
           Text(
             value,
             maxLines: 1,
@@ -4140,7 +4142,7 @@ class _InfoBlock extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const IosGap(height: 4),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
@@ -4166,7 +4168,7 @@ class _TotalRow extends StatelessWidget {
       fontSize: bold ? 17 : 15,
     );
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [

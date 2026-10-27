@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/security/upload_safety.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -282,15 +283,15 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
 
     if (_error != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(onPressed: _load, child: const Text('Try Again')),
             ],
           ),
@@ -308,12 +309,12 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
               'Supplier Access',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 8),
+            const IosGap(height: 8),
             const Text(
               'Your CutLink approval already gives you access to each supplier’s Standard Price. VIP pricing is separate and must be approved by each supplier individually.',
               style: TextStyle(color: Color(0xFF606060), height: 1.45),
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -339,7 +340,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -359,9 +360,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             if (_filteredSuppliers.isEmpty)
-              const Padding(
+              const IosPadding(
                 padding: EdgeInsets.symmetric(vertical: 60),
                 child: Center(
                   child: Text(
@@ -376,7 +377,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
             else
               for (final supplier in _filteredSuppliers) ...[
                 _supplierCard(supplier),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
               ],
           ],
         ),
@@ -434,104 +435,109 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: Color(0xFFE0E0DD)),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(19),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _darkRed.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(13),
+        child: IosAdaptiveRow(
+          desktop: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _darkRed.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.local_shipping_outlined,
+                  color: _darkRed,
+                ),
               ),
-              child: const Icon(Icons.local_shipping_outlined, color: _darkRed),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _supplierName(supplier),
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _location(supplier),
-                    style: const TextStyle(color: Color(0xFF666666)),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _smallStatus(
-                        vipEnabled ? 'VIP Approved' : _statusLabel(status),
-                        statusColour,
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _supplierName(supplier),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
                       ),
-                      if (vipEnabled)
+                    ),
+                    const IosGap(height: 4),
+                    Text(
+                      _location(supplier),
+                      style: const TextStyle(color: Color(0xFF666666)),
+                    ),
+                    const IosGap(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
                         _smallStatus(
-                          creditEnabled
-                              ? 'Credit Active'
-                              : creditStatus == 'pending'
-                              ? 'Credit Pending'
-                              : 'No Credit Account',
-                          const Color(0xFF2F5F8F),
+                          vipEnabled ? 'VIP Approved' : _statusLabel(status),
+                          statusColour,
                         ),
+                        if (vipEnabled)
+                          _smallStatus(
+                            creditEnabled
+                                ? 'Credit Active'
+                                : creditStatus == 'pending'
+                                ? 'Credit Pending'
+                                : 'No Credit Account',
+                            const Color(0xFF2F5F8F),
+                          ),
+                      ],
+                    ),
+                    if (vipCooldown != null) ...[
+                      const IosGap(height: 7),
+                      Text(
+                        'Reapply available in ${_cooldownText(vipCooldown)}.',
+                        style: const TextStyle(
+                          color: Color(0xFF9A3030),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
+                    if (creditCooldown != null) ...[
+                      const IosGap(height: 7),
+                      Text(
+                        'Credit reapplication available in '
+                        '${_cooldownText(creditCooldown)}.',
+                        style: const TextStyle(
+                          color: Color(0xFF9A3030),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              FilledButton.icon(
+                onPressed: disabled ? null : () => _openApplication(supplier),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _darkRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                  if (vipCooldown != null) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      'Reapply available in ${_cooldownText(vipCooldown)}.',
-                      style: const TextStyle(
-                        color: Color(0xFF9A3030),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                  if (creditCooldown != null) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      'Credit reapplication available in '
-                      '${_cooldownText(creditCooldown)}.',
-                      style: const TextStyle(
-                        color: Color(0xFF9A3030),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            FilledButton.icon(
-              onPressed: disabled ? null : () => _openApplication(supplier),
-              style: FilledButton.styleFrom(
-                backgroundColor: _darkRed,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                icon: Icon(
+                  vipEnabled
+                      ? Icons.account_balance_wallet_outlined
+                      : Icons.workspace_premium_outlined,
                 ),
+                label: Text(actionLabel),
               ),
-              icon: Icon(
-                vipEnabled
-                    ? Icons.account_balance_wallet_outlined
-                    : Icons.workspace_premium_outlined,
-              ),
-              label: Text(actionLabel),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -984,7 +990,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 50),
               children: [
                 _introCard(),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 _section(
                   title: '1. Access requested',
                   subtitle: widget.creditUpgradeOnly
@@ -1028,7 +1034,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                               description:
                                   'Apply for this supplier’s VIP/Trade pricing. Standard CutLink pricing remains available while your application is reviewed.',
                             ),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             _applicationTypeCard(
                               value: 'vip_pricing_and_credit',
                               icon: Icons.account_balance_wallet_outlined,
@@ -1039,7 +1045,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           ],
                         ),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 _section(
                   title: '2. Applicant details',
                   subtitle:
@@ -1068,7 +1074,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           validator: (value) => _required(value, 'Position'),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       _twoColumns(
                         TextFormField(
                           controller: _yearsTrading,
@@ -1097,7 +1103,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         ),
                       ),
                       if (creditRequested) ...[
-                        const SizedBox(height: 16),
+                        const IosGap(height: 16),
                         _twoColumns(
                           TextFormField(
                             controller: _requestedTerms,
@@ -1124,7 +1130,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       TextFormField(
                         controller: _messageController,
                         enabled: !_submitting,
@@ -1140,7 +1146,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 _section(
                   title: '3. Trade references',
                   subtitle:
@@ -1154,10 +1160,10 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       ) ...[
                         _referenceCard(index),
                         if (index != _references.length - 1)
-                          const SizedBox(height: 12),
+                          const IosGap(height: 12),
                       ],
                       if (_references.length < 5) ...[
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: OutlinedButton.icon(
@@ -1178,7 +1184,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 _section(
                   title: '4. Supporting documents',
                   subtitle:
@@ -1201,14 +1207,14 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       OutlinedButton.icon(
                         onPressed: _submitting ? null : _pickDocuments,
                         icon: const Icon(Icons.upload_file_outlined),
                         label: const Text('Choose Documents'),
                       ),
                       if (_documents.isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                        const IosGap(height: 12),
                         for (var index = 0; index < _documents.length; index++)
                           ListTile(
                             contentPadding: EdgeInsets.zero,
@@ -1232,7 +1238,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 _section(
                   title: '5. Permissions & declaration',
                   subtitle:
@@ -1320,7 +1326,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 22),
+                const IosGap(height: 22),
                 SizedBox(
                   height: 54,
                   child: FilledButton.icon(
@@ -1343,7 +1349,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 const Text(
                   'Submitting an application does not guarantee VIP pricing, credit approval or particular payment terms. The supplier independently makes the commercial decision.',
                   textAlign: TextAlign.center,
@@ -1422,7 +1428,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         color: selected ? _darkRed : const Color(0xFF222222),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       description,
                       style: const TextStyle(
@@ -1480,7 +1486,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 const Text(
                   'Your Standard Price access is unchanged while this application is reviewed.',
                   style: TextStyle(color: Color(0xFF606060), height: 1.4),
@@ -1512,12 +1518,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             title,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 5),
+          const IosGap(height: 5),
           Text(
             subtitle,
             style: const TextStyle(color: Color(0xFF666666), height: 1.4),
           ),
-          const SizedBox(height: 18),
+          const IosGap(height: 18),
           child,
         ],
       ),
@@ -1560,7 +1566,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _twoColumns(
             TextFormField(
               controller: reference.businessName,
@@ -1579,7 +1585,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _twoColumns(
             TextFormField(
               controller: reference.email,
@@ -1600,7 +1606,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           _twoColumns(
             TextFormField(
               controller: reference.contactPosition,
@@ -1631,7 +1637,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 650) {
-          return Column(children: [left, const SizedBox(height: 12), right]);
+          return Column(children: [left, const IosGap(height: 12), right]);
         }
 
         return PhoneRow(

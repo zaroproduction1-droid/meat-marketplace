@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -95,7 +96,7 @@ class _SupplierProductModerationPanelState
     final actions = (data['actions'] as List? ?? []).whereType<Map>().toList();
     return CutLinkReviewTheme(
       child: Card(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,12 +114,12 @@ class _SupplierProductModerationPanelState
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Text(
                 '${product['product_name'] ?? 'Product'} · SKU ${product['sku'] ?? '—'}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               if (data['final_note'] != null)
                 Text(data['final_note'].toString())
               else if (!closed && actions.isNotEmpty)
@@ -127,14 +128,14 @@ class _SupplierProductModerationPanelState
                       'Review the product and correct the reported issue.',
                 ),
               if (retired)
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.only(top: 8),
                   child: Text(
                     'This listing cannot be edited or restored. Add a new product from the start with a new SKU.',
                   ),
                 ),
               if (!closed && changed)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'Saved changes: ${(review['changed_fields'] as List? ?? []).map(supplierCorrectionFieldLabel).toSet().join(', ')}',
@@ -143,11 +144,11 @@ class _SupplierProductModerationPanelState
               if (!closed &&
                   state == 'ready_for_review' &&
                   review['confirmation_note'] != null)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text('You confirmed: ${review['confirmation_note']}'),
                 ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,

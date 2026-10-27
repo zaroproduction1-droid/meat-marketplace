@@ -1,4 +1,7 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'dart:js_interop';
+
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
@@ -81,7 +84,7 @@ class _MeatHeroMediaState extends State<MeatHeroMedia> {
               color: Color(0xBB10191F),
               borderRadius: BorderRadius.all(Radius.circular(8)),
             ),
-            child: Padding(
+            child: IosPadding(
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Text(
                 'THE TRADE, CONNECTED',

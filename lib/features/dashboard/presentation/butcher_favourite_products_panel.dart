@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -148,7 +150,7 @@ class _ButcherFavouriteProductsPanelState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Padding(
+      return const IosPadding(
         padding: EdgeInsets.all(24),
         child: Center(child: CircularProgressIndicator()),
       );
@@ -255,7 +257,7 @@ class _ButcherFavouriteProductsPanelState
               );
             },
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text(
             name.toString(),
             maxLines: 2,
@@ -275,11 +277,11 @@ class _ButcherFavouriteProductsPanelState
               overflow: TextOverflow.ellipsis,
             ),
           if (available) ...[
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             CustomerPriceDisplay(product: product, fontSize: 16),
           ],
           if (!available) const Text('Currently unavailable'),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           OutlinedButton.icon(
             onPressed: available && _opening == null ? () => _open(row) : null,
             icon: const Icon(

@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/navigation/page_location.dart';
@@ -693,7 +694,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                     'Invoices',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                   ),
-                  SizedBox(height: 1),
+                  IosGap(height: 1),
                   Text(
                     'Search quotes, work orders, invoices and credit notes when you need them',
                     style: TextStyle(
@@ -794,7 +795,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   Widget _typeButton(SupplierDocumentType type, String label, IconData icon) {
     final selected = !_showCredits && _selectedType == type;
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(right: 2),
       child: TextButton.icon(
         onPressed: () {
@@ -853,7 +854,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           label: 'Search & filter documents',
           child: _filterPanel(),
         ),
-        const SizedBox(height: 10),
+        const IosGap(height: 10),
         Expanded(
           child: !_hasSearched
               ? _SearchPrompt(credits: _showCredits)
@@ -864,16 +865,16 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   child: Column(
                     children: [
                       if (!isPhoneLayout(context)) _resultsHeader(),
-                      const SizedBox(height: 4),
+                      const IosGap(height: 4),
                       Expanded(
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
                           itemCount: documents.length + (_hasMore ? 1 : 0),
-                          separatorBuilder: (_, _) => const SizedBox(height: 4),
+                          separatorBuilder: (_, _) => const IosGap(height: 4),
                           itemBuilder: (_, index) {
                             if (index == documents.length) {
                               return Center(
-                                child: Padding(
+                                child: IosPadding(
                                   padding: const EdgeInsets.all(10),
                                   child: OutlinedButton.icon(
                                     onPressed: _isLoadingMore
@@ -933,7 +934,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       ),
     );
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Row(
         children: invoice
@@ -969,7 +970,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   Widget _filterPanel() {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -1063,7 +1064,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                     label: const Text('Clear Filters'),
                   ),
                 ),
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(bottom: 11),
                   child: Text(
                     '${_showCredits ? _creditTotal : _filteredDocuments.length} result${(_showCredits ? _creditTotal : _filteredDocuments.length) == 1 ? '' : 's'}',
@@ -1328,19 +1329,19 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             const Icon(Icons.chevron_right, size: 20),
           ],
         ),
-        const SizedBox(height: 5),
+        const IosGap(height: 5),
         Text(
           document.customer,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 3),
+        const IosGap(height: 3),
         Text(document.description, style: const TextStyle(fontSize: 12)),
-        const SizedBox(height: 6),
+        const IosGap(height: 6),
         Text(
           '${document.dateLabel} • ${document.source}',
           style: const TextStyle(fontSize: 11, color: Color(0xFF666A70)),
         ),
-        const SizedBox(height: 8),
+        const IosGap(height: 8),
         Wrap(
           spacing: 12,
           runSpacing: 6,
@@ -1353,7 +1354,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
             if (invoice) Text('Outstanding ${document.outstandingLabel}'),
           ],
         ),
-        const SizedBox(height: 7),
+        const IosGap(height: 7),
         Wrap(
           spacing: 8,
           runSpacing: 4,
@@ -1500,11 +1501,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Widget _body() {
     return Column(
       children: [
-        Padding(
+        IosPadding(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
           child: Align(alignment: Alignment.centerLeft, child: _typeSelector()),
         ),
-        const SizedBox(height: 2),
+        const IosGap(height: 2),
         Expanded(
           child: KeyedSubtree(
             key: ValueKey(_showCredits ? 'credits' : _selectedType),
@@ -1552,12 +1553,12 @@ class _SearchPrompt extends StatelessWidget {
             size: 54,
             color: Color(0xFF741C1C),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
           Text(
             credits ? 'Search credit notes' : 'Search invoices',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 7),
+          const IosGap(height: 7),
           Text(
             credits
                 ? 'Choose filters or enter a customer, credit or invoice number, product, SKU, reason or notes, then press Enter. Press Enter with empty filters to show all credit notes.'

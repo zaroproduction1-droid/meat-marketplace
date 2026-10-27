@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/drafts/local_draft_store.dart';
@@ -467,7 +468,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                IosGap(height: 2),
                                 Text(
                                   'Tell us what happened and we will help you here.',
                                   style: TextStyle(
@@ -484,7 +485,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const IosGap(height: 20),
                       TextField(
                         controller: subjectController,
                         autofocus: true,
@@ -495,7 +496,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final fields = [
@@ -557,7 +558,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             return Column(
                               children: [
                                 fields.first,
-                                const SizedBox(height: 12),
+                                const IosGap(height: 12),
                                 fields.last,
                               ],
                             );
@@ -572,7 +573,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                           );
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const IosGap(height: 12),
                       TextField(
                         controller: descriptionController,
                         minLines: 5,
@@ -586,7 +587,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const IosGap(height: 18),
                       PhoneRow(
                         mode: PhoneRowMode.wrap,
                         desktop: Row(
@@ -1058,7 +1059,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               actions: [
                 if (widget.adminMode) const AdminProductNotificationsBell(),
                 if (!widget.adminMode)
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     child: FilledButton.icon(
                       onPressed: _sending ? null : _createTicket,
@@ -1082,7 +1083,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           ),
           body: Column(
             children: [
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.all(10),
                 child: Wrap(
                   spacing: 10,
@@ -1169,7 +1170,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       color: Colors.white,
       child: Column(
         children: [
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: TextField(
               controller: _searchController,
@@ -1198,7 +1199,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ),
             ),
           ),
-          Padding(
+          IosPadding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Wrap(
               runSpacing: 6,
@@ -1211,7 +1212,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   'resolved': 'Resolved',
                   'closed': 'Closed',
                 }.entries)
-                  Padding(
+                  IosPadding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
                       label: Text(entry.value, softWrap: false),
@@ -1223,7 +1224,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const IosGap(height: 10),
           const Divider(height: 1),
           Expanded(
             child: tickets.isEmpty
@@ -1231,7 +1232,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 : ListView.separated(
                     padding: const EdgeInsets.all(10),
                     itemCount: tickets.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 7),
+                    separatorBuilder: (_, _) => const IosGap(height: 7),
                     itemBuilder: (_, index) => _ticketCard(tickets[index]),
                   ),
           ),
@@ -1262,7 +1263,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             children: [
               if (_productReport(ticket) != null ||
                   _supplierModerationCase(ticket) != null)
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.only(bottom: 6),
                   child: Text(
                     'PRODUCT / PHOTO REPORT',
@@ -1274,7 +1275,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   ),
                 ),
               if (_supplierModerationCase(ticket) != null)
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
                     supplierCorrectionStatus(_supplierModerationCase(ticket)!),
@@ -1286,7 +1287,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   ),
                 ),
               if (ticket['reopen_decision'] == 'pending')
-                const Padding(
+                const IosPadding(
                   padding: EdgeInsets.only(bottom: 6),
                   child: Text(
                     'REOPEN REQUEST',
@@ -1322,7 +1323,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   _statusChip(ticket['status']?.toString() ?? 'open'),
                 ],
               ),
-              const SizedBox(height: 8),
+              const IosGap(height: 8),
               Text(
                 ticket['subject']?.toString() ?? 'Support request',
                 maxLines: 2,
@@ -1333,7 +1334,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 ),
               ),
               if (widget.adminMode) ...[
-                const SizedBox(height: 5),
+                const IosGap(height: 5),
                 Text(
                   '${ticket['business_name'] ?? 'Business'} • ${ticket['requester_name'] ?? 'User'}',
                   maxLines: 1,
@@ -1344,7 +1345,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 9),
+              const IosGap(height: 9),
               Row(
                 children: [
                   _priorityChip(ticket['priority']?.toString() ?? 'normal'),
@@ -1555,7 +1556,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       ticket['subject']?.toString() ?? 'Support request',
                       style: const TextStyle(
@@ -1563,7 +1564,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const IosGap(height: 4),
                     Text(
                       widget.adminMode
                           ? '${ticket['business_name']} • ${ticket['requester_name']} • ${_categoryLabel(ticket['category']?.toString() ?? 'other')}'
@@ -1702,7 +1703,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   children: [
                     if (_pendingAttachments.isNotEmpty) ...[
                       _pendingAttachmentStrip(),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                     ],
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1837,7 +1838,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             ),
           ),
           if (_activeAdminAction == 'status') ...[
-            const SizedBox(height: 9),
+            const IosGap(height: 9),
             Wrap(
               spacing: 7,
               runSpacing: 7,
@@ -1867,7 +1868,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             ),
           ],
           if (_activeAdminAction == 'priority') ...[
-            const SizedBox(height: 9),
+            const IosGap(height: 9),
             Wrap(
               spacing: 7,
               runSpacing: 7,
@@ -2023,7 +2024,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ),
             ),
             if (showMessageText) ...[
-              const SizedBox(height: 5),
+              const IosGap(height: 5),
               Text(
                 messageText,
                 style: TextStyle(
@@ -2033,7 +2034,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ),
             ],
             if (attachments.isNotEmpty) ...[
-              const SizedBox(height: 7),
+              const IosGap(height: 7),
               for (final attachment in attachments)
                 _attachmentCard(attachment, mine: mine),
             ],
@@ -2049,7 +2050,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }) {
     final fileName = attachment['file_name']?.toString() ?? 'Attachment';
     final size = int.tryParse(attachment['file_size']?.toString() ?? '') ?? 0;
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(top: 4),
       child: Material(
         color: mine
@@ -2059,7 +2060,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         child: InkWell(
           onTap: () => _openAttachment(attachment),
           borderRadius: BorderRadius.circular(10),
-          child: Padding(
+          child: IosPadding(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
             child: Row(
               children: [
@@ -2084,7 +2085,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const IosGap(height: 2),
                       Text(
                         '${_formatFileSize(size)} • Open attachment',
                         style: TextStyle(
@@ -2204,18 +2205,18 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   Widget _emptyTickets() {
     return Center(
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.forum_outlined, size: 58, color: _darkRed),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Text(
               widget.adminMode ? 'No matching tickets' : 'No support tickets',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               widget.adminMode
                   ? 'New supplier and butcher requests will appear here.'
@@ -2224,7 +2225,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               style: const TextStyle(color: Color(0xFF666A70)),
             ),
             if (!widget.adminMode) ...[
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               FilledButton.icon(
                 onPressed: _createTicket,
                 style: FilledButton.styleFrom(backgroundColor: _darkRed),
@@ -2244,12 +2245,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.support_agent, size: 72, color: Color(0xFF8B1E2D)),
-          SizedBox(height: 16),
+          IosGap(height: 16),
           Text(
             'Select a support ticket',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
           ),
-          SizedBox(height: 6),
+          IosGap(height: 6),
           Text(
             'The full conversation and ticket controls will appear here.',
             style: TextStyle(color: Color(0xFF666A70)),

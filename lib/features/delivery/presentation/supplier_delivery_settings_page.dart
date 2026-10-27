@@ -1,8 +1,10 @@
+import '../../../shared/widgets/ios_density.dart';
 import 'packing_list_page.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -409,7 +411,7 @@ class _SupplierDeliverySettingsPageState
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   TextField(
                     controller: phone,
                     decoration: const InputDecoration(
@@ -417,7 +419,7 @@ class _SupplierDeliverySettingsPageState
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   TextField(
                     controller: notes,
                     maxLines: 3,
@@ -507,7 +509,7 @@ class _SupplierDeliverySettingsPageState
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   TextField(
                     controller: rego,
                     decoration: const InputDecoration(
@@ -515,7 +517,7 @@ class _SupplierDeliverySettingsPageState
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   TextField(
                     controller: type,
                     decoration: const InputDecoration(
@@ -523,7 +525,7 @@ class _SupplierDeliverySettingsPageState
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const IosGap(height: 12),
                   TextField(
                     controller: notes,
                     maxLines: 3,
@@ -699,12 +701,12 @@ class _SupplierDeliverySettingsPageState
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const IosGap(height: 16),
                     const Text(
                       'Orders ready for dispatch',
                       style: TextStyle(fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(height: 8),
+                    const IosGap(height: 8),
                     PhoneExpanded(
                       child: ListView.builder(
                         shrinkWrap: isPhoneLayout(context),
@@ -813,7 +815,7 @@ class _SupplierDeliverySettingsPageState
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 TextField(
                   controller: notes,
                   maxLines: 3,
@@ -990,7 +992,7 @@ class _SupplierDeliverySettingsPageState
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const IosGap(height: 18),
         _sectionCard(
           title: 'Delivery Operations',
           subtitle:
@@ -1014,7 +1016,7 @@ class _SupplierDeliverySettingsPageState
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const IosGap(height: 18),
         _buildRuns(compact: true),
       ],
     );
@@ -1082,7 +1084,7 @@ class _SupplierDeliverySettingsPageState
             ),
             children: [
               if (status == 'ready' || status == 'loaded')
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Wrap(
                     spacing: 8,
@@ -1170,7 +1172,7 @@ class _SupplierDeliverySettingsPageState
                         s['status'] == 'failed' ||
                         s['status'] == 'cancelled',
                   ))
-                Padding(
+                IosPadding(
                   padding: const EdgeInsets.all(16),
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -1215,7 +1217,7 @@ class _SupplierDeliverySettingsPageState
                           label: const Text('Add Driver'),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       for (final driver in _drivers)
                         ListTile(
                           leading: const Icon(
@@ -1250,7 +1252,7 @@ class _SupplierDeliverySettingsPageState
                           label: const Text('Add Vehicle'),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const IosGap(height: 10),
                       for (final vehicle in _vehicles)
                         ListTile(
                           leading: const Icon(
@@ -1299,7 +1301,7 @@ class _SupplierDeliverySettingsPageState
               label: const Text('Create Delivery Run'),
             ),
           ),
-          const SizedBox(height: 14),
+          const IosGap(height: 14),
           _buildRuns(),
         ],
       ),
@@ -1312,7 +1314,7 @@ class _SupplierDeliverySettingsPageState
             subtitle: 'Choose the days your business normally delivers.',
             child: _buildDeliveryDays(),
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           _sectionCard(
             title: 'Delivery Zones',
             subtitle:
@@ -1327,7 +1329,7 @@ class _SupplierDeliverySettingsPageState
                     label: const Text('Add Delivery Zone'),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
                 _buildZones(),
               ],
             ),
@@ -1341,11 +1343,11 @@ class _SupplierDeliverySettingsPageState
             'Packing lists',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           const Text(
             'Print delivery contents and customer instructions. Final invoices are required for every order on the run.',
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           if (_runs.isEmpty)
             const Text('Create a delivery run to prepare its packing list.'),
           for (final run in _runs.where((r) => r['status'] != 'cancelled'))
@@ -1388,7 +1390,7 @@ class _SupplierDeliverySettingsPageState
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 TextField(
                   controller: _leadTimeController,
                   keyboardType: TextInputType.number,
@@ -1397,7 +1399,7 @@ class _SupplierDeliverySettingsPageState
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 InkWell(
                   onTap: _pickCutoffTime,
                   child: InputDecorator(
@@ -1413,7 +1415,7 @@ class _SupplierDeliverySettingsPageState
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -1454,7 +1456,7 @@ class _SupplierDeliverySettingsPageState
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
@@ -1529,7 +1531,7 @@ class _SupplierDeliverySettingsPageState
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1542,7 +1544,7 @@ class _SupplierDeliverySettingsPageState
                       Icons.inventory_2_outlined,
                     ];
                     final selected = _workspaceIndex == i;
-                    return Padding(
+                    return IosPadding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         avatar: Icon(
@@ -1583,7 +1585,7 @@ class _SupplierDeliverySettingsPageState
                   }),
                 ),
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
             ],
           ),
         ),
@@ -2040,7 +2042,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: minimumController,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -2053,7 +2055,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: feeController,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -2065,7 +2067,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: leadController,
                             keyboardType: TextInputType.number,
@@ -2076,7 +2078,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: postcodeController,
                             minLines: 2,
@@ -2089,7 +2091,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const IosGap(height: 14),
                           TextField(
                             controller: notesController,
                             minLines: 2,
@@ -2099,7 +2101,7 @@ class _SupplierDeliverySettingsPageState
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const IosGap(height: 8),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             value: active,
@@ -2227,7 +2229,7 @@ class _SupplierDeliverySettingsPageState
         side: const BorderSide(color: Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
+      child: IosPadding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2236,12 +2238,12 @@ class _SupplierDeliverySettingsPageState
               title,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 6),
+            const IosGap(height: 6),
             Text(
               subtitle,
               style: const TextStyle(color: Color(0xFF666666), height: 1.4),
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             child,
           ],
         ),
@@ -2280,7 +2282,7 @@ class _SupplierDeliverySettingsPageState
     final postcodes = _zonePostcodes(zone);
 
     if (postcodes.isEmpty) {
-      return const Padding(
+      return const IosPadding(
         padding: EdgeInsets.only(top: 8),
         child: Text(
           'Postcodes: None',
@@ -2296,7 +2298,7 @@ class _SupplierDeliverySettingsPageState
         ? postcodes.join(', ')
         : '${postcodes.take(8).join(', ')} +${postcodes.length - 8} more';
 
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.only(top: 8),
       child: Text(
         'Postcodes: $preview',
@@ -2357,7 +2359,7 @@ class _SupplierDeliverySettingsPageState
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const IosGap(height: 8),
                       Wrap(
                         spacing: 16,
                         runSpacing: 6,
@@ -2379,7 +2381,7 @@ class _SupplierDeliverySettingsPageState
                       finalPostcodesWidget(zone),
                       if (zone['notes'] != null &&
                           zone['notes'].toString().trim().isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                        const IosGap(height: 8),
                         Text(
                           zone['notes'].toString(),
                           style: const TextStyle(color: Color(0xFF666666)),
@@ -2405,7 +2407,7 @@ class _SupplierDeliverySettingsPageState
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const IosGap(height: 12),
         ],
       ],
     );
@@ -2455,7 +2457,7 @@ class _SupplierDeliverySettingsPageState
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
             ? Center(
-                child: Padding(
+                child: IosPadding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -2465,9 +2467,9 @@ class _SupplierDeliverySettingsPageState
                         size: 56,
                         color: _darkRed,
                       ),
-                      const SizedBox(height: 14),
+                      const IosGap(height: 14),
                       Text(_errorMessage!, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
+                      const IosGap(height: 16),
                       FilledButton(
                         onPressed: _refreshAll,
                         child: const Text('Try Again'),

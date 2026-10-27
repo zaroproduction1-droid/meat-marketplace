@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -329,7 +331,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const IosGap(height: 2),
                     Text(
                       _customerName(quote),
                       maxLines: 1,
@@ -340,7 +342,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const IosGap(height: 5),
                     Text(
                       '${items.length} line${items.length == 1 ? '' : 's'}'
                       ' • ${pickup ? 'Pickup' : 'Delivery'}'
@@ -368,15 +370,15 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 56, color: _darkRed),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               FilledButton(
                 onPressed: _loadQuotes,
                 child: const Text('Try Again'),
@@ -392,7 +394,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
     Widget emptyState(String message) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Text(
             message,
@@ -422,7 +424,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
+            IosPadding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,7 +440,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const IosGap(height: 2),
                         Text(
                           subtitle,
                           style: const TextStyle(
@@ -471,7 +473,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
               ),
             ),
             if (search != null) ...[
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                 child: search,
               ),
@@ -483,7 +485,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(10),
                       itemCount: data.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 7),
+                      separatorBuilder: (_, _) => const IosGap(height: 7),
                       itemBuilder: (_, index) => _quoteCard(data[index]),
                     ),
             ),
@@ -516,7 +518,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1180),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -534,7 +536,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        IosGap(height: 2),
                         Text(
                           'Select any quote to reopen it inside the Sales workspace.',
                           style: TextStyle(
@@ -552,7 +554,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const IosGap(height: 10),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -579,7 +581,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                       return ListView(
                         children: [
                           SizedBox(height: 360, child: todayPanel),
-                          const SizedBox(height: 12),
+                          const IosGap(height: 12),
                           SizedBox(height: 500, child: historyPanel),
                         ],
                       );

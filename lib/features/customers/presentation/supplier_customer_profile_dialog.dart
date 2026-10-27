@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_density.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -234,7 +236,7 @@ class _SupplierCustomerProfileDialogState
     },
   );
 
-  Widget _heading(String value) => Padding(
+  Widget _heading(String value) => IosPadding(
     padding: const EdgeInsets.only(bottom: 16, top: 8),
     child: Text(
       value,
@@ -277,7 +279,7 @@ class _SupplierCustomerProfileDialogState
         ])
           _field(key),
       ]),
-      const SizedBox(height: 12),
+      const IosGap(height: 12),
       const Text(
         'Statement email defaults to the order / invoice email when left blank.',
         style: TextStyle(color: Colors.black54, fontSize: 12),
@@ -322,7 +324,7 @@ class _SupplierCustomerProfileDialogState
         ],
         _field('issue_reporting_window_hours'),
       ]),
-      const SizedBox(height: 12),
+      const IosGap(height: 12),
       SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         activeTrackColor: _red,
@@ -387,7 +389,7 @@ class _SupplierCustomerProfileDialogState
           label,
           style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
-        const SizedBox(height: 6),
+        const IosGap(height: 6),
         Text(
           value,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
@@ -403,7 +405,7 @@ class _SupplierCustomerProfileDialogState
         'The default location is used for new orders. Existing document snapshots stay unchanged.',
         style: TextStyle(color: Colors.black54, fontSize: 12),
       ),
-      const SizedBox(height: 16),
+      const IosGap(height: 16),
       for (var index = 0; index < _locations.length; index++)
         Container(
           margin: const EdgeInsets.only(bottom: 18),
@@ -448,7 +450,7 @@ class _SupplierCustomerProfileDialogState
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const IosGap(height: 12),
               _grid([
                 for (final entry in _ProfileLocation.names.entries)
                   TextFormField(
@@ -508,7 +510,7 @@ class _SupplierCustomerProfileDialogState
               '${DateTime.tryParse('${row['created_at']}')?.toLocal().toString().split('.').first ?? ''} · ${row['actor_name'] ?? 'Supplier team'}',
             ),
             children: [
-              Padding(
+              IosPadding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -516,7 +518,7 @@ class _SupplierCustomerProfileDialogState
                     for (final entry in Map<String, dynamic>.from(
                       row['changes'] as Map? ?? {},
                     ).entries)
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: Text(
                           '${_names[entry.key] ?? entry.key.replaceAll('_', ' ')}: ${_changeText(entry.value)}',
@@ -629,7 +631,7 @@ class _SupplierCustomerProfileDialogState
       child: SizedBox(
         width: 1100,
         height: (size.height * .88).clamp(250.0, 820.0),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
@@ -655,13 +657,13 @@ class _SupplierCustomerProfileDialogState
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const IosGap(height: 14),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
                     for (var i = 0; i < 5; i++)
-                      Padding(
+                      IosPadding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
                           label: Text(
@@ -681,7 +683,7 @@ class _SupplierCustomerProfileDialogState
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Expanded(
                 child: Form(
                   key: _form,
@@ -697,7 +699,7 @@ class _SupplierCustomerProfileDialogState
                           children: [
                             _heading('Supplier-only notes'),
                             _field('internal_account_notes', lines: 7),
-                            const SizedBox(height: 12),
+                            const IosGap(height: 12),
                             const Text(
                               'These notes stay within this supplier account. They are not printed on customer documents.',
                               style: TextStyle(
@@ -710,7 +712,7 @@ class _SupplierCustomerProfileDialogState
                         _historyTab(),
                       ])
                         SingleChildScrollView(
-                          child: Padding(
+                          child: IosPadding(
                             padding: const EdgeInsets.only(top: 8, bottom: 16),
                             child: tab,
                           ),

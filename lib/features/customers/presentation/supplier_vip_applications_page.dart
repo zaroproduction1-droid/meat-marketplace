@@ -1,4 +1,6 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -340,15 +342,15 @@ class _SupplierVipApplicationsPageState
 
     if (_error != null) {
       return Center(
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 60, color: _darkRed),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 18),
+              const IosGap(height: 18),
               FilledButton(onPressed: _load, child: const Text('Try Again')),
             ],
           ),
@@ -377,7 +379,7 @@ class _SupplierVipApplicationsPageState
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        SizedBox(height: 7),
+                        IosGap(height: 7),
                         Text(
                           'Review applications made directly to your supplier business. Your decisions, internal notes, credit settings and customer relationship remain private to your business.',
                           style: TextStyle(
@@ -397,7 +399,7 @@ class _SupplierVipApplicationsPageState
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const IosGap(height: 20),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -417,7 +419,7 @@ class _SupplierVipApplicationsPageState
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const IosGap(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -428,7 +430,7 @@ class _SupplierVipApplicationsPageState
                 _filterChip('All', 'all'),
               ],
             ),
-            const SizedBox(height: 18),
+            const IosGap(height: 18),
             if (_filteredApplications.isEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -447,7 +449,7 @@ class _SupplierVipApplicationsPageState
                       size: 56,
                       color: Color(0xFF8A8A8A),
                     ),
-                    SizedBox(height: 14),
+                    IosGap(height: 14),
                     Text(
                       'No VIP applications here',
                       style: TextStyle(
@@ -461,7 +463,7 @@ class _SupplierVipApplicationsPageState
             else
               for (final application in _filteredApplications) ...[
                 _applicationCard(application),
-                const SizedBox(height: 12),
+                const IosGap(height: 12),
               ],
           ],
         ),
@@ -531,7 +533,7 @@ class _SupplierVipApplicationsPageState
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openApplication(application),
-        child: Padding(
+        child: IosPadding(
           padding: const EdgeInsets.all(19),
           child: PhoneRow(
             mode: PhoneRowMode.wrap,
@@ -559,7 +561,7 @@ class _SupplierVipApplicationsPageState
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const IosGap(height: 5),
                       Text(
                         _applicationTypeLabel(application),
                         style: const TextStyle(
@@ -567,7 +569,7 @@ class _SupplierVipApplicationsPageState
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const IosGap(height: 6),
                       Text(
                         'Submitted ${_dateTime(application['submitted_at'])}',
                         style: const TextStyle(
@@ -577,7 +579,7 @@ class _SupplierVipApplicationsPageState
                       ),
                       if (application['estimated_monthly_purchases'] !=
                           null) ...[
-                        const SizedBox(height: 5),
+                        const IosGap(height: 5),
                         Text(
                           'Estimated monthly purchases: '
                           '${_money(application['estimated_monthly_purchases'])}',
@@ -609,7 +611,7 @@ class _SupplierVipApplicationsPageState
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const IosGap(height: 10),
                     const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -792,7 +794,7 @@ class _SupplierVipApplicationDetailPageState
                     'This only declines the VIP application made to your supplier business. It does not affect the butcher’s CutLink account or their relationship with another supplier.',
                     style: TextStyle(height: 1.4),
                   ),
-                  const SizedBox(height: 16),
+                  const IosGap(height: 16),
                   TextField(
                     controller: notesController,
                     minLines: 3,
@@ -1036,7 +1038,7 @@ class _SupplierVipApplicationDetailPageState
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               _section(
                 title: 'Registered CutLink business',
                 child: Column(
@@ -1071,7 +1073,7 @@ class _SupplierVipApplicationDetailPageState
                 ),
               ),
               if (_value(widget.application['application_message']) != '—') ...[
-                const SizedBox(height: 16),
+                const IosGap(height: 16),
                 _section(
                   title: 'Message from butcher',
                   child: Text(
@@ -1080,7 +1082,7 @@ class _SupplierVipApplicationDetailPageState
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               _section(
                 title: 'Trade references',
                 child: references.isEmpty
@@ -1094,12 +1096,12 @@ class _SupplierVipApplicationDetailPageState
                           ) ...[
                             _referenceCard(references[index], index + 1),
                             if (index != references.length - 1)
-                              const SizedBox(height: 12),
+                              const IosGap(height: 12),
                           ],
                         ],
                       ),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               _section(
                 title: 'Supporting documents',
                 child: documents.isEmpty
@@ -1128,7 +1130,7 @@ class _SupplierVipApplicationDetailPageState
                         ],
                       ),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               _section(
                 title: 'Permissions supplied',
                 child: Column(
@@ -1163,7 +1165,7 @@ class _SupplierVipApplicationDetailPageState
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const IosGap(height: 16),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1211,7 +1213,7 @@ class _SupplierVipApplicationDetailPageState
             title,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 16),
+          const IosGap(height: 16),
           child,
         ],
       ),
@@ -1219,7 +1221,7 @@ class _SupplierVipApplicationDetailPageState
   }
 
   Widget _detailRow(String label, String value) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: PhoneRow(
         mode: PhoneRowMode.stack,
@@ -1264,7 +1266,7 @@ class _SupplierVipApplicationDetailPageState
             'Reference $number • ${_value(reference['business_name'])}',
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 8),
+          const IosGap(height: 8),
           Text('Contact: ${_value(reference['contact_name'])}'),
           Text('Email: ${_value(reference['contact_email'])}'),
           Text('Phone: ${_value(reference['contact_phone'])}'),
@@ -1279,7 +1281,7 @@ class _SupplierVipApplicationDetailPageState
   }
 
   Widget _permissionRow(String label, bool accepted, {bool optional = false}) {
-    return Padding(
+    return IosPadding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
@@ -1341,7 +1343,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                   'VIP pricing will be enabled only for this butcher with your supplier business.',
                   style: TextStyle(height: 1.4),
                 ),
-                const SizedBox(height: 18),
+                const IosGap(height: 18),
                 DropdownButtonFormField<String>(
                   isExpanded: isPhoneLayout(context),
                   initialValue: _riskRating,
@@ -1366,7 +1368,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                     setState(() => _riskRating = value);
                   },
                 ),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 DropdownButtonFormField<String>(
                   isExpanded: isPhoneLayout(context),
                   initialValue: _paymentMethod,
@@ -1388,7 +1390,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                   },
                 ),
                 if (account) ...[
-                  const SizedBox(height: 14),
+                  const IosGap(height: 14),
                   PhoneRow(
                     mode: PhoneRowMode.stack,
                     desktop: Row(
@@ -1423,7 +1425,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 TextField(
                   controller: _notesController,
                   minLines: 3,

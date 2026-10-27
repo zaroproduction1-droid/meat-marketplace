@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
 import 'dart:convert';
@@ -426,7 +427,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                 in (data['review_reports'] as List? ?? [])
                                     .whereType<Map>())
                               Card(
-                                child: Padding(
+                                child: IosPadding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment:
@@ -443,7 +444,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                         Text(
                                           'Contact: ${report['reporter_name']}',
                                         ),
-                                      const SizedBox(height: 10),
+                                      const IosGap(height: 10),
                                       Text(
                                         productReportReasons[report['reason']] ??
                                             'Product concern',
@@ -467,7 +468,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                           report['original_photo_path'] !=
                                               (data['product']
                                                   as Map)['photo_path'])
-                                        Padding(
+                                        IosPadding(
                                           padding: const EdgeInsets.only(
                                             top: 10,
                                           ),
@@ -489,7 +490,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                 ),
                               ),
                             if ((data['review_reports'] as List? ?? []).isEmpty)
-                              const Padding(
+                              const IosPadding(
                                 padding: EdgeInsets.all(12),
                                 child: Text(
                                   'This review was opened directly by CutLink; no butcher report is linked.',
@@ -500,7 +501,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                         .isNotEmpty ||
                                     state == 'ready_for_review'))
                               Card(
-                                child: Padding(
+                                child: IosPadding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment:
@@ -542,7 +543,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                                 ),
                               ),
                             if (!closed)
-                              Padding(
+                              IosPadding(
                                 padding: const EdgeInsets.all(12),
                                 child: Wrap(
                                   spacing: 10,
@@ -682,7 +683,7 @@ class _DecisionDialogState extends State<_DecisionDialog> {
                   _ =>
                     'The supplier will receive this request and can save and confirm their correction. For a photo issue, the reported photo is removed and replacement uploads are allowed.',
                 }),
-                const SizedBox(height: 14),
+                const IosGap(height: 14),
                 ReviewResponseField(
                   label: 'Reason / response',
                   options: _options,
