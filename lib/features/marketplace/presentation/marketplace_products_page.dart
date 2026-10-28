@@ -1184,6 +1184,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     final directSearch = _searchController.text.trim().isNotEmpty || _halalOnly;
     final globalSearch = directSearch && !cutSelected;
+    final iosBrowsing = useIosWorkspace(context);
     final animal = _catalogueAnimals.where(
       (row) => row['code'] == _selectedAnimalCode,
     );
@@ -1242,13 +1243,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _stockTotal = 0;
       _stockPageOffset = offset;
       _stockError = null;
-      _loadingStock = cutSelected || directSearch;
+      _loadingStock = cutSelected || directSearch || iosBrowsing;
       if ((_facetScope != facetScope && _requestedFacetScope != facetScope) ||
           force) {
         _facetProducts = [];
       }
     });
-    if (!cutSelected && !directSearch) {
+    if (!cutSelected && !directSearch && !iosBrowsing) {
       return;
     }
     try {
@@ -1259,6 +1260,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         throw StateError('Select an animal first.');
       }
       if (!globalSearch &&
+          cutSelected &&
           _selectedAnimalCode == CutLinkAnimals.beef &&
           sectionId == null) {
         throw StateError(
@@ -1270,6 +1272,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       // needs distinct choices, not every supplier's variant combination.
       if (_selectedSpecificationId == null &&
           !directSearch &&
+          !iosBrowsing &&
           !_stockViewActive) {
         return;
       }
@@ -3471,6 +3474,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             _selectedSectionId = null;
             _selectedSpecificationId = null;
             _selectedGradeId = null;
+            _selectedCommercialSpecificationKey = null;
+            _chickenAttributeFilters.clear();
+            _goatAttributeFilters.clear();
             _resetVariants();
           });
           _applySearch();
@@ -3626,6 +3632,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final adding = _addingProductId == product['id']?.toString();
     return Material(
       color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE3E5E8)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _openProductInfo(product),
         child: IosPadding(
@@ -3684,18 +3695,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         color: IosWorkspaceStyle.muted,
                       ),
                     ),
-                    Text(
-                      _mainCommercialSummary(product),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                    if (_mainCommercialSummary(product).isNotEmpty)
+                      Text(
+                        _mainCommercialSummary(product),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     const IosGap(height: 5),
                     CustomerPriceDisplay(
                       product: product,
                       visiblePrice: _findVisiblePrice(product),
                     ),
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         IconButton(
                           tooltip: 'Reduce quantity',
@@ -3708,7 +3721,6 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                           onPressed: () => _changeCartQuantity(product, 1),
                           icon: const Icon(Icons.add, size: 18),
                         ),
-                        const Spacer(),
                         IconButton(
                           tooltip: 'Add to order',
                           onPressed: adding
@@ -3850,11 +3862,21 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
     Widget universalSearchBar() {
       return Container(
-        padding: const EdgeInsets.fromLTRB(11, 0, 11, 10),
+        padding: useIosWorkspace(context)
+            ? const EdgeInsets.fromLTRB(12, 8, 12, 10)
+            : const EdgeInsets.fromLTRB(11, 0, 11, 10),
         child: TextField(
           controller: _searchController,
+          style: useIosWorkspace(context)
+              ? const TextStyle(fontSize: 15)
+              : null,
           decoration: InputDecoration(
-            hintText: exactSelection
+            contentPadding: useIosWorkspace(context)
+                ? const EdgeInsets.symmetric(horizontal: 12, vertical: 14)
+                : null,
+            hintText: useIosWorkspace(context)
+                ? 'Search products'
+                : exactSelection
                 ? 'Search matching products...'
                 : !cutSelected
                 ? 'Search all products — e.g. Scotch Fillet, Brisket...'
@@ -4396,7 +4418,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     }
 
     final directSearch = _searchController.text.trim().isNotEmpty || _halalOnly;
-    final showingStock = directSearch || exactSelection;
+    final showingStock =
+        useIosWorkspace(context) || directSearch || exactSelection;
     Widget stageContent() => showingStock
         ? supplierStockStage()
         : !cutSelected
@@ -4667,11 +4690,49 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       ],
     );
     if (useIosWorkspace(context)) {
+      Widget cutSummary() => Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE3E5E8)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _openAnimalCatalogue,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.menu_book,
+                  color: IosWorkspaceStyle.red,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${_prettyChickenValue(_selectedAnimalCode)} · ${_selectedSectionName ?? 'All cuts'}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('Change', style: TextStyle(fontSize: 13)),
+                const Icon(Icons.expand_more, size: 20),
+              ],
+            ),
+          ),
+        ),
+      );
       if (iosFiltersOnly) {
         return ListView(
           padding: const EdgeInsets.all(12),
           children: [
-            catalogueControls(),
+            cutSummary(),
             const IosGap(height: 10),
             filters(),
             if (!showingStock) stageContent(),
@@ -4697,6 +4758,19 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     padding: const EdgeInsets.only(right: 8),
                     child: Builder(
                       builder: (context) => ActionChip(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        labelStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF191919),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Color(0xFFDDC4C4)),
+                        ),
                         avatar: Icon(
                           label == 'Sort' ? Icons.swap_vert : Icons.tune,
                           size: 17,
@@ -4717,23 +4791,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-            child: IosCutSelectionBar(
-              animal: _selectedAnimalCode,
-              sectionId: _selectedSectionId,
-              sections: _selectedAnimalSections,
-              onTap: _openAnimalCatalogue,
-            ),
+            child: cutSummary(),
           ),
           _stockLoadingStatus(),
-          Expanded(
-            child: showingStock
-                ? supplierStockStage()
-                : SingleChildScrollView(
-                    child: Column(
-                      children: [catalogueControls(), stageContent()],
-                    ),
-                  ),
-          ),
+          Expanded(child: supplierStockStage()),
         ],
       );
     }
