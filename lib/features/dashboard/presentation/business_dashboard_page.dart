@@ -1575,6 +1575,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                   ),
                           );
                       }
+                      // Primary tabs are destinations, not an undo timeline.
+                      // Pages opened within a tab still record their back path.
+                      _iosHistory.clear();
                     }),
                   ),
             body: SafeArea(

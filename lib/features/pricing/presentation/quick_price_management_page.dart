@@ -1,4 +1,6 @@
 import '../../../shared/widgets/ios_density.dart';
+import '../../../shared/widgets/ios_cut_browser.dart';
+import '../../../shared/widgets/ios_workspace.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/widgets/supplier_product_attention_notice.dart';
@@ -321,6 +323,36 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
   }
 
   Future<void> _browseDiagram() async {
+    if (useIosWorkspace(context)) {
+      await showIosCutBrowser(
+        context: context,
+        animal: () => _selectedAnimalCode,
+        sectionId: () => _selectedSectionId,
+        specificationId: () => _selectedSpecificationId,
+        sections: () => _selectedAnimalSections,
+        specifications: () => _availableSpecifications,
+        onAnimal: _selectAnimal,
+        onSection: _selectSection,
+        onSpecification: (specification) {
+          setState(
+            () => _selectedSpecificationId = specification['id']?.toString(),
+          );
+        },
+        onAllCuts: () {
+          setState(() {
+            _selectedAnimalRegionKey = null;
+            _selectedSectionId = null;
+            _selectedSpecificationId = null;
+          });
+        },
+        onGuide: _browseCutGuide,
+      );
+      return;
+    }
+    await _browseCutGuide();
+  }
+
+  Future<void> _browseCutGuide() async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1901,17 +1933,26 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
               },
             ),
             const IosGap(height: 10),
-            AnimalCatalogueControls(
-              selectedCode: _selectedAnimalCode,
-              onChanged: _selectAnimal,
-              onBrowse: _browseDiagram,
-            ),
-            const IosGap(height: 8),
-            _buildSectionStrip(),
-            if (_selectedSectionId != null ||
-                _selectedAnimalRegionKey != null) ...[
+            if (useIosWorkspace(context))
+              IosCutSelectionBar(
+                animal: _selectedAnimalCode,
+                sectionId: _selectedSectionId,
+                sections: _selectedAnimalSections,
+                onTap: _browseDiagram,
+              )
+            else ...[
+              AnimalCatalogueControls(
+                selectedCode: _selectedAnimalCode,
+                onChanged: _selectAnimal,
+                onBrowse: _browseDiagram,
+              ),
               const IosGap(height: 8),
-              _buildSpecificationStrip(),
+              _buildSectionStrip(),
+              if (_selectedSectionId != null ||
+                  _selectedAnimalRegionKey != null) ...[
+                const IosGap(height: 8),
+                _buildSpecificationStrip(),
+              ],
             ],
           ],
         ),

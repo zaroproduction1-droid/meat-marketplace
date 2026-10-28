@@ -1,4 +1,5 @@
 import '../../../shared/widgets/ios_density.dart';
+import '../../../shared/widgets/ios_cut_browser.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/customer_price_display.dart';
@@ -3453,6 +3454,35 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   Future<void> _openAnimalCatalogue() async {
+    if (useIosWorkspace(context)) {
+      await showIosCutBrowser(
+        context: context,
+        animal: () => _selectedAnimalCode,
+        sectionId: () => _selectedSectionId,
+        specificationId: () => _selectedSpecificationId,
+        sections: () => _selectedAnimalSections,
+        specifications: () => _availableSpecifications,
+        onAnimal: _selectAnimal,
+        onSection: _selectSection,
+        onSpecification: _chooseCatalogueSubcut,
+        onAllCuts: () {
+          setState(() {
+            _selectedAnimalRegionKey = null;
+            _selectedSectionId = null;
+            _selectedSpecificationId = null;
+            _selectedGradeId = null;
+            _resetVariants();
+          });
+          _applySearch();
+        },
+        onGuide: _openAnimalCutGuide,
+      );
+      return;
+    }
+    await _openAnimalCutGuide();
+  }
+
+  Future<void> _openAnimalCutGuide() async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -4672,11 +4702,26 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                           size: 17,
                         ),
                         label: Text(label),
-                        onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        onPressed: () {
+                          if (label == 'Animal & cut') {
+                            _openAnimalCatalogue();
+                          } else {
+                            Scaffold.of(context).openEndDrawer();
+                          }
+                        },
                       ),
                     ),
                   ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+            child: IosCutSelectionBar(
+              animal: _selectedAnimalCode,
+              sectionId: _selectedSectionId,
+              sections: _selectedAnimalSections,
+              onTap: _openAnimalCatalogue,
             ),
           ),
           _stockLoadingStatus(),

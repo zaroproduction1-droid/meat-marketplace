@@ -1,5 +1,6 @@
 import 'package:cutlink/shared/navigation/workspace_navigation.dart';
 import 'package:cutlink/shared/widgets/ios_workspace.dart';
+import 'package:cutlink/shared/widgets/ios_cut_browser.dart';
 import 'package:cutlink/shared/widgets/ios_density.dart';
 import 'package:cutlink/shared/widgets/phone_layout.dart';
 import 'package:cutlink/shared/widgets/unsaved_changes_guard.dart';
@@ -25,6 +26,103 @@ Widget host(
 );
 
 void main() {
+  testWidgets(
+    'Moving pages remain opaque and occupy separate horizontal space',
+    (tester) async {
+      final page = ValueNotifier(0);
+      addTearDown(page.dispose);
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: ValueListenableBuilder<int>(
+              valueListenable: page,
+              builder: (_, value, _) => IosWorkspaceTransition(
+                child: SizedBox.expand(
+                  key: ValueKey(value),
+                  child: Text('Page $value'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      page.value = 1;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final oldPage = tester.getRect(find.byKey(const ValueKey(0)));
+      final newPage = tester.getRect(find.byKey(const ValueKey(1)));
+      expect(oldPage.right, closeTo(newPage.left, .01));
+      expect(
+        find.ancestor(
+          of: find.text('Page 1'),
+          matching: find.byType(ColoredBox),
+        ),
+        findsWidgets,
+      );
+      page.value = 2;
+      await tester.pump();
+      expect(find.text('Page 0'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.text('Page 2'), findsOneWidget);
+      expect(find.text('Page 1'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Cut sheet uses current animal catalogue and selection callbacks',
+    (tester) async {
+      var animal = 'BEEF';
+      String? section;
+      await tester.pumpWidget(
+        host(
+          Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showIosCutBrowser(
+                  context: context,
+                  animal: () => animal,
+                  sectionId: () => section,
+                  specificationId: () => null,
+                  sections: () => [
+                    {
+                      'id': 'one',
+                      'name': animal == 'LAMB' ? 'Lamb leg' : 'Chuck',
+                    },
+                  ],
+                  specifications: () => [],
+                  onAnimal: (value) {
+                    animal = value;
+                    section = null;
+                  },
+                  onSection: (value) => section = value['id'] as String,
+                  onSpecification: (_) {},
+                  onAllCuts: () => section = null,
+                  onGuide: () {},
+                ),
+                child: const Text('Choose cuts'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Choose cuts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lamb'));
+      await tester.pumpAndSettle();
+      expect(find.text('Chuck'), findsNothing);
+      await tester.tap(find.text('Lamb leg'));
+      await tester.pumpAndSettle();
+      expect(section, 'one');
+      await tester.tap(find.text('Reset'));
+      await tester.pumpAndSettle();
+      expect(section, isNull);
+      await tester.tap(find.text('Show products'));
+      await tester.pumpAndSettle();
+      expect(find.text('Browse cuts'), findsNothing);
+    },
+  );
+
   testWidgets('Compact supplier identity gets full width above its action', (
     tester,
   ) async {

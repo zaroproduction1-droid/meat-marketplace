@@ -105,7 +105,7 @@ abstract final class IosWorkspaceStyle {
   );
 }
 
-class IosWorkspaceTransition extends StatelessWidget {
+class IosWorkspaceTransition extends StatefulWidget {
   const IosWorkspaceTransition({
     super.key,
     required this.child,
@@ -114,32 +114,80 @@ class IosWorkspaceTransition extends StatelessWidget {
   final Widget child;
   final bool reverse;
   @override
+  State<IosWorkspaceTransition> createState() => _IosWorkspaceTransitionState();
+}
+
+class _IosWorkspaceTransitionState extends State<IosWorkspaceTransition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+        value: 1,
+      )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() => _previous = null);
+        }
+      });
+  Widget? _previous;
+
+  @override
+  void didUpdateWidget(IosWorkspaceTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (Widget.canUpdate(oldWidget.child, widget.child)) {
+      return;
+    }
+    _previous = oldWidget.child;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _previous = null;
+      _controller.value = 1;
+    } else {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final direction = widget.reverse ? -1.0 : 1.0;
+    final animation = _controller.drive(
+      CurveTween(curve: Curves.easeInOutCubic),
+    );
+    Widget surface(Widget page) => ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: ClipRect(child: page),
+    );
     return ClipRect(
-      child: AnimatedSwitcher(
-        duration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 290),
-        reverseDuration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 290),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (page, animation) {
-          final entering = page.key == child.key;
-          final offset = entering
-              ? (reverse ? -1.0 : 1.0)
-              : (reverse ? 1.0 : -.25);
-          return SlideTransition(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_previous != null)
+            ExcludeSemantics(
+              key: const ValueKey('outgoing-workspace'),
+              child: IgnorePointer(
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: Offset.zero,
+                    end: Offset(-direction, 0),
+                  ).animate(animation),
+                  child: surface(_previous!),
+                ),
+              ),
+            ),
+          SlideTransition(
+            key: const ValueKey('current-workspace'),
             position: Tween<Offset>(
-              begin: Offset(offset, 0),
+              begin: Offset(direction, 0),
               end: Offset.zero,
             ).animate(animation),
-            child: IgnorePointer(ignoring: !entering, child: page),
-          );
-        },
-        child: child,
+            child: surface(widget.child),
+          ),
+        ],
       ),
     );
   }
@@ -158,17 +206,7 @@ class _IosBackSurfaceState extends State<IosBackSurface> {
   @override
   Widget build(BuildContext context) => Stack(
     children: [
-      Positioned.fill(
-        child: Transform.translate(
-          offset: Offset(
-            _distance
-                .clamp(0, MediaQuery.sizeOf(context).width * .4)
-                .toDouble(),
-            0,
-          ),
-          child: widget.child,
-        ),
-      ),
+      Positioned.fill(child: widget.child),
       Positioned(
         left: 0,
         top: 0,
