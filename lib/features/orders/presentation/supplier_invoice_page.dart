@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../delivery/presentation/packing_list_page.dart';
 import '../../delivery/presentation/supplier_fulfilment_actions.dart';
@@ -573,7 +574,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Payment received',
                   prefixText: r'$',
                   border: OutlineInputBorder(),
@@ -828,17 +829,18 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'invoice',
       'id': widget.invoiceId,
       'order': widget.orderId,
     });
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -959,9 +961,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       height: 49,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          top: BorderSide(color: CutLinkPalette.color(0xFFF0F1F2)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.scroll,
@@ -983,13 +987,17 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       child: TextButton.icon(
         onPressed: () => setState(() => _workspaceTabIndex = index),
         style: TextButton.styleFrom(
-          foregroundColor: selected ? Colors.white : const Color(0xFF5E6369),
-          backgroundColor: selected ? _darkRed : const Color(0xFFF4F5F6),
+          foregroundColor: selected
+              ? Colors.white
+              : CutLinkPalette.color(0xFF5E6369),
+          backgroundColor: selected
+              ? _darkRed
+              : CutLinkPalette.color(0xFFF4F5F6),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9),
             side: BorderSide(
-              color: selected ? _darkRed : const Color(0xFFE1E3E6),
+              color: selected ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
             ),
           ),
         ),
@@ -1009,7 +1017,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           padding: const EdgeInsets.all(12),
           child: PhoneRow(
             mode: PhoneRowMode.wrap,
@@ -1021,10 +1029,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                   ),
                 ),
-                const Text(
+                Text(
                   'Scroll wheel to zoom',
                   style: TextStyle(
-                    color: Color(0xFF6D7177),
+                    color: CutLinkPalette.color(0xFF6D7177),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1067,8 +1075,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   }
 
   Widget _buildHistoryTab() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_errorMessage != null || _invoice == null) return _buildBody();
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null || _invoice == null) {
+      return _buildBody();
+    }
     final order = _nestedMap(_invoice?['orders']);
     final workOrder = _nestedMap(order?['warehouse_work_orders']);
     final events = <({String title, dynamic value, IconData icon})>[
@@ -1155,9 +1167,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1167,9 +1179,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
               const IosGap(height: 3),
-              const Text(
+              Text(
                 'Recorded order, warehouse and invoice milestones.',
-                style: TextStyle(color: Color(0xFF73777D), fontSize: 12),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF73777D),
+                  fontSize: 12,
+                ),
               ),
               const IosGap(height: 18),
               if (events.isEmpty)
@@ -1188,7 +1203,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -1212,15 +1229,18 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               Container(
                 width: 30,
                 height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF5EAEA),
+                decoration: BoxDecoration(
+                  color: CutLinkPalette.color(0xFFF5EAEA),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(event.icon, size: 16, color: _darkRed),
               ),
               if (!last)
                 Expanded(
-                  child: Container(width: 1, color: const Color(0xFFE0E2E5)),
+                  child: Container(
+                    width: 1,
+                    color: CutLinkPalette.color(0xFFE0E2E5),
+                  ),
                 ),
             ],
           ),
@@ -1238,8 +1258,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   const IosGap(height: 2),
                   Text(
                     date,
-                    style: const TextStyle(
-                      color: Color(0xFF71767C),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF71767C),
                       fontSize: 11.5,
                     ),
                   ),
@@ -1337,8 +1357,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               width: 118,
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xFF777777),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF777777),
                   fontSize: 10.5,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1370,9 +1390,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -1419,9 +1439,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -1450,9 +1470,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     Widget itemsPanel() {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -1484,8 +1504,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     ),
                     Text(
                       '${_items.length} line${_items.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF777777),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF777777),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1497,10 +1517,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             const Divider(height: 1),
             PhoneExpanded(
               child: _items.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'No invoice items.',
-                        style: TextStyle(color: Color(0xFF777777)),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF777777),
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -1530,9 +1552,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
 
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -1606,7 +1628,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 Container(
                   padding: const EdgeInsets.all(11),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E6),
+                    color: CutLinkPalette.color(0xFFFFF8E6),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFE0C26C)),
                   ),
@@ -1776,7 +1798,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 minLines: 2,
                 maxLines: 4,
                 enabled: status != 'void' && !_isSaving,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Invoice notes',
                   border: OutlineInputBorder(),
                   isDense: true,
@@ -1796,9 +1818,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F6F1),
+                  color: CutLinkPalette.color(0xFFF0F6F1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFCFE2D2)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFCFE2D2)),
                 ),
                 child: const Row(
                   children: [
@@ -1829,9 +1851,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
     final header = Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Row(
         children: [
@@ -1840,7 +1862,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
+              color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
@@ -1989,9 +2011,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F1F1),
+          color: CutLinkPalette.color(0xFFF5F1F1),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFE1D3D3)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE1D3D3)),
         ),
         child: Text(
           value,
@@ -2012,8 +2034,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 9.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -2045,9 +2067,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF9),
+        color: CutLinkPalette.color(0xFFFBFBF9),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE2E2DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE2E2DE)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -2070,9 +2092,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               if (documentProductSpecifications(item).isNotEmpty)
                 Text(
                   documentProductSpecifications(item),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF646A70),
+                    color: CutLinkPalette.color(0xFF646A70),
                   ),
                 ),
               if ((item['sku_snapshot']?.toString().trim() ?? '')
@@ -2080,8 +2102,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 const IosGap(height: 2),
                 Text(
                   'SKU ${item['sku_snapshot']}',
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 10.5,
                   ),
                 ),
@@ -2145,10 +2167,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 ? CrossAxisAlignment.start
                 : CrossAxisAlignment.end,
             children: [
-              const Text(
+              Text(
                 'LINE TOTAL INC GST',
                 style: TextStyle(
-                  color: Color(0xFF777777),
+                  color: CutLinkPalette.color(0xFF777777),
                   fontSize: 9.5,
                   fontWeight: FontWeight.w900,
                 ),
@@ -2206,6 +2228,7 @@ class _TotalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final style = TextStyle(
       fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
       fontSize: bold ? 17 : 14,

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'packing_list_page.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -406,7 +407,7 @@ class _SupplierDeliverySettingsPageState
                 children: [
                   TextField(
                     controller: name,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Driver name',
                       border: OutlineInputBorder(),
                     ),
@@ -414,7 +415,7 @@ class _SupplierDeliverySettingsPageState
                   const IosGap(height: 12),
                   TextField(
                     controller: phone,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Phone',
                       border: OutlineInputBorder(),
                     ),
@@ -423,7 +424,7 @@ class _SupplierDeliverySettingsPageState
                   TextField(
                     controller: notes,
                     maxLines: 3,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Notes',
                       border: OutlineInputBorder(),
                     ),
@@ -504,7 +505,7 @@ class _SupplierDeliverySettingsPageState
                 children: [
                   TextField(
                     controller: name,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Vehicle name',
                       border: OutlineInputBorder(),
                     ),
@@ -512,7 +513,7 @@ class _SupplierDeliverySettingsPageState
                   const IosGap(height: 12),
                   TextField(
                     controller: rego,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Registration',
                       border: OutlineInputBorder(),
                     ),
@@ -520,7 +521,7 @@ class _SupplierDeliverySettingsPageState
                   const IosGap(height: 12),
                   TextField(
                     controller: type,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Vehicle type',
                       border: OutlineInputBorder(),
                     ),
@@ -529,7 +530,7 @@ class _SupplierDeliverySettingsPageState
                   TextField(
                     controller: notes,
                     maxLines: 3,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Notes',
                       border: OutlineInputBorder(),
                     ),
@@ -653,7 +654,7 @@ class _SupplierDeliverySettingsPageState
                             child: DropdownButtonFormField<String>(
                               isExpanded: isPhoneLayout(context),
                               initialValue: driverId,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Driver',
                                 border: OutlineInputBorder(),
                               ),
@@ -678,7 +679,7 @@ class _SupplierDeliverySettingsPageState
                             child: DropdownButtonFormField<String>(
                               isExpanded: isPhoneLayout(context),
                               initialValue: vehicleId,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Vehicle',
                                 border: OutlineInputBorder(),
                               ),
@@ -810,7 +811,7 @@ class _SupplierDeliverySettingsPageState
               children: [
                 TextField(
                   controller: recipient,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Received by',
                     border: OutlineInputBorder(),
                   ),
@@ -819,7 +820,7 @@ class _SupplierDeliverySettingsPageState
                 TextField(
                   controller: notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Driver notes',
                     border: OutlineInputBorder(),
                   ),
@@ -871,7 +872,7 @@ class _SupplierDeliverySettingsPageState
           content: TextField(
             controller: reason,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Reason',
               border: OutlineInputBorder(),
             ),
@@ -908,9 +909,9 @@ class _SupplierDeliverySettingsPageState
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: PhoneRow(
           mode: PhoneRowMode.wrap,
@@ -930,8 +931,8 @@ class _SupplierDeliverySettingsPageState
                   ),
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Color(0xFF6D7177),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF6D7177),
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1054,7 +1055,7 @@ class _SupplierDeliverySettingsPageState
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0xFFE3E5E8)),
+            side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
             borderRadius: BorderRadius.circular(14),
           ),
           child: ExpansionTile(
@@ -1383,7 +1384,7 @@ class _SupplierDeliverySettingsPageState
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText:
                         'Default minimum order value for delivery (inc GST)',
                     prefixText: '\$',
@@ -1394,7 +1395,7 @@ class _SupplierDeliverySettingsPageState
                 TextField(
                   controller: _leadTimeController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Default lead time (days)',
                     border: OutlineInputBorder(),
                   ),
@@ -1403,7 +1404,7 @@ class _SupplierDeliverySettingsPageState
                 InkWell(
                   onTap: _pickCutoffTime,
                   child: InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Order cut-off time',
                       border: OutlineInputBorder(),
                       suffixIcon: Icon(Icons.schedule),
@@ -1420,9 +1421,9 @@ class _SupplierDeliverySettingsPageState
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF7F8FA),
+                    color: CutLinkPalette.color(0xFFF7F8FA),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                   ),
                   child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1451,7 +1452,7 @@ class _SupplierDeliverySettingsPageState
                   controller: _notesController,
                   minLines: 3,
                   maxLines: 5,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Delivery notes',
                     border: OutlineInputBorder(),
                   ),
@@ -1491,7 +1492,7 @@ class _SupplierDeliverySettingsPageState
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
           child: Column(
             children: [
@@ -1504,7 +1505,7 @@ class _SupplierDeliverySettingsPageState
                     size: 24,
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1518,7 +1519,7 @@ class _SupplierDeliverySettingsPageState
                         Text(
                           'Manage supplier drivers, vehicles, delivery runs, areas and schedules.',
                           style: TextStyle(
-                            color: Color(0xFF6D7177),
+                            color: CutLinkPalette.color(0xFF6D7177),
                             fontSize: 11.5,
                           ),
                         ),
@@ -1556,11 +1557,11 @@ class _SupplierDeliverySettingsPageState
                         showCheckmark: false,
                         selected: selected,
                         selectedColor: _darkRed,
-                        backgroundColor: const Color(0xFFF7F7F5),
+                        backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
                         labelStyle: TextStyle(
                           color: selected
                               ? Colors.white
-                              : const Color(0xFF30363D),
+                              : CutLinkPalette.color(0xFF30363D),
                           fontWeight: FontWeight.w700,
                         ),
                         padding: const EdgeInsets.symmetric(
@@ -1571,7 +1572,9 @@ class _SupplierDeliverySettingsPageState
                           borderRadius: BorderRadius.circular(12),
                         ),
                         side: BorderSide(
-                          color: selected ? _darkRed : const Color(0xFFE1E3E5),
+                          color: selected
+                              ? _darkRed
+                              : CutLinkPalette.color(0xFFE1E3E5),
                         ),
                         onSelected: (_) {
                           setState(() => _workspaceIndex = i);
@@ -2036,7 +2039,7 @@ class _SupplierDeliverySettingsPageState
                         children: [
                           TextField(
                             controller: nameController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Zone name',
                               hintText: 'Example: Sydney Metro',
                               border: OutlineInputBorder(),
@@ -2048,7 +2051,7 @@ class _SupplierDeliverySettingsPageState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText:
                                   'Minimum order value for delivery (inc GST)',
                               prefixText: '\$',
@@ -2061,7 +2064,7 @@ class _SupplierDeliverySettingsPageState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Delivery fee (inc GST)',
                               prefixText: '\$',
                               border: OutlineInputBorder(),
@@ -2071,7 +2074,7 @@ class _SupplierDeliverySettingsPageState
                           TextField(
                             controller: leadController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Lead time in days',
                               hintText:
                                   'Leave blank to use the default lead time',
@@ -2083,7 +2086,7 @@ class _SupplierDeliverySettingsPageState
                             controller: postcodeController,
                             minLines: 2,
                             maxLines: 4,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Postcodes',
                               hintText: 'Example: 2164, 2165, 2166, 2170',
                               helperText:
@@ -2096,7 +2099,7 @@ class _SupplierDeliverySettingsPageState
                             controller: notesController,
                             minLines: 2,
                             maxLines: 4,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Zone notes',
                               border: OutlineInputBorder(),
                             ),
@@ -2226,7 +2229,7 @@ class _SupplierDeliverySettingsPageState
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: IosPadding(
@@ -2241,7 +2244,10 @@ class _SupplierDeliverySettingsPageState
             const IosGap(height: 6),
             Text(
               subtitle,
-              style: const TextStyle(color: Color(0xFF666666), height: 1.4),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF666666),
+                height: 1.4,
+              ),
             ),
             const IosGap(height: 20),
             child,
@@ -2262,7 +2268,7 @@ class _SupplierDeliverySettingsPageState
         return FilterChip(
           selected: selected,
           label: Text(_weekdayNames[index]),
-          selectedColor: const Color(0xFFF4E5E5),
+          selectedColor: CutLinkPalette.color(0xFFF4E5E5),
           checkmarkColor: _darkRed,
           onSelected: (value) {
             setState(() {
@@ -2302,8 +2308,8 @@ class _SupplierDeliverySettingsPageState
       padding: const EdgeInsets.only(top: 8),
       child: Text(
         'Postcodes: $preview',
-        style: const TextStyle(
-          color: Color(0xFF555555),
+        style: TextStyle(
+          color: CutLinkPalette.color(0xFF555555),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -2316,13 +2322,13 @@ class _SupplierDeliverySettingsPageState
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F6),
+          color: CutLinkPalette.color(0xFFF8F8F6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE1E1DE)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
         ),
-        child: const Text(
+        child: Text(
           'No delivery zones have been added yet.',
-          style: TextStyle(color: Color(0xFF666666)),
+          style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
         ),
       );
     }
@@ -2334,7 +2340,7 @@ class _SupplierDeliverySettingsPageState
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE0E0E0)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2345,7 +2351,7 @@ class _SupplierDeliverySettingsPageState
                       : Icons.pause_circle_outline,
                   color: zone['active'] == true
                       ? _darkRed
-                      : const Color(0xFF888888),
+                      : CutLinkPalette.color(0xFF888888),
                 ),
                 const SizedBox(width: 13),
                 Expanded(
@@ -2384,7 +2390,9 @@ class _SupplierDeliverySettingsPageState
                         const IosGap(height: 8),
                         Text(
                           zone['notes'].toString(),
-                          style: const TextStyle(color: Color(0xFF666666)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
+                          ),
                         ),
                       ],
                     ],
@@ -2415,11 +2423,12 @@ class _SupplierDeliverySettingsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Theme(
       data: Theme.of(context).copyWith(
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: CutLinkPalette.surface,
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
@@ -2428,7 +2437,7 @@ class _SupplierDeliverySettingsPageState
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFDDE0E4)),
+            borderSide: BorderSide(color: CutLinkPalette.color(0xFFDDE0E4)),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -2452,7 +2461,7 @@ class _SupplierDeliverySettingsPageState
         ),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null

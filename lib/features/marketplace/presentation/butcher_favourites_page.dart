@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -445,6 +446,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final phone = isPhoneLayout(context);
     final source = _kind == 'search' ? _rows : _productRows;
     final suppliers =
@@ -551,12 +553,12 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
         ],
         TextField(
           onChanged: (value) => setState(() => _query = value),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Search favourites, cuts, brands or suppliers…',
             prefixIcon: Icon(Icons.search),
             isDense: true,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: CutLinkPalette.surface,
             border: OutlineInputBorder(),
           ),
         ),
@@ -629,7 +631,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
         margin: const EdgeInsets.only(bottom: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFFE3E5E8)),
+          side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: IosPadding(
           padding: const EdgeInsets.all(12),
@@ -660,7 +662,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
                     const IosGap(height: 5),
                     Text(
                       isProduct ? _supplierFor(row) : row['summary'].toString(),
-                      style: const TextStyle(color: Color(0xFF646A70)),
+                      style: TextStyle(color: CutLinkPalette.color(0xFF646A70)),
                     ),
                     if (isProduct) ...[
                       Text(_productSummary(product)),
@@ -790,12 +792,12 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
           )
         : null;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
           title: const Text('Favourites'),
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           actions: [
             IconButton(
               tooltip: 'Refresh favourites',

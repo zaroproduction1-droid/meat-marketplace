@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import '../formatters/cutlink_numbers.dart';
 import '../animal_catalogues/supplier_variant_options.dart';
 import 'cutlink_review_theme.dart';
@@ -44,6 +45,7 @@ class ProductReviewDetails extends StatelessWidget {
       .join(' ');
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     const excluded = {
       'retired_by_cutlink',
       'id',
@@ -169,9 +171,9 @@ class ProductReviewDetails extends StatelessWidget {
                           children: [
                             Text(
                               _label(e.key),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: Color(0xFF666666),
+                                color: CutLinkPalette.color(0xFF666666),
                               ),
                             ),
                             SelectableText(

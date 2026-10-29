@@ -531,10 +531,7 @@ class BillingValue extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [
-      Text(
-        label,
-        style: const TextStyle(color: AdminTheme.muted, fontSize: 12),
-      ),
+      Text(label, style: TextStyle(color: AdminTheme.muted, fontSize: 12)),
       const IosGap(height: 4),
       Text(
         value.isEmpty ? 'Not set' : value,

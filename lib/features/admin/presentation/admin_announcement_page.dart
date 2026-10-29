@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'admin_theme.dart';
 import 'announcement_style.dart';
@@ -70,7 +71,7 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AnnouncementStyle.background(_tone),
-                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -167,222 +168,227 @@ class _AdminAnnouncementPageState extends State<AdminAnnouncementPage> {
   }
 
   @override
-  Widget build(BuildContext context) => AdminTheme(
-    child: PopScope(
-      canPop: !_saving,
-      child: Scaffold(
-        appBar: phoneAppBar(
-          context,
-          AppBar(title: const Text('New announcement')),
-        ),
-        body: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                const CutLinkSectionHeading(
-                  title: 'Reach your businesses',
-                  subtitle: 'Publish a CutLink notice to the right audience.',
-                  icon: Icons.campaign_outlined,
-                ),
-                const IosGap(height: 18),
-                AdminCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        initialValue: _tone,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Banner colour / message type',
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return AdminTheme(
+      child: PopScope(
+        canPop: !_saving,
+        child: Scaffold(
+          appBar: phoneAppBar(
+            context,
+            AppBar(title: const Text('New announcement')),
+          ),
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  const CutLinkSectionHeading(
+                    title: 'Reach your businesses',
+                    subtitle: 'Publish a CutLink notice to the right audience.',
+                    icon: Icons.campaign_outlined,
+                  ),
+                  const IosGap(height: 18),
+                  AdminCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue: _tone,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Banner colour / message type',
+                          ),
+                          items: [
+                            for (final item in AnnouncementStyle.labels.entries)
+                              DropdownMenuItem(
+                                value: item.key,
+                                child: Text(item.value),
+                              ),
+                          ],
+                          onChanged: _saving
+                              ? null
+                              : (value) => setState(() => _tone = value!),
                         ),
-                        items: [
-                          for (final item in AnnouncementStyle.labels.entries)
-                            DropdownMenuItem(
-                              value: item.key,
-                              child: Text(item.value),
-                            ),
-                        ],
-                        onChanged: _saving
-                            ? null
-                            : (value) => setState(() => _tone = value!),
-                      ),
-                      const IosGap(height: 16),
-                      TextField(
-                        controller: _title,
-                        enabled: !_saving,
-                        maxLength: 160,
-                        decoration: const InputDecoration(labelText: 'Title'),
-                      ),
-                      const IosGap(height: 12),
-                      TextField(
-                        controller: _body,
-                        enabled: !_saving,
-                        minLines: 5,
-                        maxLines: 12,
-                        maxLength: 5000,
-                        decoration: const InputDecoration(labelText: 'Message'),
-                      ),
-                      const IosGap(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _audience,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Audience',
+                        const IosGap(height: 16),
+                        TextField(
+                          controller: _title,
+                          enabled: !_saving,
+                          maxLength: 160,
+                          decoration: const InputDecoration(labelText: 'Title'),
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'all',
-                            child: Text('All businesses'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'supplier',
-                            child: Text('Suppliers'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'butcher',
-                            child: Text('Butchers'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'selected',
-                            child: Text('Selected businesses'),
-                          ),
-                        ],
-                        onChanged: _saving
-                            ? null
-                            : (v) => setState(() => _audience = v!),
-                      ),
-                      if (_audience == 'selected') ...[
                         const IosGap(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: _saving ? null : _targets,
-                          icon: const Icon(Icons.business_outlined),
-                          label: Text(
-                            'Choose businesses (${_selected.length})',
+                        TextField(
+                          controller: _body,
+                          enabled: !_saving,
+                          minLines: 5,
+                          maxLines: 12,
+                          maxLength: 5000,
+                          decoration: const InputDecoration(
+                            labelText: 'Message',
                           ),
                         ),
+                        const IosGap(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: _audience,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Audience',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'all',
+                              child: Text('All businesses'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'supplier',
+                              child: Text('Suppliers'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'butcher',
+                              child: Text('Butchers'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'selected',
+                              child: Text('Selected businesses'),
+                            ),
+                          ],
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _audience = v!),
+                        ),
+                        if (_audience == 'selected') ...[
+                          const IosGap(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _saving ? null : _targets,
+                            icon: const Icon(Icons.business_outlined),
+                            label: Text(
+                              'Choose businesses (${_selected.length})',
+                            ),
+                          ),
+                          Wrap(
+                            spacing: 6,
+                            children: [
+                              for (final b in _selected.entries)
+                                Chip(
+                                  label: Text(b.value),
+                                  onDeleted: _saving
+                                      ? null
+                                      : () => setState(
+                                          () => _selected.remove(b.key),
+                                        ),
+                                ),
+                            ],
+                          ),
+                        ],
+                        const IosGap(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _channel,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Delivery',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'banner',
+                              child: Text('Top banner'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'notification',
+                              child: Text('Notification'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'both',
+                              child: Text('Banner and notification'),
+                            ),
+                          ],
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _channel = v!),
+                        ),
+                        const IosGap(height: 16),
                         Wrap(
-                          spacing: 6,
+                          spacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            for (final b in _selected.entries)
-                              Chip(
-                                label: Text(b.value),
-                                onDeleted: _saving
+                            OutlinedButton.icon(
+                              onPressed: _saving
+                                  ? null
+                                  : () async {
+                                      final d = await showDatePicker(
+                                        context: context,
+                                        initialDate:
+                                            _expiry ??
+                                            DateTime.now().add(
+                                              const Duration(days: 7),
+                                            ),
+                                        firstDate: DateTime.now(),
+                                        lastDate: DateTime.now().add(
+                                          const Duration(days: 730),
+                                        ),
+                                      );
+                                      if (d != null && mounted) {
+                                        setState(
+                                          () => _expiry = DateTime(
+                                            d.year,
+                                            d.month,
+                                            d.day,
+                                            23,
+                                            59,
+                                            59,
+                                          ),
+                                        );
+                                      }
+                                    },
+                              icon: const Icon(Icons.event_outlined),
+                              label: Text(
+                                _expiry == null
+                                    ? 'Set banner expiry (optional)'
+                                    : 'Expires ${PlatformAdminService.date(_expiry!.toIso8601String())}',
+                              ),
+                            ),
+                            if (_expiry != null)
+                              TextButton(
+                                onPressed: _saving
                                     ? null
-                                    : () => setState(
-                                        () => _selected.remove(b.key),
-                                      ),
+                                    : () => setState(() => _expiry = null),
+                                child: const Text('Clear expiry'),
                               ),
                           ],
                         ),
+                        const IosGap(height: 8),
+                        const Text(
+                          'Notifications remain in the inbox until the user deletes them. Archiving removes the banner; it does not recall delivered notifications.',
+                        ),
+                        if (_error != null)
+                          IosPadding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        const IosGap(height: 20),
+                        FilledButton.icon(
+                          onPressed: _saving ? null : _publish,
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: Text(
+                            _saving ? 'Publishing…' : 'Preview & publish',
+                          ),
+                        ),
                       ],
-                      const IosGap(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _channel,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Delivery',
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'banner',
-                            child: Text('Top banner'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'notification',
-                            child: Text('Notification'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'both',
-                            child: Text('Banner and notification'),
-                          ),
-                        ],
-                        onChanged: _saving
-                            ? null
-                            : (v) => setState(() => _channel = v!),
-                      ),
-                      const IosGap(height: 16),
-                      Wrap(
-                        spacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _saving
-                                ? null
-                                : () async {
-                                    final d = await showDatePicker(
-                                      context: context,
-                                      initialDate:
-                                          _expiry ??
-                                          DateTime.now().add(
-                                            const Duration(days: 7),
-                                          ),
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime.now().add(
-                                        const Duration(days: 730),
-                                      ),
-                                    );
-                                    if (d != null && mounted) {
-                                      setState(
-                                        () => _expiry = DateTime(
-                                          d.year,
-                                          d.month,
-                                          d.day,
-                                          23,
-                                          59,
-                                          59,
-                                        ),
-                                      );
-                                    }
-                                  },
-                            icon: const Icon(Icons.event_outlined),
-                            label: Text(
-                              _expiry == null
-                                  ? 'Set banner expiry (optional)'
-                                  : 'Expires ${PlatformAdminService.date(_expiry!.toIso8601String())}',
-                            ),
-                          ),
-                          if (_expiry != null)
-                            TextButton(
-                              onPressed: _saving
-                                  ? null
-                                  : () => setState(() => _expiry = null),
-                              child: const Text('Clear expiry'),
-                            ),
-                        ],
-                      ),
-                      const IosGap(height: 8),
-                      const Text(
-                        'Notifications remain in the inbox until the user deletes them. Archiving removes the banner; it does not recall delivered notifications.',
-                      ),
-                      if (_error != null)
-                        IosPadding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            _error!,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      const IosGap(height: 20),
-                      FilledButton.icon(
-                        onPressed: _saving ? null : _publish,
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: Text(
-                          _saving ? 'Publishing…' : 'Preview & publish',
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _BusinessTargets extends StatefulWidget {
@@ -443,74 +449,77 @@ class _BusinessTargetsState extends State<_BusinessTargets> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Choose businesses'),
-    content: SizedBox(
-      width: 600,
-      height: MediaQuery.sizeOf(context).height * .55,
-      child: Column(
-        children: [
-          TextField(
-            decoration: const InputDecoration(
-              labelText: 'Search business or email',
-              prefixIcon: Icon(Icons.search),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return AlertDialog(
+      title: const Text('Choose businesses'),
+      content: SizedBox(
+        width: 600,
+        height: MediaQuery.sizeOf(context).height * .55,
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Search business or email',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (v) {
+                _search = v;
+                _timer?.cancel();
+                _timer = Timer(const Duration(milliseconds: 350), () {
+                  _page = 0;
+                  _load();
+                });
+              },
             ),
-            onChanged: (v) {
-              _search = v;
-              _timer?.cancel();
-              _timer = Timer(const Duration(milliseconds: 350), () {
-                _page = 0;
-                _load();
-              });
-            },
-          ),
-          const IosGap(height: 12),
-          Expanded(
-            child: _loading
-                ? const AdminLoading()
-                : _error != null
-                ? Text(_error!)
-                : ListView(
-                    children: [
-                      for (final b in _rows.take(50))
-                        CheckboxListTile(
-                          value: _selected.containsKey('${b['id']}'),
-                          title: Text(PlatformAdminService.name(b)),
-                          subtitle: Text(
-                            '${b['business_type']} · ${b['business_email'] ?? ''}',
+            const IosGap(height: 12),
+            Expanded(
+              child: _loading
+                  ? const AdminLoading()
+                  : _error != null
+                  ? Text(_error!)
+                  : ListView(
+                      children: [
+                        for (final b in _rows.take(50))
+                          CheckboxListTile(
+                            value: _selected.containsKey('${b['id']}'),
+                            title: Text(PlatformAdminService.name(b)),
+                            subtitle: Text(
+                              '${b['business_type']} · ${b['business_email'] ?? ''}',
+                            ),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                _selected['${b['id']}'] =
+                                    PlatformAdminService.name(b);
+                              } else {
+                                _selected.remove('${b['id']}');
+                              }
+                            }),
                           ),
-                          onChanged: (v) => setState(() {
-                            if (v == true) {
-                              _selected['${b['id']}'] =
-                                  PlatformAdminService.name(b);
-                            } else {
-                              _selected.remove('${b['id']}');
-                            }
-                          }),
-                        ),
-                    ],
-                  ),
-          ),
-          AdminPager(
-            page: _page,
-            more: _rows.length > 50,
-            onPage: (v) {
-              _page = v;
-              _load();
-            },
-          ),
-        ],
+                      ],
+                    ),
+            ),
+            AdminPager(
+              page: _page,
+              more: _rows.length > 50,
+              onPage: (v) {
+                _page = v;
+                _load();
+              },
+            ),
+          ],
+        ),
       ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, _selected),
-        child: Text('Use ${_selected.length} businesses'),
-      ),
-    ],
-  );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _selected),
+          child: Text('Use ${_selected.length} businesses'),
+        ),
+      ],
+    );
+  }
 }

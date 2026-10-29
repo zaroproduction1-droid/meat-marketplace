@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -24,9 +25,9 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
   String? _cut;
   static const _animals = ['BEEF', 'VEAL', 'LAMB', 'MUTTON', 'GOAT', 'CHICKEN'];
   static const _names = ['Beef', 'Veal', 'Lamb', 'Mutton', 'Goat', 'Chicken'];
-  static const _ink = PublicPagePalette.background,
-      _surface = PublicPagePalette.surface,
-      _muted = PublicPagePalette.muted;
+  static Color get _ink => PublicPagePalette.background;
+  static Color get _surface => PublicPagePalette.surface;
+  static Color get _muted => PublicPagePalette.muted;
   final _transform = TransformationController();
   @override
   void dispose() {
@@ -126,7 +127,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
   Widget _map(double height) => Container(
     height: height,
     decoration: BoxDecoration(
-      color: const Color(0xFFF1F3F5),
+      color: CutLinkPalette.color(0xFFF1F3F5),
       borderRadius: BorderRadius.circular(20),
     ),
     child: ClipRRect(
@@ -170,7 +171,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
         child: Text(
           _label,
           key: ValueKey(_label),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
             height: 1.15,
@@ -179,7 +180,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
         ),
       ),
       const IosGap(height: 14),
-      const Text(
+      Text(
         'The same visual catalogue is used inside CutLink. Start with the animal and cut, then narrow down exactly what you need.',
         style: TextStyle(color: _muted, height: 1.6),
       ),
@@ -214,7 +215,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                 children: [
                   Text(
                     step.$2,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: PublicPagePalette.text,
                       fontWeight: FontWeight.w700,
                     ),
@@ -222,11 +223,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                   const IosGap(height: 5),
                   Text(
                     step.$3,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
                   ),
                 ],
               ),
@@ -263,7 +260,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                       Expanded(
                         child: Text(
                           '$_animal cut catalogue',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: PublicPagePalette.text,
                             fontWeight: FontWeight.w800,
                             fontSize: 20,
@@ -273,10 +270,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                       IconButton(
                         tooltip: 'Close catalogue',
                         onPressed: () => Navigator.pop(dialogContext),
-                        icon: const Icon(
-                          Icons.close,
-                          color: PublicPagePalette.text,
-                        ),
+                        icon: Icon(Icons.close, color: PublicPagePalette.text),
                       ),
                     ],
                   ),
@@ -285,7 +279,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                   child: Theme(
                     data: ThemeData.light(),
                     child: Container(
-                      color: const Color(0xFFF1F3F5),
+                      color: CutLinkPalette.color(0xFFF1F3F5),
                       child: LayoutBuilder(
                         builder: (context, box) => InteractiveViewer(
                           minScale: 1,
@@ -309,7 +303,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     '$_label • Pinch or use your trackpad to zoom.',
-                    style: const TextStyle(color: _muted),
+                    style: TextStyle(color: _muted),
                   ),
                 ),
               ],
@@ -321,88 +315,91 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) {
-      final desktop = box.maxWidth >= 900;
-      final mapHeight = desktop
-          ? (MediaQuery.sizeOf(context).height - 240).clamp(420.0, 650.0)
-          : (box.maxWidth * .75).clamp(260.0, 510.0);
-      final header = Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 16,
-        runSpacing: 14,
-        children: [
-          _tabs(),
-          OutlinedButton.icon(
-            onPressed: _expand,
-            icon: const Icon(Icons.open_in_full, size: 16),
-            label: const Text('Full screen'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: PublicPagePalette.primary,
-              side: const BorderSide(color: PublicPagePalette.border),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final desktop = box.maxWidth >= 900;
+        final mapHeight = desktop
+            ? (MediaQuery.sizeOf(context).height - 240).clamp(420.0, 650.0)
+            : (box.maxWidth * .75).clamp(260.0, 510.0);
+        final header = Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 14,
+          children: [
+            _tabs(),
+            OutlinedButton.icon(
+              onPressed: _expand,
+              icon: const Icon(Icons.open_in_full, size: 16),
+              label: const Text('Full screen'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: PublicPagePalette.primary,
+                side: BorderSide(color: PublicPagePalette.border),
+              ),
             ),
-          ),
-        ],
-      );
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          header,
-          const IosGap(height: 18),
-          if (desktop)
+          ],
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            header,
+            const IosGap(height: 18),
+            if (desktop)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 8, child: _map(mapHeight)),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 3,
+                    child: IosPadding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _details(),
+                    ),
+                  ),
+                ],
+              )
+            else ...[
+              _map(mapHeight),
+              const IosGap(height: 16),
+              Text(
+                _label,
+                style: TextStyle(
+                  color: PublicPagePalette.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+              const IosGap(height: 8),
+              Text(
+                'Choose a cut, then refine its specification and compare suppliers inside CutLink.',
+                style: TextStyle(color: _muted, height: 1.5),
+              ),
+            ],
+            const IosGap(height: 14),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 8, child: _map(mapHeight)),
-                const SizedBox(width: 30),
                 Expanded(
-                  flex: 3,
-                  child: IosPadding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: _details(),
+                  child: Text(
+                    'Interactive preview • Six animal catalogues',
+                    style: TextStyle(color: _muted, fontSize: 12),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _transform.value = Matrix4.identity(),
+                  icon: const Icon(Icons.center_focus_strong, size: 16),
+                  label: const Text('Reset view'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: PublicPagePalette.accent,
                   ),
                 ),
               ],
-            )
-          else ...[
-            _map(mapHeight),
-            const IosGap(height: 16),
-            Text(
-              _label,
-              style: const TextStyle(
-                color: PublicPagePalette.text,
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
-            const IosGap(height: 8),
-            const Text(
-              'Choose a cut, then refine its specification and compare suppliers inside CutLink.',
-              style: TextStyle(color: _muted, height: 1.5),
             ),
           ],
-          const IosGap(height: 14),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Interactive preview • Six animal catalogues',
-                  style: TextStyle(color: _muted, fontSize: 12),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => _transform.value = Matrix4.identity(),
-                icon: const Icon(Icons.center_focus_strong, size: 16),
-                label: const Text('Reset view'),
-                style: TextButton.styleFrom(
-                  foregroundColor: PublicPagePalette.accent,
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 }

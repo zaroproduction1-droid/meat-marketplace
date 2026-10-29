@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 class IosCutSelectionBar extends StatelessWidget {
@@ -15,6 +17,7 @@ class IosCutSelectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     var cut = 'All cuts';
     for (final section in sections) {
       if (section['id']?.toString() == sectionId) {
@@ -28,7 +31,7 @@ class IosCutSelectionBar extends StatelessWidget {
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE3E5E8)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       clipBehavior: Clip.antiAlias,
       child: ListTile(
@@ -64,7 +67,7 @@ Future<void> showIosCutBrowser({
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  backgroundColor: Colors.white,
+  backgroundColor: CutLinkPalette.surface,
   showDragHandle: true,
   shape: const RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
@@ -88,7 +91,7 @@ Future<void> showIosCutBrowser({
             dense: true,
             visualDensity: VisualDensity.compact,
             selected: selected,
-            selectedTileColor: const Color(0xFFF7ECEF),
+            selectedTileColor: CutLinkPalette.color(0xFFF7ECEF),
             leading: selected ? const Icon(Icons.check_circle, size: 20) : null,
             title: Text(title),
             trailing: const Icon(Icons.chevron_right, size: 20),
@@ -164,16 +167,16 @@ Future<void> showIosCutBrowser({
                     if (specifications().isEmpty)
                       const Text('No sub-cuts available for this cut.'),
                   ],
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      onGuide();
-                    },
-                    icon: const Icon(Icons.menu_book_outlined),
-                    label: const Text('View cut guide'),
-                  ),
                 ],
               ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                onGuide();
+              },
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('View animal catalogue'),
             ),
             SafeArea(
               top: false,

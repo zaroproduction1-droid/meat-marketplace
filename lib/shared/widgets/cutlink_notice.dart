@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 abstract final class CutLinkNotice {
@@ -47,12 +49,12 @@ abstract final class CutLinkNotice {
                     color: Colors.transparent,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: CutLinkPalette.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: error
-                              ? const Color(0xFFE8B9B9)
-                              : const Color(0xFFDDE2E7),
+                              ? CutLinkPalette.color(0xFFE8B9B9)
+                              : CutLinkPalette.color(0xFFDDE2E7),
                         ),
                         boxShadow: const [
                           BoxShadow(
@@ -102,8 +104,8 @@ abstract final class CutLinkNotice {
                                       title.trim().isNotEmpty) ...[
                                     Text(
                                       title,
-                                      style: const TextStyle(
-                                        color: Color(0xFF1E2429),
+                                      style: TextStyle(
+                                        color: CutLinkPalette.color(0xFF1E2429),
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w900,
                                       ),
@@ -112,8 +114,8 @@ abstract final class CutLinkNotice {
                                   ],
                                   Text(
                                     message,
-                                    style: const TextStyle(
-                                      color: Color(0xFF50555A),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF50555A),
                                       fontSize: 12.5,
                                       height: 1.35,
                                       fontWeight: FontWeight.w600,
@@ -134,7 +136,7 @@ abstract final class CutLinkNotice {
                               }
                             },
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            color: const Color(0xFF62676C),
+                            color: CutLinkPalette.color(0xFF62676C),
                           ),
                           const SizedBox(width: 4),
                         ],

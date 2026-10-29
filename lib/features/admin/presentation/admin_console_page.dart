@@ -447,7 +447,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.cloud_off_outlined,
                   size: 34,
                   color: AdminTheme.muted,
@@ -489,7 +489,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                           _search.isNotEmpty || _filter != null
                               ? 'Try changing your search or filter.'
                               : 'New records will appear here.',
-                          style: const TextStyle(color: AdminTheme.muted),
+                          style: TextStyle(color: AdminTheme.muted),
                         ),
                       ],
                     ),
@@ -587,7 +587,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                             const IosGap(height: 4),
                             Text(
                               _subtitles[_tab] ?? '',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AdminTheme.muted,
                                 fontSize: 12,
                               ),

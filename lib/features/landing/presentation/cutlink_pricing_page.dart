@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -186,13 +187,13 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(
-            color: const Color(0xFFFAF8F7),
+            color: CutLinkPalette.color(0xFFFAF8F7),
             border: Border.all(color: PublicPagePalette.border),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             children: [
-              const Text(
+              Text(
                 'Standard membership',
                 style: TextStyle(color: PublicPagePalette.muted, fontSize: 13),
               ),
@@ -225,7 +226,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           child: Text(
             status,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: PublicPagePalette.muted,
               fontSize: 13,
               height: 1.4,
@@ -233,7 +234,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           ),
         ),
         if (!unavailable && !data.enabled)
-          const IosPadding(
+          IosPadding(
             padding: EdgeInsets.only(top: 6),
             child: Text(
               'The offers below are a preview.',
@@ -262,7 +263,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           },
         ),
         const IosGap(height: 18),
-        const Text(
+        Text(
           'All prices are AUD and include GST.',
           textAlign: TextAlign.center,
           style: TextStyle(color: PublicPagePalette.muted, fontSize: 12),
@@ -297,7 +298,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
           ),
         ),
         const IosGap(height: 10),
-        const Text(
+        Text(
           'Signing up doesn’t reserve a founding place.',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -309,7 +310,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
         const IosGap(height: 20),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFFAF8F7),
+            color: CutLinkPalette.color(0xFFFAF8F7),
             border: Border.all(color: PublicPagePalette.border),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -327,7 +328,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             shape: const Border(),
             collapsedShape: const Border(),
             childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            children: const [
+            children: [
               _Note(
                 icon: Icons.verified_outlined,
                 text:
@@ -357,11 +358,12 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: CutLinkPalette.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: CutLinkPalette.surface,
         surfaceTintColor: Colors.white,
         foregroundColor: _royal,
         title: const CutLinkLogo(width: 132, height: 32),
@@ -444,11 +446,13 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
                             ),
                             backgroundColor: WidgetStateProperty.resolveWith(
                               (states) => states.contains(WidgetState.selected)
-                                  ? const Color(0xFFF5E9EC)
+                                  ? CutLinkPalette.color(0xFFF5E9EC)
                                   : Colors.white,
                             ),
-                            side: const WidgetStatePropertyAll(
-                              BorderSide(color: Color(0xFFE5D5D9)),
+                            side: WidgetStatePropertyAll(
+                              BorderSide(
+                                color: CutLinkPalette.color(0xFFE5D5D9),
+                              ),
                             ),
                             textStyle: const WidgetStatePropertyAll(
                               TextStyle(fontWeight: FontWeight.w700),
@@ -494,25 +498,28 @@ class _PriceStage extends StatelessWidget {
   final String amount;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: _gold, fontSize: 13),
-      ),
-      const IosGap(height: 5),
-      Text(
-        '$amount / month',
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 23,
-          fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Column(
+      children: [
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _gold, fontSize: 13),
         ),
-      ),
-    ],
-  );
+        const IosGap(height: 5),
+        Text(
+          '$amount / month',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 23,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _Note extends StatelessWidget {
@@ -521,26 +528,29 @@ class _Note extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => IosPadding(
-    padding: const EdgeInsets.only(top: 16),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: _royal, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: PublicPagePalette.muted,
-              fontSize: 13,
-              height: 1.5,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return IosPadding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _royal, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: PublicPagePalette.muted,
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _MembershipPanel extends StatefulWidget {
@@ -556,67 +566,76 @@ class _MembershipPanelState extends State<_MembershipPanel> {
   bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit: (_) => setState(() => _hovered = false),
-    child: AnimatedContainer(
-      duration: Duration(
-        milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 240,
-      ),
-      curve: Curves.easeOutCubic,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        gradient: widget.founding
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [_royal, Color(0xFF8B2E40), Color(0xFF511522)],
-              )
-            : null,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: widget.founding
-              ? _gold.withValues(alpha: _hovered ? .65 : .3)
-              : PublicPagePalette.border,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: Duration(
+          milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 240,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _royal.withValues(alpha: _hovered ? .16 : .08),
-            blurRadius: _hovered ? 36 : 24,
-            offset: const Offset(0, 10),
+        curve: Curves.easeOutCubic,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: CutLinkPalette.surface,
+          gradient: widget.founding
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [_royal, Color(0xFF8B2E40), Color(0xFF511522)],
+                )
+              : null,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: widget.founding
+                ? _gold.withValues(alpha: _hovered ? .65 : .3)
+                : PublicPagePalette.border,
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: _royal.withValues(alpha: _hovered ? .16 : .08),
+              blurRadius: _hovered ? 36 : 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: widget.child,
       ),
-      child: widget.child,
-    ),
-  );
+    );
+  }
 }
 
 class _FoundingSeal extends StatelessWidget {
   const _FoundingSeal();
 
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: Container(
-      width: 56,
-      height: 56,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: _gold.withValues(alpha: .65)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_gold.withValues(alpha: .14), _gold.withValues(alpha: .03)],
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return ExcludeSemantics(
+      child: Container(
+        width: 56,
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: _gold.withValues(alpha: .65)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _gold.withValues(alpha: .14),
+              _gold.withValues(alpha: .03),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(color: _gold.withValues(alpha: .08), blurRadius: 24),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(color: _gold.withValues(alpha: .08), blurRadius: 24),
-        ],
+        child: const CustomPaint(size: Size(34, 28), painter: _CrownPainter()),
       ),
-      child: const CustomPaint(size: Size(34, 28), painter: _CrownPainter()),
-    ),
-  );
+    );
+  }
 }
 
 class _CrownPainter extends CustomPainter {

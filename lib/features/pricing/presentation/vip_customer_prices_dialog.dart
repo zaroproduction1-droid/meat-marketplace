@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 import '../../../shared/widgets/sharp_logo.dart';
@@ -246,8 +247,8 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
       height: 52,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE7E7E7)),
+        color: CutLinkPalette.surface,
+        border: Border.all(color: CutLinkPalette.color(0xFFE7E7E7)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: customer.logoUrl == null
@@ -274,12 +275,14 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: dirty ? const Color(0xFFFCF7F7) : Colors.white,
+          color: dirty
+              ? CutLinkPalette.color(0xFFFCF7F7)
+              : CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: dirty
                 ? _red.withValues(alpha: .35)
-                : const Color(0xFFE5E7EB),
+                : CutLinkPalette.color(0xFFE5E7EB),
           ),
         ),
         child: Column(
@@ -335,7 +338,9 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                                 : 'Current VIP price',
                             style: TextStyle(
                               fontSize: 12,
-                              color: dirty ? _red : const Color(0xFF6B7280),
+                              color: dirty
+                                  ? _red
+                                  : CutLinkPalette.color(0xFF6B7280),
                             ),
                           ),
                         ],
@@ -360,14 +365,14 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                     suffixText: '/ ${_basisLabel(draft.priceBasis)}',
                     errorText: _showErrors && dirty ? draft.priceError() : null,
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: CutLinkPalette.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: dirty ? _red : const Color(0xFFD1D5DB),
+                        color: dirty ? _red : CutLinkPalette.color(0xFFD1D5DB),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -411,7 +416,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                     ),
                     label: const Text('Order options'),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF6B7280),
+                      foregroundColor: CutLinkPalette.color(0xFF6B7280),
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -430,7 +435,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                   key: ValueKey('vip-basis-$id-${_bases[id]}'),
                   initialValue: _bases[id],
                   isExpanded: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Price basis',
                     border: OutlineInputBorder(),
                   ),
@@ -483,6 +488,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final query = _search.text.trim().toLowerCase();
     final customers = widget.customers
         .where((c) => c.name.toLowerCase().contains(query))
@@ -502,7 +508,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
     return PopScope(
       canPop: !_saving,
       child: Dialog(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: CutLinkPalette.color(0xFFF9FAFB),
         insetPadding: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         child: SizedBox(
@@ -530,7 +536,9 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                             widget.productName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Color(0xFF6B7280)),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF6B7280),
+                            ),
                           ),
                         ],
                       ),
@@ -557,10 +565,12 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                     hintText: 'Search butchers',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: CutLinkPalette.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: BorderSide(
+                        color: CutLinkPalette.color(0xFFE5E7EB),
+                      ),
                     ),
                   ),
                 ),
@@ -607,8 +617,8 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                       count == 0
                           ? 'Edit prices above, then save them together.'
                           : '$count price change${count == 1 ? '' : 's'} ready to save',
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF6B7280),
                         fontSize: 12,
                       ),
                     ),

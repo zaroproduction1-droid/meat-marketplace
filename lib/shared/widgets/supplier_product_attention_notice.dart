@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import 'cutlink_review_theme.dart';
 
 import 'dart:async';
@@ -135,6 +136,7 @@ class _SupplierProductAttentionNoticeState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (widget.businessId == null || (_rows.isEmpty && !_error)) {
       return const SizedBox.shrink();
     }
@@ -142,9 +144,9 @@ class _SupplierProductAttentionNoticeState
       margin: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Row(
         children: [

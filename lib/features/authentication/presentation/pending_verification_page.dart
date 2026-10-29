@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -48,10 +49,11 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     const darkRed = Color(0xFF741C1C);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -60,7 +62,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
             child: Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
+                side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: IosPadding(
@@ -71,8 +73,8 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                     Container(
                       width: 84,
                       height: 84,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF4E5E5),
+                      decoration: BoxDecoration(
+                        color: CutLinkPalette.color(0xFFF4E5E5),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -91,7 +93,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       ),
                     ),
                     const IosGap(height: 16),
-                    const Text(
+                    Text(
                       'Your business details have been submitted. '
                       'The marketplace administrator must review and '
                       'approve your account before you can access '
@@ -100,7 +102,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       style: TextStyle(
                         fontSize: 17,
                         height: 1.55,
-                        color: Color(0xFF5E5E5E),
+                        color: CutLinkPalette.color(0xFF5E5E5E),
                       ),
                     ),
                     const IosGap(height: 24),
@@ -108,7 +110,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7E3),
+                        color: CutLinkPalette.color(0xFFFFF7E3),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE7CA7A)),
                       ),

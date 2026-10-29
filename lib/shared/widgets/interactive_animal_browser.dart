@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 import '../animal_catalogues/animal_catalogue_registry.dart';
@@ -102,6 +104,7 @@ class InteractiveAnimalBrowser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final animal = _selectedAnimal;
     final isBeef = animal.code == CutLinkAnimals.beef;
     final isGoat = animal.code == CutLinkAnimals.goat;
@@ -158,9 +161,9 @@ class InteractiveAnimalBrowser extends StatelessWidget {
               key: ValueKey(animal.code),
               constraints: const BoxConstraints(minHeight: 360),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F6),
+                color: CutLinkPalette.color(0xFFF8F8F6),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
               ),
               child: Center(
                 child: Padding(
@@ -182,11 +185,14 @@ class InteractiveAnimalBrowser extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'The catalogue is ready. Its interactive SVG will '
                         'plug into this same browser when added.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -242,8 +248,8 @@ class InteractiveAnimalBrowser extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${_selectedIndex + 1} of ${CutLinkAnimals.all.length}',
-                      style: const TextStyle(
-                        color: Color(0xFF777777),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF777777),
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -291,6 +297,7 @@ class _AnimalTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Material(
       color: selected ? _darkRed : Colors.white,
       borderRadius: BorderRadius.circular(999),
@@ -306,14 +313,14 @@ class _AnimalTab extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? _darkRed : const Color(0xFFD8D8D4),
+              color: selected ? _darkRed : CutLinkPalette.color(0xFFD8D8D4),
             ),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF333333),
+              color: selected ? Colors.white : CutLinkPalette.color(0xFF333333),
               fontWeight: FontWeight.w800,
               fontSize: 14,
             ),
@@ -337,6 +344,7 @@ class PhoneAnimalSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return LayoutBuilder(
       builder: (context, box) {
         final columns = box.maxWidth >= 660
@@ -381,45 +389,50 @@ class AnimalCatalogueControls extends StatelessWidget {
   final VoidCallback onBrowse;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) {
-      final button = FilledButton.icon(
-        onPressed: onBrowse,
-        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF741C1C)),
-        icon: const Icon(Icons.menu_book_outlined, size: 20),
-        label: const Text('Browse animal catalogue'),
-      );
-      final selector = PhoneAnimalSelector(
-        selectedCode: selectedCode,
-        onChanged: onChanged,
-      );
-      if (box.maxWidth >= 960) {
-        return Row(
-          children: [
-            button,
-            const SizedBox(width: 16),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 780),
-                  child: selector,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final button = FilledButton.icon(
+          onPressed: onBrowse,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF741C1C),
+          ),
+          icon: const Icon(Icons.menu_book_outlined, size: 20),
+          label: const Text('Browse animal catalogue'),
+        );
+        final selector = PhoneAnimalSelector(
+          selectedCode: selectedCode,
+          onChanged: onChanged,
+        );
+        if (box.maxWidth >= 960) {
+          return Row(
+            children: [
+              button,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 780),
+                    child: selector,
+                  ),
                 ),
               ),
-            ),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(alignment: Alignment.centerLeft, child: button),
+            const SizedBox(height: 10),
+            selector,
           ],
         );
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(alignment: Alignment.centerLeft, child: button),
-          const SizedBox(height: 10),
-          selector,
-        ],
-      );
-    },
-  );
+      },
+    );
+  }
 }
 
 /// Transform the entire map, including its hit targets, as a single surface.
@@ -464,6 +477,7 @@ class _PhoneCatalogueZoomState extends State<_PhoneCatalogueZoom> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return LayoutBuilder(
       builder: (context, box) {
         final viewport = Size(box.maxWidth, box.maxWidth * 0.85);
@@ -508,10 +522,13 @@ class _PhoneCatalogueZoomState extends State<_PhoneCatalogueZoom> {
                 ),
               ],
             ),
-            const Text(
+            Text(
               'Pinch to zoom • Drag to move • Tap a cut to select',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+              style: TextStyle(
+                fontSize: 12,
+                color: CutLinkPalette.color(0xFF666666),
+              ),
             ),
           ],
         );
@@ -529,35 +546,38 @@ class AnimalCatalogueLayout extends StatelessWidget {
   });
   final Widget diagram, choices;
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) {
-      final map = Padding(padding: const EdgeInsets.all(10), child: diagram);
-      final options = SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
-        child: choices,
-      );
-      if (box.maxWidth < 800) {
-        return Column(
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final map = Padding(padding: const EdgeInsets.all(10), child: diagram);
+        final options = SingleChildScrollView(
+          padding: const EdgeInsets.all(14),
+          child: choices,
+        );
+        if (box.maxWidth < 800) {
+          return Column(
+            children: [
+              SizedBox(
+                height: (box.maxHeight * 0.56).clamp(140.0, 440.0),
+                child: map,
+              ),
+              const Divider(height: 1),
+              Expanded(child: options),
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              height: (box.maxHeight * 0.56).clamp(140.0, 440.0),
-              child: map,
-            ),
-            const Divider(height: 1),
-            Expanded(child: options),
+            Expanded(flex: 7, child: map),
+            const VerticalDivider(width: 1),
+            Expanded(flex: 4, child: options),
           ],
         );
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(flex: 7, child: map),
-          const VerticalDivider(width: 1),
-          Expanded(flex: 4, child: options),
-        ],
-      );
-    },
-  );
+      },
+    );
+  }
 }
 
 class _CatalogueViewport extends StatefulWidget {
@@ -576,36 +596,39 @@ class _CatalogueViewportState extends State<_CatalogueViewport> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Expanded(
-        child: ClipRect(
-          child: InteractiveViewer(
-            transformationController: _controller,
-            minScale: 1,
-            maxScale: 5,
-            child: SizedBox.expand(child: widget.child),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Column(
+      children: [
+        Expanded(
+          child: ClipRect(
+            child: InteractiveViewer(
+              transformationController: _controller,
+              minScale: 1,
+              maxScale: 5,
+              child: SizedBox.expand(child: widget.child),
+            ),
           ),
         ),
-      ),
-      SizedBox(
-        height: 32,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Flexible(
-              child: Text(
-                'Pinch or use trackpad to zoom',
-                style: TextStyle(fontSize: 11),
+        SizedBox(
+          height: 32,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Flexible(
+                child: Text(
+                  'Pinch or use trackpad to zoom',
+                  style: TextStyle(fontSize: 11),
+                ),
               ),
-            ),
-            TextButton(
-              onPressed: () => _controller.value = Matrix4.identity(),
-              child: const Text('Reset'),
-            ),
-          ],
+              TextButton(
+                onPressed: () => _controller.value = Matrix4.identity(),
+                child: const Text('Reset'),
+              ),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

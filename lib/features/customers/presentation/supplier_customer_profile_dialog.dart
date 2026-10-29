@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -280,9 +281,9 @@ class _SupplierCustomerProfileDialogState
           _field(key),
       ]),
       const IosGap(height: 12),
-      const Text(
+      Text(
         'Statement email defaults to the order / invoice email when left blank.',
-        style: TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: CutLinkPalette.color(0xFF666666), fontSize: 12),
       ),
       _heading('Billing address'),
       _grid([
@@ -305,7 +306,7 @@ class _SupplierCustomerProfileDialogState
       _grid([
         DropdownButtonFormField<String>(
           initialValue: _payment,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Payment type',
             border: OutlineInputBorder(),
             isDense: true,
@@ -379,7 +380,7 @@ class _SupplierCustomerProfileDialogState
     width: 160,
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: const Color(0xFFF7F8FA),
+      color: CutLinkPalette.color(0xFFF7F8FA),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Column(
@@ -401,9 +402,9 @@ class _SupplierCustomerProfileDialogState
   Widget _delivery() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
+      Text(
         'The default location is used for new orders. Existing document snapshots stay unchanged.',
-        style: TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: CutLinkPalette.color(0xFF666666), fontSize: 12),
       ),
       const IosGap(height: 16),
       for (var index = 0; index < _locations.length; index++)
@@ -412,7 +413,9 @@ class _SupplierCustomerProfileDialogState
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(
-              color: _defaultLocation == index ? _red : const Color(0xFFE0E0E0),
+              color: _defaultLocation == index
+                  ? _red
+                  : CutLinkPalette.color(0xFFE0E0E0),
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -625,6 +628,7 @@ class _SupplierCustomerProfileDialogState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final size = MediaQuery.sizeOf(context);
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
@@ -677,7 +681,7 @@ class _SupplierCustomerProfileDialogState
                           ),
                           selected: _tab == i,
                           onSelected: (_) => setState(() => _tab = i),
-                          selectedColor: const Color(0xFFF4E5E5),
+                          selectedColor: CutLinkPalette.color(0xFFF4E5E5),
                         ),
                       ),
                   ],
@@ -700,10 +704,10 @@ class _SupplierCustomerProfileDialogState
                             _heading('Supplier-only notes'),
                             _field('internal_account_notes', lines: 7),
                             const IosGap(height: 12),
-                            const Text(
+                            Text(
                               'These notes stay within this supplier account. They are not printed on customer documents.',
                               style: TextStyle(
-                                color: Colors.black54,
+                                color: CutLinkPalette.color(0xFF666666),
                                 fontSize: 12,
                               ),
                             ),

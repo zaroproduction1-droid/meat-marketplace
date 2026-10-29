@@ -1,5 +1,9 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'dart:math' as math;
+
 import 'phone_layout.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
@@ -79,7 +83,9 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
   void _setScale(double targetScale, {Offset? focalPoint}) {
     final next = targetScale.clamp(widget.minScale, widget.maxScale).toDouble();
     final currentScale = _currentScale;
-    if ((next - currentScale).abs() < 0.001) return;
+    if ((next - currentScale).abs() < 0.001) {
+      return;
+    }
 
     final focal = focalPoint ?? _viewportCentre();
     final factor = next / currentScale;
@@ -99,7 +105,9 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
 
   void _reset() {
     _applyCentredTransform();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   bool _isOverPaper(Offset globalPosition) {
@@ -107,18 +115,26 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
       final object = key.currentContext?.findRenderObject();
       if (object is RenderBox && object.hasSize) {
         final local = object.globalToLocal(globalPosition);
-        if ((Offset.zero & object.size).contains(local)) return true;
+        if ((Offset.zero & object.size).contains(local)) {
+          return true;
+        }
       }
     }
     return false;
   }
 
   void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent) return;
+    if (event is! PointerScrollEvent) {
+      return;
+    }
     GestureBinding.instance.pointerSignalResolver.register(event, (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final viewport = _viewportKey.currentContext?.findRenderObject();
-      if (viewport is! RenderBox) return;
+      if (viewport is! RenderBox) {
+        return;
+      }
       if (_isOverPaper(event.position)) {
         final factor = math.exp(
           -event.scrollDelta.dy.clamp(-240.0, 240.0) / 400,
@@ -157,6 +173,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return FutureBuilder<List<Uint8List>>(
       future: _pagesFuture,
       builder: (context, snapshot) {
@@ -201,7 +218,9 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
             if (_needsInitialCentre) {
               _needsInitialCentre = false;
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
+                if (!mounted) {
+                  return;
+                }
                 _applyCentredTransform();
                 setState(() {});
               });
@@ -209,7 +228,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
 
             return Container(
               key: _viewportKey,
-              color: const Color(0xFFE9EBEE),
+              color: CutLinkPalette.color(0xFFE9EBEE),
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -253,7 +272,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                                             DecoratedBox(
                                               key: _pageKeys[i],
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: CutLinkPalette.surface,
                                                 boxShadow: const [
                                                   BoxShadow(
                                                     color: Color(0x22000000),
@@ -296,7 +315,7 @@ class _ZoomablePdfPreviewState extends State<ZoomablePdfPreview> {
                     right: 14,
                     top: 14,
                     child: Material(
-                      color: Colors.white,
+                      color: CutLinkPalette.surface,
                       elevation: 2,
                       borderRadius: BorderRadius.circular(10),
                       child: Row(

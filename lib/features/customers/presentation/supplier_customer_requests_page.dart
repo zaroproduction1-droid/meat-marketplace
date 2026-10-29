@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -304,7 +305,7 @@ class _SupplierCustomerRequestsPageState
       case 'clear':
         return const Color(0xFF2E7D32);
       default:
-        return const Color(0xFF666666);
+        return CutLinkPalette.color(0xFF666666);
     }
   }
 
@@ -729,10 +730,14 @@ class _SupplierCustomerRequestsPageState
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: hasPending ? const Color(0xFFFFF8EB) : const Color(0xFFF8F8F6),
+        color: hasPending
+            ? CutLinkPalette.color(0xFFFFF8EB)
+            : CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: hasPending ? const Color(0xFFE6C98A) : const Color(0xFFE0E0DD),
+          color: hasPending
+              ? const Color(0xFFE6C98A)
+              : CutLinkPalette.color(0xFFE0E0DD),
         ),
       ),
       child: Row(
@@ -793,8 +798,8 @@ class _SupplierCustomerRequestsPageState
                   hasPending
                       ? 'You have VIP or credit applications waiting for review.'
                       : 'Review VIP pricing and credit applications from CutLink butchers.',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666666),
                     height: 1.35,
                   ),
                 ),
@@ -817,9 +822,9 @@ class _SupplierCustomerRequestsPageState
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x07000000),
@@ -835,7 +840,7 @@ class _SupplierCustomerRequestsPageState
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4E5E5),
+              color: CutLinkPalette.color(0xFFF4E5E5),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.search, color: _darkRed, size: 20),
@@ -850,14 +855,18 @@ class _SupplierCustomerRequestsPageState
                 hintText:
                     'Search CutLink members or external customers, then press Enter',
                 filled: true,
-                fillColor: const Color(0xFFFAFAFB),
+                fillColor: CutLinkPalette.color(0xFFFAFAFB),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.color(0xFFDADAD6),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.color(0xFFDADAD6),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
@@ -891,12 +900,13 @@ class _SupplierCustomerRequestsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -941,9 +951,9 @@ class _SupplierCustomerRequestsPageState
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+            child: Divider(height: 1, color: CutLinkPalette.color(0xFFE4E6E8)),
           ),
         ),
       ),
@@ -1035,9 +1045,9 @@ class _SupplierCustomerRequestsPageState
         }) {
           return Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x07000000),
@@ -1068,8 +1078,8 @@ class _SupplierCustomerRequestsPageState
                               const IosGap(height: 2),
                               Text(
                                 subtitle,
-                                style: const TextStyle(
-                                  color: Color(0xFF666666),
+                                style: TextStyle(
+                                  color: CutLinkPalette.color(0xFF666666),
                                   fontSize: 11.5,
                                 ),
                               ),
@@ -1190,7 +1200,7 @@ class _SupplierCustomerRequestsPageState
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: IosPadding(
@@ -1207,7 +1217,7 @@ class _SupplierCustomerRequestsPageState
             Text(
               description,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF666666)),
+              style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
             ),
           ],
         ),
@@ -1232,9 +1242,9 @@ class _SupplierCustomerRequestsPageState
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDFDFC),
+          color: CutLinkPalette.color(0xFFFDFDFC),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E5E1)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE5E5E1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1246,7 +1256,7 @@ class _SupplierCustomerRequestsPageState
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4E5E5),
+                    color: CutLinkPalette.color(0xFFF4E5E5),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -1293,8 +1303,8 @@ class _SupplierCustomerRequestsPageState
                                 _paymentText(account),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF777777),
+                                style: TextStyle(
+                                  color: CutLinkPalette.color(0xFF777777),
                                   fontSize: 10.5,
                                 ),
                               ),
@@ -1356,7 +1366,7 @@ class _SupplierCustomerRequestsPageState
                   vertical: 9,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F6),
+                  color: CutLinkPalette.color(0xFFF8F8F6),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: PhoneRow(
@@ -1457,8 +1467,8 @@ class _SupplierCustomerRequestsPageState
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFF888888),
+          style: TextStyle(
+            color: CutLinkPalette.color(0xFF888888),
             fontSize: 8.5,
             fontWeight: FontWeight.w900,
           ),
@@ -1469,7 +1479,7 @@ class _SupplierCustomerRequestsPageState
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: valueColor ?? const Color(0xFF222222),
+            color: valueColor ?? CutLinkPalette.color(0xFF222222),
             fontSize: 11,
             height: 1.15,
             fontWeight: FontWeight.w900,
@@ -1495,9 +1505,9 @@ class _SupplierCustomerRequestsPageState
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDFDFC),
+          color: CutLinkPalette.color(0xFFFDFDFC),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E5E1)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE5E5E1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1509,7 +1519,7 @@ class _SupplierCustomerRequestsPageState
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4E5E5),
+                    color: CutLinkPalette.color(0xFFF4E5E5),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -1540,7 +1550,7 @@ class _SupplierCustomerRequestsPageState
                         style: TextStyle(
                           color: active
                               ? const Color(0xFF2E7D32)
-                              : const Color(0xFF777777),
+                              : CutLinkPalette.color(0xFF777777),
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1576,7 +1586,7 @@ class _SupplierCustomerRequestsPageState
                   vertical: 9,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F6),
+                  color: CutLinkPalette.color(0xFFF8F8F6),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: PhoneRow(

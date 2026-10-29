@@ -75,10 +75,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             const IosGap(height: 5),
-            Text(
-              note,
-              style: const TextStyle(color: AdminTheme.muted, fontSize: 12),
-            ),
+            Text(note, style: TextStyle(color: AdminTheme.muted, fontSize: 12)),
             const IosGap(height: 20),
             ...children,
           ],
@@ -96,7 +93,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
         ),
       ),
       const SizedBox(width: 6),
-      Text(text, style: const TextStyle(color: AdminTheme.muted, fontSize: 11)),
+      Text(text, style: TextStyle(color: AdminTheme.muted, fontSize: 11)),
     ],
   );
   Widget _bar(
@@ -133,7 +130,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
               ? PlatformAdminService.money(value)
               : CutLinkNumbers.integer(value.toInt()),
           textAlign: TextAlign.right,
-          style: const TextStyle(fontSize: 11, color: AdminTheme.ink),
+          style: TextStyle(fontSize: 11, color: AdminTheme.ink),
         ),
       ),
     ],
@@ -165,7 +162,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
       ),
       const IosGap(height: 14),
       if (maximum == 0)
-        const IosPadding(
+        IosPadding(
           padding: EdgeInsets.only(bottom: 12),
           child: Text(
             'No activity in this period.',
@@ -184,10 +181,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                   width: 54,
                   child: Text(
                     _month(row['month']),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AdminTheme.muted,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AdminTheme.muted),
                   ),
                 ),
                 Expanded(
@@ -272,7 +266,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
               if (_data.isNotEmpty)
                 Text(
                   'Through ${PlatformAdminService.date(_data['through'])} · Sydney time',
-                  style: const TextStyle(color: AdminTheme.muted, fontSize: 12),
+                  style: TextStyle(color: AdminTheme.muted, fontSize: 12),
                 ),
             ],
           ),
@@ -463,7 +457,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                       'Ten largest overdue subscription balances.',
                       [
                         if (overdue.isEmpty)
-                          const Text(
+                          Text(
                             'No overdue subscription balances.',
                             style: TextStyle(color: AdminTheme.muted),
                           ),
@@ -486,7 +480,7 @@ class _AdminAnalyticsPanelState extends State<AdminAnalyticsPanel> {
                           ),
                       ],
                     ),
-                    const Text(
+                    Text(
                       'CutLink subscriptions only. Voided invoices and reversed payment records are excluded. Received payments may relate to invoices issued outside the selected period.',
                       style: TextStyle(color: AdminTheme.muted, fontSize: 12),
                     ),

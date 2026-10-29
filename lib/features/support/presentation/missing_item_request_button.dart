@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
@@ -52,6 +53,7 @@ class MissingItemRequestButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final enabled = businessId != null;
     if (MediaQuery.sizeOf(context).width < 900) {
       return IconButton(
@@ -171,11 +173,12 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return CutLinkReviewTheme(
       child: PopScope(
         canPop: !_sending,
         child: Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           insetPadding: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
@@ -908,7 +909,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   TextField(
                     controller: nameController,
                     autofocus: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Supplier-specific cut name',
                       border: OutlineInputBorder(),
                     ),
@@ -918,7 +919,7 @@ class _EditProductPageState extends State<EditProductPage> {
                     controller: detailsController,
                     minLines: 3,
                     maxLines: 5,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Specification details (optional)',
                       hintText:
                           'Trim, preparation, trade code or other defining details',
@@ -1650,7 +1651,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Price (inc GST)',
                           prefixText: '\$',
                           border: OutlineInputBorder(),
@@ -1874,7 +1875,7 @@ class _EditProductPageState extends State<EditProductPage> {
       return Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Color(0xFFE0E0E0)),
+          side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
           borderRadius: BorderRadius.circular(14),
         ),
         child: IosPadding(
@@ -1898,8 +1899,8 @@ class _EditProductPageState extends State<EditProductPage> {
                     const IosGap(height: 7),
                     Text(
                       description,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         height: 1.4,
                       ),
                     ),
@@ -1932,7 +1933,7 @@ class _EditProductPageState extends State<EditProductPage> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: IosPadding(
@@ -1958,8 +1959,8 @@ class _EditProductPageState extends State<EditProductPage> {
                       const IosGap(height: 6),
                       Text(
                         description,
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
                           height: 1.4,
                         ),
                       ),
@@ -1970,7 +1971,7 @@ class _EditProductPageState extends State<EditProductPage> {
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: price == null
-                              ? const Color(0xFF777777)
+                              ? CutLinkPalette.color(0xFF777777)
                               : const Color(0xFF741C1C),
                         ),
                       ),
@@ -1978,7 +1979,9 @@ class _EditProductPageState extends State<EditProductPage> {
                         const IosGap(height: 5),
                         Text(
                           'Minimum quantity: ${price!['minimum_quantity']}',
-                          style: const TextStyle(color: Color(0xFF666666)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
+                          ),
                         ),
                       ],
                     ],
@@ -2191,13 +2194,16 @@ class _EditProductPageState extends State<EditProductPage> {
       return Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F6),
+          color: CutLinkPalette.color(0xFFF8F8F6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE1E1DE)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
         ),
-        child: const Text(
+        child: Text(
           'No approved butcher customers are available yet. Approve a butcher under Customers & Accounts before assigning a customer-specific price.',
-          style: TextStyle(color: Color(0xFF666666), height: 1.4),
+          style: TextStyle(
+            color: CutLinkPalette.color(0xFF666666),
+            height: 1.4,
+          ),
         ),
       );
     }
@@ -2296,8 +2302,8 @@ class _EditProductPageState extends State<EditProductPage> {
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: price == null
-              ? const Color(0xFFE0E0E0)
-              : const Color(0xFFD9C1C1),
+              ? CutLinkPalette.color(0xFFE0E0E0)
+              : CutLinkPalette.color(0xFFD9C1C1),
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -2308,8 +2314,8 @@ class _EditProductPageState extends State<EditProductPage> {
             final details = Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFFF4E5E5),
+                CircleAvatar(
+                  backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                   foregroundColor: Color(0xFF741C1C),
                   child: Icon(Icons.storefront_outlined),
                 ),
@@ -2330,7 +2336,7 @@ class _EditProductPageState extends State<EditProductPage> {
                         priceText,
                         style: TextStyle(
                           color: price == null
-                              ? const Color(0xFF666666)
+                              ? CutLinkPalette.color(0xFF666666)
                               : const Color(0xFF741C1C),
                           fontWeight: price == null
                               ? FontWeight.w500
@@ -2544,7 +2550,10 @@ class _EditProductPageState extends State<EditProductPage> {
           const IosGap(height: 8),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF666666), height: 1.4),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF666666),
+              height: 1.4,
+            ),
           ),
         ],
       ],
@@ -2572,6 +2581,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     const darkRed = Color(0xFF741C1C);
     if (!_isLoadingPage && _pageLoadError == null) {
       _initialSelections ??= _selectionSnapshot;
@@ -2594,11 +2604,11 @@ class _EditProductPageState extends State<EditProductPage> {
         child: DefaultTabController(
           length: 2,
           child: Scaffold(
-            backgroundColor: const Color(0xFFF7F8FA),
+            backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
             appBar: phoneAppBar(
               context,
               AppBar(
-                backgroundColor: Colors.white,
+                backgroundColor: CutLinkPalette.surface,
                 surfaceTintColor: Colors.white,
                 title: const Text(
                   'Product workspace',
@@ -2637,11 +2647,11 @@ class _EditProductPageState extends State<EditProductPage> {
                     },
                   ),
                 ],
-                bottom: const TabBar(
+                bottom: TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   labelColor: darkRed,
-                  unselectedLabelColor: Color(0xFF666666),
+                  unselectedLabelColor: CutLinkPalette.color(0xFF666666),
                   indicatorColor: darkRed,
                   tabs: [
                     Tab(
@@ -2701,8 +2711,10 @@ class _EditProductPageState extends State<EditProductPage> {
                                     child: Card(
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                        side: const BorderSide(
-                                          color: Color(0xFFE0E0E0),
+                                        side: BorderSide(
+                                          color: CutLinkPalette.color(
+                                            0xFFE0E0E0,
+                                          ),
                                         ),
                                         borderRadius: BorderRadius.circular(18),
                                       ),
@@ -2714,7 +2726,8 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 InputDecorationTheme(
                                                   isDense: true,
                                                   filled: true,
-                                                  fillColor: Colors.white,
+                                                  fillColor:
+                                                      CutLinkPalette.surface,
                                                   contentPadding:
                                                       const EdgeInsets.symmetric(
                                                         horizontal: 12,
@@ -2767,8 +2780,10 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             ? 'This product uses CutLink specification + $_gradeStageLabel pricing.'
                                                             : 'This product uses CutLink animal-specific specification pricing.')
                                                       : 'This is a legacy product. Supplier listing information can still be edited until it is reclassified into the current CutLink catalogue.',
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF5E5E5E),
+                                                  style: TextStyle(
+                                                    color: CutLinkPalette.color(
+                                                      0xFF5E5E5E,
+                                                    ),
                                                     height: 1.4,
                                                   ),
                                                 ),
@@ -2795,12 +2810,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       initialValue:
                                                           _selectedAnimalId,
                                                       isExpanded: true,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                            labelText: 'Animal',
-                                                            border:
-                                                                OutlineInputBorder(),
-                                                          ),
+                                                      decoration: InputDecoration(
+                                                        labelText: 'Animal',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
                                                       items: _animals.map((
                                                         animal,
                                                       ) {
@@ -3158,13 +3172,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 _twoColumnFields(
                                                   TextFormField(
                                                     controller: _skuController,
-                                                    decoration:
-                                                        const InputDecoration(
-                                                          labelText:
-                                                              'Supplier SKU',
-                                                          border:
-                                                              OutlineInputBorder(),
-                                                        ),
+                                                    decoration: InputDecoration(
+                                                      labelText: 'Supplier SKU',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                    ),
                                                     validator: (value) {
                                                       return _requiredValidator(
                                                         value,
@@ -3238,13 +3250,11 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     ),
                                                     initialValue:
                                                         _availabilityStatus,
-                                                    decoration:
-                                                        const InputDecoration(
-                                                          labelText:
-                                                              'Availability',
-                                                          border:
-                                                              OutlineInputBorder(),
-                                                        ),
+                                                    decoration: InputDecoration(
+                                                      labelText: 'Availability',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                    ),
                                                     items: const [
                                                       DropdownMenuItem(
                                                         value: 'in_stock',
@@ -3288,13 +3298,12 @@ class _EditProductPageState extends State<EditProductPage> {
                                                   ),
                                                   initialValue:
                                                       _temperatureState,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText:
-                                                            'Storage condition',
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                      ),
+                                                  decoration: InputDecoration(
+                                                    labelText:
+                                                        'Storage condition',
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                  ),
                                                   items: const [
                                                     DropdownMenuItem(
                                                       value: 'fresh',
@@ -3423,7 +3432,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         TextFormField(
                                                           controller:
                                                               _commercialDescriptionController,
-                                                          decoration: const InputDecoration(
+                                                          decoration: InputDecoration(
                                                             labelText:
                                                                 'Commercial description (optional)',
                                                             hintText:
@@ -3488,7 +3497,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         TextFormField(
                                                           controller:
                                                               _lotBatchController,
-                                                          decoration: const InputDecoration(
+                                                          decoration: InputDecoration(
                                                             labelText:
                                                                 'Lot / batch (optional)',
                                                             border:
@@ -3508,7 +3517,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             onTap: () => _pickDate(
                                                               _slaughterDateController,
                                                             ),
-                                                            decoration: const InputDecoration(
+                                                            decoration: InputDecoration(
                                                               labelText:
                                                                   'Slaughter date (optional)',
                                                               suffixIcon: Icon(
@@ -3526,7 +3535,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             onTap: () => _pickDate(
                                                               _useByDateController,
                                                             ),
-                                                            decoration: const InputDecoration(
+                                                            decoration: InputDecoration(
                                                               labelText:
                                                                   'Expiry / use-by (optional)',
                                                               suffixIcon: Icon(
@@ -3651,7 +3660,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         TextFormField(
                                                           controller:
                                                               _fatSpecificationController,
-                                                          decoration: const InputDecoration(
+                                                          decoration: InputDecoration(
                                                             labelText:
                                                                 'Fat specification (optional)',
                                                             border:
@@ -3678,7 +3687,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
-                                                        decoration: const InputDecoration(
+                                                        decoration: InputDecoration(
                                                           labelText:
                                                               'Pieces per carton (optional)',
                                                           border:
@@ -3703,7 +3712,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       TextFormField(
                                                         controller:
                                                             _originStateController,
-                                                        decoration: const InputDecoration(
+                                                        decoration: InputDecoration(
                                                           labelText:
                                                               'State of origin (optional)',
                                                           hintText: 'NSW',
@@ -3720,7 +3729,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                           _descriptionController,
                                                       minLines: 2,
                                                       maxLines: 4,
-                                                      decoration: const InputDecoration(
+                                                      decoration: InputDecoration(
                                                         labelText:
                                                             'Description (optional)',
                                                         border:
@@ -3736,7 +3745,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             _supplierSpecificationController,
                                                         minLines: 3,
                                                         maxLines: 6,
-                                                        decoration: const InputDecoration(
+                                                        decoration: InputDecoration(
                                                           labelText:
                                                               'Supplier specification / notes (optional)',
                                                           hintText:

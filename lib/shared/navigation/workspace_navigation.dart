@@ -41,3 +41,21 @@ class WorkspaceNavigationScope extends InheritedWidget {
   bool updateShouldNotify(WorkspaceNavigationScope oldWidget) =>
       oldWidget.navigation != navigation;
 }
+
+/// Retained list screens must not keep an inactive form's exit guard active.
+class WorkspaceActivityScope extends InheritedWidget {
+  const WorkspaceActivityScope({
+    super.key,
+    required this.active,
+    required super.child,
+  });
+  final bool active;
+  static bool activeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<WorkspaceActivityScope>()
+          ?.active ??
+      true;
+  @override
+  bool updateShouldNotify(WorkspaceActivityScope oldWidget) =>
+      active != oldWidget.active;
+}

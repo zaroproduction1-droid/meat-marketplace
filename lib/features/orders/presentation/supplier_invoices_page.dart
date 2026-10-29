@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -436,10 +437,10 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
       );
     }
 
-    return const Text(
+    return Text(
       'External Customer',
       style: TextStyle(
-        color: Color(0xFF777777),
+        color: CutLinkPalette.color(0xFF777777),
         fontSize: 11.5,
         fontWeight: FontWeight.w700,
       ),
@@ -452,32 +453,32 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
     switch (status) {
       case 'draft':
-        background = const Color(0xFFF0F0F0);
-        foreground = const Color(0xFF555555);
+        background = CutLinkPalette.color(0xFFF0F0F0);
+        foreground = CutLinkPalette.color(0xFF555555);
         break;
       case 'ready':
-        background = const Color(0xFFFFF1D8);
+        background = CutLinkPalette.color(0xFFFFF1D8);
         foreground = const Color(0xFF8A5B00);
         break;
       case 'issued':
-        background = const Color(0xFFE4EEF9);
+        background = CutLinkPalette.color(0xFFE4EEF9);
         foreground = const Color(0xFF275A89);
         break;
       case 'part_paid':
-        background = const Color(0xFFF3E9FA);
+        background = CutLinkPalette.color(0xFFF3E9FA);
         foreground = const Color(0xFF6D378C);
         break;
       case 'paid':
-        background = const Color(0xFFE5F4E9);
+        background = CutLinkPalette.color(0xFFE5F4E9);
         foreground = const Color(0xFF25663A);
         break;
       case 'void':
-        background = const Color(0xFFFCE8E8);
+        background = CutLinkPalette.color(0xFFFCE8E8);
         foreground = const Color(0xFF8C2A2A);
         break;
       default:
-        background = const Color(0xFFF0F0F0);
-        foreground = const Color(0xFF555555);
+        background = CutLinkPalette.color(0xFFF0F0F0);
+        foreground = CutLinkPalette.color(0xFF555555);
     }
 
     return Container(
@@ -514,8 +515,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            color: CutLinkPalette.surface,
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             borderRadius: BorderRadius.circular(14),
             boxShadow: const [
               BoxShadow(
@@ -536,7 +537,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                     height: 38,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5EAEA),
+                      color: CutLinkPalette.color(0xFFF5EAEA),
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(
@@ -611,10 +612,10 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
+                      Text(
                         'TOTAL',
                         style: TextStyle(
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
                         ),
@@ -702,9 +703,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: CutLinkPalette.surface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x07000000),
@@ -713,7 +714,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                       ),
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(
                         Icons.receipt_long_outlined,
@@ -736,7 +737,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                             Text(
                               'Create, send and track customer invoices and receivables.',
                               style: TextStyle(
-                                color: Color(0xFF666A70),
+                                color: CutLinkPalette.color(0xFF666A70),
                                 fontSize: 12,
                               ),
                             ),
@@ -762,16 +763,20 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                           icon: const Icon(Icons.close),
                         ),
                   filled: true,
-                  fillColor: const Color(0xFFFAFAFB),
+                  fillColor: CutLinkPalette.color(0xFFFAFAFB),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
+                    borderSide: BorderSide(
+                      color: CutLinkPalette.color(0xFFE3E5E8),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
+                    borderSide: BorderSide(
+                      color: CutLinkPalette.color(0xFFE3E5E8),
+                    ),
                   ),
                 ),
               ),
@@ -781,16 +786,16 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                 ),
                 child: TabBar(
                   controller: _tabController,
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   labelColor: _darkRed,
-                  unselectedLabelColor: const Color(0xFF666A70),
+                  unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
                   indicatorColor: _darkRed,
                   indicatorWeight: 3,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 12),
@@ -818,10 +823,10 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.receipt_long_outlined,
                               size: 42,
-                              color: Color(0xFFAAAAAA),
+                              color: CutLinkPalette.color(0xFFAAAAAA),
                             ),
                             const IosGap(height: 10),
                             Text(
@@ -860,9 +865,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     return Container(
       height: 62,
       padding: const EdgeInsets.symmetric(horizontal: 22),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+        ),
       ),
       child: Row(
         children: [
@@ -870,7 +877,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
+              color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
@@ -880,7 +887,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
             ),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -895,7 +902,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Color(0xFF74787E),
+                    color: CutLinkPalette.color(0xFF74787E),
                     fontSize: 10.8,
                     fontWeight: FontWeight.w600,
                   ),
@@ -915,9 +922,10 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (widget.embedded) {
       return ColoredBox(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         child: Column(
           children: [
             _workspaceHeader(),
@@ -928,11 +936,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -955,9 +963,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+            child: Divider(height: 1, color: CutLinkPalette.color(0xFFE4E6E8)),
           ),
         ),
       ),
@@ -974,6 +982,7 @@ class _MiniInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 145,
       child: Column(
@@ -981,8 +990,8 @@ class _MiniInfo extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),

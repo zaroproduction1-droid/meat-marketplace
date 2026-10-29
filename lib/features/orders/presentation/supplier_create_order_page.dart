@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -294,7 +295,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     TextField(
                       controller: businessNameController,
                       autofocus: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Business name',
                         border: OutlineInputBorder(),
                       ),
@@ -302,7 +303,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     const IosGap(height: 12),
                     TextField(
                       controller: contactNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Contact name',
                         border: OutlineInputBorder(),
                       ),
@@ -370,7 +371,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           Expanded(
                             child: TextField(
                               controller: phoneController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Phone (optional)',
                                 border: OutlineInputBorder(),
                               ),
@@ -380,7 +381,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           Expanded(
                             child: TextField(
                               controller: emailController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Email (optional)',
                                 border: OutlineInputBorder(),
                               ),
@@ -400,7 +401,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     const IosGap(height: 10),
                     TextField(
                       controller: address1Controller,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Address line 1',
                         border: OutlineInputBorder(),
                       ),
@@ -408,7 +409,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                     const IosGap(height: 12),
                     TextField(
                       controller: address2Controller,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Address line 2 (optional)',
                         border: OutlineInputBorder(),
                       ),
@@ -422,7 +423,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                             flex: 2,
                             child: TextField(
                               controller: suburbController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Suburb',
                                 border: OutlineInputBorder(),
                               ),
@@ -432,7 +433,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           Expanded(
                             child: TextField(
                               controller: stateController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'State',
                                 border: OutlineInputBorder(),
                               ),
@@ -442,7 +443,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           Expanded(
                             child: TextField(
                               controller: postcodeController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Postcode',
                                 border: OutlineInputBorder(),
                               ),
@@ -746,9 +747,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -760,7 +761,10 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           const IosGap(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF666666), height: 1.4),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF666666),
+              height: 1.4,
+            ),
           ),
           const IosGap(height: 18),
           child,
@@ -823,7 +827,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4E5E5),
+                color: CutLinkPalette.color(0xFFF4E5E5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -860,7 +864,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             Container(
               constraints: const BoxConstraints(maxHeight: 270),
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: matches.isEmpty
@@ -895,7 +899,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFFF4E5E5),
+                            backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                             child: Icon(
                               external
                                   ? Icons.person_outline
@@ -997,24 +1001,24 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F6),
+                color: CutLinkPalette.color(0xFFF8F8F6),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.verified_user_outlined,
-                    color: Color(0xFF35613B),
+                    color: CutLinkPalette.color(0xFF35613B),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Approved account customer • '
                       '${_customerAccountTerms(customer)} day terms',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF35523A),
+                        color: CutLinkPalette.color(0xFF35523A),
                       ),
                     ),
                   ),
@@ -1055,9 +1059,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F6),
+                color: CutLinkPalette.color(0xFFF8F8F6),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1160,7 +1164,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
             enabled: customer != null,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Internal sales notes (optional)',
               border: OutlineInputBorder(),
             ),
@@ -1210,10 +1214,13 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
                 ),
                 const IosGap(height: 6),
-                const Text(
+                Text(
                   'Choose the customer and sale details first. '
                   'The next step will keep this sale open while you continue adding products from the Sales page.',
-                  style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666666),
+                    height: 1.4,
+                  ),
                 ),
                 const IosGap(height: 22),
                 _customerSearchSection(),
@@ -1256,12 +1263,13 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'New Sale',

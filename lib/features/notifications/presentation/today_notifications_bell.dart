@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'dart:async';
@@ -215,11 +216,11 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Container(
-                          color: Colors.white,
+                          color: CutLinkPalette.surface,
                           padding: const EdgeInsets.fromLTRB(18, 14, 8, 14),
                           child: Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -236,7 +237,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                       'Today in Sydney • live activity',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFF6A6E75),
+                                        color: CutLinkPalette.color(0xFF6A6E75),
                                       ),
                                     ),
                                   ],
@@ -262,7 +263,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                           child: data.isEmpty
                               ? const Center(child: CircularProgressIndicator())
                               : rows.isEmpty
-                              ? const Center(
+                              ? Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -282,7 +283,9 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                       Text(
                                         'New updates will appear here.',
                                         style: TextStyle(
-                                          color: Color(0xFF6A6E75),
+                                          color: CutLinkPalette.color(
+                                            0xFF6A6E75,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -306,7 +309,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                 ),
                         ),
                         Container(
-                          color: Colors.white,
+                          color: CutLinkPalette.surface,
                           padding: const EdgeInsets.all(12),
                           child: TextButton.icon(
                             onPressed: () => Navigator.pop(dialogContext, {
@@ -357,21 +360,23 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ValueListenableBuilder<Map<String, dynamic>>(
-        valueListenable: _view,
-        builder: (_, data, _) {
-          final count = (data['unread_count'] as num?)?.toInt() ?? 0;
-          return IconButton(
-            tooltip: 'Today’s notifications ($count unread)',
-            onPressed: _showPanel,
-            icon: Badge(
-              isLabelVisible: count > 0,
-              label: Text(count > 99 ? '99+' : '$count'),
-              backgroundColor: CutLinkWorkspaceTheme.red,
-              child: const Icon(Icons.notifications_none_rounded),
-            ),
-          );
-        },
-      );
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return ValueListenableBuilder<Map<String, dynamic>>(
+      valueListenable: _view,
+      builder: (_, data, _) {
+        final count = (data['unread_count'] as num?)?.toInt() ?? 0;
+        return IconButton(
+          tooltip: 'Today’s notifications ($count unread)',
+          onPressed: _showPanel,
+          icon: Badge(
+            isLabelVisible: count > 0,
+            label: Text(count > 99 ? '99+' : '$count'),
+            backgroundColor: CutLinkWorkspaceTheme.red,
+            child: const Icon(Icons.notifications_none_rounded),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 /// Uses only the active prices already returned for this customer by Supabase.
@@ -27,7 +29,9 @@ class CustomerPriceDisplay extends StatelessWidget {
     var priority = 0;
     for (final row in _prices(product)) {
       final list = row['price_lists'];
-      if (list is! Map) continue;
+      if (list is! Map) {
+        continue;
+      }
       final rank = switch (list['visibility']) {
         'private' => 3,
         'approved_customers' => 2,
@@ -46,9 +50,13 @@ class CustomerPriceDisplay extends StatelessWidget {
     Map<String, dynamic> product,
   ) sync* {
     final prices = product['product_prices'];
-    if (prices is! List) return;
+    if (prices is! List) {
+      return;
+    }
     for (final value in prices) {
-      if (value is! Map) continue;
+      if (value is! Map) {
+        continue;
+      }
       final row = Map<String, dynamic>.from(value);
       final list = row['price_lists'];
       if (row['active'] == true && list is Map && list['active'] == true) {
@@ -76,12 +84,16 @@ class CustomerPriceDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final selected = visiblePrice ?? selectVisiblePrice(product);
     final amount = _amount(selected?['amount']);
     if (amount == null) {
-      return const Text(
+      return Text(
         'Contact supplier',
-        style: TextStyle(color: Color(0xFF666666), fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: CutLinkPalette.color(0xFF666666),
+          fontWeight: FontWeight.w700,
+        ),
       );
     }
     final basis = _basis(selected?['price_basis']);
@@ -123,7 +135,7 @@ class CustomerPriceDisplay extends StatelessWidget {
               style: TextStyle(
                 color: discounted
                     ? const Color(0xFF1B7439)
-                    : const Color(0xFF20252B),
+                    : CutLinkPalette.color(0xFF20252B),
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
               ),
@@ -134,7 +146,7 @@ class CustomerPriceDisplay extends StatelessWidget {
                 semanticsLabel: 'Original price ${_money(reference, basis)}',
                 style: TextStyle(
                   fontSize: fontSize * .8,
-                  color: const Color(0xFF777777),
+                  color: CutLinkPalette.color(0xFF777777),
                   decoration: TextDecoration.lineThrough,
                   decorationThickness: 2,
                 ),
@@ -150,7 +162,7 @@ class CustomerPriceDisplay extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: discounted
                   ? const Color(0xFF1B7439)
-                  : const Color(0xFF666666),
+                  : CutLinkPalette.color(0xFF666666),
             ),
           ),
         ],

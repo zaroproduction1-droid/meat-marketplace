@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import 'cutlink_review_theme.dart';
 
 import 'dart:typed_data';
@@ -148,117 +149,129 @@ class ProductPhotoEditor extends StatelessWidget {
   final ProductPhotoDraft draft;
   final bool enabled;
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: draft,
-    builder: (context, _) => Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FA),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final image = SizedBox(
-            width: 180,
-            child: draft.bytes == null
-                ? CatalogueProductImage(
-                    product: draft.preview,
-                    imageHeight: 110,
-                  )
-                : Image.memory(draft.bytes!, height: 110, fit: BoxFit.contain),
-          );
-          final controls = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Product photo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                draft.dirty
-                    ? 'Photo changes will be saved with this product.'
-                    : 'Upload your own stock photo, or one you have permission to use. PNG, JPG or WebP, up to 5 MB.',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF666A70)),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: !enabled
-                        ? null
-                        : () async {
-                            try {
-                              if (!await ensureSupplierPhotoTerms(context)) {
-                                return;
-                              }
-                              await draft.pick();
-                            } catch (error) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Unable to select picture: $error',
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return AnimatedBuilder(
+      animation: draft,
+      builder: (context, _) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: CutLinkPalette.color(0xFFF7F8FA),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final image = SizedBox(
+              width: 180,
+              child: draft.bytes == null
+                  ? CatalogueProductImage(
+                      product: draft.preview,
+                      imageHeight: 110,
+                    )
+                  : Image.memory(
+                      draft.bytes!,
+                      height: 110,
+                      fit: BoxFit.contain,
+                    ),
+            );
+            final controls = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Product photo',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  draft.dirty
+                      ? 'Photo changes will be saved with this product.'
+                      : 'Upload your own stock photo, or one you have permission to use. PNG, JPG or WebP, up to 5 MB.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CutLinkPalette.color(0xFF666A70),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: !enabled
+                          ? null
+                          : () async {
+                              try {
+                                if (!await ensureSupplierPhotoTerms(context)) {
+                                  return;
+                                }
+                                await draft.pick();
+                              } catch (error) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Unable to select picture: $error',
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               }
-                            }
-                          },
-                    icon: const Icon(Icons.upload_outlined, size: 18),
-                    label: const Text('Upload picture'),
-                  ),
-                  TextButton.icon(
-                    onPressed: enabled ? draft.remove : null,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Remove'),
-                  ),
-                  TextButton(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (dialogContext) => CutLinkReviewTheme(
-                        child: AlertDialog(
-                          title: const Text('Supplier photo terms'),
-                          content: const SizedBox(
-                            width: 620,
-                            child: SingleChildScrollView(
-                              child: SelectableText(SupplierPhotoPolicy.terms),
+                            },
+                      icon: const Icon(Icons.upload_outlined, size: 18),
+                      label: const Text('Upload picture'),
+                    ),
+                    TextButton.icon(
+                      onPressed: enabled ? draft.remove : null,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Remove'),
+                    ),
+                    TextButton(
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (dialogContext) => CutLinkReviewTheme(
+                          child: AlertDialog(
+                            title: const Text('Supplier photo terms'),
+                            content: const SizedBox(
+                              width: 620,
+                              child: SingleChildScrollView(
+                                child: SelectableText(
+                                  SupplierPhotoPolicy.terms,
+                                ),
+                              ),
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: const Text('Close'),
+                              ),
+                            ],
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogContext),
-                              child: const Text('Close'),
-                            ),
-                          ],
                         ),
                       ),
+                      child: const Text('Supplier photo terms'),
                     ),
-                    child: const Text('Supplier photo terms'),
-                  ),
-                ],
-              ),
-            ],
-          );
-          if (box.maxWidth < 560) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [image, const SizedBox(height: 10), controls],
+                  ],
+                ),
+              ],
             );
-          }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              image,
-              const SizedBox(width: 18),
-              Expanded(child: controls),
-            ],
-          );
-        },
+            if (box.maxWidth < 560) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [image, const SizedBox(height: 10), controls],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                image,
+                const SizedBox(width: 18),
+                Expanded(child: controls),
+              ],
+            );
+          },
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

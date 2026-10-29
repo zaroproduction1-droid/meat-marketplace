@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -358,12 +359,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Add the caller without leaving the sale.',
                             style: TextStyle(
-                              color: Color(0xFF666666),
+                              color: CutLinkPalette.color(0xFF666666),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -372,7 +373,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         TextField(
                           controller: businessNameController,
                           autofocus: true,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Business name *',
                             border: OutlineInputBorder(),
                           ),
@@ -380,7 +381,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         const IosGap(height: 12),
                         TextField(
                           controller: contactNameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Contact name',
                             border: OutlineInputBorder(),
                           ),
@@ -388,7 +389,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         const IosGap(height: 12),
                         TextField(
                           controller: abnController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'ABN (optional)',
                             border: OutlineInputBorder(),
                           ),
@@ -401,7 +402,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                               Expanded(
                                 child: TextField(
                                   controller: phoneController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Phone',
                                     border: OutlineInputBorder(),
                                   ),
@@ -411,7 +412,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                               Expanded(
                                 child: TextField(
                                   controller: emailController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Email',
                                     border: OutlineInputBorder(),
                                   ),
@@ -423,7 +424,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         const IosGap(height: 12),
                         TextField(
                           controller: address1Controller,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Delivery address',
                             border: OutlineInputBorder(),
                           ),
@@ -431,7 +432,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         const IosGap(height: 12),
                         TextField(
                           controller: address2Controller,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Address line 2 (optional)',
                             border: OutlineInputBorder(),
                           ),
@@ -445,7 +446,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                                 flex: 2,
                                 child: TextField(
                                   controller: suburbController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Suburb',
                                     border: OutlineInputBorder(),
                                   ),
@@ -455,7 +456,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                               Expanded(
                                 child: TextField(
                                   controller: stateController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'State',
                                     border: OutlineInputBorder(),
                                   ),
@@ -465,7 +466,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                               Expanded(
                                 child: TextField(
                                   controller: postcodeController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Postcode',
                                     border: OutlineInputBorder(),
                                   ),
@@ -478,7 +479,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         DropdownButtonFormField<String>(
                           isExpanded: isPhoneLayout(context),
                           initialValue: paymentMethod,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Default payment method',
                             border: OutlineInputBorder(),
                           ),
@@ -514,7 +515,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             initialValue: paymentTermsDays == 0
                                 ? 7
                                 : paymentTermsDays,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Payment terms',
                               border: OutlineInputBorder(),
                             ),
@@ -857,10 +858,10 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8F8F6),
+                              color: CutLinkPalette.color(0xFFF8F8F6),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: const Color(0xFFE3E3DF),
+                                color: CutLinkPalette.color(0xFFE3E3DF),
                               ),
                             ),
                             child: const Text(
@@ -907,7 +908,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                           controller: notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Line notes (optional)',
                             border: OutlineInputBorder(),
                           ),
@@ -994,12 +995,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (catchWeight) ...[
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Catch-weight: cartons ordered, rate per kg.',
                           style: TextStyle(
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1040,7 +1041,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       controller: notesController,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Line notes (optional)',
                         border: OutlineInputBorder(),
                       ),
@@ -1433,12 +1434,13 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'Phone Sales Desk',
@@ -1494,7 +1496,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                     child: DropdownButtonFormField<String>(
                       initialValue: _selectedCustomerAccountId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Customer',
                         hintText: 'Select an existing customer',
                         border: OutlineInputBorder(),
@@ -1553,8 +1555,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                         .isNotEmpty)
                       _selectedCustomer()?['email'],
                   ].whereType<Object>().join(' • '),
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666666),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1564,7 +1566,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             DropdownButtonFormField<String>(
               isExpanded: isPhoneLayout(context),
               initialValue: _orderSource,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Order source',
                 border: OutlineInputBorder(),
               ),
@@ -1597,7 +1599,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   child: DropdownButtonFormField<String>(
                     isExpanded: isPhoneLayout(context),
                     initialValue: _paymentMethod,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Payment method',
                       border: OutlineInputBorder(),
                     ),
@@ -1638,7 +1640,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       initialValue: _paymentTermsDays == 0
                           ? 7
                           : _paymentTermsDays,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Terms',
                         border: OutlineInputBorder(),
                       ),
@@ -1661,7 +1663,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   child: DropdownButtonFormField<String>(
                     isExpanded: isPhoneLayout(context),
                     initialValue: _fulfilmentMethod,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Pickup / delivery',
                       border: OutlineInputBorder(),
                     ),
@@ -1713,7 +1715,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Delivery fee',
                         prefixText: r'$ ',
                         border: OutlineInputBorder(),
@@ -1725,7 +1727,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             const IosGap(height: 14),
             TextField(
               controller: _sourceReferenceController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Source reference (optional)',
                 hintText:
                     'Example: phone call note, email subject, rep reference',
@@ -1748,7 +1750,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               controller: _deliveryNotesController,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Delivery notes (optional)',
                 border: OutlineInputBorder(),
               ),
@@ -1758,7 +1760,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               controller: _internalNotesController,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Internal notes (optional)',
                 border: OutlineInputBorder(),
               ),
@@ -1773,7 +1775,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             const IosGap(height: 14),
             TextField(
               controller: _productSearchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Find a product',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
@@ -1783,9 +1785,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             Container(
               constraints: const BoxConstraints(maxHeight: 260),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0E0)),
               ),
               child: _filteredProducts.isEmpty
                   ? const Center(
@@ -1834,14 +1836,14 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE0E0E0)),
                 ),
-                child: const Text(
+                child: Text(
                   'No products added yet.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF666666)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
                 ),
               )
             else
@@ -1851,9 +1853,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0E0)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1863,9 +1865,12 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                   const IosGap(height: 5),
-                  const Text(
+                  Text(
                     'Save a pricing enquiry as a quote, or create the sale and warehouse work order immediately.',
-                    style: TextStyle(color: Color(0xFF666666), height: 1.4),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF666666),
+                      height: 1.4,
+                    ),
                   ),
                   const IosGap(height: 16),
                   LayoutBuilder(
@@ -1959,7 +1964,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(

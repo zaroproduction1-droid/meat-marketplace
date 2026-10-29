@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'cutlink_pricing_page.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
@@ -101,8 +102,8 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   );
 
   Widget _header() => DecoratedBox(
-    decoration: const BoxDecoration(
-      color: Colors.white,
+    decoration: BoxDecoration(
+      color: CutLinkPalette.surface,
       border: Border(bottom: BorderSide(color: PublicPagePalette.border)),
     ),
     child: _frame(
@@ -151,7 +152,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
             onPressed: widget.onSignIn,
             style: OutlinedButton.styleFrom(
               foregroundColor: PublicPagePalette.text,
-              side: const BorderSide(color: PublicPagePalette.border),
+              side: BorderSide(color: PublicPagePalette.border),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -188,7 +189,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
         ),
       ),
       const IosGap(height: 18),
-      const Text(
+      Text(
         'Buying, selling and running your business — together in CutLink.',
         style: TextStyle(
           color: PublicPagePalette.muted,
@@ -222,7 +223,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
         ),
       ),
       const IosGap(height: 14),
-      const Wrap(
+      Wrap(
         spacing: 8,
         runSpacing: 4,
         children: [
@@ -290,7 +291,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
           key: _productKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'See it in action.',
               style: TextStyle(
                 fontSize: 32,
@@ -308,14 +309,14 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                   label: const Text('For butchers'),
                   selected: !_supplier,
                   onSelected: (_) => setState(() => _supplier = false),
-                  selectedColor: const Color(0xFFF1E5E7),
+                  selectedColor: CutLinkPalette.color(0xFFF1E5E7),
                   labelStyle: const TextStyle(color: PublicPagePalette.primary),
                 ),
                 ChoiceChip(
                   label: const Text('For suppliers'),
                   selected: _supplier,
                   onSelected: (_) => setState(() => _supplier = true),
-                  selectedColor: const Color(0xFFF1E5E7),
+                  selectedColor: CutLinkPalette.color(0xFFF1E5E7),
                   labelStyle: const TextStyle(color: PublicPagePalette.primary),
                 ),
               ],
@@ -347,10 +348,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
               _supplier
                   ? 'Sales · Inventory · Buyer approvals · Accounting · Analytics'
                   : 'Marketplace · Ordering · Purchasing · Accounting · Analytics',
-              style: const TextStyle(
-                color: PublicPagePalette.muted,
-                height: 1.5,
-              ),
+              style: TextStyle(color: PublicPagePalette.muted, height: 1.5),
             ),
           ],
         ),
@@ -359,76 +357,79 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   }
 
   @override
-  Widget build(BuildContext context) => Theme(
-    data: ThemeData(
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: PublicPagePalette.primary,
-        brightness: Brightness.light,
-        surface: PublicPagePalette.background,
-      ).copyWith(primary: PublicPagePalette.primary),
-      dividerColor: PublicPagePalette.border,
-    ),
-    child: Scaffold(
-      backgroundColor: PublicPagePalette.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _hero(),
-                    _product(),
-                    _frame(
-                      KeyedSubtree(
-                        key: _communityKey,
-                        child: FeaturedBusinessesSection(
-                          onRegister: widget.onRegister,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Theme(
+      data: ThemeData(
+        brightness: Theme.of(context).brightness,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: PublicPagePalette.primary,
+          brightness: Theme.of(context).brightness,
+          surface: PublicPagePalette.background,
+        ).copyWith(primary: PublicPagePalette.primary),
+        dividerColor: PublicPagePalette.border,
+      ),
+      child: Scaffold(
+        backgroundColor: PublicPagePalette.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _header(),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _hero(),
+                      _product(),
+                      _frame(
+                        KeyedSubtree(
+                          key: _communityKey,
+                          child: FeaturedBusinessesSection(
+                            onRegister: widget.onRegister,
+                          ),
                         ),
                       ),
-                    ),
-                    _frame(
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Divider(color: PublicPagePalette.border),
-                          const IosGap(height: 20),
-                          Wrap(
-                            spacing: 32,
-                            runSpacing: 16,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              _brand(),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const LegalInfoPage(),
+                      _frame(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Divider(color: PublicPagePalette.border),
+                            const IosGap(height: 20),
+                            Wrap(
+                              spacing: 32,
+                              runSpacing: 16,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                _brand(),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const LegalInfoPage(),
+                                    ),
+                                  ),
+                                  child: const Text('Privacy & policies'),
+                                ),
+                                Text(
+                                  '© ${DateTime.now().year} CutLink',
+                                  style: TextStyle(
+                                    color: PublicPagePalette.muted,
+                                    fontSize: 12,
                                   ),
                                 ),
-                                child: const Text('Privacy & policies'),
-                              ),
-                              Text(
-                                '© ${DateTime.now().year} CutLink',
-                                style: const TextStyle(
-                                  color: PublicPagePalette.muted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
+                        vertical: 20,
                       ),
-                      vertical: 20,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

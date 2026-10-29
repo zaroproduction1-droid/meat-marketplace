@@ -148,7 +148,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: PublicPagePalette.text,
             fontSize: 12,
             fontWeight: FontWeight.w800,
@@ -262,7 +262,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
         Text(
           _steps[stage].$4,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: PublicPagePalette.muted,
             fontSize: 12,
             height: 1.4,
@@ -282,7 +282,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Icon(
               Icons.shopping_bag_outlined,
@@ -308,20 +308,17 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
           spacing: 16,
           runSpacing: 8,
           children: [
-            const Text(
+            Text(
               '2 pieces',
               style: TextStyle(color: PublicPagePalette.text, fontSize: 12),
             ),
-            const Text(
+            Text(
               '\$24/kg',
               style: TextStyle(color: PublicPagePalette.text, fontSize: 12),
             ),
             Text(
               stage >= 2 ? '9.4 kg actual' : 'Weight at picking',
-              style: const TextStyle(
-                color: PublicPagePalette.muted,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: PublicPagePalette.muted, fontSize: 12),
             ),
             Text(
               stage >= 3
@@ -386,7 +383,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                 ),
               ],
             ),
-            const Text(
+            Text(
               'The butcher orders.\nThe supplier fulfils.',
               style: TextStyle(
                 color: PublicPagePalette.text,
@@ -424,7 +421,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                   const IosGap(height: 8),
                   Text(
                     step.$1,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: PublicPagePalette.text,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -433,7 +430,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
                   const IosGap(height: 9),
                   Text(
                     step.$3,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: PublicPagePalette.muted,
                       fontSize: 14,
                       height: 1.6,
@@ -478,7 +475,7 @@ class _TradeStoryAnimationState extends State<TradeStoryAnimation>
               ],
             ),
             const IosGap(height: 12),
-            const Text(
+            Text(
               'Illustrative delivery order. Product value excludes delivery and other adjustments. Pickup uses ready/collected stages. Payment remains subject to supplier confirmation.',
               style: TextStyle(
                 color: PublicPagePalette.muted,

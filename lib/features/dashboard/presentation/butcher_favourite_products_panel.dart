@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
 
@@ -149,6 +150,7 @@ class _ButcherFavouriteProductsPanelState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (_loading) {
       return const IosPadding(
         padding: EdgeInsets.all(24),
@@ -192,9 +194,9 @@ class _ButcherFavouriteProductsPanelState
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBFC),
+        color: CutLinkPalette.color(0xFFFBFBFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E7E9)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE6E7E9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,9 +240,9 @@ class _ButcherFavouriteProductsPanelState
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBFC),
+        color: CutLinkPalette.color(0xFFFBFBFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E7E9)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE6E7E9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,7 +270,10 @@ class _ButcherFavouriteProductsPanelState
             supplier.toString(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6E7278)),
+            style: TextStyle(
+              fontSize: 12,
+              color: CutLinkPalette.color(0xFF6E7278),
+            ),
           ),
           if (grade.isNotEmpty)
             Text(

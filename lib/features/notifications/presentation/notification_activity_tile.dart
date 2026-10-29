@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -29,6 +30,7 @@ class NotificationActivityTile extends StatelessWidget {
   };
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final read = row['is_read'] == true;
     final category = row['category']?.toString() ?? 'activity';
     final date = DateTime.tryParse(
@@ -38,10 +40,10 @@ class NotificationActivityTile extends StatelessWidget {
         ? ''
         : '${compact ? '' : '${date.day}/${date.month} • '}${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     return Material(
-      color: read ? Colors.white : const Color(0xFFFCF7F7),
+      color: read ? Colors.white : CutLinkPalette.color(0xFFFCF7F7),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: CutLinkWorkspaceTheme.border),
+        side: BorderSide(color: CutLinkWorkspaceTheme.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -55,7 +57,7 @@ class NotificationActivityTile extends StatelessWidget {
                 width: compact ? 34 : 42,
                 height: compact ? 34 : 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4E5E5),
+                  color: CutLinkPalette.color(0xFFF4E5E5),
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
@@ -76,9 +78,9 @@ class NotificationActivityTile extends StatelessWidget {
                             category == 'moderation'
                                 ? 'PRODUCT REVIEW'
                                 : category.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF6A6E75),
+                              color: CutLinkPalette.color(0xFF6A6E75),
                               fontWeight: FontWeight.w700,
                               letterSpacing: .7,
                             ),
@@ -86,9 +88,9 @@ class NotificationActivityTile extends StatelessWidget {
                         ),
                         Text(
                           time,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF6A6E75),
+                            color: CutLinkPalette.color(0xFF6A6E75),
                           ),
                         ),
                         if (onDelete != null)
@@ -130,10 +132,10 @@ class NotificationActivityTile extends StatelessWidget {
                         row['detail'].toString(),
                         maxLines: compact ? 2 : null,
                         overflow: compact ? TextOverflow.ellipsis : null,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
-                          color: Color(0xFF6A6E75),
+                          color: CutLinkPalette.color(0xFF6A6E75),
                         ),
                       ),
                     ],

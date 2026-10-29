@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/widgets/supplier_specification_field.dart';
@@ -751,7 +752,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 TextField(
                   controller: name,
                   autofocus: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Specification name',
                     hintText: 'Enter the missing trade specification',
                     border: OutlineInputBorder(),
@@ -762,7 +763,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   controller: details,
                   minLines: 3,
                   maxLines: 5,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Specification details (optional)',
                     hintText:
                         'Trim, preparation, code or other defining details',
@@ -1124,9 +1125,9 @@ class _AddProductPageState extends State<AddProductPage> {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E3DF)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E3DF)),
       ),
       child: collapsed
           ? ExpansionTile(
@@ -1149,7 +1150,7 @@ class _AddProductPageState extends State<AddProductPage> {
                       height: 40,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4EAEA),
+                        color: CutLinkPalette.color(0xFFF4EAEA),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(icon, color: _darkRed, size: 21),
@@ -1161,17 +1162,17 @@ class _AddProductPageState extends State<AddProductPage> {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF2A2A2A),
+                              color: CutLinkPalette.color(0xFF2A2A2A),
                             ),
                           ),
                           const IosGap(height: 3),
                           Text(
                             subtitle,
-                            style: const TextStyle(
-                              color: Color(0xFF6B6B6B),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF6B6B6B),
                               fontSize: 12.5,
                               height: 1.35,
                             ),
@@ -1259,14 +1260,16 @@ class _AddProductPageState extends State<AddProductPage> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: enabled ? Colors.white : const Color(0xFFF3F3F1),
+                  color: enabled
+                      ? CutLinkPalette.surface
+                      : CutLinkPalette.color(0xFFF3F3F1),
                   borderRadius: BorderRadius.circular(13),
                   border: Border.all(
                     color: field.hasError
                         ? Colors.red.shade700
                         : hasValue
-                        ? const Color(0xFFC9B1B1)
-                        : const Color(0xFFD8D8D4),
+                        ? CutLinkPalette.color(0xFFC9B1B1)
+                        : CutLinkPalette.color(0xFFD8D8D4),
                     width: hasValue ? 1.2 : 1,
                   ),
                 ),
@@ -1278,8 +1281,8 @@ class _AddProductPageState extends State<AddProductPage> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: hasValue
-                            ? const Color(0xFFF4E8E8)
-                            : const Color(0xFFF1F1EE),
+                            ? CutLinkPalette.color(0xFFF4E8E8)
+                            : CutLinkPalette.color(0xFFF1F1EE),
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: loading
@@ -1295,7 +1298,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               size: 18,
                               color: hasValue
                                   ? _darkRed
-                                  : const Color(0xFF777777),
+                                  : CutLinkPalette.color(0xFF777777),
                             ),
                     ),
                     const SizedBox(width: 11),
@@ -1305,9 +1308,9 @@ class _AddProductPageState extends State<AddProductPage> {
                         children: [
                           Text(
                             label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10.5,
-                              color: Color(0xFF777777),
+                              color: CutLinkPalette.color(0xFF777777),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1324,17 +1327,17 @@ class _AddProductPageState extends State<AddProductPage> {
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: hasValue
-                                  ? const Color(0xFF262626)
-                                  : const Color(0xFF999999),
+                                  ? CutLinkPalette.color(0xFF262626)
+                                  : CutLinkPalette.color(0xFF999999),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
+                    Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF666666),
+                      color: CutLinkPalette.color(0xFF666666),
                     ),
                   ],
                 ),
@@ -1346,8 +1349,8 @@ class _AddProductPageState extends State<AddProductPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   helperText,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 11,
                     height: 1.25,
                   ),
@@ -1391,7 +1394,7 @@ class _AddProductPageState extends State<AddProductPage> {
   Widget _chickenSpecifications() => _twoFields(
     TextFormField(
       controller: _chickenSizeWeight,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Bird size label (optional)',
         helperText: 'Use Piece size for searchable weight ranges.',
         border: OutlineInputBorder(),
@@ -1399,7 +1402,7 @@ class _AddProductPageState extends State<AddProductPage> {
     ),
     TextFormField(
       controller: _chickenCartonSize,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Pack label (optional)',
         border: OutlineInputBorder(),
       ),
@@ -1476,7 +1479,7 @@ class _AddProductPageState extends State<AddProductPage> {
           TextFormField(
             controller: _goatCartonWeight,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Carton / Pack Weight (optional)',
               suffixText: 'kg',
               border: OutlineInputBorder(),
@@ -1484,7 +1487,7 @@ class _AddProductPageState extends State<AddProductPage> {
           ),
           TextFormField(
             controller: _originCountry,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Country of Origin',
               border: OutlineInputBorder(),
             ),
@@ -1495,7 +1498,7 @@ class _AddProductPageState extends State<AddProductPage> {
           _twoFields(
             TextFormField(
               controller: _lotBatch,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Lot / Batch (optional)',
                 border: OutlineInputBorder(),
               ),
@@ -1512,11 +1515,14 @@ class _AddProductPageState extends State<AddProductPage> {
           ),
         ],
         const IosGap(height: 10),
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Fat Class describes fat cover only; it is not a quality ranking.',
-            style: TextStyle(color: Color(0xFF6B6B6B), fontSize: 11.5),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF6B6B6B),
+              fontSize: 11.5,
+            ),
           ),
         ),
       ],
@@ -1525,6 +1531,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (_loading) {
       return const Scaffold(
         body: WorkspaceLoading(label: 'Loading product form…'),
@@ -1552,7 +1559,7 @@ class _AddProductPageState extends State<AddProductPage> {
       },
       child: CutLinkReviewTheme(
         child: Scaffold(
-          backgroundColor: const Color(0xFFF6F6F3),
+          backgroundColor: CutLinkPalette.color(0xFFF6F6F3),
           appBar: phoneAppBar(
             context,
             AppBar(
@@ -1592,12 +1599,12 @@ class _AddProductPageState extends State<AddProductPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'Create Supplier Product',
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF262626),
+                            color: CutLinkPalette.color(0xFF262626),
                           ),
                         ),
                         const IosGap(height: 4),
@@ -1605,8 +1612,8 @@ class _AddProductPageState extends State<AddProductPage> {
                           _isChicken
                               ? 'Chicken uses cut, sub-cut and practical product specifications instead of beef-style grades.'
                               : 'Create an inventory product using the CutLink animal, cut and category structure.',
-                          style: const TextStyle(
-                            color: Color(0xFF6A6A6A),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF6A6A6A),
                             height: 1.4,
                           ),
                         ),
@@ -1910,7 +1917,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               _twoFields(
                                 TextFormField(
                                   controller: _sku,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Supplier SKU / Product Code',
                                     border: OutlineInputBorder(),
                                   ),
@@ -1920,7 +1927,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 TextFormField(
                                   controller: _productName,
                                   readOnly: true,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Product Name',
                                     helperText:
                                         'Linked to the selected CutLink sub-cut.',
@@ -1952,7 +1959,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 controller: _description,
                                 minLines: 2,
                                 maxLines: 4,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Description (optional)',
                                   border: OutlineInputBorder(),
                                 ),
@@ -1977,7 +1984,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
                                     ),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Standard Price inc GST',
                                   prefixText: '\$',
                                   suffixText: '/ kg',
@@ -2028,7 +2035,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                     TextFormField(
                                       controller: _piecesPerCarton,
                                       keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         labelText: 'Units / Pieces per Carton',
                                         border: OutlineInputBorder(),
                                       ),
@@ -2101,7 +2108,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Pack weight',
                                 suffixText: 'kg',
                                 border: OutlineInputBorder(),
@@ -2191,7 +2198,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 _twoFields(
                                   TextFormField(
                                     controller: _trim,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText:
                                           'Trim Specification (optional)',
                                       border: OutlineInputBorder(),
@@ -2199,7 +2206,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   ),
                                   TextFormField(
                                     controller: _fat,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Fat Specification (optional)',
                                       border: OutlineInputBorder(),
                                     ),
@@ -2209,14 +2216,14 @@ class _AddProductPageState extends State<AddProductPage> {
                                 _twoFields(
                                   TextFormField(
                                     controller: _originCountry,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Country of Origin',
                                       border: OutlineInputBorder(),
                                     ),
                                   ),
                                   TextFormField(
                                     controller: _originState,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'State of Origin (optional)',
                                       border: OutlineInputBorder(),
                                     ),
@@ -2236,7 +2243,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               controller: _supplierNotes,
                               minLines: 3,
                               maxLines: 6,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText:
                                     'Supplier Specification / Notes (optional)',
                                 border: OutlineInputBorder(),

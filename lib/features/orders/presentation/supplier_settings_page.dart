@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
@@ -24,9 +25,9 @@ class SupplierSettingsPage extends StatelessWidget {
   final VoidCallback? onBrandingChanged;
 
   static const _darkRed = Color(0xFF741C1C);
-  static const _canvas = Color(0xFFF7F8FA);
-  static const _border = Color(0xFFE3E5E8);
-  static const _muted = Color(0xFF666A70);
+  static Color get _canvas => CutLinkPalette.color(0xFFF7F8FA);
+  static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
+  static Color get _muted => CutLinkPalette.color(0xFF666A70);
 
   Widget _body(BuildContext context) {
     return Align(
@@ -36,6 +37,7 @@ class SupplierSettingsPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
+            const AppearanceSettingsTile(),
             const MembershipSettingsLink(),
             ListTile(
               leading: const Icon(Icons.privacy_tip_outlined),
@@ -49,7 +51,7 @@ class SupplierSettingsPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _border),
                   boxShadow: const [
@@ -60,7 +62,7 @@ class SupplierSettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.tune_outlined, color: _darkRed, size: 22),
                     SizedBox(width: 10),
@@ -207,8 +209,8 @@ class SupplierSettingsPage extends StatelessWidget {
     return Container(
       height: 62,
       padding: const EdgeInsets.symmetric(horizontal: 22),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
         border: Border(bottom: BorderSide(color: _border)),
       ),
       child: Row(
@@ -217,7 +219,7 @@ class SupplierSettingsPage extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
+              color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
@@ -227,7 +229,7 @@ class SupplierSettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,7 +244,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Color(0xFF74787E),
+                    color: CutLinkPalette.color(0xFF74787E),
                     fontSize: 10.8,
                     fontWeight: FontWeight.w600,
                   ),
@@ -257,6 +259,7 @@ class SupplierSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (embedded) {
       return ColoredBox(
         color: _canvas,
@@ -274,7 +277,7 @@ class SupplierSettingsPage extends StatelessWidget {
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -289,7 +292,7 @@ class SupplierSettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
             child: Divider(height: 1, thickness: 1, color: _border),
           ),
@@ -314,11 +317,12 @@ class _SettingsTile extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _darkRed = Color(0xFF741C1C);
-  static const _border = Color(0xFFE3E5E8);
-  static const _muted = Color(0xFF666A70);
+  static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
+  static Color get _muted => CutLinkPalette.color(0xFF666A70);
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
@@ -346,7 +350,7 @@ class _SettingsTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8EEEE),
+                  color: CutLinkPalette.color(0xFFF8EEEE),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: _darkRed, size: 20),
@@ -358,16 +362,16 @@ class _SettingsTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF1E2329),
+                        color: CutLinkPalette.color(0xFF1E2329),
                       ),
                     ),
                     const IosGap(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _muted,
                         fontSize: 11.5,
                         height: 1.35,
@@ -377,11 +381,11 @@ class _SettingsTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const IosPadding(
+              IosPadding(
                 padding: EdgeInsets.only(top: 7),
                 child: Icon(
                   Icons.chevron_right,
-                  color: Color(0xFF8A8F96),
+                  color: CutLinkPalette.color(0xFF8A8F96),
                   size: 20,
                 ),
               ),
@@ -395,7 +399,9 @@ class _SettingsTile extends StatelessWidget {
 
 class _SupplierSettingsData {
   static List<Map<String, dynamic>> maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
     return value
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
@@ -522,13 +528,17 @@ class _SupplierProfileSettingsPageState
       _state.text = business['state']?.toString() ?? '';
       _postcode.text = business['postcode']?.toString() ?? '';
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -538,7 +548,9 @@ class _SupplierProfileSettingsPageState
 
   Future<void> _save() async {
     final businessId = _businessId;
-    if (businessId == null || _saving) return;
+    if (businessId == null || _saving) {
+      return;
+    }
 
     setState(() => _saving = true);
 
@@ -575,7 +587,9 @@ class _SupplierProfileSettingsPageState
       _state.text = saved['state']?.toString() ?? '';
       _postcode.text = saved['postcode']?.toString() ?? '';
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Business profile saved successfully.')),
@@ -601,6 +615,7 @@ class _SupplierProfileSettingsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Business Profile',
       loading: _loading,
@@ -771,14 +786,18 @@ class _SupplierInvoiceConfigurationPageState
             profile['retail_labelling_notice']?.toString() ?? '';
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _logoPath = logoPath.isEmpty ? null : logoPath;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -788,7 +807,9 @@ class _SupplierInvoiceConfigurationPageState
 
   String? _logoPublicUrl() {
     final path = _logoPath;
-    if (path == null || path.isEmpty) return null;
+    if (path == null || path.isEmpty) {
+      return null;
+    }
     return Supabase.instance.client.storage
         .from('business-branding')
         .getPublicUrl(path);
@@ -796,13 +817,17 @@ class _SupplierInvoiceConfigurationPageState
 
   Future<void> _pickLogo() async {
     final businessId = _businessId;
-    if (businessId == null || _uploadingLogo) return;
+    if (businessId == null || _uploadingLogo) {
+      return;
+    }
 
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg'],
     );
-    if (result.isEmpty) return;
+    if (result.isEmpty) {
+      return;
+    }
 
     final file = result.first;
     final bytes = await file.readAsBytes();
@@ -857,7 +882,9 @@ class _SupplierInvoiceConfigurationPageState
         } catch (_) {}
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _logoPath = newPath;
         _logoBytes = bytes;
@@ -885,14 +912,18 @@ class _SupplierInvoiceConfigurationPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _uploadingLogo = false);
+      if (mounted) {
+        setState(() => _uploadingLogo = false);
+      }
     }
   }
 
   Future<void> _removeLogo() async {
     final businessId = _businessId;
     final path = _logoPath;
-    if (businessId == null || path == null || _uploadingLogo) return;
+    if (businessId == null || path == null || _uploadingLogo) {
+      return;
+    }
 
     setState(() => _uploadingLogo = true);
     try {
@@ -905,7 +936,9 @@ class _SupplierInvoiceConfigurationPageState
         await client.storage.from('business-branding').remove([path]);
       } catch (_) {}
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _logoPath = null;
         _logoBytes = null;
@@ -921,7 +954,9 @@ class _SupplierInvoiceConfigurationPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _uploadingLogo = false);
+      if (mounted) {
+        setState(() => _uploadingLogo = false);
+      }
     }
   }
 
@@ -935,17 +970,17 @@ class _SupplierInvoiceConfigurationPageState
     } else if (logoUrl != null) {
       preview = SharpLogo.network(
         logoUrl,
-        errorBuilder: (_, _, _) => const Icon(
+        errorBuilder: (_, _, _) => Icon(
           Icons.business_outlined,
           size: 38,
-          color: Color(0xFF777777),
+          color: CutLinkPalette.color(0xFF777777),
         ),
       );
     } else {
-      preview = const Icon(
+      preview = Icon(
         Icons.business_outlined,
         size: 38,
-        color: Color(0xFF777777),
+        color: CutLinkPalette.color(0xFF777777),
       );
     }
 
@@ -953,9 +988,9 @@ class _SupplierInvoiceConfigurationPageState
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: CutLinkPalette.color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.stack,
@@ -967,9 +1002,9 @@ class _SupplierInvoiceConfigurationPageState
               height: 82,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFDADDE0)),
+                border: Border.all(color: CutLinkPalette.color(0xFFDADDE0)),
               ),
               child: preview,
             ),
@@ -983,10 +1018,10 @@ class _SupplierInvoiceConfigurationPageState
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                   ),
                   const IosGap(height: 4),
-                  const Text(
+                  Text(
                     'Used automatically on your CutLink supplier identity, quotes and invoices. PNG or JPG, up to 5 MB.',
                     style: TextStyle(
-                      color: Color(0xFF666A70),
+                      color: CutLinkPalette.color(0xFF666A70),
                       fontSize: 11.5,
                       height: 1.35,
                     ),
@@ -1028,7 +1063,9 @@ class _SupplierInvoiceConfigurationPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -1075,12 +1112,15 @@ class _SupplierInvoiceConfigurationPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Invoice Configuration',
       loading: _loading,
@@ -1209,13 +1249,17 @@ class _SupplierPrivacySettingsPageState
             settings['share_contact_with_approved_customers'] != false;
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -1224,7 +1268,9 @@ class _SupplierPrivacySettingsPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -1248,12 +1294,15 @@ class _SupplierPrivacySettingsPageState
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Privacy',
       loading: _loading,
@@ -1347,13 +1396,17 @@ class _SupplierNotificationSettingsPageState
         _invoiceUpdates = settings['notify_invoice_updates'] != false;
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -1362,7 +1415,9 @@ class _SupplierNotificationSettingsPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -1402,12 +1457,15 @@ class _SupplierNotificationSettingsPageState
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Notification settings',
       loading: _loading,
@@ -1502,9 +1560,9 @@ class _SettingsFormScaffold extends StatelessWidget {
   final Widget child;
 
   static const _darkRed = Color(0xFF741C1C);
-  static const _canvas = Color(0xFFF7F8FA);
-  static const _border = Color(0xFFE3E5E8);
-  static const _muted = Color(0xFF666A70);
+  static Color get _canvas => CutLinkPalette.color(0xFFF7F8FA);
+  static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
+  static Color get _muted => CutLinkPalette.color(0xFF666A70);
 
   IconData get _pageIcon {
     switch (title) {
@@ -1540,7 +1598,7 @@ class _SettingsFormScaffold extends StatelessWidget {
     return phoneAppBar(
       context,
       AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: CutLinkPalette.surface,
         surfaceTintColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -1555,7 +1613,7 @@ class _SettingsFormScaffold extends StatelessWidget {
             ),
           ],
         ),
-        bottom: const PreferredSize(
+        bottom: PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: _border),
         ),
@@ -1565,6 +1623,7 @@ class _SettingsFormScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (loading) {
       return Scaffold(
         backgroundColor: _canvas,
@@ -1584,7 +1643,7 @@ class _SettingsFormScaffold extends StatelessWidget {
               margin: const EdgeInsets.all(24),
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _border),
                 boxShadow: const [
@@ -1603,8 +1662,8 @@ class _SettingsFormScaffold extends StatelessWidget {
                   Text(
                     error!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF4B4F55),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF4B4F55),
                       height: 1.4,
                     ),
                   ),
@@ -1646,7 +1705,7 @@ class _SettingsFormScaffold extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _border),
                   boxShadow: const [
@@ -1663,7 +1722,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8EEEE),
+                        color: CutLinkPalette.color(0xFFF8EEEE),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(_pageIcon, color: _darkRed, size: 23),
@@ -1683,7 +1742,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                           const IosGap(height: 3),
                           Text(
                             _pageDescription,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _muted,
                               fontSize: 12.5,
                               height: 1.4,
@@ -1699,7 +1758,7 @@ class _SettingsFormScaffold extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _border),
                   boxShadow: const [
@@ -1763,6 +1822,7 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return IosPadding(
       padding: const EdgeInsets.only(bottom: 12),
       child: PhoneRow(
@@ -1780,10 +1840,10 @@ class _SectionHeading extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF1E2329),
+                color: CutLinkPalette.color(0xFF1E2329),
               ),
             ),
           ],
@@ -1808,14 +1868,14 @@ Widget _field(
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: CutLinkPalette.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+          borderSide: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFD9DDE1)),
+          borderSide: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
         ),
       ),
     ),

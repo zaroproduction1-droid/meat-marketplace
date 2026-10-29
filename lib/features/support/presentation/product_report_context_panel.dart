@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
@@ -213,6 +214,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (_loading) {
       return const IosPadding(
         padding: EdgeInsets.all(16),
@@ -256,7 +258,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Material(
-            color: const Color(0xFFF1F2F3),
+            color: CutLinkPalette.color(0xFFF1F2F3),
             borderRadius: BorderRadius.circular(10),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -299,7 +301,10 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                 : data['source_path'] == null
                 ? 'No supplier photo was attached when reported'
                 : 'Original photo; a saved copy is not confirmed',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF666666)),
+            style: TextStyle(
+              fontSize: 11,
+              color: CutLinkPalette.color(0xFF666666),
+            ),
           ),
         ],
       ),
@@ -371,17 +376,17 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8F9FB),
+              decoration: BoxDecoration(
+                color: CutLinkPalette.color(0xFFF8F9FB),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
               ),
               child: Row(
@@ -525,9 +530,12 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                       ],
                     ),
                     const IosGap(height: 10),
-                    const Text(
+                    Text(
                       'Review this product to take action. The report will close automatically; supplier follow-up continues separately.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF555555)),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: CutLinkPalette.color(0xFF555555),
+                      ),
                     ),
                     const IosGap(height: 10),
                     if (data['closed'] != true)
@@ -548,9 +556,12 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                         ),
                       ),
                     const IosGap(height: 6),
-                    const Text(
+                    Text(
                       'Use the chat below if a conversation is needed.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF666666)),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: CutLinkPalette.color(0xFF666666),
+                      ),
                     ),
                   ],
                 ),

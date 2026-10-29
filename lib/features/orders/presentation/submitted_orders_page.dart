@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
 import '../../../shared/widgets/workspace_back_button.dart';
@@ -81,7 +82,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   Future<void> _loadOrders() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _orders.isEmpty;
       _errorMessage = null;
     });
 
@@ -516,20 +517,20 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             .where((value) => value.isNotEmpty)
             .join(', ');
 
-    Color background = const Color(0xFFEAF6F8);
+    Color background = CutLinkPalette.color(0xFFEAF6F8);
     Color foreground = const Color(0xFF27666F);
     IconData icon = Icons.local_shipping_outlined;
 
     if (stopStatus == 'failed') {
-      background = const Color(0xFFFDECEC);
+      background = CutLinkPalette.color(0xFFFDECEC);
       foreground = const Color(0xFFB3261E);
       icon = Icons.error_outline;
     } else if (stopStatus == 'delivered') {
-      background = const Color(0xFFE8F5E9);
+      background = CutLinkPalette.color(0xFFE8F5E9);
       foreground = const Color(0xFF2E7D32);
       icon = Icons.check_circle_outline;
     } else if (stopStatus == 'pending' || stopStatus == 'loaded') {
-      background = const Color(0xFFFFF4E5);
+      background = CutLinkPalette.color(0xFFFFF4E5);
       foreground = const Color(0xFF8A5B00);
       icon = Icons.event_available_outlined;
     }
@@ -586,8 +587,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             const IosGap(height: 6),
             Text(
               'Delivery instructions: $instructions',
-              style: const TextStyle(
-                color: Color(0xFF555555),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF555555),
                 fontSize: 11,
                 height: 1.35,
               ),
@@ -682,15 +683,15 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     switch (status) {
       case 'approved':
       case 'resolved':
-        return const Color(0xFFE8F5E9);
+        return CutLinkPalette.color(0xFFE8F5E9);
       case 'rejected':
       case 'cancelled':
-        return const Color(0xFFFDECEC);
+        return CutLinkPalette.color(0xFFFDECEC);
       case 'under_review':
-        return const Color(0xFFFFF4E5);
+        return CutLinkPalette.color(0xFFFFF4E5);
       case 'requested':
       default:
-        return const Color(0xFFEAF1FB);
+        return CutLinkPalette.color(0xFFEAF1FB);
     }
   }
 
@@ -777,8 +778,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
             decoration: BoxDecoration(
               color: stage['complete'] == true
-                  ? const Color(0xFFE8F5E9)
-                  : const Color(0xFFF1F1EF),
+                  ? CutLinkPalette.color(0xFFE8F5E9)
+                  : CutLinkPalette.color(0xFFF1F1EF),
               borderRadius: BorderRadius.circular(999),
               border: stage['active'] == true
                   ? Border.all(
@@ -799,7 +800,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   size: 15,
                   color: stage['complete'] == true
                       ? const Color(0xFF2E7D32)
-                      : const Color(0xFF666A70),
+                      : CutLinkPalette.color(0xFF666A70),
                 ),
                 const SizedBox(width: 5),
                 Text(
@@ -811,7 +812,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         ? const Color(0xFFB3261E)
                         : stage['complete'] == true
                         ? const Color(0xFF2E7D32)
-                        : const Color(0xFF666A70),
+                        : CutLinkPalette.color(0xFF666A70),
                   ),
                 ),
               ],
@@ -980,7 +981,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         params: {'target_order_id': orderId},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await _loadOrders();
     } on PostgrestException catch (error) {
@@ -1199,8 +1202,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
               decoration: BoxDecoration(
                 color: supplier
-                    ? const Color(0xFFEAF1FB)
-                    : const Color(0xFFF5EAEA),
+                    ? CutLinkPalette.color(0xFFEAF1FB)
+                    : CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
@@ -1209,16 +1212,16 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 ),
                 border: Border.all(
                   color: supplier
-                      ? const Color(0xFFC6D7EB)
-                      : const Color(0xFFD7B8B8),
+                      ? CutLinkPalette.color(0xFFC6D7EB)
+                      : CutLinkPalette.color(0xFFD7B8B8),
                 ),
               ),
               child: Text(
                 body,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 1.4,
-                  color: Color(0xFF2F2F2F),
+                  color: CutLinkPalette.color(0xFF2F2F2F),
                 ),
               ),
             ),
@@ -1228,8 +1231,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 padding: const EdgeInsets.symmetric(horizontal: 5),
                 child: Text(
                   date,
-                  style: const TextStyle(
-                    color: Color(0xFF888888),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF888888),
                     fontSize: 9.5,
                   ),
                 ),
@@ -1251,9 +1254,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE1E1DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E1DD)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1265,7 +1268,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 height: 32,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5EAEA),
+                  color: CutLinkPalette.color(0xFFF5EAEA),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 17, color: const Color(0xFF741C1C)),
@@ -1313,9 +1316,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           otherParty: _supplierName(order),
         ),
       );
-      if (mounted) await _loadOrders();
+      if (mounted) {
+        await _loadOrders();
+      }
     } finally {
-      if (mounted) setState(() => _sendingFollowUpIssueId = null);
+      if (mounted) {
+        setState(() => _sendingFollowUpIssueId = null);
+      }
     }
   }
 
@@ -1570,8 +1577,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: _isWithinIssueWindow(order)
-                                  ? const Color(0xFFE8F5E9)
-                                  : const Color(0xFFFFF4E5),
+                                  ? CutLinkPalette.color(0xFFE8F5E9)
+                                  : CutLinkPalette.color(0xFFFFF4E5),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -1627,7 +1634,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           DropdownButtonFormField<String>(
                             isExpanded: isPhoneLayout(context),
                             initialValue: reason,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Issue reason',
                               border: OutlineInputBorder(),
                             ),
@@ -1679,7 +1686,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           DropdownButtonFormField<String>(
                             isExpanded: isPhoneLayout(context),
                             initialValue: requestedOutcome,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText:
                                   'What would you like the supplier to do?',
                               border: OutlineInputBorder(),
@@ -1718,7 +1725,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             minLines: 4,
                             maxLines: 7,
                             enabled: !saving,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Describe the issue',
                               hintText:
                                   'Explain what is wrong, the affected quantity, condition and any important delivery details.',
@@ -1726,11 +1733,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             ),
                           ),
                           const IosGap(height: 12),
-                          const Text(
+                          Text(
                             'The supplier will review this report and confirm the final resolution. '
                             'Submitting a request does not automatically create a refund or credit.',
                             style: TextStyle(
-                              color: Color(0xFF666666),
+                              color: CutLinkPalette.color(0xFF666666),
                               height: 1.4,
                               fontSize: 12,
                             ),
@@ -1816,9 +1823,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFB),
+        color: CutLinkPalette.color(0xFFFAFAFB),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E3DF)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E3DF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1860,9 +1867,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E3DF)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E3DF)),
       ),
       child: Wrap(
         spacing: 24,
@@ -1948,9 +1955,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAFB),
+                  color: CutLinkPalette.color(0xFFFAFAFB),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1964,8 +1971,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: supplierUpdated
-                                ? const Color(0xFFEAF1FB)
-                                : const Color(0xFFFFF4E5),
+                                ? CutLinkPalette.color(0xFFEAF1FB)
+                                : CutLinkPalette.color(0xFFFFF4E5),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
@@ -1995,8 +2002,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               const IosGap(height: 3),
                               Text(
                                 'Reported ${_formatDate(issue['reported_at'])}',
-                                style: const TextStyle(
-                                  color: Color(0xFF777777),
+                                style: TextStyle(
+                                  color: CutLinkPalette.color(0xFF777777),
                                   fontSize: 10.5,
                                 ),
                               ),
@@ -2038,10 +2045,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (affectedNames.isNotEmpty) ...[
-                            const Text(
+                            Text(
                               'Affected products',
                               style: TextStyle(
-                                color: Color(0xFF777777),
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -2061,10 +2068,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   .trim()
                                   .isNotEmpty ==
                               true) ...[
-                            const Text(
+                            Text(
                               'Description',
                               style: TextStyle(
-                                color: Color(0xFF777777),
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -2094,12 +2101,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         label: Text(sending ? 'Sending' : 'Reply'),
                       ),
                       child: messages.isEmpty
-                          ? const IosPadding(
+                          ? IosPadding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Text(
                                 'No messages yet. Send the supplier a message if you need an update.',
                                 style: TextStyle(
-                                  color: Color(0xFF777777),
+                                  color: CutLinkPalette.color(0xFF777777),
                                   fontSize: 11,
                                 ),
                               ),
@@ -2169,8 +2176,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   const IosGap(height: 8),
                                   Text(
                                     'Updated ${_issueUpdateDate(issue)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF777777),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF777777),
                                       fontSize: 10,
                                     ),
                                   ),
@@ -2179,7 +2186,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             )
                           : PhoneRow(
                               mode: PhoneRowMode.wrap,
-                              desktop: const Row(
+                              desktop: Row(
                                 children: [
                                   Icon(
                                     Icons.schedule_outlined,
@@ -2190,7 +2197,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   Text(
                                     'Waiting for supplier response.',
                                     style: TextStyle(
-                                      color: Color(0xFF666666),
+                                      color: CutLinkPalette.color(0xFF666666),
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -2205,9 +2212,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       Container(
                         padding: const EdgeInsets.all(11),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
+                          color: CutLinkPalette.color(0xFFE8F5E9),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFB7D7BA)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFB7D7BA),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -2374,7 +2383,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   bool _isInFulfilment(Map<String, dynamic> order) {
     final status = order['status']?.toString();
-    if (status == 'dispatched' || status == 'delivered') return true;
+    if (status == 'dispatched' || status == 'delivered') {
+      return true;
+    }
 
     if (order['fulfilment_method']?.toString() == 'pickup') {
       return order['ready_for_pickup_at'] != null;
@@ -2384,7 +2395,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   }
 
   bool _canMarkReceived(Map<String, dynamic> order) {
-    if (_sentInvoiceForOrder(order) == null) return false;
+    if (_sentInvoiceForOrder(order) == null) {
+      return false;
+    }
 
     final status = order['status']?.toString();
     if (order['fulfilment_method']?.toString() == 'pickup') {
@@ -2413,7 +2426,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           .not('sent_to_butcher_at', 'is', null)
           .single();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await Navigator.of(context).push(
         MaterialPageRoute(
@@ -2475,7 +2490,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
     setState(() => _updatingOrderId = orderId);
 
     try {
@@ -2484,7 +2501,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         params: {'target_order_id': orderId},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -2502,7 +2521,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
@@ -2593,18 +2614,18 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     switch (status) {
       case 'accepted':
       case 'completed':
-        return const Color(0xFFE8F5E9);
+        return CutLinkPalette.color(0xFFE8F5E9);
       case 'declined':
       case 'cancelled':
-        return const Color(0xFFFDECEC);
+        return CutLinkPalette.color(0xFFFDECEC);
       case 'processing':
-        return const Color(0xFFFFF4E5);
+        return CutLinkPalette.color(0xFFFFF4E5);
       case 'dispatched':
       case 'delivered':
-        return const Color(0xFFEAF6F8);
+        return CutLinkPalette.color(0xFFEAF6F8);
       case 'submitted':
       default:
-        return const Color(0xFFEAF1FB);
+        return CutLinkPalette.color(0xFFEAF1FB);
     }
   }
 
@@ -2657,8 +2678,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       }
     }
 
-    if (dateText.isEmpty) return timeText;
-    if (timeText.isEmpty) return dateText;
+    if (dateText.isEmpty) {
+      return timeText;
+    }
+    if (timeText.isEmpty) {
+      return dateText;
+    }
     return '$dateText • $timeText';
   }
 
@@ -2753,7 +2778,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
                 return Material(
                   color: selected
-                      ? const Color(0xFFF5EAEA)
+                      ? CutLinkPalette.color(0xFFF5EAEA)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(11),
                   child: InkWell(
@@ -2769,8 +2794,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         borderRadius: BorderRadius.circular(9),
                         border: Border.all(
                           color: selected
-                              ? const Color(0xFFC79898)
-                              : const Color(0xFFE3E3DF),
+                              ? CutLinkPalette.color(0xFFC79898)
+                              : CutLinkPalette.color(0xFFE3E3DF),
                         ),
                       ),
                       child: Row(
@@ -2781,8 +2806,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: openIssues > 0
-                                  ? const Color(0xFFFDECEC)
-                                  : const Color(0xFFF1F6F1),
+                                  ? CutLinkPalette.color(0xFFFDECEC)
+                                  : CutLinkPalette.color(0xFFF1F6F1),
                               borderRadius: BorderRadius.circular(9),
                             ),
                             child: Icon(
@@ -2812,8 +2837,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   _supplierName(order),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
+                                  style: TextStyle(
+                                    color: CutLinkPalette.color(0xFF666666),
                                     fontSize: 10.5,
                                   ),
                                 ),
@@ -2874,9 +2899,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
                 return Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: CutLinkPalette.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE3E5E8)),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2933,11 +2958,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               }
 
               return Scaffold(
-                backgroundColor: const Color(0xFFF7F8FA),
+                backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
                 appBar: phoneAppBar(
                   context,
                   AppBar(
-                    backgroundColor: Colors.white,
+                    backgroundColor: CutLinkPalette.surface,
                     surfaceTintColor: Colors.white,
                     title: const Text(
                       'Issues & Returns',
@@ -2970,10 +2995,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
                           final queue = Container(
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: CutLinkPalette.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFE3E5E8),
+                                color: CutLinkPalette.color(0xFFE3E5E8),
                               ),
                             ),
                             child: Column(
@@ -2992,11 +3017,13 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 const Divider(height: 1),
                                 Expanded(
                                   child: issueOrders.isEmpty
-                                      ? const Center(
+                                      ? Center(
                                           child: Text(
                                             'No issues or returns.',
                                             style: TextStyle(
-                                              color: Color(0xFF777777),
+                                              color: CutLinkPalette.color(
+                                                0xFF777777,
+                                              ),
                                             ),
                                           ),
                                         )
@@ -3050,13 +3077,14 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
           leading: const WorkspaceBackButton(),
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -3080,7 +3108,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               onPressed: _openIssuesPanel,
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF741C1C),
-                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
@@ -3155,17 +3183,17 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     ),
                               isDense: true,
                               filled: true,
-                              fillColor: const Color(0xFFFAFAFB),
+                              fillColor: CutLinkPalette.color(0xFFFAFAFB),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(9),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFDADAD6),
+                                borderSide: BorderSide(
+                                  color: CutLinkPalette.color(0xFFDADAD6),
                                 ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(9),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFDADAD6),
+                                borderSide: BorderSide(
+                                  color: CutLinkPalette.color(0xFFDADAD6),
                                 ),
                               ),
                             ),
@@ -3179,7 +3207,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           isScrollable: true,
                           tabAlignment: TabAlignment.start,
                           labelColor: const Color(0xFF741C1C),
-                          unselectedLabelColor: const Color(0xFF666A70),
+                          unselectedLabelColor: CutLinkPalette.color(
+                            0xFF666A70,
+                          ),
                           indicatorColor: const Color(0xFF741C1C),
                           indicatorWeight: 3,
                           labelPadding: const EdgeInsets.symmetric(
@@ -3223,7 +3253,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               decoration: BoxDecoration(
                 color: tab.key == 'pending' || tab.key == 'issues'
                     ? const Color(0xFFB3261E)
-                    : const Color(0xFFE9E9E6),
+                    : CutLinkPalette.color(0xFFE9E9E6),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -3232,7 +3262,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 style: TextStyle(
                   color: tab.key == 'pending' || tab.key == 'issues'
                       ? Colors.white
-                      : const Color(0xFF444444),
+                      : CutLinkPalette.color(0xFF444444),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -3343,12 +3373,12 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _hasOpenIssues(order)
                   ? const Color(0xFFD8A0A0)
-                  : const Color(0xFFE3E5E8),
+                  : CutLinkPalette.color(0xFFE3E5E8),
             ),
           ),
           child: LayoutBuilder(
@@ -3399,7 +3429,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3E9F7),
+                                  color: CutLinkPalette.color(0xFFF3E9F7),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
@@ -3501,10 +3531,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
+                      Text(
                         'TOTAL INC GST',
                         style: TextStyle(
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 9.5,
                           fontWeight: FontWeight.w900,
                         ),
@@ -3575,9 +3605,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     Widget productsPanel() {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x06000000),
@@ -3605,8 +3635,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   const Spacer(),
                   Text(
                     '${items.length} line${items.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777777),
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -3633,9 +3663,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9F9F7),
+                      color: CutLinkPalette.color(0xFFF9F9F7),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE3E5E8)),
+                      border: Border.all(
+                        color: CutLinkPalette.color(0xFFE3E5E8),
+                      ),
                     ),
                     child: PhoneRow(
                       mode: PhoneRowMode.wrap,
@@ -3663,8 +3695,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   const IosGap(height: 2),
                                   Text(
                                     'SKU ${item['sku_snapshot']}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF777777),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF777777),
                                       fontSize: 10.5,
                                     ),
                                   ),
@@ -3675,8 +3707,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                   '${_unitLabel(item['quantity_unit']?.toString())}'
                                   ' × ${_money(item['unit_price'])}'
                                   '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'} inc GST',
-                                  style: const TextStyle(
-                                    color: Color(0xFF555555),
+                                  style: TextStyle(
+                                    color: CutLinkPalette.color(0xFF555555),
                                     fontSize: 11.5,
                                   ),
                                 ),
@@ -3707,9 +3739,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x06000000),
@@ -3746,7 +3778,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDECEC),
+                  color: CutLinkPalette.color(0xFFFDECEC),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFE7B7B3)),
                 ),
@@ -3900,11 +3932,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: Text(
             order['order_number']?.toString() ?? 'Order',
@@ -3919,9 +3951,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           final header = Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Row(
               children: [
@@ -3940,8 +3972,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       const IosGap(height: 2),
                       Text(
                         pickup ? 'Pickup order' : 'Delivery order',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
                           fontSize: 11.5,
                         ),
                       ),
@@ -4026,6 +4058,7 @@ class _CompactBuyerOrderFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 120,
       child: Column(
@@ -4033,8 +4066,8 @@ class _CompactBuyerOrderFact extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
@@ -4079,17 +4112,18 @@ class _TimelineChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final background = closed
-        ? const Color(0xFFFDECEC)
+        ? CutLinkPalette.color(0xFFFDECEC)
         : complete
-        ? const Color(0xFFE8F5E9)
-        : const Color(0xFFF1F1EF);
+        ? CutLinkPalette.color(0xFFE8F5E9)
+        : CutLinkPalette.color(0xFFF1F1EF);
 
     final foreground = closed
         ? const Color(0xFFB3261E)
         : complete
         ? const Color(0xFF2E7D32)
-        : const Color(0xFF666A70);
+        : CutLinkPalette.color(0xFF666A70);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -4129,6 +4163,7 @@ class _InfoBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 220,
       child: Column(
@@ -4136,8 +4171,8 @@ class _InfoBlock extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -4163,6 +4198,7 @@ class _TotalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final style = TextStyle(
       fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
       fontSize: bold ? 17 : 15,

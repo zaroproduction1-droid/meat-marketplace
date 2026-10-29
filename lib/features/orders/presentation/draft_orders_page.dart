@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -17,7 +18,7 @@ class DraftOrdersPage extends StatefulWidget {
 
 class _DraftOrdersPageState extends State<DraftOrdersPage> {
   static const _darkRed = Color(0xFF741C1C);
-  static const _canvas = Color(0xFFF5F6F8);
+  static Color get _canvas => CutLinkPalette.color(0xFFF5F6F8);
   bool _isLoading = true;
   String? _errorMessage;
   String? _butcherBusinessId;
@@ -34,7 +35,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   Future<void> _loadDraftOrders() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _orders.isEmpty;
       _errorMessage = null;
     });
 
@@ -505,7 +506,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 children: [
                   TextField(
                     controller: referenceController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Customer reference',
                       hintText: 'Example: PO-1048 or shop reference',
                       border: OutlineInputBorder(),
@@ -516,7 +517,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     controller: deliveryController,
                     minLines: 3,
                     maxLines: 5,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Delivery notes',
                       hintText: 'Example: Deliver Friday before 10am',
                       border: OutlineInputBorder(),
@@ -712,7 +713,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         margin: const EdgeInsets.only(top: 14),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF4E5),
+          color: CutLinkPalette.color(0xFFFFF4E5),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFFE7C27A)),
         ),
@@ -738,10 +739,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: met ? const Color(0xFFF2F7F2) : const Color(0xFFFFF4E5),
+        color: met
+            ? CutLinkPalette.color(0xFFF2F7F2)
+            : CutLinkPalette.color(0xFFFFF4E5),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: met ? const Color(0xFFB7D5B7) : const Color(0xFFE7C27A),
+          color: met
+              ? CutLinkPalette.color(0xFFB7D5B7)
+              : const Color(0xFFE7C27A),
         ),
       ),
       child: Row(
@@ -778,7 +783,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         order['delivery_lead_time_days_snapshot'] != null ||
         _deliveryFee(order) > 0;
 
-    if (!hasSnapshot) return const SizedBox.shrink();
+    if (!hasSnapshot) {
+      return const SizedBox.shrink();
+    }
 
     final fee = _deliveryFee(order);
     final address =
@@ -798,9 +805,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F8FA),
+          color: CutLinkPalette.color(0xFFF7F8FA),
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: PhoneRow(
           mode: PhoneRowMode.wrap,
@@ -827,9 +834,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,8 +849,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             const IosGap(height: 6),
             Text(
               address,
-              style: const TextStyle(
-                color: Color(0xFF55585D),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF55585D),
                 fontSize: 11.5,
                 height: 1.35,
               ),
@@ -939,10 +946,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         );
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       await _loadDraftOrders();
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Fulfilment option not saved',
@@ -971,10 +982,12 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFFFFF3F3) : Colors.white,
+              color: selected
+                  ? CutLinkPalette.color(0xFFFFF3F3)
+                  : CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: selected ? _darkRed : const Color(0xFFE1E3E6),
+                color: selected ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
                 width: selected ? 1.5 : 1,
               ),
             ),
@@ -986,7 +999,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     Icon(
                       icon,
                       size: 19,
-                      color: selected ? _darkRed : const Color(0xFF5B6168),
+                      color: selected
+                          ? _darkRed
+                          : CutLinkPalette.color(0xFF5B6168),
                     ),
                     const SizedBox(width: 7),
                     Expanded(
@@ -995,8 +1010,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.w900,
                           color: enabled
-                              ? const Color(0xFF20242A)
-                              : const Color(0xFF9A9EA4),
+                              ? CutLinkPalette.color(0xFF20242A)
+                              : CutLinkPalette.color(0xFF9A9EA4),
                         ),
                       ),
                     ),
@@ -1005,15 +1020,17 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           ? Icons.radio_button_checked
                           : Icons.radio_button_off,
                       size: 18,
-                      color: selected ? _darkRed : const Color(0xFFB0B3B8),
+                      color: selected
+                          ? _darkRed
+                          : CutLinkPalette.color(0xFFB0B3B8),
                     ),
                   ],
                 ),
                 const IosGap(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF73777D),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF73777D),
                     fontSize: 10.5,
                     height: 1.3,
                   ),
@@ -1080,23 +1097,33 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   DateTime? _requestedDate(Map<String, dynamic> order) {
     final raw = order['requested_fulfilment_date']?.toString().trim();
-    if (raw == null || raw.isEmpty) return null;
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
     return DateTime.tryParse(raw);
   }
 
   TimeOfDay? _requestedTime(Map<String, dynamic> order) {
     final raw = order['requested_fulfilment_time']?.toString().trim();
-    if (raw == null || raw.isEmpty) return null;
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
     final parts = raw.split(':');
-    if (parts.length < 2) return null;
+    if (parts.length < 2) {
+      return null;
+    }
     final hour = int.tryParse(parts[0]);
     final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
+    if (hour == null || minute == null) {
+      return null;
+    }
     return TimeOfDay(hour: hour, minute: minute);
   }
 
   String _dateLabel(DateTime? date) {
-    if (date == null) return 'Choose requested date';
+    if (date == null) {
+      return 'Choose requested date';
+    }
     const months = <String>[
       'Jan',
       'Feb',
@@ -1116,7 +1143,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   String _timeLabel(BuildContext context, Map<String, dynamic> order) {
     final time = _requestedTime(order);
-    if (time == null) return '12:00 PM default';
+    if (time == null) {
+      return '12:00 PM default';
+    }
     return time.format(context);
   }
 
@@ -1133,7 +1162,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(now.year + 2),
     );
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
 
     final value = picked.toIso8601String().split('T').first;
     try {
@@ -1143,10 +1174,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => order['requested_fulfilment_date'] = value);
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Date not saved',
@@ -1162,7 +1197,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       initialTime:
           _requestedTime(order) ?? const TimeOfDay(hour: 12, minute: 0),
     );
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
 
     final value =
         '${picked.hour.toString().padLeft(2, '0')}:'
@@ -1174,10 +1211,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => order['requested_fulfilment_time'] = value);
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Time not saved',
@@ -1195,10 +1236,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           .eq('id', order['id'])
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => order['requested_fulfilment_time'] = null);
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Time not reset',
@@ -1261,7 +1306,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           _openOrderId = null;
         }
       });
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Order removed',
@@ -1269,7 +1316,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       );
       await _loadDraftOrders();
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Could not remove order',
@@ -1291,9 +1340,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBFA),
+        color: CutLinkPalette.color(0xFFFBFBFA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1357,8 +1406,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               const IosGap(height: 4),
               Text(
                 'Choose the requested $fulfilmentLabel day. Time is optional and defaults to 12:00 PM if left blank.',
-                style: const TextStyle(
-                  color: Color(0xFF666A70),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666A70),
                   fontSize: 11.5,
                 ),
               ),
@@ -1462,7 +1511,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     try {
       final payload = <String, dynamic>{
@@ -1481,7 +1532,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         final deliveryAddress = await _resolveDefaultDeliveryAddress();
 
         if (deliveryAddress == null) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           CutLinkNotice.show(
             context,
             title: 'Delivery address required',
@@ -1497,7 +1550,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         final postcode = deliveryAddress['postcode']?.toString().trim() ?? '';
 
         if (addressLine1.isEmpty || postcode.isEmpty) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           CutLinkNotice.show(
             context,
             title: 'Delivery address incomplete',
@@ -1518,7 +1573,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           .eq('butcher_business_id', _butcherBusinessId!)
           .eq('status', 'draft');
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       CutLinkNotice.show(
         context,
@@ -1529,7 +1586,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
       await _loadDraftOrders();
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       CutLinkNotice.show(
         context,
         title: 'Something went wrong',
@@ -1559,8 +1618,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             const IosGap(height: 3),
             Text(
               '${_orders.length} supplier order${_orders.length == 1 ? '' : 's'}',
-              style: const TextStyle(
-                color: Color(0xFF6A6E75),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF6A6E75),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1571,8 +1630,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         if (compactDesktop) {
           return Container(
             padding: const EdgeInsets.fromLTRB(2, 2, 2, 6),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+              ),
             ),
             child: Row(
               children: [
@@ -1639,8 +1700,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                         _supplierName(order),
                         style: TextStyle(
                           color: selected
-                              ? const Color(0xFF202020)
-                              : const Color(0xFF55585D),
+                              ? CutLinkPalette.color(0xFF202020)
+                              : CutLinkPalette.color(0xFF55585D),
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1648,8 +1709,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       const IosGap(height: 2),
                       Text(
                         '$itemCount product line${itemCount == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                          color: Color(0xFF777B80),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF777B80),
                           fontSize: 10.5,
                         ),
                       ),
@@ -1675,7 +1736,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   Icon(
                     selected ? Icons.expand_less : Icons.expand_more,
                     size: 19,
-                    color: selected ? _darkRed : const Color(0xFF777B80),
+                    color: selected
+                        ? _darkRed
+                        : CutLinkPalette.color(0xFF777B80),
                   ),
                 ],
               ),
@@ -1688,13 +1751,14 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {'page': 'cart'});
     return Scaffold(
       backgroundColor: _canvas,
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -1721,9 +1785,13 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -1737,9 +1805,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1762,8 +1830,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     const IosGap(height: 4),
                     Text(
                       'Order $reference  •  ${items.length} product line${items.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF666A70),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666A70),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1778,7 +1846,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   icon: const Icon(Icons.close_rounded),
                   color: _darkRed,
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFF3F3),
+                    backgroundColor: CutLinkPalette.color(0xFFFFF3F3),
                   ),
                 ),
               ),
@@ -1796,8 +1864,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               const Spacer(),
               Text(
                 '${items.length} line${items.length == 1 ? '' : 's'}',
-                style: const TextStyle(
-                  color: Color(0xFF666A70),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666A70),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1806,11 +1874,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           ),
           const IosGap(height: 8),
           if (items.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Text(
                 'This draft order has no products.',
-                style: TextStyle(color: Color(0xFF666666)),
+                style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
               ),
             )
           else
@@ -1831,7 +1899,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8EA),
+                color: CutLinkPalette.color(0xFFFFF8EA),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFE7D7AF)),
               ),
@@ -1912,9 +1980,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -1932,10 +2000,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
           const IosGap(height: 4),
-          const Text(
+          Text(
             'Choose how and when you want this order fulfilled.',
             style: TextStyle(
-              color: Color(0xFF6A6E75),
+              color: CutLinkPalette.color(0xFF6A6E75),
               fontSize: 11.5,
               height: 1.35,
             ),
@@ -1949,9 +2017,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F8FA),
+                color: CutLinkPalette.color(0xFFF6F8FA),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E5E8)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE2E5E8)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1965,8 +2033,8 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                   Expanded(
                     child: Text(
                       'Pickup from ${_supplierName(order)}. The supplier will receive your requested pickup date and time.',
-                      style: const TextStyle(
-                        color: Color(0xFF555A60),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF555A60),
                         fontSize: 11.5,
                         height: 1.4,
                       ),
@@ -1981,9 +2049,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFBFBFA),
+              color: CutLinkPalette.color(0xFFFBFBFA),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2008,16 +2076,16 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 ),
                 Text(
                   'Reference: ${order['customer_reference'] == null || order['customer_reference'].toString().trim().isEmpty ? 'Not provided' : order['customer_reference']}',
-                  style: const TextStyle(
-                    color: Color(0xFF60646A),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF60646A),
                     fontSize: 11.5,
                   ),
                 ),
                 const IosGap(height: 5),
                 Text(
                   'Notes: ${order['delivery_notes'] == null || order['delivery_notes'].toString().trim().isEmpty ? 'Not provided' : order['delivery_notes']}',
-                  style: const TextStyle(
-                    color: Color(0xFF60646A),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF60646A),
                     fontSize: 11.5,
                     height: 1.35,
                   ),
@@ -2095,11 +2163,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 46),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.shopping_cart_outlined, size: 58, color: _darkRed),
@@ -2112,7 +2180,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 Text(
                   'Products added from the marketplace are grouped into a separate draft for each supplier.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF666A70), height: 1.45),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666A70),
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -2222,6 +2293,7 @@ class _OrderItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final quantity = formatNumber(item['quantity']);
     final quantityUnit = unitLabel(item['quantity_unit']?.toString());
 
@@ -2233,8 +2305,10 @@ class _OrderItemCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -2255,7 +2329,7 @@ class _OrderItemCard extends StatelessWidget {
                   item['sku_snapshot'].toString().trim().isNotEmpty)
                 Text(
                   'SKU: ${item['sku_snapshot']}',
-                  style: const TextStyle(color: Color(0xFF666666)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
                 ),
               const IosGap(height: 8),
               Text(
@@ -2264,14 +2338,14 @@ class _OrderItemCard extends StatelessWidget {
                           '$price${priceBasis.isEmpty ? '' : ' / $priceBasis'}'
                     : '$quantity $quantityUnit × '
                           '$price${priceBasis.isEmpty ? '' : ' / $priceBasis'}',
-                style: const TextStyle(color: Color(0xFF555555)),
+                style: TextStyle(color: CutLinkPalette.color(0xFF555555)),
               ),
               if (isCatchWeight) ...[
                 const IosGap(height: 5),
-                const Text(
+                Text(
                   'Final kilograms and product total pending supplier weight.',
                   style: TextStyle(
-                    color: Color(0xFF666666),
+                    color: CutLinkPalette.color(0xFF666666),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2346,6 +2420,7 @@ class _TotalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final style = TextStyle(
       fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
       fontSize: bold ? 17 : 15,

@@ -1,3 +1,5 @@
+import 'shared/theme/cutlink_appearance.dart';
+
 import 'dart:convert';
 
 import 'features/landing/presentation/cutlink_landing_content.dart';
@@ -58,6 +60,7 @@ Future<void> main() async {
     publishableKey: supabasePublishableKey,
   );
 
+  await CutLinkAppearance.instance.load();
   runApp(const CutLinkApp());
 }
 
@@ -66,43 +69,75 @@ class CutLinkApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CutLink',
-      navigatorObservers: [PageLocation.instance],
-      debugShowCheckedModeBanner: false,
-      builder: (context, child) => useIosWorkspace(context)
-          ? Theme(
-              data: IosWorkspaceStyle.theme(Theme.of(context)),
-              child: child!,
-            )
-          : child!,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F7F5),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF7A1F1F),
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Arial',
-        snackBarTheme: SnackBarThemeData(
-          behavior: SnackBarBehavior.floating,
-          width: 440,
-          backgroundColor: const Color(0xFF111C27),
-          elevation: 10,
-          showCloseIcon: true,
-          closeIconColor: Colors.white70,
-          actionTextColor: const Color(0xFFFFD7D7),
-          contentTextStyle: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+    return ListenableBuilder(
+      listenable: CutLinkAppearance.instance,
+      builder: (context, _) => MaterialApp(
+        themeMode: CutLinkAppearance.instance.mode,
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          fontFamily: 'Arial',
+          scaffoldBackgroundColor: const Color(0xFF111113),
+          colorScheme:
+              ColorScheme.fromSeed(
+                seedColor: const Color(0xFF850E25),
+                brightness: Brightness.dark,
+              ).copyWith(
+                primary: const Color(0xFFFF8EA3),
+                onPrimary: const Color(0xFF430014),
+                surface: const Color(0xFF1C1C1E),
+                onSurface: const Color(0xFFF2F2F7),
+              ),
+          appBarTheme: const AppBarThemeData(
+            backgroundColor: Color(0xFF111113),
+            foregroundColor: Color(0xFFF2F2F7),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+          inputDecorationTheme: const InputDecorationTheme(
+            filled: true,
+            fillColor: Color(0xFF252528),
           ),
         ),
+        title: 'CutLink',
+        navigatorObservers: [PageLocation.instance],
+        debugShowCheckedModeBanner: false,
+        builder: (context, child) => AppearanceScope(
+          child: useIosWorkspace(context)
+              ? Theme(
+                  data: IosWorkspaceStyle.theme(Theme.of(context)),
+                  child: child!,
+                )
+              : child!,
+        ),
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF7F7F5),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF7A1F1F),
+            brightness: Brightness.light,
+          ),
+          fontFamily: 'Arial',
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            width: 440,
+            backgroundColor: const Color(0xFF111C27),
+            elevation: 10,
+            showCloseIcon: true,
+            closeIconColor: Colors.white70,
+            actionTextColor: const Color(0xFFFFD7D7),
+            contentTextStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        home: const LandingPage(),
       ),
-      home: const LandingPage(),
     );
   }
 }

@@ -1,3 +1,5 @@
+import '../../../shared/theme/cutlink_appearance.dart';
+import '../../../shared/animal_catalogues/marketplace_search_intent.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/ios_cut_browser.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
@@ -681,6 +683,23 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   }
 
   @override
+  void didUpdateWidget(MarketplaceProductsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSearch != null &&
+        widget.initialSearch != oldWidget.initialSearch) {
+      _restoreSavedSearch(widget.initialSearch!);
+      _loadStock(force: true);
+      if (widget.initialSearch?['open_cut_browser'] == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _openAnimalCatalogue();
+          }
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _favourites.removeListener(_favouritesChanged);
     _favourites.dispose();
@@ -1183,8 +1202,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final cutSelected =
         _selectedSectionId != null || _selectedAnimalRegionKey != null;
     final directSearch = _searchController.text.trim().isNotEmpty || _halalOnly;
-    final globalSearch = directSearch && !cutSelected;
-    final iosBrowsing = useIosWorkspace(context);
+    final globalSearch =
+        (directSearch || _supplierSearchController.text.trim().length >= 2) &&
+        !cutSelected;
+    final stockIntent = hasMarketplaceSearchIntent(
+      cutSelected: cutSelected,
+      query: _searchController.text,
+      supplierQuery: _supplierSearchController.text,
+      halalOnly: _halalOnly,
+    );
     final animal = _catalogueAnimals.where(
       (row) => row['code'] == _selectedAnimalCode,
     );
@@ -1243,13 +1269,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _stockTotal = 0;
       _stockPageOffset = offset;
       _stockError = null;
-      _loadingStock = cutSelected || directSearch || iosBrowsing;
+      _loadingStock = stockIntent;
       if ((_facetScope != facetScope && _requestedFacetScope != facetScope) ||
           force) {
         _facetProducts = [];
       }
     });
-    if (!cutSelected && !directSearch && !iosBrowsing) {
+    if (!stockIntent) {
+      ++_facetLoadVersion;
+      _requestedFacetScope = null;
+      setState(() {
+        _loadingFacets = false;
+        _facetError = null;
+        _stockViewActive = false;
+      });
       return;
     }
     try {
@@ -1272,19 +1305,21 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       // needs distinct choices, not every supplier's variant combination.
       if (_selectedSpecificationId == null &&
           !directSearch &&
-          !iosBrowsing &&
+          !useIosWorkspace(context) &&
           !_stockViewActive) {
         return;
       }
-      final optionLoad = _loadBrowseOptions(
-        scope: facetScope,
-        userId: userId,
-        animalId: animalId,
-        sectionId: sectionId,
-        specificationId: _selectedSpecificationId,
-        compact: _selectedSpecificationId == null || _usesGradeStage,
-        force: force,
-      );
+      final optionLoad = globalSearch
+          ? Future<void>.value()
+          : _loadBrowseOptions(
+              scope: facetScope,
+              userId: userId,
+              animalId: animalId,
+              sectionId: sectionId,
+              specificationId: _selectedSpecificationId,
+              compact: _selectedSpecificationId == null || _usesGradeStage,
+              force: force,
+            );
       if (commercialKeys?.isEmpty == true) {
         await optionLoad;
         if (!mounted || version != _stockLoadVersion) {
@@ -1486,6 +1521,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       });
 
       await _loadStock(force: true);
+      if (mounted && widget.initialSearch?['open_cut_browser'] == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _openAnimalCatalogue();
+          }
+        });
+      }
     } on PostgrestException catch (error) {
       if (!mounted || catalogueVersion != _catalogueLoadVersion) {
         return;
@@ -2269,21 +2311,21 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F6F4),
+        color: CutLinkPalette.color(0xFFF6F6F4),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE1E1DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: const Color(0xFF5A5A5A)),
+          Icon(icon, size: 15, color: CutLinkPalette.color(0xFF5A5A5A)),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF4E4E4E),
+              color: CutLinkPalette.color(0xFF4E4E4E),
             ),
           ),
         ],
@@ -2621,19 +2663,23 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             constraints: const BoxConstraints(minHeight: 34),
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFF741C1C) : Colors.white,
+              color: selected
+                  ? const Color(0xFF741C1C)
+                  : CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: selected
                     ? const Color(0xFF741C1C)
-                    : const Color(0xFFD9D9D5),
+                    : CutLinkPalette.color(0xFFD9D9D5),
               ),
             ),
             child: Center(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF444444),
+                  color: selected
+                      ? Colors.white
+                      : CutLinkPalette.color(0xFF444444),
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2704,7 +2750,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -2715,7 +2761,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Icon(icon, size: 19, color: const Color(0xFF741C1C)),
           ),
@@ -2821,8 +2867,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               selectedColor: const Color(0xFF741C1C),
-              backgroundColor: const Color(0xFFF4E5E5),
-              side: const BorderSide(color: Color(0xFFD7B8B8)),
+              backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
+              side: BorderSide(color: CutLinkPalette.color(0xFFD7B8B8)),
               label: Text(
                 grade['code']?.toString() ?? 'N/A',
                 style: TextStyle(
@@ -2861,7 +2907,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4E5E5),
+        color: CutLinkPalette.color(0xFFF4E5E5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -2877,6 +2923,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return PhoneStockScaffold(
       endDrawer: useIosWorkspace(context)
           ? Drawer(
@@ -2920,7 +2967,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             )
           : null,
       ready: !_isLoading && _errorMessage == null,
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
@@ -2932,7 +2979,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   tooltip: 'Back to dashboard',
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -2981,7 +3028,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     : Icons.favorite_border,
                 color: _favourites.hasSearch(_savedSearchFilters())
                     ? const Color(0xFFB32632)
-                    : const Color(0xFF747980),
+                    : CutLinkPalette.color(0xFF747980),
               ),
             ),
             ScaleTransition(
@@ -3020,7 +3067,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                               ),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: CutLinkPalette.surface,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: const Color(0xFF741C1C),
@@ -3057,9 +3104,13 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -3168,9 +3219,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           height: 56,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           ),
           child: path.isEmpty
               ? fallback
@@ -3212,9 +3263,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x05000000),
@@ -3269,8 +3320,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     const IosGap(height: 4),
                     Text(
                       '${_sectionName(product)} • ${_formatTemperature(product['temperature_state'] as String?)}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -3292,8 +3343,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         commercialSummary,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF3F444A),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF3F444A),
                           fontSize: 13,
                           height: 1.25,
                           fontWeight: FontWeight.w800,
@@ -3307,8 +3358,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                         supplierSpecification.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 10.5,
                         ),
                       ),
@@ -3324,10 +3375,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 ? CrossAxisAlignment.stretch
                 : CrossAxisAlignment.end,
             children: [
-              const Text(
+              Text(
                 'YOUR PRICE',
                 style: TextStyle(
-                  color: Color(0xFF777777),
+                  color: CutLinkPalette.color(0xFF777777),
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                 ),
@@ -3353,9 +3404,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   Container(
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F8FA),
+                      color: CutLinkPalette.color(0xFFF7F8FA),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE3E5E8)),
+                      border: Border.all(
+                        color: CutLinkPalette.color(0xFFE3E5E8),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -3537,9 +3590,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
               const IosGap(height: 6),
-              const Text(
+              Text(
                 'Choose a sub-cut to view supplier offers. Refine grade, size and brand on the results page.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF666A70)),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: CutLinkPalette.color(0xFF666A70),
+                ),
               ),
               const IosGap(height: 10),
               if (specifications.isEmpty)
@@ -3634,7 +3690,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: Color(0xFFE3E5E8)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -3690,7 +3746,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       _supplierName(product),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: IosWorkspaceStyle.muted,
                       ),
@@ -3805,8 +3861,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         padding: const EdgeInsets.only(bottom: 5),
         child: Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF666666),
+          style: TextStyle(
+            color: CutLinkPalette.color(0xFF666666),
             fontSize: 10.5,
             fontWeight: FontWeight.w900,
           ),
@@ -3825,12 +3881,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: _availableOnly ? const Color(0xFFF5EAEA) : Colors.white,
+            color: _availableOnly
+                ? CutLinkPalette.color(0xFFF5EAEA)
+                : CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: _availableOnly
                   ? const Color(0xFFB98585)
-                  : const Color(0xFFDADAD6),
+                  : CutLinkPalette.color(0xFFDADAD6),
             ),
           ),
           child: Row(
@@ -3841,7 +3899,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 size: 16,
                 color: _availableOnly
                     ? const Color(0xFF741C1C)
-                    : const Color(0xFF666A70),
+                    : CutLinkPalette.color(0xFF666A70),
               ),
               const SizedBox(width: 6),
               Text(
@@ -3849,7 +3907,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 style: TextStyle(
                   color: _availableOnly
                       ? const Color(0xFF741C1C)
-                      : const Color(0xFF555555),
+                      : CutLinkPalette.color(0xFF555555),
                   fontSize: 10.5,
                   fontWeight: FontWeight.w900,
                 ),
@@ -3896,14 +3954,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   ),
             isDense: true,
             filled: true,
-            fillColor: const Color(0xFFFBFBF9),
+            fillColor: CutLinkPalette.color(0xFFFBFBF9),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+              borderSide: BorderSide(color: CutLinkPalette.color(0xFFDADAD6)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+              borderSide: BorderSide(color: CutLinkPalette.color(0xFFDADAD6)),
             ),
           ),
         ),
@@ -3913,11 +3971,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget resultsToolbar() {
       return Container(
         padding: const EdgeInsets.fromLTRB(11, 8, 11, 10),
-        decoration: const BoxDecoration(
-          color: Color(0xFFFBFBF9),
+        decoration: BoxDecoration(
+          color: CutLinkPalette.color(0xFFFBFBF9),
           border: Border(
-            top: BorderSide(color: Color(0xFFE0E0DD)),
-            bottom: BorderSide(color: Color(0xFFE0E0DD)),
+            top: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
+            bottom: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
           ),
         ),
         child: Column(
@@ -3948,13 +4006,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                             ),
                       isDense: true,
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: CutLinkPalette.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE0E0DD)),
+                        borderSide: BorderSide(
+                          color: CutLinkPalette.color(0xFFE0E0DD),
+                        ),
                       ),
                     ),
                   ),
@@ -4059,7 +4119,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Row(
               children: [
@@ -4068,7 +4128,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   height: 36,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5EAEA),
+                    color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(icon, size: 18, color: const Color(0xFF741C1C)),
@@ -4091,8 +4151,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                           subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF777777),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF777777),
                             fontSize: 10.5,
                           ),
                         ),
@@ -4137,8 +4197,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   ? 'No subcategories are linked to this cut yet.'
                   : 'No subcategories match “${_searchController.text.trim()}”.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -4239,8 +4299,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   ? 'No stocked products are available for this subcategory yet.'
                   : 'No grades match “${_searchController.text.trim()}”.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -4281,14 +4341,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           .toList();
 
       if (specifications.isEmpty) {
-        return const Center(
+        return Center(
           child: IosPadding(
             padding: EdgeInsets.all(26),
             child: Text(
               'No product specifications are available for this sub-cut.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF777777),
+                color: CutLinkPalette.color(0xFF777777),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -4372,7 +4432,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
         );
       }
       if (_filteredProducts.isEmpty) {
-        return const Center(
+        return Center(
           child: IosPadding(
             padding: EdgeInsets.all(28),
             child: Column(
@@ -4381,7 +4441,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 Icon(
                   Icons.search_off_outlined,
                   size: 46,
-                  color: Color(0xFFAAAAAA),
+                  color: CutLinkPalette.color(0xFFAAAAAA),
                 ),
                 IosGap(height: 10),
                 Text(
@@ -4392,7 +4452,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 Text(
                   'No active supplier product matches these cut and specification choices.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF777777), height: 1.35),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -4423,7 +4486,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget stageContent() => showingStock
         ? supplierStockStage()
         : !cutSelected
-        ? const Center(
+        ? Center(
             child: IosPadding(
               padding: EdgeInsets.all(28),
               child: Column(
@@ -4432,7 +4495,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   Icon(
                     Icons.touch_app_outlined,
                     size: 48,
-                    color: Color(0xFFAAAAAA),
+                    color: CutLinkPalette.color(0xFFAAAAAA),
                   ),
                   IosGap(height: 12),
                   Text(
@@ -4528,9 +4591,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: LayoutBuilder(
           builder: (context, panel) {
@@ -4555,8 +4618,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                             const IosGap(height: 2),
                             Text(
                               subtitle,
-                              style: const TextStyle(
-                                color: Color(0xFF666666),
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF666666),
                                 fontSize: 10.5,
                               ),
                             ),
@@ -4570,7 +4633,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5EAEA),
+                            color: CutLinkPalette.color(0xFFF5EAEA),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -4617,9 +4680,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     Widget catalogueControls() => Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4691,10 +4754,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     );
     if (useIosWorkspace(context)) {
       Widget cutSummary() => Material(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFFE3E5E8)),
+          side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -4758,18 +4821,20 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     padding: const EdgeInsets.only(right: 8),
                     child: Builder(
                       builder: (context) => ActionChip(
-                        backgroundColor: Colors.white,
+                        backgroundColor: CutLinkPalette.surface,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 6,
                         ),
-                        labelStyle: const TextStyle(
+                        labelStyle: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF191919),
+                          color: CutLinkPalette.color(0xFF191919),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
-                          side: const BorderSide(color: Color(0xFFDDC4C4)),
+                          side: BorderSide(
+                            color: CutLinkPalette.color(0xFFDDC4C4),
+                          ),
                         ),
                         avatar: Icon(
                           label == 'Sort' ? Icons.swap_vert : Icons.tune,
@@ -4794,7 +4859,50 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             child: cutSummary(),
           ),
           _stockLoadingStatus(),
-          Expanded(child: supplierStockStage()),
+          Expanded(
+            child:
+                hasMarketplaceSearchIntent(
+                  cutSelected: cutSelected,
+                  query: _searchController.text,
+                  supplierQuery: _supplierSearchController.text,
+                  halalOnly: _halalOnly,
+                )
+                ? supplierStockStage()
+                : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            size: 40,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'What are you looking for?',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Search with at least two letters, or choose an animal and cut.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: _openAnimalCatalogue,
+                            icon: const Icon(Icons.menu_book_outlined),
+                            label: const Text('Choose animal & cut'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
         ],
       );
     }
@@ -4809,9 +4917,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             Expanded(child: productScroll(sideFilters: true)),
             Container(
               width: 234,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(left: BorderSide(color: Color(0xFFE3E5E8))),
+              decoration: BoxDecoration(
+                color: CutLinkPalette.surface,
+                border: Border(
+                  left: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+                ),
               ),
               child: SingleChildScrollView(
                 primary: false,

@@ -268,10 +268,7 @@ class _AccountDetailsPageState extends State<AccountDetailsPage> {
             const IosGap(height: 12),
             Text(
               'You are registering as a $businessTypeName business.',
-              style: const TextStyle(
-                fontSize: 16,
-                color: PublicPagePalette.muted,
-              ),
+              style: TextStyle(fontSize: 16, color: PublicPagePalette.muted),
             ),
             const IosGap(height: 32),
             LayoutBuilder(

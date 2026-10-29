@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
@@ -878,17 +879,17 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -897,7 +898,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
             Text(
               _money(value),
               style: TextStyle(
-                color: color ?? const Color(0xFF222222),
+                color: color ?? CutLinkPalette.color(0xFF222222),
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
               ),
@@ -919,9 +920,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: const Color(0xFFD9D9D5)),
+          border: Border.all(color: CutLinkPalette.color(0xFFD9D9D5)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -937,8 +938,8 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
                   ),
@@ -973,9 +974,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -989,12 +990,12 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
           ),
           const Divider(height: 1),
           if (displayRows.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
                   'No account activity in this date range.',
-                  style: TextStyle(color: Color(0xFF777777)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF777777)),
                 ),
               ),
             )
@@ -1079,12 +1080,13 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1095,7 +1097,10 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
               ),
               Text(
                 widget.supplierView ? widget.customerName : widget.supplierName,
-                style: const TextStyle(color: Color(0xFF777777), fontSize: 11),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF777777),
+                  fontSize: 11,
+                ),
               ),
             ],
           ),
@@ -1166,10 +1171,10 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                                 child: Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: CutLinkPalette.surface,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: const Color(0xFFE0E0DD),
+                                      color: CutLinkPalette.color(0xFFE0E0DD),
                                     ),
                                   ),
                                   child: PhoneRow(
@@ -1181,10 +1186,12 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
+                                              Text(
                                                 'SUPPLIER',
                                                 style: TextStyle(
-                                                  color: Color(0xFF777777),
+                                                  color: CutLinkPalette.color(
+                                                    0xFF777777,
+                                                  ),
                                                   fontSize: 9.5,
                                                   fontWeight: FontWeight.w900,
                                                 ),
@@ -1206,10 +1213,12 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
+                                              Text(
                                                 'CUSTOMER',
                                                 style: TextStyle(
-                                                  color: Color(0xFF777777),
+                                                  color: CutLinkPalette.color(
+                                                    0xFF777777,
+                                                  ),
                                                   fontSize: 9.5,
                                                   fontWeight: FontWeight.w900,
                                                 ),

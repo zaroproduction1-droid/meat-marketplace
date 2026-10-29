@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'admin_theme.dart';
 
@@ -116,197 +117,208 @@ class _AdminFormState extends State<_AdminForm> {
   }
 
   @override
-  Widget build(BuildContext context) => AdminTheme(
-    child: PopScope(
-      canPop: !_saving,
-      child: AlertDialog(
-        title: Text(widget.title),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Form(
-              key: _form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.explanation != null)
-                    IosPadding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(widget.explanation!),
-                    ),
-                  for (final f in widget.fields)
-                    IosPadding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: f.checkbox
-                          ? FormField<bool>(
-                              initialValue:
-                                  _controllers[f.keyName]!.text == 'true',
-                              validator: (value) => f.required && value != true
-                                  ? 'Please confirm before continuing.'
-                                  : null,
-                              builder: (field) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CheckboxListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    title: Text(f.label),
-                                    value: field.value ?? false,
-                                    onChanged: _saving
-                                        ? null
-                                        : (value) {
-                                            field.didChange(value);
-                                            _controllers[f.keyName]!.text =
-                                                '${value == true}';
-                                          },
-                                  ),
-                                  if (field.hasError)
-                                    Text(
-                                      field.errorText!,
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return AdminTheme(
+      child: PopScope(
+        canPop: !_saving,
+        child: AlertDialog(
+          title: Text(widget.title),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Form(
+                key: _form,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (widget.explanation != null)
+                      IosPadding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(widget.explanation!),
+                      ),
+                    for (final f in widget.fields)
+                      IosPadding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: f.checkbox
+                            ? FormField<bool>(
+                                initialValue:
+                                    _controllers[f.keyName]!.text == 'true',
+                                validator: (value) =>
+                                    f.required && value != true
+                                    ? 'Please confirm before continuing.'
+                                    : null,
+                                builder: (field) => Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CheckboxListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                      title: Text(f.label),
+                                      value: field.value ?? false,
+                                      onChanged: _saving
+                                          ? null
+                                          : (value) {
+                                              field.didChange(value);
+                                              _controllers[f.keyName]!.text =
+                                                  '${value == true}';
+                                            },
+                                    ),
+                                    if (field.hasError)
+                                      Text(
+                                        field.errorText!,
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.error,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              )
+                            : f.options != null
+                            ? DropdownButtonFormField<String>(
+                                initialValue:
+                                    f.options!.contains(
+                                      _controllers[f.keyName]!.text,
+                                    )
+                                    ? _controllers[f.keyName]!.text
+                                    : null,
+                                isExpanded: true,
+                                decoration: InputDecoration(labelText: f.label),
+                                items: [
+                                  for (final v in f.options!)
+                                    DropdownMenuItem(
+                                      value: v,
+                                      child: Text(
+                                        f.optionLabels[v] ??
+                                            v.replaceAll('_', ' '),
                                       ),
                                     ),
                                 ],
-                              ),
-                            )
-                          : f.options != null
-                          ? DropdownButtonFormField<String>(
-                              initialValue:
-                                  f.options!.contains(
-                                    _controllers[f.keyName]!.text,
-                                  )
-                                  ? _controllers[f.keyName]!.text
-                                  : null,
-                              isExpanded: true,
-                              decoration: InputDecoration(labelText: f.label),
-                              items: [
-                                for (final v in f.options!)
-                                  DropdownMenuItem(
-                                    value: v,
-                                    child: Text(
-                                      f.optionLabels[v] ??
-                                          v.replaceAll('_', ' '),
-                                    ),
-                                  ),
-                              ],
-                              onChanged: _saving
-                                  ? null
-                                  : (v) =>
-                                        _controllers[f.keyName]!.text = v ?? '',
-                              validator: (v) =>
-                                  f.required && (v == null || v.isEmpty)
-                                  ? 'Choose ${f.label.toLowerCase()}.'
-                                  : null,
-                            )
-                          : TextFormField(
-                              controller: _controllers[f.keyName],
-                              enabled: !_saving,
-                              minLines: f.lines,
-                              maxLines: f.lines,
-                              keyboardType: f.number
-                                  ? const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    )
-                                  : (f.lines > 1
-                                        ? TextInputType.multiline
-                                        : TextInputType.text),
-                              decoration: InputDecoration(
-                                labelText: f.label,
-                                hintText: f.date ? 'YYYY-MM-DD' : null,
-                                suffixIcon: f.date
-                                    ? IconButton(
-                                        tooltip: 'Choose date',
-                                        icon: const Icon(
-                                          Icons.calendar_today_outlined,
-                                        ),
-                                        onPressed: _saving
-                                            ? null
-                                            : () async {
-                                                final today = DateTime.now();
-                                                final date =
-                                                    await showDatePicker(
-                                                      context: context,
-                                                      initialDate:
-                                                          DateTime.tryParse(
-                                                            _controllers[f
-                                                                    .keyName]!
-                                                                .text,
-                                                          ) ??
-                                                          today,
-                                                      firstDate: DateTime(2000),
-                                                      lastDate: DateTime(2100),
-                                                    );
-                                                if (date != null && mounted) {
-                                                  _controllers[f.keyName]!
-                                                          .text =
-                                                      PlatformAdminService.iso(
-                                                        date,
-                                                      );
-                                                }
-                                              },
-                                      )
+                                onChanged: _saving
+                                    ? null
+                                    : (v) => _controllers[f.keyName]!.text =
+                                          v ?? '',
+                                validator: (v) =>
+                                    f.required && (v == null || v.isEmpty)
+                                    ? 'Choose ${f.label.toLowerCase()}.'
                                     : null,
+                              )
+                            : TextFormField(
+                                controller: _controllers[f.keyName],
+                                enabled: !_saving,
+                                minLines: f.lines,
+                                maxLines: f.lines,
+                                keyboardType: f.number
+                                    ? const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      )
+                                    : (f.lines > 1
+                                          ? TextInputType.multiline
+                                          : TextInputType.text),
+                                decoration: InputDecoration(
+                                  labelText: f.label,
+                                  hintText: f.date ? 'YYYY-MM-DD' : null,
+                                  suffixIcon: f.date
+                                      ? IconButton(
+                                          tooltip: 'Choose date',
+                                          icon: const Icon(
+                                            Icons.calendar_today_outlined,
+                                          ),
+                                          onPressed: _saving
+                                              ? null
+                                              : () async {
+                                                  final today = DateTime.now();
+                                                  final date =
+                                                      await showDatePicker(
+                                                        context: context,
+                                                        initialDate:
+                                                            DateTime.tryParse(
+                                                              _controllers[f
+                                                                      .keyName]!
+                                                                  .text,
+                                                            ) ??
+                                                            today,
+                                                        firstDate: DateTime(
+                                                          2000,
+                                                        ),
+                                                        lastDate: DateTime(
+                                                          2100,
+                                                        ),
+                                                      );
+                                                  if (date != null && mounted) {
+                                                    _controllers[f.keyName]!
+                                                            .text =
+                                                        PlatformAdminService.iso(
+                                                          date,
+                                                        );
+                                                  }
+                                                },
+                                        )
+                                      : null,
+                                ),
+                                validator: (v) {
+                                  final s = (v ?? '').trim();
+                                  if (f.required && s.isEmpty) {
+                                    return 'Enter ${f.label.toLowerCase()}.';
+                                  }
+                                  if (s.isNotEmpty &&
+                                      f.number &&
+                                      (double.tryParse(s) == null ||
+                                          !double.parse(s).isFinite ||
+                                          double.parse(s) < 0)) {
+                                    return 'Enter a valid positive amount or zero.';
+                                  }
+                                  if (s.isNotEmpty &&
+                                      f.date &&
+                                      (DateTime.tryParse(s) == null ||
+                                          PlatformAdminService.iso(
+                                                DateTime.parse(s),
+                                              ) !=
+                                              s)) {
+                                    return 'Use YYYY-MM-DD.';
+                                  }
+                                  return null;
+                                },
                               ),
-                              validator: (v) {
-                                final s = (v ?? '').trim();
-                                if (f.required && s.isEmpty) {
-                                  return 'Enter ${f.label.toLowerCase()}.';
-                                }
-                                if (s.isNotEmpty &&
-                                    f.number &&
-                                    (double.tryParse(s) == null ||
-                                        !double.parse(s).isFinite ||
-                                        double.parse(s) < 0)) {
-                                  return 'Enter a valid positive amount or zero.';
-                                }
-                                if (s.isNotEmpty &&
-                                    f.date &&
-                                    (DateTime.tryParse(s) == null ||
-                                        PlatformAdminService.iso(
-                                              DateTime.parse(s),
-                                            ) !=
-                                            s)) {
-                                  return 'Use YYYY-MM-DD.';
-                                }
-                                return null;
-                              },
-                            ),
-                    ),
-                  if (_error != null)
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
-                ],
+                      ),
+                    if (_error != null)
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                ),
               ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving ? 'Saving…' : widget.submitLabel),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Saving…' : widget.submitLabel),
-          ),
-        ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class AdminCard extends StatelessWidget {
   const AdminCard({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: IosPadding(padding: const EdgeInsets.all(20), child: child),
-  );
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: IosPadding(padding: const EdgeInsets.all(20), child: child),
+    );
+  }
 }
 
 class AdminStatus extends StatelessWidget {
@@ -314,19 +326,20 @@ class AdminStatus extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final (background, foreground) = switch (value) {
-      'paid' ||
-      'approved' ||
-      'active' ||
-      'published' => (const Color(0xFFE7F4ED), const Color(0xFF286749)),
+      'paid' || 'approved' || 'active' || 'published' => (
+        CutLinkPalette.color(0xFFE7F4ED),
+        const Color(0xFF286749),
+      ),
       'overdue' ||
       'suspended' ||
-      'rejected' => (const Color(0xFFFBEAEC), const Color(0xFF9B3542)),
+      'rejected' => (CutLinkPalette.color(0xFFFBEAEC), const Color(0xFF9B3542)),
       'pending' ||
       'unpaid' ||
       'part_paid' ||
-      'trial' => (const Color(0xFFFFF3DA), const Color(0xFF8C661E)),
-      _ => (const Color(0xFFEDF1F6), const Color(0xFF647386)),
+      'trial' => (CutLinkPalette.color(0xFFFFF3DA), const Color(0xFF8C661E)),
+      _ => (CutLinkPalette.color(0xFFEDF1F6), CutLinkPalette.color(0xFF647386)),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -358,22 +371,25 @@ class AdminPager extends StatelessWidget {
   final bool more;
   final ValueChanged<int> onPage;
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      IconButton(
-        tooltip: 'Previous page',
-        onPressed: page > 0 ? () => onPage(page - 1) : null,
-        icon: const Icon(Icons.chevron_left),
-      ),
-      Text('Page ${page + 1}'),
-      IconButton(
-        tooltip: 'Next page',
-        onPressed: more ? () => onPage(page + 1) : null,
-        icon: const Icon(Icons.chevron_right),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          tooltip: 'Previous page',
+          onPressed: page > 0 ? () => onPage(page - 1) : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Text('Page ${page + 1}'),
+        IconButton(
+          tooltip: 'Next page',
+          onPressed: more ? () => onPage(page + 1) : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
+    );
+  }
 }
 
 Future<bool> editSubscriptionAccount(

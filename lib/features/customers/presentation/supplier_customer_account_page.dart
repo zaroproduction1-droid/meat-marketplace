@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/security/retry_safe_payments.dart';
 import '../../credits/presentation/credit_notes_page.dart';
@@ -594,9 +595,9 @@ class _SupplierCustomerAccountPageState
       case 'Partially Paid':
         return const Color(0xFF315A8C);
       case 'Cancelled / Reversed':
-        return const Color(0xFF777777);
+        return CutLinkPalette.color(0xFF777777);
       default:
-        return const Color(0xFF555555);
+        return CutLinkPalette.color(0xFF555555);
     }
   }
 
@@ -723,7 +724,7 @@ class _SupplierCustomerAccountPageState
                         height: 44,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4E5E5),
+                          color: CutLinkPalette.color(0xFFF4E5E5),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -732,7 +733,7 @@ class _SupplierCustomerAccountPageState
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -747,7 +748,7 @@ class _SupplierCustomerAccountPageState
                             Text(
                               'Apply the selected payment to the selected invoice.',
                               style: TextStyle(
-                                color: Color(0xFF666666),
+                                color: CutLinkPalette.color(0xFF666666),
                                 fontSize: 12,
                               ),
                             ),
@@ -760,7 +761,7 @@ class _SupplierCustomerAccountPageState
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F8F6),
+                      color: CutLinkPalette.color(0xFFF8F8F6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -803,7 +804,7 @@ class _SupplierCustomerAccountPageState
                       labelText: 'Amount to allocate',
                       prefixText: '\$',
                       filled: true,
-                      fillColor: const Color(0xFFF8F8F6),
+                      fillColor: CutLinkPalette.color(0xFFF8F8F6),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
                       ),
@@ -904,8 +905,8 @@ class _SupplierCustomerAccountPageState
           width: 105,
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
@@ -952,7 +953,7 @@ class _SupplierCustomerAccountPageState
                             height: 46,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF4E5E5),
+                              color: CutLinkPalette.color(0xFFF4E5E5),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -961,7 +962,7 @@ class _SupplierCustomerAccountPageState
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -977,7 +978,7 @@ class _SupplierCustomerAccountPageState
                                   'Record money received from this customer. '
                                   'You can allocate it to invoices afterwards.',
                                   style: TextStyle(
-                                    color: Color(0xFF666666),
+                                    color: CutLinkPalette.color(0xFF666666),
                                     fontSize: 12,
                                     height: 1.35,
                                   ),
@@ -991,7 +992,7 @@ class _SupplierCustomerAccountPageState
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F8F6),
+                          color: CutLinkPalette.color(0xFFF8F8F6),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1018,7 +1019,7 @@ class _SupplierCustomerAccountPageState
                           labelText: 'Amount received',
                           prefixText: '\$',
                           filled: true,
-                          fillColor: const Color(0xFFF8F8F6),
+                          fillColor: CutLinkPalette.color(0xFFF8F8F6),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                           ),
@@ -1036,7 +1037,7 @@ class _SupplierCustomerAccountPageState
                                 decoration: InputDecoration(
                                   labelText: 'Payment method',
                                   filled: true,
-                                  fillColor: const Color(0xFFF8F8F6),
+                                  fillColor: CutLinkPalette.color(0xFFF8F8F6),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(11),
                                   ),
@@ -1092,7 +1093,7 @@ class _SupplierCustomerAccountPageState
                                   decoration: InputDecoration(
                                     labelText: 'Payment date',
                                     filled: true,
-                                    fillColor: const Color(0xFFF8F8F6),
+                                    fillColor: CutLinkPalette.color(0xFFF8F8F6),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(11),
                                     ),
@@ -1111,7 +1112,7 @@ class _SupplierCustomerAccountPageState
                           labelText: 'Reference',
                           hintText: 'Bank reference, receipt number, etc.',
                           filled: true,
-                          fillColor: const Color(0xFFF8F8F6),
+                          fillColor: CutLinkPalette.color(0xFFF8F8F6),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                           ),
@@ -1124,7 +1125,7 @@ class _SupplierCustomerAccountPageState
                         decoration: InputDecoration(
                           labelText: 'Notes',
                           filled: true,
-                          fillColor: const Color(0xFFF8F8F6),
+                          fillColor: CutLinkPalette.color(0xFFF8F8F6),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                           ),
@@ -1294,7 +1295,7 @@ class _SupplierCustomerAccountPageState
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF7F7F5),
+                            color: CutLinkPalette.color(0xFFF7F7F5),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Wrap(
@@ -1364,8 +1365,11 @@ class _SupplierCustomerAccountPageState
                                                   const IosGap(height: 2),
                                                   Text(
                                                     'Due ${_formatDate(invoice['due_date'])}',
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF777777),
+                                                    style: TextStyle(
+                                                      color:
+                                                          CutLinkPalette.color(
+                                                            0xFF777777,
+                                                          ),
                                                       fontSize: 11,
                                                     ),
                                                   ),
@@ -1399,14 +1403,12 @@ class _SupplierCustomerAccountPageState
                                                 ],
                                                 onChanged: (_) =>
                                                     setDialogState(() {}),
-                                                decoration:
-                                                    const InputDecoration(
-                                                      prefixText: '\$',
-                                                      labelText: 'Apply',
-                                                      isDense: true,
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                decoration: InputDecoration(
+                                                  prefixText: '\$',
+                                                  labelText: 'Apply',
+                                                  isDense: true,
+                                                  border: OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1630,8 +1632,8 @@ class _SupplierCustomerAccountPageState
                             ),
                             Text(
                               'Due ${_formatDate(row['due_date'])}',
-                              style: const TextStyle(
-                                color: Color(0xFF777777),
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 11,
                               ),
                             ),
@@ -1736,7 +1738,7 @@ class _SupplierCustomerAccountPageState
                               RegExp(r'^\d*\.?\d{0,2}'),
                             ),
                           ],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Amount',
                             prefixText: '\$',
                             border: OutlineInputBorder(),
@@ -1746,7 +1748,7 @@ class _SupplierCustomerAccountPageState
                         DropdownButtonFormField<String>(
                           isExpanded: isPhoneLayout(context),
                           initialValue: type,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Type',
                             border: OutlineInputBorder(),
                           ),
@@ -1794,7 +1796,7 @@ class _SupplierCustomerAccountPageState
                             }
                           },
                           child: InputDecorator(
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Date',
                               border: OutlineInputBorder(),
                             ),
@@ -1804,7 +1806,7 @@ class _SupplierCustomerAccountPageState
                         const IosGap(height: 12),
                         TextField(
                           controller: referenceController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Reference',
                             border: OutlineInputBorder(),
                           ),
@@ -1813,7 +1815,7 @@ class _SupplierCustomerAccountPageState
                         TextField(
                           controller: reasonController,
                           maxLines: 3,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Reason / Notes',
                             border: OutlineInputBorder(),
                           ),
@@ -1952,7 +1954,7 @@ class _SupplierCustomerAccountPageState
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF7F7F5),
+                            color: CutLinkPalette.color(0xFFF7F7F5),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Wrap(
@@ -2021,8 +2023,11 @@ class _SupplierCustomerAccountPageState
                                                   const IosGap(height: 2),
                                                   Text(
                                                     'Due ${_formatDate(invoice['due_date'])}',
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF777777),
+                                                    style: TextStyle(
+                                                      color:
+                                                          CutLinkPalette.color(
+                                                            0xFF777777,
+                                                          ),
                                                       fontSize: 11,
                                                     ),
                                                   ),
@@ -2056,14 +2061,12 @@ class _SupplierCustomerAccountPageState
                                                 ],
                                                 onChanged: (_) =>
                                                     setDialogState(() {}),
-                                                decoration:
-                                                    const InputDecoration(
-                                                      prefixText: '\$',
-                                                      labelText: 'Apply',
-                                                      isDense: true,
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                decoration: InputDecoration(
+                                                  prefixText: '\$',
+                                                  labelText: 'Apply',
+                                                  isDense: true,
+                                                  border: OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -2232,7 +2235,7 @@ class _SupplierCustomerAccountPageState
               TextField(
                 controller: controller,
                 maxLines: 2,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Reason',
                   border: OutlineInputBorder(),
                 ),
@@ -2316,7 +2319,7 @@ class _SupplierCustomerAccountPageState
               TextField(
                 controller: controller,
                 maxLines: 2,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Reason',
                   border: OutlineInputBorder(),
                 ),
@@ -2434,8 +2437,8 @@ class _SupplierCustomerAccountPageState
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: confirm
-                              ? const Color(0xFFE8F3EA)
-                              : const Color(0xFFF8EAEA),
+                              ? CutLinkPalette.color(0xFFE8F3EA)
+                              : CutLinkPalette.color(0xFFF8EAEA),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -2469,8 +2472,8 @@ class _SupplierCustomerAccountPageState
                               'the proposed invoice allocations.'
                         : 'Reject this submission if the funds have not arrived '
                               'or the details are incorrect.',
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF666666),
                       height: 1.4,
                     ),
                   ),
@@ -2479,7 +2482,7 @@ class _SupplierCustomerAccountPageState
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF6E5),
+                        color: CutLinkPalette.color(0xFFFFF6E5),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE2B75B)),
                       ),
@@ -2515,7 +2518,7 @@ class _SupplierCustomerAccountPageState
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F8F6),
+                      color: CutLinkPalette.color(0xFFF8F8F6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -2552,7 +2555,7 @@ class _SupplierCustomerAccountPageState
                           ? 'Confirmation note (optional)'
                           : 'Reason / note (optional)',
                       filled: true,
-                      fillColor: const Color(0xFFF8F8F6),
+                      fillColor: CutLinkPalette.color(0xFFF8F8F6),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
                       ),
@@ -2662,9 +2665,9 @@ class _SupplierCustomerAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2678,7 +2681,7 @@ class _SupplierCustomerAccountPageState
                   height: 36,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3DF),
+                    color: CutLinkPalette.color(0xFFFFF3DF),
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: const Icon(
@@ -2688,7 +2691,7 @@ class _SupplierCustomerAccountPageState
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2704,7 +2707,7 @@ class _SupplierCustomerAccountPageState
                         'The customer says these payments were made. '
                         'Confirm only after the funds arrive.',
                         style: TextStyle(
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 11,
                         ),
                       ),
@@ -2757,8 +2760,10 @@ class _SupplierCustomerAccountPageState
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFEEEEEA)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -2782,8 +2787,8 @@ class _SupplierCustomerAccountPageState
                   Text(
                     '${_formatDate(submission['payment_date'])} • '
                     '${_paymentMethodLabel(submission['payment_method']?.toString())}',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777777),
                       fontSize: 10.5,
                     ),
                   ),
@@ -2792,8 +2797,8 @@ class _SupplierCustomerAccountPageState
                     allocationText,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF555555),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF555555),
                       fontSize: 10.5,
                     ),
                   ),
@@ -2890,7 +2895,7 @@ class _SupplierCustomerAccountPageState
       case 'Partially Allocated':
         return const Color(0xFF315A8C);
       case 'Reversed':
-        return const Color(0xFF777777);
+        return CutLinkPalette.color(0xFF777777);
       default:
         return const Color(0xFF315A8C);
     }
@@ -2905,9 +2910,9 @@ class _SupplierCustomerAccountPageState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2918,8 +2923,8 @@ class _SupplierCustomerAccountPageState
           ],
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 10.5,
               fontWeight: FontWeight.w900,
             ),
@@ -2928,7 +2933,7 @@ class _SupplierCustomerAccountPageState
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? const Color(0xFF222222),
+              color: valueColor ?? CutLinkPalette.color(0xFF222222),
               fontSize: 21,
               fontWeight: FontWeight.w900,
             ),
@@ -2964,9 +2969,9 @@ class _SupplierCustomerAccountPageState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE1E1DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E1DD)),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -2989,8 +2994,8 @@ class _SupplierCustomerAccountPageState
                           '${payment['reference']?.toString().trim().isNotEmpty == true ? payment['reference'].toString() : _money(payment['amount'])}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF555555),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF555555),
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -3017,9 +3022,9 @@ class _SupplierCustomerAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3046,12 +3051,12 @@ class _SupplierCustomerAccountPageState
           ),
           const Divider(height: 1),
           if (rows.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
                   'No invoices in this view.',
-                  style: TextStyle(color: Color(0xFF777777)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF777777)),
                 ),
               ),
             )
@@ -3161,7 +3166,7 @@ class _SupplierCustomerAccountPageState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD9D9D5)),
+          border: Border.all(color: CutLinkPalette.color(0xFFD9D9D5)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -3202,9 +3207,9 @@ class _SupplierCustomerAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3218,12 +3223,12 @@ class _SupplierCustomerAccountPageState
           ),
           const Divider(height: 1),
           if (entries.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.all(30),
               child: Center(
                 child: Text(
                   'No unallocated payments or credits requiring action.',
-                  style: TextStyle(color: Color(0xFF777777)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF777777)),
                 ),
               ),
             )
@@ -3248,8 +3253,10 @@ class _SupplierCustomerAccountPageState
 
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: CutLinkPalette.color(0xFFEEEEEA)),
+          ),
         ),
         child: PhoneRow(
           mode: PhoneRowMode.wrap,
@@ -3270,8 +3277,8 @@ class _SupplierCustomerAccountPageState
                     ),
                     Text(
                       '${_formatDate(data['credit_date'])} • Credit',
-                      style: const TextStyle(
-                        color: Color(0xFF777777),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF777777),
                         fontSize: 11,
                       ),
                     ),
@@ -3289,7 +3296,7 @@ class _SupplierCustomerAccountPageState
                 decoration: BoxDecoration(
                   color:
                       (data['status']?.toString() == 'reversed'
-                              ? const Color(0xFF777777)
+                              ? CutLinkPalette.color(0xFF777777)
                               : const Color(0xFF315A8C))
                           .withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(999),
@@ -3300,7 +3307,7 @@ class _SupplierCustomerAccountPageState
                       : (available > 0 ? 'Available' : 'Fully Allocated'),
                   style: TextStyle(
                     color: data['status']?.toString() == 'reversed'
-                        ? const Color(0xFF777777)
+                        ? CutLinkPalette.color(0xFF777777)
                         : const Color(0xFF315A8C),
                     fontSize: 10.5,
                     fontWeight: FontWeight.w900,
@@ -3352,9 +3359,11 @@ class _SupplierCustomerAccountPageState
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: selectedPayment
-            ? const Color(0xFFF4E5E5).withValues(alpha: 0.45)
+            ? CutLinkPalette.color(0xFFF4E5E5).withValues(alpha: 0.45)
             : Colors.transparent,
-        border: const Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFEEEEEA)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -3387,8 +3396,8 @@ class _SupplierCustomerAccountPageState
                   Text(
                     '${_formatDate(data['payment_date'])} • '
                     '${_paymentMethodLabel(data['payment_method']?.toString())}',
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777777),
                       fontSize: 11,
                     ),
                   ),
@@ -3461,8 +3470,8 @@ class _SupplierCustomerAccountPageState
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF888888),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF888888),
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
@@ -3605,9 +3614,9 @@ class _SupplierCustomerAccountPageState
         final termsPanel = Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           ),
           child: PhoneRow(
             mode: PhoneRowMode.wrap,
@@ -3619,11 +3628,11 @@ class _SupplierCustomerAccountPageState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Payment Terms',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -3638,8 +3647,8 @@ class _SupplierCustomerAccountPageState
                       const IosGap(height: 2),
                       Text(
                         _paymentTermsPlainEnglish(),
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
                           fontSize: 11.5,
                         ),
                       ),
@@ -3665,9 +3674,11 @@ class _SupplierCustomerAccountPageState
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: CutLinkPalette.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFE3E5E8),
+                          ),
                           boxShadow: const [
                             BoxShadow(
                               color: Color(0x07000000),
@@ -3684,7 +3695,7 @@ class _SupplierCustomerAccountPageState
                                 width: 46,
                                 height: 46,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8EEEE),
+                                  color: CutLinkPalette.color(0xFFF8EEEE),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Icon(
@@ -3708,8 +3719,8 @@ class _SupplierCustomerAccountPageState
                                     const IosGap(height: 3),
                                     Text(
                                       'Manage open invoices, payments, credits, adjustments and account allocations for ${_customerName()}.',
-                                      style: const TextStyle(
-                                        color: Color(0xFF666A70),
+                                      style: TextStyle(
+                                        color: CutLinkPalette.color(0xFF666A70),
                                         fontSize: 12.5,
                                         height: 1.4,
                                       ),
@@ -3759,16 +3770,17 @@ class _SupplierCustomerAccountPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'customer_account',
       'id': widget.supplierCustomerAccountId,
     });
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -3794,11 +3806,11 @@ class _SupplierCustomerAccountPageState
                       ),
                     ),
                     if (!_isLoading)
-                      const Text(
+                      Text(
                         'Customer Account',
                         style: TextStyle(
                           fontSize: 10.5,
-                          color: Color(0xFF666A70),
+                          color: CutLinkPalette.color(0xFF666A70),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -3829,8 +3841,8 @@ class _SupplierCustomerAccountPageState
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _openStatement,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF34383D),
-                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                foregroundColor: CutLinkPalette.color(0xFF34383D),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 13,
@@ -3851,8 +3863,8 @@ class _SupplierCustomerAccountPageState
                   ? null
                   : _recordCreditOrAdjustment,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF34383D),
-                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                foregroundColor: CutLinkPalette.color(0xFF34383D),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 13,
@@ -3873,8 +3885,8 @@ class _SupplierCustomerAccountPageState
                   ? null
                   : () => _recordPayment(),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF34383D),
-                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                foregroundColor: CutLinkPalette.color(0xFF34383D),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 13,
@@ -3919,9 +3931,13 @@ class _SupplierCustomerAccountPageState
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),

@@ -46,14 +46,22 @@ class _SignInPageState extends State<SignInPage> {
     try {
       final auth = Supabase.instance.client.auth;
       if (auth.currentSession == null) {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         return;
       }
-      if (auth.currentSession!.isExpired) await auth.refreshSession();
-      if (!mounted) return;
+      if (auth.currentSession!.isExpired) {
+        await auth.refreshSession();
+      }
+      if (!mounted) {
+        return;
+      }
       await _openAccount();
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -263,7 +271,7 @@ class _SignInPageState extends State<SignInPage> {
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
             const IosGap(height: 12),
-            const Text(
+            Text(
               'Sign in using your confirmed email address.',
               style: TextStyle(color: PublicPagePalette.muted),
             ),

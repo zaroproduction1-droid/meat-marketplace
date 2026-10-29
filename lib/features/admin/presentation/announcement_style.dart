@@ -1,3 +1,5 @@
+import '../../../shared/theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 class AnnouncementStyle {
@@ -13,7 +15,7 @@ class AnnouncementStyle {
   };
   static Color foreground(String tone) => tone == 'good_news' || tone == 'issue'
       ? Colors.white
-      : const Color(0xFF101D2B);
+      : CutLinkPalette.color(0xFF101D2B);
   static IconData icon(String tone) => switch (tone) {
     'good_news' => Icons.check_circle_outline,
     'issue' => Icons.warning_amber_rounded,

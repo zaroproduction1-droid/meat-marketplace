@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -117,6 +119,7 @@ class SupplierStockFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     Widget choice(
       String field,
       String label,
@@ -267,33 +270,39 @@ class SupplierStockPager extends StatelessWidget {
   final bool loading;
   final ValueChanged<int> onPage;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            total == 0
-                ? 'No matching products'
-                : '${offset + 1}–${(offset + pageSize).clamp(0, total)} of $total products',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF666A70)),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              total == 0
+                  ? 'No matching products'
+                  : '${offset + 1}–${(offset + pageSize).clamp(0, total)} of $total products',
+              style: TextStyle(
+                fontSize: 12,
+                color: CutLinkPalette.color(0xFF666A70),
+              ),
+            ),
           ),
-        ),
-        IconButton(
-          tooltip: 'Previous page',
-          onPressed: loading || offset == 0
-              ? null
-              : () => onPage((offset - pageSize).clamp(0, total)),
-          icon: const Icon(Icons.chevron_left),
-        ),
-        IconButton(
-          tooltip: 'Next page',
-          onPressed: loading || offset + pageSize >= total
-              ? null
-              : () => onPage(offset + pageSize),
-          icon: const Icon(Icons.chevron_right),
-        ),
-      ],
-    ),
-  );
+          IconButton(
+            tooltip: 'Previous page',
+            onPressed: loading || offset == 0
+                ? null
+                : () => onPage((offset - pageSize).clamp(0, total)),
+            icon: const Icon(Icons.chevron_left),
+          ),
+          IconButton(
+            tooltip: 'Next page',
+            onPressed: loading || offset + pageSize >= total
+                ? null
+                : () => onPage(offset + pageSize),
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
+  }
 }

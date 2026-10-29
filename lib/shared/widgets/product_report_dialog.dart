@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import 'cutlink_review_theme.dart';
 
 import 'dart:convert';
@@ -103,6 +104,7 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final p = widget.product;
     final supplier = p['businesses'] is Map ? p['businesses'] as Map : const {};
     final specification = p['meat_specifications'] is Map
@@ -116,7 +118,7 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
     final preview = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -140,12 +142,18 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
           if (p['sku']?.toString().isNotEmpty == true)
             Text(
               'SKU ${p['sku']}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF666666)),
+              style: TextStyle(
+                fontSize: 12,
+                color: CutLinkPalette.color(0xFF666666),
+              ),
             ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'This is the product and photo your report will refer to.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+            style: TextStyle(
+              fontSize: 12,
+              color: CutLinkPalette.color(0xFF666666),
+            ),
           ),
         ],
       ),
@@ -211,9 +219,12 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
             },
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'CutLink Support will review this report. Reporting does not automatically remove a photo or notify the supplier. A private copy of the reported photo may be saved with your support case.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+            style: TextStyle(
+              fontSize: 12,
+              color: CutLinkPalette.color(0xFF666666),
+            ),
           ),
           if (_error != null)
             Padding(
@@ -241,15 +252,15 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
                 padding: const EdgeInsets.fromLTRB(22, 18, 12, 12),
                 child: Row(
                   children: [
-                    const CircleAvatar(
-                      backgroundColor: Color(0xFFF5E8E8),
+                    CircleAvatar(
+                      backgroundColor: CutLinkPalette.color(0xFFF5E8E8),
                       child: Icon(
                         Icons.flag_outlined,
                         color: Color(0xFF741C1C),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -262,7 +273,9 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
                           ),
                           Text(
                             'Help us understand the concern',
-                            style: TextStyle(color: Color(0xFF666666)),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF666666),
+                            ),
                           ),
                         ],
                       ),

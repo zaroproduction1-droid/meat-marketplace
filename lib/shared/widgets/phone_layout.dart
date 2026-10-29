@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 import 'ios_workspace.dart';
@@ -21,17 +23,21 @@ class PhoneTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (!isPhoneLayout(context)) {
       return desktop;
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(bottom: 6),
           child: Text(
             'Swipe sideways to see all columns',
-            style: TextStyle(fontSize: 11, color: Color(0xFF666A70)),
+            style: TextStyle(
+              fontSize: 11,
+              color: CutLinkPalette.color(0xFF666A70),
+            ),
           ),
         ),
         SingleChildScrollView(
@@ -50,6 +56,7 @@ class PhoneColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (!isPhoneLayout(context)) {
       return desktop;
     }
@@ -68,8 +75,10 @@ class PhoneExpanded extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      isPhoneLayout(context) ? child : Expanded(child: child);
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return isPhoneLayout(context) ? child : Expanded(child: child);
+  }
 }
 
 class PhoneSafeArea extends StatelessWidget {
@@ -77,8 +86,12 @@ class PhoneSafeArea extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      isPhoneLayout(context) ? SafeArea(bottom: false, child: child) : child;
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return isPhoneLayout(context)
+        ? SafeArea(bottom: false, child: child)
+        : child;
+  }
 }
 
 class PhoneFilterPanel extends StatelessWidget {
@@ -88,6 +101,7 @@ class PhoneFilterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (!isPhoneLayout(context)) {
       return child;
     }
@@ -142,6 +156,7 @@ class PhoneRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (!isPhoneLayout(context)) {
       return desktop;
     }

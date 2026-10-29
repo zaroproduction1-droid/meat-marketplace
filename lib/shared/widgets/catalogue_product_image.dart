@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,6 +21,7 @@ class CatalogueProductImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final path = product['photo_path']?.toString();
     final url = path == null || path.isEmpty
         ? null
@@ -37,13 +40,13 @@ class CatalogueProductImage extends StatelessWidget {
             Icon(
               Icons.image_outlined,
               size: thumbnail ? 24 : 46,
-              color: const Color(0xFF8A8F94),
+              color: CutLinkPalette.color(0xFF8A8F94),
             ),
             if (!thumbnail) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Photo not yet available',
-                style: TextStyle(color: Color(0xFF5F6469)),
+                style: TextStyle(color: CutLinkPalette.color(0xFF5F6469)),
               ),
             ],
           ],
@@ -58,9 +61,9 @@ class CatalogueProductImage extends StatelessWidget {
         width: imageWidth ?? (thumbnail ? 64 : null),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(thumbnail ? 8 : 14),
-          border: Border.all(color: const Color(0xFFD9DCDE)),
+          border: Border.all(color: CutLinkPalette.color(0xFFD9DCDE)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

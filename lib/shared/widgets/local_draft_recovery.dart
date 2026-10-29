@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -206,47 +208,54 @@ class LocalDraftRecoveryState extends State<LocalDraftRecovery> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      if (_pending != null || _status != null)
-        Material(
-          color: const Color(0xFFF0F3F7),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  _pending != null
-                      ? (_status ??
-                            'An unsaved draft is available on this device.')
-                      : _status!,
-                  style: const TextStyle(fontSize: 12),
-                ),
-                if (_pending != null) ...[
-                  TextButton(
-                    onPressed: _restoring || widget.isBusy() ? null : _restore,
-                    child: Text(_restoring ? 'Restoring…' : 'Restore draft'),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Column(
+      mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_pending != null || _status != null)
+          Material(
+            color: CutLinkPalette.color(0xFFF0F3F7),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    _pending != null
+                        ? (_status ??
+                              'An unsaved draft is available on this device.')
+                        : _status!,
+                    style: const TextStyle(fontSize: 12),
                   ),
-                  TextButton(
-                    onPressed: _restoring || widget.isBusy() ? null : _discard,
-                    child: const Text('Discard'),
-                  ),
+                  if (_pending != null) ...[
+                    TextButton(
+                      onPressed: _restoring || widget.isBusy()
+                          ? null
+                          : _restore,
+                      child: Text(_restoring ? 'Restoring…' : 'Restore draft'),
+                    ),
+                    TextButton(
+                      onPressed: _restoring || widget.isBusy()
+                          ? null
+                          : _discard,
+                      child: const Text('Discard'),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-      if (widget.expand)
-        Expanded(
-          child: AbsorbPointer(absorbing: _restoring, child: widget.child),
-        )
-      else
-        AbsorbPointer(absorbing: _restoring, child: widget.child),
-    ],
-  );
+        if (widget.expand)
+          Expanded(
+            child: AbsorbPointer(absorbing: _restoring, child: widget.child),
+          )
+        else
+          AbsorbPointer(absorbing: _restoring, child: widget.child),
+      ],
+    );
+  }
 }

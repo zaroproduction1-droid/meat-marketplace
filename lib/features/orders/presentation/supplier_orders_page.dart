@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
@@ -98,7 +99,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
   Future<void> _loadOrders() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _orders.isEmpty;
       _errorMessage = null;
     });
 
@@ -438,8 +439,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   }
 
   Map<String, dynamic>? _mapValue(dynamic raw) {
-    if (raw is Map<String, dynamic>) return raw;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
 
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
@@ -489,8 +494,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   String _fulfilmentLabel(Map<String, dynamic> order) {
     final value = order['fulfilment_method']?.toString().trim().toLowerCase();
 
-    if (value == 'delivery') return 'Delivery';
-    if (value == 'pickup') return 'Pickup';
+    if (value == 'delivery') {
+      return 'Delivery';
+    }
+    if (value == 'pickup') {
+      return 'Pickup';
+    }
     return 'Not Set';
   }
 
@@ -521,12 +530,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: marketplace ? const Color(0xFFEAF1FB) : const Color(0xFFF3EEE7),
+        color: marketplace
+            ? CutLinkPalette.color(0xFFEAF1FB)
+            : CutLinkPalette.color(0xFFF3EEE7),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: marketplace
-              ? const Color(0xFFBFD0E5)
-              : const Color(0xFFD8C9B6),
+              ? CutLinkPalette.color(0xFFBFD0E5)
+              : CutLinkPalette.color(0xFFD8C9B6),
         ),
       ),
       child: Text(
@@ -548,8 +559,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     final line1 = business['address_line_1']?.toString().trim();
     final line2 = business['address_line_2']?.toString().trim();
 
-    if (line1 != null && line1.isNotEmpty) lines.add(line1);
-    if (line2 != null && line2.isNotEmpty) lines.add(line2);
+    if (line1 != null && line1.isNotEmpty) {
+      lines.add(line1);
+    }
+    if (line2 != null && line2.isNotEmpty) {
+      lines.add(line2);
+    }
 
     final locality = <String>[
       if ((business['suburb']?.toString().trim() ?? '').isNotEmpty)
@@ -560,7 +575,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         business['postcode'].toString().trim(),
     ].join(' ');
 
-    if (locality.isNotEmpty) lines.add(locality);
+    if (locality.isNotEmpty) {
+      lines.add(locality);
+    }
 
     return lines.isEmpty ? 'Not provided' : lines.join(', ');
   }
@@ -580,9 +597,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F6),
+          color: CutLinkPalette.color(0xFFF8F8F6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE1E1DE)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,9 +654,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F6),
+          color: CutLinkPalette.color(0xFFF8F8F6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE1E1DE)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,8 +694,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               width: 138,
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xFF666666),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666666),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -881,22 +898,22 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     switch (status) {
       case 'accepted':
       case 'completed':
-        return const Color(0xFFE8F5E9);
+        return CutLinkPalette.color(0xFFE8F5E9);
 
       case 'declined':
       case 'cancelled':
-        return const Color(0xFFFDECEC);
+        return CutLinkPalette.color(0xFFFDECEC);
 
       case 'processing':
-        return const Color(0xFFFFF4E5);
+        return CutLinkPalette.color(0xFFFFF4E5);
 
       case 'dispatched':
       case 'delivered':
-        return const Color(0xFFEAF6F8);
+        return CutLinkPalette.color(0xFFEAF6F8);
 
       case 'submitted':
       default:
-        return const Color(0xFFEAF1FB);
+        return CutLinkPalette.color(0xFFEAF1FB);
     }
   }
 
@@ -1024,7 +1041,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     final entries = <Map<String, dynamic>>[];
 
     void addSystem(String text, dynamic at) {
-      if (text.trim().isEmpty) return;
+      if (text.trim().isEmpty) {
+        return;
+      }
       entries.add({'kind': 'system', 'message': text, 'created_at': at});
     }
 
@@ -1077,9 +1096,15 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     entries.sort((a, b) {
       final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '');
       final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '');
-      if (aDate == null && bDate == null) return 0;
-      if (aDate == null) return -1;
-      if (bDate == null) return 1;
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+      if (aDate == null) {
+        return -1;
+      }
+      if (bDate == null) {
+        return 1;
+      }
       return aDate.compareTo(bDate);
     });
 
@@ -1105,14 +1130,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F1EE),
+                  color: CutLinkPalette.color(0xFFF1F1EE),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '${entry['message'] ?? ''}${createdAt.isEmpty ? '' : ' • $createdAt'}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666666),
                     fontSize: 9.8,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1155,8 +1180,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               padding: const EdgeInsets.fromLTRB(12, 9, 12, 8),
               decoration: BoxDecoration(
                 color: butcher
-                    ? const Color(0xFFEAF1FB)
-                    : const Color(0xFFF5EAEA),
+                    ? CutLinkPalette.color(0xFFEAF1FB)
+                    : CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
@@ -1165,8 +1190,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
                 border: Border.all(
                   color: butcher
-                      ? const Color(0xFFC6D7EB)
-                      : const Color(0xFFD7B8B8),
+                      ? CutLinkPalette.color(0xFFC6D7EB)
+                      : CutLinkPalette.color(0xFFD7B8B8),
                 ),
               ),
               child: Text(
@@ -1180,8 +1205,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 padding: const EdgeInsets.symmetric(horizontal: 5),
                 child: Text(
                   createdAt,
-                  style: const TextStyle(
-                    color: Color(0xFF888888),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF888888),
                     fontSize: 9.5,
                   ),
                 ),
@@ -1267,7 +1292,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           builder: (_) => SupplierWorkOrderPage(orderId: id),
         ),
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await _loadOrders();
 
@@ -1328,7 +1355,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     Map<String, dynamic> issue,
   ) async {
     final businessId = _supplierBusinessId;
-    if (businessId == null || issue['id'] == null) return;
+    if (businessId == null || issue['id'] == null) {
+      return;
+    }
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -1341,7 +1370,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         onReplacement: () => _createReplacementFulfilment(order, issue),
       ),
     );
-    if (mounted) await _loadOrders();
+    if (mounted) {
+      await _loadOrders();
+    }
   }
 
   Future<void> _editFulfilment(
@@ -1529,10 +1560,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                               width: double.infinity,
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8F8F6),
+                                color: CutLinkPalette.color(0xFFF8F8F6),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: const Color(0xFFE1E1DE),
+                                  color: CutLinkPalette.color(0xFFE1E1DE),
                                 ),
                               ),
                               child: const Text(
@@ -1563,7 +1594,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Actual total supplied weight',
                                 suffixText: 'kg',
                                 border: OutlineInputBorder(),
@@ -1622,7 +1653,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   Future<void> _openNewMarketplaceOrder(Map<String, dynamic> order) async {
     final orderId = order['id']?.toString();
 
-    if (orderId == null || orderId.isEmpty) return;
+    if (orderId == null || orderId.isEmpty) {
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -1661,7 +1694,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             .eq('supplier_business_id', _supplierBusinessId!);
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order marked Ready for Pickup.')),
@@ -1679,13 +1714,17 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
   Future<String?> _chooseDeliveryDriver() async {
     final supplierId = _supplierBusinessId;
-    if (supplierId == null || supplierId.isEmpty) return null;
+    if (supplierId == null || supplierId.isEmpty) {
+      return null;
+    }
 
     final rows = await Supabase.instance.client
         .from('supplier_delivery_drivers')
@@ -1695,7 +1734,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         .order('display_name');
 
     final drivers = List<Map<String, dynamic>>.from(rows as List);
-    if (!mounted) return null;
+    if (!mounted) {
+      return null;
+    }
 
     if (drivers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1721,7 +1762,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               child: DropdownButtonFormField<String>(
                 isExpanded: isPhoneLayout(context),
                 initialValue: selected,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Driver',
                   border: OutlineInputBorder(),
                 ),
@@ -1771,7 +1812,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     try {
       if (order['assigned_delivery_driver_id'] == null) {
         final driverId = await _chooseDeliveryDriver();
-        if (driverId == null) return;
+        if (driverId == null) {
+          return;
+        }
 
         await Supabase.instance.client.rpc(
           'assign_order_delivery_driver',
@@ -1785,7 +1828,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         params: {'p_order_id': orderId},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order marked Out for Delivery.')),
@@ -1803,7 +1848,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
@@ -1850,7 +1897,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     setState(() => _updatingOrderId = orderId);
 
@@ -1860,7 +1909,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         params: {'p_order_id': orderId, 'p_action': 'complete'},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await _loadOrders();
 
@@ -1876,7 +1927,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _updatingOrderId = null);
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
     }
   }
 
@@ -1942,7 +1995,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               final entries = <Map<String, dynamic>>[];
               for (final order in _orders) {
                 for (final issue in _issues(order)) {
-                  if (_isIssueClosed(issue) != showClosed) continue;
+                  if (_isIssueClosed(issue) != showClosed) {
+                    continue;
+                  }
                   entries.add({'order': order, 'issue': issue});
                 }
               }
@@ -1974,7 +2029,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
               Future<void> runAndRefresh(Future<void> Function() action) async {
                 await action();
-                if (!issuesContext.mounted) return;
+                if (!issuesContext.mounted) {
+                  return;
+                }
                 await Future<void>.delayed(const Duration(milliseconds: 100));
                 setIssuesState(() {});
               }
@@ -1987,7 +2044,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 final status = issue['status']?.toString() ?? 'requested';
 
                 return Material(
-                  color: selected ? const Color(0xFFF5EAEA) : Colors.white,
+                  color: selected
+                      ? CutLinkPalette.color(0xFFF5EAEA)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(9),
                   child: InkWell(
                     onTap: () =>
@@ -2000,7 +2059,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         border: Border.all(
                           color: selected
                               ? const Color(0xFFB78585)
-                              : const Color(0xFFE0E0DD),
+                              : CutLinkPalette.color(0xFFE0E0DD),
                         ),
                       ),
                       child: Row(
@@ -2010,7 +2069,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             height: 34,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFEEEE),
+                              color: CutLinkPalette.color(0xFFFFEEEE),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -2040,8 +2099,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                   'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
+                                  style: TextStyle(
+                                    color: CutLinkPalette.color(0xFF666666),
                                     fontSize: 9.8,
                                   ),
                                 ),
@@ -2099,9 +2158,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
                 return Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: CutLinkPalette.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0DD)),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2143,7 +2202,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF4E5),
+                                  color: CutLinkPalette.color(0xFFFFF4E5),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
@@ -2165,15 +2224,15 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F6),
+                            color: CutLinkPalette.color(0xFFF8F8F6),
                             borderRadius: BorderRadius.circular(9),
                           ),
                           child: Text(
                             issue['description'].toString(),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF555555),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF555555),
                               fontSize: 10.5,
                               height: 1.35,
                             ),
@@ -2182,10 +2241,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       const Divider(height: 1),
                       Expanded(
                         child: conversation.isEmpty
-                            ? const Center(
+                            ? Center(
                                 child: Text(
                                   'No conversation yet.',
-                                  style: TextStyle(color: Color(0xFF777777)),
+                                  style: TextStyle(
+                                    color: CutLinkPalette.color(0xFF777777),
+                                  ),
                                 ),
                               )
                             : ListView(
@@ -2198,10 +2259,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       ),
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFBFBF9),
+                        decoration: BoxDecoration(
+                          color: CutLinkPalette.color(0xFFFBFBF9),
                           border: Border(
-                            top: BorderSide(color: Color(0xFFE0E0DD)),
+                            top: BorderSide(
+                              color: CutLinkPalette.color(0xFFE0E0DD),
+                            ),
                           ),
                         ),
                         child: Align(
@@ -2221,11 +2284,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               }
 
               return Scaffold(
-                backgroundColor: const Color(0xFFF7F7F5),
+                backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
                 appBar: phoneAppBar(
                   context,
                   AppBar(
-                    backgroundColor: Colors.white,
+                    backgroundColor: CutLinkPalette.surface,
                     surfaceTintColor: Colors.white,
                     title: const Text(
                       'Marketplace Issues',
@@ -2266,10 +2329,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
                           final queue = Container(
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: CutLinkPalette.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFE0E0DD),
+                                color: CutLinkPalette.color(0xFFE0E0DD),
                               ),
                             ),
                             child: Column(
@@ -2288,11 +2351,13 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                 const Divider(height: 1),
                                 Expanded(
                                   child: entries.isEmpty
-                                      ? const Center(
+                                      ? Center(
                                           child: Text(
                                             'No open issues.',
                                             style: TextStyle(
-                                              color: Color(0xFF777777),
+                                              color: CutLinkPalette.color(
+                                                0xFF777777,
+                                              ),
                                             ),
                                           ),
                                         )
@@ -2339,7 +2404,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       ),
     );
 
-    if (mounted) await _loadOrders();
+    if (mounted) {
+      await _loadOrders();
+    }
   }
 
   Widget _actionButtons(Map<String, dynamic> order, {required String tabKey}) {
@@ -2405,7 +2472,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             label: const Text('View PDF Invoice'),
           ),
           Material(
-            color: const Color(0xFFF3F8F3),
+            color: CutLinkPalette.color(0xFFF3F8F3),
             borderRadius: BorderRadius.circular(9),
             child: InkWell(
               onTap: () => _completeOrder(order),
@@ -2458,11 +2525,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         : Container(
             height: 58,
             width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: CutLinkPalette.surface,
               border: Border(
-                top: BorderSide(color: Color(0xFFF0F1F2)),
-                bottom: BorderSide(color: Color(0xFFE3E5E8)),
+                top: BorderSide(color: CutLinkPalette.color(0xFFF0F1F2)),
+                bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
               ),
             ),
             child: Align(
@@ -2474,7 +2541,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                 labelColor: const Color(0xFF741C1C),
-                unselectedLabelColor: const Color(0xFF666A70),
+                unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
                 indicatorColor: const Color(0xFF741C1C),
                 indicatorWeight: 3,
                 tabs: [for (final tab in _tabs) _buildTab(tab)],
@@ -2485,9 +2552,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     final top = Container(
       height: embedded ? 62 : 64,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+        ),
       ),
       child: Row(
         children: [
@@ -2496,7 +2565,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
+              color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
@@ -2517,10 +2586,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 ),
                 if (!isPhoneLayout(context)) const IosGap(height: 1),
                 if (!isPhoneLayout(context))
-                  const Text(
+                  Text(
                     'Marketplace orders, work orders, invoices and fulfilment',
                     style: TextStyle(
-                      color: Color(0xFF74787E),
+                      color: CutLinkPalette.color(0xFF74787E),
                       fontSize: 10.8,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2532,7 +2601,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             onPressed: _openIssuesPanel,
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF741C1C),
-              side: const BorderSide(color: Color(0xFFDDB7BC)),
+              side: BorderSide(color: CutLinkPalette.color(0xFFDDB7BC)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -2590,9 +2659,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (widget.embedded) {
       return ColoredBox(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         child: Column(
           children: [
             _ordersHeader(embedded: true),
@@ -2603,7 +2673,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       body: Column(
         children: [
           SafeArea(bottom: false, child: _ordersHeader(embedded: false)),
@@ -2631,7 +2701,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               decoration: BoxDecoration(
                 color: tab.key == 'new' || tab.key == 'issues'
                     ? const Color(0xFFB3261E)
-                    : const Color(0xFFE9E9E6),
+                    : CutLinkPalette.color(0xFFE9E9E6),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -2640,7 +2710,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 style: TextStyle(
                   color: tab.key == 'new' || tab.key == 'issues'
                       ? Colors.white
-                      : const Color(0xFF444444),
+                      : CutLinkPalette.color(0xFF444444),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2726,8 +2796,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       Text(
                         _emptyDescription(tab.key),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
                           height: 1.5,
                         ),
                       ),
@@ -2831,7 +2901,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     switch (tabKey) {
       case 'new':
         icon = Icons.notifications_none;
-        iconBackground = const Color(0xFFEAF1FB);
+        iconBackground = CutLinkPalette.color(0xFFEAF1FB);
         iconForeground = const Color(0xFF315A8C);
         leadingLabel = 'Order ${cutLinkOrderReference(order['order_number'])}';
         dateLabel = 'Received';
@@ -2841,7 +2911,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
       case 'invoices':
         icon = Icons.receipt_long_outlined;
-        iconBackground = const Color(0xFFF5EAEA);
+        iconBackground = CutLinkPalette.color(0xFFF5EAEA);
         iconForeground = const Color(0xFF741C1C);
         leadingLabel =
             invoice?['invoice_number']?.toString() ??
@@ -2856,7 +2926,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         icon = pickup
             ? Icons.inventory_2_outlined
             : Icons.local_shipping_outlined;
-        iconBackground = const Color(0xFFEAF6F8);
+        iconBackground = CutLinkPalette.color(0xFFEAF6F8);
         iconForeground = const Color(0xFF27666F);
         leadingLabel =
             order['order_number']?.toString() ??
@@ -2871,7 +2941,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
       case 'completed':
         icon = pickup ? Icons.shopping_bag_outlined : Icons.task_alt;
-        iconBackground = const Color(0xFFE8F5E9);
+        iconBackground = CutLinkPalette.color(0xFFE8F5E9);
         iconForeground = const Color(0xFF2E7D32);
         leadingLabel =
             order['order_number']?.toString() ??
@@ -2888,8 +2958,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
 
       default:
         icon = Icons.receipt_long_outlined;
-        iconBackground = const Color(0xFFF0F0F0);
-        iconForeground = const Color(0xFF555555);
+        iconBackground = CutLinkPalette.color(0xFFF0F0F0);
+        iconForeground = CutLinkPalette.color(0xFF555555);
         leadingLabel = 'Order ${cutLinkOrderReference(order['order_number'])}';
         dateLabel = 'Updated';
         dateValue = _formatDate(order['updated_at']);
@@ -2917,11 +2987,11 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             border: Border.all(
               color: _hasOpenIssues(order)
                   ? const Color(0xFFD8A0A0)
-                  : const Color(0xFFE3E5E8),
+                  : CutLinkPalette.color(0xFFE3E5E8),
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: const [
@@ -3009,10 +3079,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
+                        Text(
                           'TOTAL',
                           style: TextStyle(
-                            color: Color(0xFF777777),
+                            color: CutLinkPalette.color(0xFF777777),
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
@@ -3031,7 +3101,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   Icon(
                     Icons.chevron_right,
                     color: onTap == null
-                        ? const Color(0xFFBBBBBB)
+                        ? CutLinkPalette.color(0xFFBBBBBB)
                         : const Color(0xFF741C1C),
                   ),
                 ],
@@ -3115,7 +3185,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             border: Border.all(
               color: _hasOpenIssues(order)
                   ? const Color(0xFFD8A0A0)
-                  : const Color(0xFFE0E0DD),
+                  : CutLinkPalette.color(0xFFE0E0DD),
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -3128,7 +3198,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   height: 42,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5EAEA),
+                    color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -3218,7 +3288,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                       ),
                     ),
                   ),
-                const Icon(Icons.chevron_right, color: Color(0xFF777777)),
+                Icon(
+                  Icons.chevron_right,
+                  color: CutLinkPalette.color(0xFF777777),
+                ),
               ],
             ),
           ),
@@ -3230,7 +3303,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
   Widget _compactOrderMetric(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 17, color: const Color(0xFF777777)),
+        Icon(icon, size: 17, color: CutLinkPalette.color(0xFF777777)),
         const SizedBox(width: 7),
         Expanded(
           child: Column(
@@ -3238,9 +3311,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
-                  color: Color(0xFF888888),
+                  color: CutLinkPalette.color(0xFF888888),
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.4,
                 ),
@@ -3273,7 +3346,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         side: BorderSide(
           color: _hasOpenIssues(order)
               ? const Color(0xFFD8A0A0)
-              : const Color(0xFFE0E0E0),
+              : CutLinkPalette.color(0xFFE0E0E0),
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -3317,8 +3390,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             null)
                           Text(
                             'For ${order['replacement_for_order_number_snapshot']}',
-                            style: const TextStyle(
-                              color: Color(0xFF666666),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF666666),
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -3338,7 +3411,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDECEC),
+                  color: CutLinkPalette.color(0xFFFDECEC),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: const Row(
@@ -3454,14 +3527,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             ],
             if (issues.any(_isIssueClosed)) ...[
               const IosGap(height: 14),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Closed Issues',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF666666),
+                    color: CutLinkPalette.color(0xFF666666),
                   ),
                 ),
               ),
@@ -3478,9 +3551,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF9F9F7),
+                color: CutLinkPalette.color(0xFFF9F9F7),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE4E4E1)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE4E4E1)),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -3505,7 +3578,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         const IosGap(height: 4),
                         Text(
                           'SKU: ${item['sku_snapshot']}',
-                          style: const TextStyle(color: Color(0xFF666666)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
+                          ),
                         ),
                       ],
                       const IosGap(height: 7),
@@ -3514,7 +3589,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           '${_formatNumber(item['quantity'])} '
                           '${_unitLabel(item['quantity_unit']?.toString())} ordered'
                           ' at ${_money(item['unit_price'])} / kg',
-                          style: const TextStyle(color: Color(0xFF555555)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF555555),
+                          ),
                         )
                       else
                         Text(
@@ -3522,7 +3599,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           '${_unitLabel(item['quantity_unit']?.toString())}'
                           ' × ${_money(item['unit_price'])}'
                           '${_priceBasisLabel(item['price_basis']?.toString()).isEmpty ? '' : ' / ${_priceBasisLabel(item['price_basis']?.toString())}'}',
-                          style: const TextStyle(color: Color(0xFF555555)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF555555),
+                          ),
                         ),
                       if (catchWeight) ...[
                         const IosGap(height: 7),
@@ -3556,7 +3635,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         const IosGap(height: 7),
                         Text(
                           'Notes: ${item['notes']}',
-                          style: const TextStyle(color: Color(0xFF666666)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
+                          ),
                         ),
                       ],
                       if (status == 'accepted' || status == 'processing') ...[
@@ -3666,12 +3747,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           bold: true,
                         ),
                         const IosGap(height: 8),
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Tax is finalised on the invoice using the supplier-configured tax category and rate.',
                             style: TextStyle(
-                              color: Color(0xFF666666),
+                              color: CutLinkPalette.color(0xFF666666),
                               fontSize: 12,
                               height: 1.4,
                             ),
@@ -3700,10 +3781,14 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: closed ? const Color(0xFFF5F5F3) : const Color(0xFFFFF7F7),
+        color: closed
+            ? CutLinkPalette.color(0xFFF5F5F3)
+            : CutLinkPalette.color(0xFFFFF7F7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: closed ? const Color(0xFFD7D7D2) : const Color(0xFFE4BABA),
+          color: closed
+              ? CutLinkPalette.color(0xFFD7D7D2)
+              : CutLinkPalette.color(0xFFE4BABA),
         ),
       ),
       child: Column(
@@ -3730,10 +3815,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: status == 'resolved'
-                      ? const Color(0xFFE8F5E9)
+                      ? CutLinkPalette.color(0xFFE8F5E9)
                       : status == 'rejected'
-                      ? const Color(0xFFFDECEC)
-                      : const Color(0xFFFFF4E5),
+                      ? CutLinkPalette.color(0xFFFDECEC)
+                      : CutLinkPalette.color(0xFFFFF4E5),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -3770,7 +3855,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
             const IosGap(height: 8),
             Text(
               'Reported ${_formatDate(issue['reported_at'])}',
-              style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF666666),
+                fontSize: 12,
+              ),
             ),
           ],
           if (issue['supplier_response'] != null &&
@@ -3794,8 +3882,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: issue['butcher_confirmed_at'] != null
-                    ? const Color(0xFFE8F5E9)
-                    : const Color(0xFFFFF4E5),
+                    ? CutLinkPalette.color(0xFFE8F5E9)
+                    : CutLinkPalette.color(0xFFFFF4E5),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: PhoneRow(
@@ -3859,8 +3947,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   color: message['sender_role']?.toString() == 'butcher'
-                      ? const Color(0xFFF3F3F1)
-                      : const Color(0xFFEAF1FB),
+                      ? CutLinkPalette.color(0xFFF3F3F1)
+                      : CutLinkPalette.color(0xFFEAF1FB),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Text(
@@ -3892,6 +3980,7 @@ class _CompactOrderFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 145,
       child: Column(
@@ -3899,8 +3988,8 @@ class _CompactOrderFact extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 9.5,
               fontWeight: FontWeight.w900,
             ),
@@ -3938,14 +4027,15 @@ class _InfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE1E1DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E1DE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3972,6 +4062,7 @@ class _TotalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final style = TextStyle(
       fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
       fontSize: bold ? 17 : 15,

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -89,20 +90,26 @@ class _SupplierMarketplaceOrderDetailPageState
           .eq('order_source', 'marketplace')
           .single();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _order = Map<String, dynamic>.from(row);
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -111,8 +118,12 @@ class _SupplierMarketplaceOrderDetailPageState
   }
 
   Map<String, dynamic>? _map(dynamic raw) {
-    if (raw is Map<String, dynamic>) return raw;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -121,7 +132,9 @@ class _SupplierMarketplaceOrderDetailPageState
 
   List<Map<String, dynamic>> _items() {
     final raw = _order?['order_items'];
-    if (raw is! List) return [];
+    if (raw is! List) {
+      return [];
+    }
     return raw
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
@@ -132,14 +145,20 @@ class _SupplierMarketplaceOrderDetailPageState
     final business = _map(_order?['businesses']);
     final trading = business?['trading_name']?.toString().trim();
     final legal = business?['legal_name']?.toString().trim();
-    if (trading != null && trading.isNotEmpty) return trading;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (trading != null && trading.isNotEmpty) {
+      return trading;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
     return 'CutLink Butcher';
   }
 
   String _address() {
     final business = _map(_order?['businesses']);
-    if (business == null) return 'Not provided';
+    if (business == null) {
+      return 'Not provided';
+    }
     final parts = <String>[
       business['address_line_1']?.toString() ?? '',
       business['address_line_2']?.toString() ?? '',
@@ -151,9 +170,13 @@ class _SupplierMarketplaceOrderDetailPageState
   }
 
   String _date(dynamic raw) {
-    if (raw == null) return 'Not specified';
+    if (raw == null) {
+      return 'Not specified';
+    }
     final date = DateTime.tryParse(raw.toString())?.toLocal();
-    if (date == null) return raw.toString();
+    if (date == null) {
+      return raw.toString();
+    }
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day/$month/${date.year}';
@@ -161,8 +184,12 @@ class _SupplierMarketplaceOrderDetailPageState
 
   String _quantity(dynamic value) {
     final number = value is num ? value.toDouble() : double.tryParse('$value');
-    if (number == null) return value?.toString() ?? '0';
-    if (number == number.roundToDouble()) return number.toInt().toString();
+    if (number == null) {
+      return value?.toString() ?? '0';
+    }
+    if (number == number.roundToDouble()) {
+      return number.toInt().toString();
+    }
     return number
         .toStringAsFixed(2)
         .replaceFirst(RegExp(r'0+$'), '')
@@ -171,7 +198,9 @@ class _SupplierMarketplaceOrderDetailPageState
 
   String _money(dynamic value) {
     final number = value is num ? value.toDouble() : double.tryParse('$value');
-    if (number == null) return 'Not set';
+    if (number == null) {
+      return 'Not set';
+    }
     return '\$${number.toStringAsFixed(2)}';
   }
 
@@ -192,20 +221,28 @@ class _SupplierMarketplaceOrderDetailPageState
 
   DateTime? _parseRequestedDate() {
     final raw = _order?['requested_fulfilment_date']?.toString();
-    if (raw == null || raw.isEmpty) return null;
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
     return DateTime.tryParse(raw);
   }
 
   TimeOfDay? _parseRequestedTime() {
     final raw = _order?['requested_fulfilment_time']?.toString();
-    if (raw == null || raw.isEmpty) return null;
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
 
     final parts = raw.split(':');
-    if (parts.length < 2) return null;
+    if (parts.length < 2) {
+      return null;
+    }
 
     final hour = int.tryParse(parts[0]);
     final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
+    if (hour == null || minute == null) {
+      return null;
+    }
 
     return TimeOfDay(hour: hour, minute: minute);
   }
@@ -241,7 +278,9 @@ class _SupplierMarketplaceOrderDetailPageState
   }
 
   Future<void> _accept() async {
-    if (_saving || _order?['status']?.toString() != 'submitted') return;
+    if (_saving || _order?['status']?.toString() != 'submitted') {
+      return;
+    }
 
     DateTime? confirmedDate = _parseRequestedDate();
     TimeOfDay? confirmedTime =
@@ -305,8 +344,8 @@ class _SupplierMarketplaceOrderDetailPageState
                     children: [
                       Text(
                         '${_customerName()} requested the following $fulfilment schedule.',
-                        style: const TextStyle(
-                          color: Color(0xFF555555),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF555555),
                           height: 1.4,
                         ),
                       ),
@@ -314,9 +353,11 @@ class _SupplierMarketplaceOrderDetailPageState
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF7F7F4),
+                          color: CutLinkPalette.color(0xFFF7F7F4),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE0E0DC)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFE0E0DC),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -340,10 +381,10 @@ class _SupplierMarketplaceOrderDetailPageState
                         ),
                       ),
                       const IosGap(height: 18),
-                      const Text(
+                      Text(
                         'SUPPLIER CONFIRMED SCHEDULE',
                         style: TextStyle(
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 10.5,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.5,
@@ -391,11 +432,11 @@ class _SupplierMarketplaceOrderDetailPageState
                         ),
                       ),
                       const IosGap(height: 14),
-                      const Text(
+                      Text(
                         'Keep the butcher’s requested schedule or change it. '
                         'The confirmed date and time will follow the order into fulfilment.',
                         style: TextStyle(
-                          color: Color(0xFF666666),
+                          color: CutLinkPalette.color(0xFF666666),
                           fontSize: 11.5,
                           height: 1.4,
                         ),
@@ -432,7 +473,9 @@ class _SupplierMarketplaceOrderDetailPageState
       },
     );
 
-    if (schedule == null || !mounted) return;
+    if (schedule == null || !mounted) {
+      return;
+    }
 
     setState(() => _saving = true);
 
@@ -446,7 +489,9 @@ class _SupplierMarketplaceOrderDetailPageState
         },
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -460,12 +505,16 @@ class _SupplierMarketplaceOrderDetailPageState
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   Future<void> _reject() async {
-    if (_saving || _order?['status']?.toString() != 'submitted') return;
+    if (_saving || _order?['status']?.toString() != 'submitted') {
+      return;
+    }
 
     final controller = TextEditingController();
     try {
@@ -491,7 +540,7 @@ class _SupplierMarketplaceOrderDetailPageState
                     autofocus: true,
                     minLines: 3,
                     maxLines: 5,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Reason for rejection',
                       border: OutlineInputBorder(),
                     ),
@@ -527,7 +576,9 @@ class _SupplierMarketplaceOrderDetailPageState
         ),
       );
 
-      if (reason == null) return;
+      if (reason == null) {
+        return;
+      }
 
       setState(() => _saving = true);
 
@@ -536,7 +587,9 @@ class _SupplierMarketplaceOrderDetailPageState
         params: {'target_order_id': widget.orderId, 'rejection_reason': reason},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (mounted) {
@@ -546,7 +599,9 @@ class _SupplierMarketplaceOrderDetailPageState
       }
     } finally {
       controller.dispose();
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -554,7 +609,7 @@ class _SupplierMarketplaceOrderDetailPageState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -568,8 +623,8 @@ class _SupplierMarketplaceOrderDetailPageState
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
@@ -589,16 +644,17 @@ class _SupplierMarketplaceOrderDetailPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'supplier_order',
       'id': widget.orderId,
     });
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'New Marketplace Order',
@@ -646,9 +702,9 @@ class _SupplierMarketplaceOrderDetailPageState
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
               ),
               child: Row(
                 children: [
@@ -656,7 +712,7 @@ class _SupplierMarketplaceOrderDetailPageState
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4E5E5),
+                      color: CutLinkPalette.color(0xFFF4E5E5),
                       borderRadius: BorderRadius.circular(13),
                     ),
                     child: const Icon(
@@ -695,8 +751,8 @@ class _SupplierMarketplaceOrderDetailPageState
                     ),
                     decoration: BoxDecoration(
                       color: submitted
-                          ? const Color(0xFFEAF1FB)
-                          : const Color(0xFFE8F5E9),
+                          ? CutLinkPalette.color(0xFFEAF1FB)
+                          : CutLinkPalette.color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -792,7 +848,7 @@ class _SupplierMarketplaceOrderDetailPageState
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0DD)),
+                side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IosPadding(
@@ -840,9 +896,9 @@ class _SupplierMarketplaceOrderDetailPageState
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE0E0DD)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
                 ),
                 child: PhoneRow(
                   mode: PhoneRowMode.wrap,
@@ -869,8 +925,8 @@ class _SupplierMarketplaceOrderDetailPageState
                               const IosGap(height: 4),
                               Text(
                                 'SKU ${item['sku_snapshot']}',
-                                style: const TextStyle(
-                                  color: Color(0xFF777777),
+                                style: TextStyle(
+                                  color: CutLinkPalette.color(0xFF777777),
                                 ),
                               ),
                             ],
@@ -883,10 +939,10 @@ class _SupplierMarketplaceOrderDetailPageState
                             ),
                             if (item['catch_weight_snapshot'] == true) ...[
                               const IosGap(height: 4),
-                              const Text(
+                              Text(
                                 'Catch weight — actual kilograms are entered during warehouse fulfilment.',
                                 style: TextStyle(
-                                  color: Color(0xFF666666),
+                                  color: CutLinkPalette.color(0xFF666666),
                                   fontSize: 12.5,
                                 ),
                               ),
@@ -907,10 +963,10 @@ class _SupplierMarketplaceOrderDetailPageState
                             ),
                           ),
                           if (item['catch_weight_snapshot'] == true)
-                            const Text(
+                            Text(
                               'Final total pending weight',
                               style: TextStyle(
-                                color: Color(0xFF777777),
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 11,
                               ),
                             ),

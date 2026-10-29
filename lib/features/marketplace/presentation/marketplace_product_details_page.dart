@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/product_content_report_button.dart';
 import '../../../shared/animal_catalogues/supplier_variant_options.dart';
@@ -128,9 +129,9 @@ class _MarketplaceProductDetailsPageState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF8F7),
+        color: CutLinkPalette.color(0xFFFAF8F7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE8DEDB)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE8DEDB)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,9 +156,12 @@ class _MarketplaceProductDetailsPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'SUPPLIER',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF666666)),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: CutLinkPalette.color(0xFF666666),
+                      ),
                     ),
                     const IosGap(height: 4),
                     Text(
@@ -659,17 +663,17 @@ class _MarketplaceProductDetailsPageState
       constraints: const BoxConstraints(minHeight: 88),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4E5E5),
+        color: CutLinkPalette.color(0xFFF4E5E5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD7B8B8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFD7B8B8)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'GRADE',
             style: TextStyle(
-              color: Color(0xFF777777),
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 9,
               letterSpacing: .8,
               fontWeight: FontWeight.w900,
@@ -693,8 +697,8 @@ class _MarketplaceProductDetailsPageState
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF666666),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF666666),
                 fontSize: 9.5,
                 height: 1.05,
                 fontWeight: FontWeight.w700,
@@ -1113,8 +1117,8 @@ class _MarketplaceProductDetailsPageState
           children: [
             Text(
               label.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: .45,
@@ -1126,7 +1130,7 @@ class _MarketplaceProductDetailsPageState
               maxLines: prominent ? 4 : 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: const Color(0xFF202020),
+                color: CutLinkPalette.color(0xFF202020),
                 fontSize: prominent ? 18 : 13,
                 height: 1.25,
                 fontWeight: FontWeight.w700,
@@ -1146,9 +1150,9 @@ class _MarketplaceProductDetailsPageState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE1E3E5)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E3E5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1221,14 +1225,17 @@ class _MarketplaceProductDetailsPageState
             const IosGap(height: 4),
             Text(
               'Minimum ${_formatNumber(minimum)} $unitLabel',
-              style: const TextStyle(color: Color(0xFF666666), fontSize: 11),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF666666),
+                fontSize: 11,
+              ),
             ),
           ],
           const IosGap(height: 12),
           if (unitPrice == null)
-            const Text(
+            Text(
               'A visible price is required before ordering.',
-              style: TextStyle(color: Color(0xFF666666)),
+              style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
             )
           else if (unavailable)
             const Text(
@@ -1260,7 +1267,7 @@ class _MarketplaceProductDetailsPageState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7F7F5),
+                color: CutLinkPalette.color(0xFFF7F7F5),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: PhoneRow(
@@ -1272,8 +1279,8 @@ class _MarketplaceProductDetailsPageState
                         catchWeightKgPricing
                             ? 'Final total after weighing'
                             : 'Order total',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF666666),
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1294,10 +1301,10 @@ class _MarketplaceProductDetailsPageState
             ),
             if (catchWeightKgPricing) ...[
               const IosGap(height: 7),
-              const Text(
+              Text(
                 'The supplier confirms actual kilograms during preparation.',
                 style: TextStyle(
-                  color: Color(0xFF666666),
+                  color: CutLinkPalette.color(0xFF666666),
                   fontSize: 10.5,
                   height: 1.3,
                 ),
@@ -1504,8 +1511,8 @@ class _MarketplaceProductDetailsPageState
               const IosGap(height: 12),
               Text(
                 _fullCataloguePath(),
-                style: const TextStyle(
-                  color: Color(0xFF5E6469),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF5E6469),
                   fontSize: 12,
                   height: 1.35,
                 ),
@@ -1629,7 +1636,7 @@ class _MarketplaceProductDetailsPageState
                     fontWeight: FontWeight.w900,
                     color: product['halal_status'] == 'halal'
                         ? const Color(0xFF246342)
-                        : const Color(0xFF555B61),
+                        : CutLinkPalette.color(0xFF555B61),
                   ),
                 ),
                 const IosGap(height: 5),
@@ -1639,8 +1646,8 @@ class _MarketplaceProductDetailsPageState
                       : product['halal_status'] == 'not_halal'
                       ? 'The supplier has marked this product as not Halal.'
                       : 'The supplier has not specified Halal status for this product.',
-                  style: const TextStyle(
-                    color: Color(0xFF5E6469),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF5E6469),
                     height: 1.35,
                   ),
                 ),
@@ -1660,7 +1667,10 @@ class _MarketplaceProductDetailsPageState
             icon: Icons.description_outlined,
             child: Text(
               supplierSpecification,
-              style: const TextStyle(color: Color(0xFF4E5357), height: 1.4),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF4E5357),
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -1677,10 +1687,10 @@ class _MarketplaceProductDetailsPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Approved customers can access customer pricing and order from this supplier.',
                 style: TextStyle(
-                  color: Color(0xFF5E6469),
+                  color: CutLinkPalette.color(0xFF5E6469),
                   fontSize: 11,
                   height: 1.35,
                 ),
@@ -1694,11 +1704,11 @@ class _MarketplaceProductDetailsPageState
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6F4),
+      backgroundColor: CutLinkPalette.color(0xFFF5F6F4),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'Product Details',
@@ -1753,6 +1763,7 @@ class _MarketplaceProductDetailsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _buildCompactProductDetails(context);
   }
 }

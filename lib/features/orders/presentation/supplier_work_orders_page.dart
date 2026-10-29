@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -106,7 +107,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
   Future<void> _loadWorkOrders() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _workOrders.isEmpty;
       _errorMessage = null;
     });
 
@@ -325,10 +326,14 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: delivery ? const Color(0xFFEAF6F8) : const Color(0xFFF3F8F3),
+        color: delivery
+            ? CutLinkPalette.color(0xFFEAF6F8)
+            : CutLinkPalette.color(0xFFF3F8F3),
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: delivery ? const Color(0xFFB9D9DE) : const Color(0xFFC7DDCB),
+          color: delivery
+              ? CutLinkPalette.color(0xFFB9D9DE)
+              : CutLinkPalette.color(0xFFC7DDCB),
         ),
       ),
       child: Row(
@@ -471,28 +476,28 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
     switch (status) {
       case 'created':
-        background = const Color(0xFFF0F0F0);
-        foreground = const Color(0xFF555555);
+        background = CutLinkPalette.color(0xFFF0F0F0);
+        foreground = CutLinkPalette.color(0xFF555555);
         break;
       case 'printed':
-        background = const Color(0xFFE9EEF8);
+        background = CutLinkPalette.color(0xFFE9EEF8);
         foreground = const Color(0xFF315F8C);
         break;
       case 'picking':
-        background = const Color(0xFFFFF1D8);
+        background = CutLinkPalette.color(0xFFFFF1D8);
         foreground = const Color(0xFF8A5B00);
         break;
       case 'picked':
-        background = const Color(0xFFE7F0FA);
+        background = CutLinkPalette.color(0xFFE7F0FA);
         foreground = const Color(0xFF275A89);
         break;
       case 'completed':
-        background = const Color(0xFFE5F4E9);
+        background = CutLinkPalette.color(0xFFE5F4E9);
         foreground = const Color(0xFF25663A);
         break;
       default:
-        background = const Color(0xFFF0F0F0);
-        foreground = const Color(0xFF555555);
+        background = CutLinkPalette.color(0xFFF0F0F0);
+        foreground = CutLinkPalette.color(0xFF555555);
     }
 
     return Chip(
@@ -516,7 +521,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
       margin: const EdgeInsets.only(bottom: 12),
       shadowColor: const Color(0x12000000),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE3E5E8)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
@@ -596,8 +601,8 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                       workOrder['warehouse_instructions'].toString(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         height: 1.4,
                       ),
                     ),
@@ -671,9 +676,9 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x07000000),
@@ -682,7 +687,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.warehouse_outlined, color: _darkRed, size: 24),
                     SizedBox(width: 12),
@@ -701,7 +706,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                           Text(
                             'Pick, weigh and finalise orders before handoff to delivery or pickup.',
                             style: TextStyle(
-                              color: Color(0xFF666A70),
+                              color: CutLinkPalette.color(0xFF666A70),
                               fontSize: 12.5,
                             ),
                           ),
@@ -727,14 +732,18 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                           icon: const Icon(Icons.close),
                         ),
                   filled: true,
-                  fillColor: const Color(0xFFFAFAFB),
+                  fillColor: CutLinkPalette.color(0xFFFAFAFB),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderSide: BorderSide(
+                      color: CutLinkPalette.color(0xFFD9D9D9),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFD9D9D9)),
+                    borderSide: BorderSide(
+                      color: CutLinkPalette.color(0xFFD9D9D9),
+                    ),
                   ),
                 ),
               ),
@@ -744,9 +753,9 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x07000000),
@@ -760,7 +769,7 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   labelColor: _darkRed,
-                  unselectedLabelColor: const Color(0xFF666A70),
+                  unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
                   indicatorColor: _darkRed,
                   indicatorWeight: 3,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -783,10 +792,10 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.assignment_outlined,
                               size: 64,
-                              color: Color(0xFFAAAAAA),
+                              color: CutLinkPalette.color(0xFFAAAAAA),
                             ),
                             const IosGap(height: 14),
                             Text(
@@ -822,12 +831,13 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -850,9 +860,9 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+            child: Divider(height: 1, color: CutLinkPalette.color(0xFFE4E6E8)),
           ),
         ),
       ),
@@ -869,6 +879,7 @@ class _MiniInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 145,
       child: Column(
@@ -876,8 +887,8 @@ class _MiniInfo extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../authentication/presentation/personal_account_settings_page.dart';
@@ -20,6 +21,7 @@ class ButcherSettingsPage extends StatelessWidget {
   final VoidCallback? onBrandingChanged;
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final sections = <(IconData, String, String, Widget)>[
       (
         Icons.business_outlined,
@@ -65,6 +67,7 @@ class ButcherSettingsPage extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.all(constraints.maxWidth < 600 ? 14 : 24),
                 children: [
+                  const AppearanceSettingsTile(),
                   const MembershipSettingsLink(),
                   ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined),
@@ -81,9 +84,9 @@ class ButcherSettingsPage extends StatelessWidget {
                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                   ),
                   const IosGap(height: 6),
-                  const Text(
+                  Text(
                     'Manage your business identity, purchasing details and preferences.',
-                    style: TextStyle(color: Color(0xFF6D7177)),
+                    style: TextStyle(color: CutLinkPalette.color(0xFF6D7177)),
                   ),
                   const IosGap(height: 20),
                   _ButcherBrandingCard(onChanged: onBrandingChanged),
@@ -262,86 +265,89 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
   }
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: IosPadding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Card(
+      child: IosPadding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: CutLinkPalette.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
+                  ),
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _bytes == null
+                      ? const Icon(
+                          Icons.storefront_outlined,
+                          size: 34,
+                          color: Color(0xFF741C1C),
+                        )
+                      : SharpLogo.memory(_bytes!),
                 ),
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _bytes == null
-                    ? const Icon(
-                        Icons.storefront_outlined,
-                        size: 34,
-                        color: Color(0xFF741C1C),
-                      )
-                    : SharpLogo.memory(_bytes!),
-              ),
-              const SizedBox(width: 18),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Company branding',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
+                const SizedBox(width: 18),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Company branding',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    IosGap(height: 6),
-                    Text(
-                      'Add your business logo to your CutLink identity. PNG or JPG, up to 5 MB.',
-                    ),
-                  ],
+                      IosGap(height: 6),
+                      Text(
+                        'Add your business logo to your CutLink identity. PNG or JPG, up to 5 MB.',
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const IosGap(height: 16),
-          if (_error != null)
-            TextButton(onPressed: _load, child: Text('$_error Retry')),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: _busy || _loading || _businessId == null
-                    ? null
-                    : () => _change(),
-                icon: const Icon(Icons.upload_outlined),
-                label: Text(
-                  _busy
-                      ? 'Saving…'
-                      : _path == null
-                      ? 'Upload logo'
-                      : 'Change logo',
+              ],
+            ),
+            const IosGap(height: 16),
+            if (_error != null)
+              TextButton(onPressed: _load, child: Text('$_error Retry')),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy || _loading || _businessId == null
+                      ? null
+                      : () => _change(),
+                  icon: const Icon(Icons.upload_outlined),
+                  label: Text(
+                    _busy
+                        ? 'Saving…'
+                        : _path == null
+                        ? 'Upload logo'
+                        : 'Change logo',
+                  ),
                 ),
-              ),
-              if (_path != null)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _change(remove: true),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Remove logo'),
-                ),
-            ],
-          ),
-        ],
+                if (_path != null)
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _change(remove: true),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove logo'),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SettingsTile extends StatelessWidget {
@@ -359,12 +365,13 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Card(
       elevation: 0,
       color: Colors.white,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
@@ -398,8 +405,8 @@ class _SettingsTile extends StatelessWidget {
                     const IosGap(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         height: 1.35,
                       ),
                     ),
@@ -417,7 +424,9 @@ class _SettingsTile extends StatelessWidget {
 
 class _ButcherSettingsData {
   static List<Map<String, dynamic>> maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
     return value
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
@@ -537,13 +546,17 @@ class _ButcherProfileSettingsPageState
       _state.text = row['state']?.toString() ?? '';
       _postcode.text = row['postcode']?.toString() ?? '';
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -553,7 +566,9 @@ class _ButcherProfileSettingsPageState
 
   Future<void> _save() async {
     final businessId = _businessId;
-    if (businessId == null || _saving) return;
+    if (businessId == null || _saving) {
+      return;
+    }
 
     setState(() => _saving = true);
 
@@ -590,7 +605,9 @@ class _ButcherProfileSettingsPageState
       _state.text = saved['state']?.toString() ?? '';
       _postcode.text = saved['postcode']?.toString() ?? '';
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Business profile saved successfully.')),
@@ -616,6 +633,7 @@ class _ButcherProfileSettingsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Business Profile',
       loading: _loading,
@@ -746,13 +764,17 @@ class _ButcherBillingSettingsPageState
         _accountsPhone.text = row['accounts_contact_phone']?.toString() ?? '';
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -761,7 +783,9 @@ class _ButcherBillingSettingsPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -794,12 +818,15 @@ class _ButcherBillingSettingsPageState
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Billing & Accounts',
       loading: _loading,
@@ -894,14 +921,18 @@ class _ButcherDeliveryAddressesPageState
           .order('is_default', ascending: false)
           .order('label');
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _addresses = _ButcherSettingsData.maps(rows);
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -911,7 +942,9 @@ class _ButcherDeliveryAddressesPageState
 
   Future<void> _edit([Map<String, dynamic>? existing]) async {
     final businessId = _businessId;
-    if (businessId == null) return;
+    if (businessId == null) {
+      return;
+    }
 
     final label = TextEditingController(
       text: existing?['label']?.toString() ?? '',
@@ -1070,6 +1103,7 @@ class _ButcherDeliveryAddressesPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (_loading) {
       return Scaffold(
         appBar: phoneAppBar(
@@ -1091,7 +1125,7 @@ class _ButcherDeliveryAddressesPageState
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
@@ -1109,11 +1143,11 @@ class _ButcherDeliveryAddressesPageState
         children: [
           Expanded(
             child: _addresses.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No delivery addresses saved yet.',
                       style: TextStyle(
-                        color: Color(0xFF666666),
+                        color: CutLinkPalette.color(0xFF666666),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1234,13 +1268,17 @@ class _ButcherPrivacySettingsPageState
         _shareContact = row['share_contact_with_approved_customers'] != false;
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -1249,7 +1287,9 @@ class _ButcherPrivacySettingsPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -1273,12 +1313,15 @@ class _ButcherPrivacySettingsPageState
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Privacy',
       loading: _loading,
@@ -1368,13 +1411,17 @@ class _ButcherNotificationSettingsPageState
         _invoices = row['notify_invoice_updates'] != false;
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _businessId = id;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -1383,7 +1430,9 @@ class _ButcherNotificationSettingsPageState
   }
 
   Future<void> _save() async {
-    if (_businessId == null || _saving) return;
+    if (_businessId == null || _saving) {
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -1423,12 +1472,15 @@ class _ButcherNotificationSettingsPageState
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return _SettingsFormScaffold(
       title: 'Notification settings',
       loading: _loading,
@@ -1516,6 +1568,7 @@ class _SettingsFormScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (loading) {
       return Scaffold(
         appBar: phoneAppBar(context, AppBar(title: Text(title))),
@@ -1577,9 +1630,9 @@ class _SettingsFormScaffold extends StatelessWidget {
                   ),
                 ),
                 const IosGap(height: 6),
-                const Text(
+                Text(
                   'Keep your business details and preferences up to date.',
-                  style: TextStyle(color: Color(0xFF6D7177)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF6D7177)),
                 ),
                 const IosGap(height: 18),
                 Card(
@@ -1605,6 +1658,7 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return IosPadding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 
@@ -27,71 +28,77 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
-    future: _data,
-    builder: (context, snapshot) {
-      final data = snapshot.data;
-      final rows = (data?['featured'] as List? ?? const [])
-          .map((row) => Map<String, dynamic>.from(row as Map))
-          .toList();
-      return Column(
-        children: [
-          const Text(
-            'THE CUTLINK COMMUNITY',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: PublicPagePalette.accent,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.8,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _data,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final rows = (data?['featured'] as List? ?? const [])
+            .map((row) => Map<String, dynamic>.from(row as Map))
+            .toList();
+        return Column(
+          children: [
+            const Text(
+              'THE CUTLINK COMMUNITY',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: PublicPagePalette.accent,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.8,
+              ),
             ),
-          ),
-          const IosGap(height: 14),
-          Text(
-            'The CutLink community.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: PublicPagePalette.text,
-              fontSize: MediaQuery.sizeOf(context).width < 600 ? 29 : 37,
-              fontWeight: FontWeight.w800,
-              height: 1.15,
-              letterSpacing: -.8,
+            const IosGap(height: 14),
+            Text(
+              'The CutLink community.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: PublicPagePalette.text,
+                fontSize: MediaQuery.sizeOf(context).width < 600 ? 29 : 37,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+                letterSpacing: -.8,
+              ),
             ),
-          ),
-          const IosGap(height: 32),
-          if (snapshot.connectionState == ConnectionState.waiting)
-            const IosPadding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(color: PublicPagePalette.accent),
-            )
-          else if (snapshot.hasError)
-            Column(
-              children: [
-                const Text(
-                  'The community is temporarily unavailable.',
-                  style: TextStyle(color: PublicPagePalette.muted),
+            const IosGap(height: 32),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const IosPadding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(
+                  color: PublicPagePalette.accent,
                 ),
-                TextButton(
-                  onPressed: () => setState(() => _data = _load()),
-                  style: TextButton.styleFrom(
-                    foregroundColor: PublicPagePalette.accent,
+              )
+            else if (snapshot.hasError)
+              Column(
+                children: [
+                  Text(
+                    'The community is temporarily unavailable.',
+                    style: TextStyle(color: PublicPagePalette.muted),
                   ),
-                  child: const Text('Try again'),
-                ),
-              ],
-            )
-          else ...[
-            _role(true, data, rows),
-            const IosPadding(
-              padding: EdgeInsets.symmetric(vertical: 30),
-              child: Divider(color: PublicPagePalette.border),
-            ),
-            _role(false, data, rows),
+                  TextButton(
+                    onPressed: () => setState(() => _data = _load()),
+                    style: TextButton.styleFrom(
+                      foregroundColor: PublicPagePalette.accent,
+                    ),
+                    child: const Text('Try again'),
+                  ),
+                ],
+              )
+            else ...[
+              _role(true, data, rows),
+              IosPadding(
+                padding: EdgeInsets.symmetric(vertical: 30),
+                child: Divider(color: PublicPagePalette.border),
+              ),
+              _role(false, data, rows),
+            ],
           ],
-        ],
-      );
-    },
-  );
+        );
+      },
+    );
+  }
+
   Widget _role(
     bool supplier,
     Map<String, dynamic>? data,
@@ -107,7 +114,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
       children: [
         Text(
           supplier ? 'Featured suppliers' : 'Featured butchers',
-          style: const TextStyle(
+          style: TextStyle(
             color: PublicPagePalette.text,
             fontSize: 23,
             fontWeight: FontWeight.w800,
@@ -115,7 +122,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
         ),
         const IosGap(height: 20),
         if (featured.isEmpty)
-          const IosPadding(
+          IosPadding(
             padding: EdgeInsets.all(24),
             child: Text(
               'Community businesses will appear here when selected.',
@@ -169,7 +176,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
                                   textAlign: TextAlign.center,
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: PublicPagePalette.text,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -191,7 +198,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             padding: const EdgeInsets.only(top: 18),
             child: Text(
               '$count registered ${supplier ? 'suppliers' : 'butchers'} in total',
-              style: const TextStyle(
+              style: TextStyle(
                 color: PublicPagePalette.muted,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -225,6 +232,7 @@ class BusinessDisplayLogo extends StatelessWidget {
   final double size;
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final value = path?.trim() ?? '';
     final url = value.startsWith('https://')
         ? value
@@ -236,14 +244,14 @@ class BusinessDisplayLogo extends StatelessWidget {
     final fallback = Icon(
       Icons.storefront_outlined,
       size: size * .55,
-      color: const Color(0xFF697681),
+      color: CutLinkPalette.color(0xFF697681),
     );
     return Container(
       width: size,
       height: size,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: url.isEmpty

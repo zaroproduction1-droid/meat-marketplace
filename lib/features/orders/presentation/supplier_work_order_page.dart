@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/pdf/cutlink_pdf_brand.dart';
@@ -293,7 +294,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Future<void> _reopenForCuts() async {
-    if (_invoiceId != null || _isSaving) return;
+    if (_invoiceId != null || _isSaving) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => phoneDialog(
@@ -316,7 +319,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ),
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
@@ -329,7 +334,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Future<void> _editContactName() async {
-    if (_invoiceId != null || _isSaving) return;
+    if (_invoiceId != null || _isSaving) {
+      return;
+    }
 
     final controller = TextEditingController(
       text: _customerDetail('contact_name'),
@@ -366,7 +373,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
 
-    if (value == null || !mounted) return;
+    if (value == null || !mounted) {
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
@@ -390,7 +399,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -449,7 +460,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     String? firstNonEmpty(List<dynamic> values) {
       for (final value in values) {
         final text = value?.toString().trim() ?? '';
-        if (text.isNotEmpty) return text;
+        if (text.isNotEmpty) {
+          return text;
+        }
       }
       return null;
     }
@@ -518,7 +531,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   void _message(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -620,14 +635,18 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     for (final driver in _deliveryDrivers) {
       if (driver['id']?.toString() == _selectedDeliveryDriverId) {
         final name = driver['display_name']?.toString().trim() ?? '';
-        if (name.isNotEmpty) return name;
+        if (name.isNotEmpty) {
+          return name;
+        }
       }
     }
     return 'Not assigned';
   }
 
   Future<void> _assignDeliveryDriver(String? driverId) async {
-    if (_isSaving || driverId == null || driverId.isEmpty) return;
+    if (_isSaving || driverId == null || driverId.isEmpty) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -637,7 +656,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         params: {'target_order_id': widget.orderId, 'p_driver_id': driverId},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _selectedDeliveryDriverId = driverId;
@@ -656,12 +677,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   Future<void> _killWorkOrder() async {
-    if (_isSaving || _invoiceId != null) return;
+    if (_isSaving || _invoiceId != null) {
+      return;
+    }
 
     final marketplace = _order?['order_source']?.toString() == 'marketplace';
     final reasonController = TextEditingController();
@@ -734,7 +759,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     );
 
     reasonController.dispose();
-    if (reason == null) return;
+    if (reason == null) {
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
@@ -745,7 +772,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           'p_reason': reason.trim().isEmpty ? null : reason.trim(),
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (mounted) {
@@ -754,14 +783,18 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   double _lineGrossAmount(Map<String, dynamic> item) {
     final raw = item['final_line_amount'] ?? item['line_subtotal'];
     final parsed = raw is num ? raw.toDouble() : double.tryParse('$raw');
-    if (parsed != null) return parsed;
+    if (parsed != null) {
+      return parsed;
+    }
 
     final quantityRaw = item['quantity'];
     final priceRaw = item['unit_price'];
@@ -813,9 +846,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Map<String, dynamic>? get _selectedLine {
     final id = _selectedLineId;
-    if (id == null) return null;
+    if (id == null) {
+      return null;
+    }
     for (final item in _items) {
-      if (item['id']?.toString() == id) return item;
+      if (item['id']?.toString() == id) {
+        return item;
+      }
     }
     return null;
   }
@@ -826,7 +863,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   void _selectLine(Map<String, dynamic> item) {
-    if (_isSaving) return;
+    if (_isSaving) {
+      return;
+    }
     setState(() {
       _selectedLineId = item['id']?.toString();
       _lineAction = null;
@@ -836,7 +875,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   void _openLineAction(String action) {
     final item = _selectedLine;
-    if (item == null) return;
+    if (item == null) {
+      return;
+    }
 
     if (action == 'pick') {
       _editLineFulfilment(item);
@@ -883,7 +924,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Future<void> _saveSelectedLineAction() async {
     final item = _selectedLine;
-    if (item == null || _lineAction == null || _isSaving) return;
+    if (item == null || _lineAction == null || _isSaving) {
+      return;
+    }
 
     var discountType = item['discount_type']?.toString();
     if (discountType != 'percent' && discountType != 'fixed') {
@@ -947,21 +990,31 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           'p_remove': false,
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _lineAction = null);
       await _loadPage();
     } on PostgrestException catch (error) {
-      if (mounted) _message(error.message);
+      if (mounted) {
+        _message(error.message);
+      }
     } catch (error) {
-      if (mounted) _message(error.toString());
+      if (mounted) {
+        _message(error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
   Future<void> _removeSelectedWorkOrderLine() async {
     final item = _selectedLine;
-    if (item == null || _isSaving) return;
+    if (item == null || _isSaving) {
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -991,7 +1044,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
@@ -1008,19 +1063,29 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           'p_remove': true,
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _selectedLineId = null;
         _lineAction = null;
       });
       await _loadPage();
-      if (mounted) _message('Item removed and reserved stock restored.');
+      if (mounted) {
+        _message('Item removed and reserved stock restored.');
+      }
     } on PostgrestException catch (error) {
-      if (mounted) _message(error.message);
+      if (mounted) {
+        _message(error.message);
+      }
     } catch (error) {
-      if (mounted) _message(error.toString());
+      if (mounted) {
+        _message(error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -1043,11 +1108,17 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     );
 
     final rows = raw is List ? raw : const [];
-    if (rows.isEmpty || rows.first is! Map) return true;
+    if (rows.isEmpty || rows.first is! Map) {
+      return true;
+    }
 
     final check = Map<String, dynamic>.from(rows.first as Map);
-    if (check['over_limit'] != true) return true;
-    if (!mounted) return false;
+    if (check['over_limit'] != true) {
+      return true;
+    }
+    if (!mounted) {
+      return false;
+    }
 
     final proceed = await showDialog<bool>(
       context: context,
@@ -1083,7 +1154,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Future<void> _startPickingAndOpenPreview() async {
     await _saveWorkOrderDetails(status: 'picking');
-    if (!mounted || _workOrder?['status']?.toString() != 'picking') return;
+    if (!mounted || _workOrder?['status']?.toString() != 'picking') {
+      return;
+    }
     setState(() => _workspaceTabIndex = 1);
   }
 
@@ -1093,7 +1166,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
 
     final creditApproved = await _confirmCreditLimitBeforeInvoiceCreation();
-    if (!creditApproved || !mounted) return;
+    if (!creditApproved || !mounted) {
+      return;
+    }
 
     final workOrderId = _workOrder?['id']?.toString();
 
@@ -1384,7 +1459,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                               height: 42,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5EAEA),
+                                color: CutLinkPalette.color(0xFFF5EAEA),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
@@ -1414,8 +1489,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                                     productName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF666666),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -1438,16 +1513,18 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                             vertical: 11,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F6),
+                            color: CutLinkPalette.color(0xFFF8F8F6),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE4E4E0)),
+                            border: Border.all(
+                              color: CutLinkPalette.color(0xFFE4E4E0),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Text(
+                              Text(
                                 'Ordered',
                                 style: TextStyle(
-                                  color: Color(0xFF777777),
+                                  color: CutLinkPalette.color(0xFF777777),
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -1515,16 +1592,16 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           Container(
                             padding: const EdgeInsets.all(11),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF7F8FA),
+                              color: CutLinkPalette.color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(9),
                             ),
-                            child: const Row(
+                            child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(
                                   Icons.info_outline,
                                   size: 17,
-                                  color: Color(0xFF666666),
+                                  color: CutLinkPalette.color(0xFF666666),
                                 ),
                                 SizedBox(width: 8),
                                 Expanded(
@@ -1532,7 +1609,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                                     'Enter the total scale weight for the supplied cartons. '
                                     'The invoice amount is calculated from actual kg × the locked \$/kg rate.',
                                     style: TextStyle(
-                                      color: Color(0xFF666666),
+                                      color: CutLinkPalette.color(0xFF666666),
                                       fontSize: 11.5,
                                       height: 1.35,
                                     ),
@@ -1991,13 +2068,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {'page': 'work_order', 'id': widget.orderId});
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -2080,9 +2158,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       height: 49,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
+        border: Border(
+          top: BorderSide(color: CutLinkPalette.color(0xFFF0F1F2)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.scroll,
@@ -2104,13 +2184,17 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       child: TextButton.icon(
         onPressed: () => setState(() => _workspaceTabIndex = index),
         style: TextButton.styleFrom(
-          foregroundColor: selected ? Colors.white : const Color(0xFF5E6369),
-          backgroundColor: selected ? _darkRed : const Color(0xFFF4F5F6),
+          foregroundColor: selected
+              ? Colors.white
+              : CutLinkPalette.color(0xFF5E6369),
+          backgroundColor: selected
+              ? _darkRed
+              : CutLinkPalette.color(0xFFF4F5F6),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9),
             side: BorderSide(
-              color: selected ? _darkRed : const Color(0xFFE1E3E6),
+              color: selected ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
             ),
           ),
         ),
@@ -2130,7 +2214,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           padding: const EdgeInsets.all(12),
           child: PhoneRow(
             mode: PhoneRowMode.wrap,
@@ -2142,10 +2226,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ),
-                const Text(
+                Text(
                   'Scroll wheel to zoom',
                   style: TextStyle(
-                    color: Color(0xFF6D7177),
+                    color: CutLinkPalette.color(0xFF6D7177),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2188,8 +2272,12 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Widget _buildHistoryTab() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_errorMessage != null) return _buildBody();
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return _buildBody();
+    }
     final events = <({String title, dynamic value, IconData icon})>[
       (
         title: 'Order created',
@@ -2246,9 +2334,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2263,7 +2351,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               const IosGap(height: 3),
               Text(
                 subtitle,
-                style: const TextStyle(color: Color(0xFF73777D), fontSize: 12),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF73777D),
+                  fontSize: 12,
+                ),
               ),
               const IosGap(height: 18),
               if (events.isEmpty)
@@ -2298,15 +2389,18 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               Container(
                 width: 30,
                 height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF5EAEA),
+                decoration: BoxDecoration(
+                  color: CutLinkPalette.color(0xFFF5EAEA),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(event.icon, size: 16, color: _darkRed),
               ),
               if (!last)
                 Expanded(
-                  child: Container(width: 1, color: const Color(0xFFE0E2E5)),
+                  child: Container(
+                    width: 1,
+                    color: CutLinkPalette.color(0xFFE0E2E5),
+                  ),
                 ),
             ],
           ),
@@ -2324,8 +2418,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   const IosGap(height: 2),
                   Text(
                     date,
-                    style: const TextStyle(
-                      color: Color(0xFF71767C),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF71767C),
                       fontSize: 11.5,
                     ),
                   ),
@@ -2371,8 +2465,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: CutLinkPalette.surface,
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
             BoxShadow(
@@ -2462,8 +2556,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: CutLinkPalette.surface,
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
             BoxShadow(
@@ -2601,8 +2695,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        color: CutLinkPalette.surface,
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: PhoneRow(
@@ -2634,7 +2728,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4E5E5),
+                          color: CutLinkPalette.color(0xFFF4E5E5),
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
@@ -2653,8 +2747,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     '${_customerName()} • ${_order?['order_number'] ?? 'Order'}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF666666),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF666666),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -2690,12 +2784,14 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       width: 155,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: const BoxDecoration(
-          border: Border(left: BorderSide(color: Color(0xFFE5E5E2))),
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: CutLinkPalette.color(0xFFE5E5E2)),
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF666A70)),
+            Icon(icon, size: 18, color: CutLinkPalette.color(0xFF666A70)),
             const SizedBox(width: 8),
             Flexible(
               child: Column(
@@ -2703,9 +2799,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
-                      color: Color(0xFF888888),
+                      color: CutLinkPalette.color(0xFF888888),
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
                     ),
@@ -2743,8 +2839,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        color: CutLinkPalette.surface,
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -2767,8 +2863,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                 const Spacer(),
                 Text(
                   '${_items.length} line${_items.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2781,9 +2877,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F8FA),
+              color: CutLinkPalette.color(0xFFF7F8FA),
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: const Color(0xFFE5E7EA)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE5E7EA)),
             ),
             child: PhoneRow(
               mode: PhoneRowMode.wrap,
@@ -2800,8 +2896,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       _allLinesFinalised
                           ? 'Final invoice total before invoice creation'
                           : 'Running total - updates as actual weights are finalised',
-                      style: const TextStyle(
-                        color: Color(0xFF60646A),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF60646A),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2833,7 +2929,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Widget _buildWorkOrderLineDock() {
     final item = _selectedLine;
-    if (item == null) return const SizedBox.shrink();
+    if (item == null) {
+      return const SizedBox.shrink();
+    }
 
     Widget actionButton({
       required String label,
@@ -2863,7 +2961,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     }
 
     return Container(
-      color: const Color(0xFFFAFAF8),
+      color: CutLinkPalette.color(0xFFFAFAF8),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2944,7 +3042,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
   Widget _buildWorkOrderLineInlineEditor(Map<String, dynamic> item) {
     final action = _lineAction;
-    if (action == null) return const SizedBox.shrink();
+    if (action == null) {
+      return const SizedBox.shrink();
+    }
 
     Widget saveButton() => FilledButton.icon(
       onPressed: _isSaving ? null : _saveSelectedLineAction,
@@ -2989,7 +3089,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             ? null
             : (value) => setState(() {
                 _selectedDiscountType = value;
-                if (value == null) _lineEditorController.clear();
+                if (value == null) {
+                  _lineEditorController.clear();
+                }
               }),
       );
 
@@ -3105,8 +3207,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        color: CutLinkPalette.surface,
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: IosPadding(
@@ -3171,7 +3273,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               Container(
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E8),
+                  color: CutLinkPalette.color(0xFFFFF8E8),
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(color: const Color(0xFFE5C37A)),
                 ),
@@ -3288,8 +3390,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               const IosGap(height: 6),
               Text(
                 _order!['delivery_notes'].toString(),
-                style: const TextStyle(
-                  color: Color(0xFF666666),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666666),
                   fontSize: 11.5,
                   height: 1.35,
                 ),
@@ -3299,8 +3401,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             Text(
               pickup ? 'Pickup order' : 'Delivery order',
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Color(0xFF888888),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF888888),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
               ),
@@ -3312,7 +3414,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
   }
 
   Widget _compactInfoLine(String label, String value) {
-    if (value.trim().isEmpty) return const SizedBox.shrink();
+    if (value.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return IosPadding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -3323,8 +3427,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             width: 78,
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
@@ -3355,9 +3459,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
 
     return Material(
       color: selected
-          ? const Color(0xFFF7EDED)
+          ? CutLinkPalette.color(0xFFF7EDED)
           : finalised
-          ? const Color(0xFFF7FBF7)
+          ? CutLinkPalette.color(0xFFF7FBF7)
           : Colors.white,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
@@ -3370,8 +3474,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               color: selected
                   ? _darkRed
                   : finalised
-                  ? const Color(0xFFB8D8BE)
-                  : const Color(0xFFE2E2DE),
+                  ? CutLinkPalette.color(0xFFB8D8BE)
+                  : CutLinkPalette.color(0xFFE2E2DE),
               width: selected ? 1.5 : 1,
             ),
             borderRadius: BorderRadius.circular(10),
@@ -3390,7 +3494,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       size: 20,
                       color: finalised
                           ? const Color(0xFF2E7D32)
-                          : const Color(0xFF999999),
+                          : CutLinkPalette.color(0xFF999999),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -3410,17 +3514,17 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                           if (documentProductSpecifications(item).isNotEmpty)
                             Text(
                               documentProductSpecifications(item),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10.5,
-                                color: Color(0xFF646A70),
+                                color: CutLinkPalette.color(0xFF646A70),
                               ),
                             ),
                           if ((item['sku_snapshot']?.toString().trim() ?? '')
                               .isNotEmpty)
                             Text(
                               'SKU ${item['sku_snapshot']}',
-                              style: const TextStyle(
-                                color: Color(0xFF777777),
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 10.5,
                               ),
                             ),
@@ -3494,7 +3598,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8F3F3),
+                    color: CutLinkPalette.color(0xFFF8F3F3),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: Row(
@@ -3535,8 +3639,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF888888),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF888888),
               fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.35,

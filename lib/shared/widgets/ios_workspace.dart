@@ -1,9 +1,10 @@
-import 'dart:ui';
+import '../theme/cutlink_appearance.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'cutlink_logo.dart';
+import 'native_glass_surface.dart';
 
 /// Native iOS only. Browser and Android layouts keep their existing behavior.
 bool useIosWorkspace(BuildContext context) =>
@@ -11,24 +12,26 @@ bool useIosWorkspace(BuildContext context) =>
 
 abstract final class IosWorkspaceStyle {
   static const red = Color(0xFF850E25);
-  static const ink = Color(0xFF191919);
-  static const muted = Color(0xFF687078);
-  static const canvas = Color(0xFFF7F7F7);
+  static Color get ink => CutLinkPalette.color(0xFF191919);
+  static Color get muted => CutLinkPalette.color(0xFF687078);
+  static Color get canvas => CutLinkPalette.color(0xFFF7F7F7);
 
   static ThemeData theme(ThemeData base) => base.copyWith(
     platform: TargetPlatform.iOS,
     textTheme: base.textTheme.apply(fontFamily: '.SF Pro Text'),
-    scaffoldBackgroundColor: Colors.white,
+    scaffoldBackgroundColor: base.scaffoldBackgroundColor,
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     colorScheme: base.colorScheme.copyWith(
-      primary: red,
+      primary: base.brightness == Brightness.dark
+          ? const Color(0xFFFF8EA3)
+          : red,
       onPrimary: Colors.white,
-      surface: Colors.white,
+      surface: CutLinkPalette.surface,
       onSurface: ink,
     ),
-    appBarTheme: const AppBarThemeData(
-      backgroundColor: Colors.white,
+    appBarTheme: AppBarThemeData(
+      backgroundColor: CutLinkPalette.surface,
       foregroundColor: ink,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -83,19 +86,19 @@ abstract final class IosWorkspaceStyle {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: CutLinkPalette.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.white,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: CutLinkPalette.surface,
       surfaceTintColor: Colors.transparent,
       showDragHandle: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
     ),
-    snackBarTheme: const SnackBarThemeData(
+    snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: ink,
       contentTextStyle: TextStyle(color: Colors.white),
@@ -154,6 +157,7 @@ class _IosWorkspaceTransitionState extends State<IosWorkspaceTransition>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final direction = widget.reverse ? -1.0 : 1.0;
     final animation = _controller.drive(
       CurveTween(curve: Curves.easeInOutCubic),
@@ -204,30 +208,33 @@ class IosBackSurface extends StatefulWidget {
 class _IosBackSurfaceState extends State<IosBackSurface> {
   double _distance = 0;
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      Positioned.fill(child: widget.child),
-      Positioned(
-        left: 0,
-        top: 0,
-        bottom: 100,
-        width: 22,
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragStart: (_) => setState(() => _distance = 0),
-          onHorizontalDragUpdate: (event) =>
-              setState(() => _distance += event.delta.dx),
-          onHorizontalDragEnd: (event) {
-            if (_distance > 60 || (event.primaryVelocity ?? 0) > 400) {
-              widget.onBack();
-            }
-            setState(() => _distance = 0);
-          },
-          onHorizontalDragCancel: () => setState(() => _distance = 0),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Stack(
+      children: [
+        Positioned.fill(child: widget.child),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 100,
+          width: 22,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: (_) => setState(() => _distance = 0),
+            onHorizontalDragUpdate: (event) =>
+                setState(() => _distance += event.delta.dx),
+            onHorizontalDragEnd: (event) {
+              if (_distance > 60 || (event.primaryVelocity ?? 0) > 400) {
+                widget.onBack();
+              }
+              setState(() => _distance = 0);
+            },
+            onHorizontalDragCancel: () => setState(() => _distance = 0),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class IosTab {
@@ -250,15 +257,14 @@ class IosBottomBar extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    minimum: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(38),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: NativeGlassSurface(
         child: Material(
-          color: const Color(0xF21D1D1F),
+          color: Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.all(5),
             child: Row(
@@ -282,7 +288,8 @@ class IosBottomBar extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: index == i
-                                  ? const Color(0xFF48484A)
+                                  ? Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: .09)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(32),
                             ),
@@ -296,20 +303,41 @@ class IosBottomBar extends StatelessWidget {
                                         ? '99+'
                                         : '${tabs[i].badge}',
                                   ),
-                                  child: Icon(
-                                    tabs[i].icon,
-                                    color: Colors.white,
-                                    size: 25,
-                                  ),
+                                  child: tabs[i].label == 'Add' && i == 2
+                                      ? const CircleAvatar(
+                                          radius: 17,
+                                          backgroundColor:
+                                              IosWorkspaceStyle.red,
+                                          child: Icon(
+                                            Icons.add,
+                                            color: Colors.white,
+                                            size: 25,
+                                          ),
+                                        )
+                                      : Icon(
+                                          tabs[i].icon,
+                                          color: index == i
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                          size: 25,
+                                        ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   tabs[i].label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.white,
+                                    color: index == i
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -325,8 +353,8 @@ class IosBottomBar extends StatelessWidget {
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class IosMenuLink {
@@ -354,36 +382,36 @@ class IosMenuRow extends StatelessWidget {
   const IosMenuRow({super.key, required this.link});
   final IosMenuLink link;
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(vertical: 6),
-    minVerticalPadding: 12,
-    leading: CircleAvatar(
-      radius: 24,
-      backgroundColor: IosWorkspaceStyle.canvas,
-      child: Icon(link.icon, color: IosWorkspaceStyle.ink, size: 24),
-    ),
-    title: Text(
-      link.title,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    ),
-    subtitle: link.subtitle == null
-        ? null
-        : Text(
-            link.subtitle!,
-            style: const TextStyle(
-              color: IosWorkspaceStyle.muted,
-              fontSize: 13,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+      minVerticalPadding: 12,
+      leading: CircleAvatar(
+        radius: 24,
+        backgroundColor: IosWorkspaceStyle.canvas,
+        child: Icon(link.icon, color: IosWorkspaceStyle.ink, size: 24),
+      ),
+      title: Text(
+        link.title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+      subtitle: link.subtitle == null
+          ? null
+          : Text(
+              link.subtitle!,
+              style: TextStyle(color: IosWorkspaceStyle.muted, fontSize: 13),
             ),
-          ),
-    trailing: link.badge > 0
-        ? Badge(label: Text(link.badge > 99 ? '99+' : '${link.badge}'))
-        : const Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: IosWorkspaceStyle.muted,
-          ),
-    onTap: link.onTap,
-  );
+      trailing: link.badge > 0
+          ? Badge(label: Text(link.badge > 99 ? '99+' : '${link.badge}'))
+          : Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: IosWorkspaceStyle.muted,
+            ),
+      onTap: link.onTap,
+    );
+  }
 }
 
 class IosAccountHub extends StatelessWidget {
@@ -404,118 +432,122 @@ class IosAccountHub extends StatelessWidget {
   final Widget? avatar, trailing;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-    children: [
-      Row(
-        children: [
-          avatar ??
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: const Color(0xFFF4E5E8),
-                child: Text(
-                  name.trim().isEmpty ? 'C' : name.trim()[0].toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 25,
-                    color: IosWorkspaceStyle.red,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      children: [
+        Row(
+          children: [
+            avatar ??
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: CutLinkPalette.color(0xFFF4E5E8),
+                  child: Text(
+                    name.trim().isEmpty ? 'C' : name.trim()[0].toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 25,
+                      color: IosWorkspaceStyle.red,
+                    ),
                   ),
                 ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    role,
+                    style: TextStyle(
+                      color: IosWorkspaceStyle.muted,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  role,
-                  style: const TextStyle(
-                    color: IosWorkspaceStyle.muted,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
             ),
-          ),
-          ?trailing,
-        ],
-      ),
-      const SizedBox(height: 16),
-      LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = MediaQuery.textScalerOf(context).scale(1) > 1.4
-              ? 1
-              : 3;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final item in shortcuts)
-                SizedBox(
-                  width: (constraints.maxWidth - (columns - 1) * 10) / columns,
-                  child: Material(
-                    color: IosWorkspaceStyle.canvas,
-                    borderRadius: BorderRadius.circular(22),
-                    child: InkWell(
-                      onTap: item.onTap,
+            ?trailing,
+          ],
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = MediaQuery.textScalerOf(context).scale(1) > 1.4
+                ? 1
+                : 3;
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final item in shortcuts)
+                  SizedBox(
+                    width:
+                        (constraints.maxWidth - (columns - 1) * 10) / columns,
+                    child: Material(
+                      color: IosWorkspaceStyle.canvas,
                       borderRadius: BorderRadius.circular(22),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 5,
-                        ),
-                        child: Column(
-                          children: [
-                            Badge(
-                              isLabelVisible: item.badge > 0,
-                              label: Text(
-                                item.badge > 99 ? '99+' : '${item.badge}',
+                      child: InkWell(
+                        onTap: item.onTap,
+                        borderRadius: BorderRadius.circular(22),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 5,
+                          ),
+                          child: Column(
+                            children: [
+                              Badge(
+                                isLabelVisible: item.badge > 0,
+                                label: Text(
+                                  item.badge > 99 ? '99+' : '${item.badge}',
+                                ),
+                                child: Icon(item.icon, size: 27),
                               ),
-                              child: Icon(item.icon, size: 27),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              item.title,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(height: 12),
+                              Text(
+                                item.title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
-          );
-        },
-      ),
-      for (final group in groups) ...[
-        const SizedBox(height: 18),
-        Text(
-          group.title,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ],
+            );
+          },
         ),
-        const SizedBox(height: 8),
-        for (final link in group.links) IosMenuRow(link: link),
-        const Divider(height: 22),
+        for (final group in groups) ...[
+          const SizedBox(height: 18),
+          Text(
+            group.title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          for (final link in group.links) IosMenuRow(link: link),
+          const Divider(height: 22),
+        ],
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: onSignOut,
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Sign out'),
+        ),
       ],
-      const SizedBox(height: 16),
-      OutlinedButton.icon(
-        onPressed: onSignOut,
-        icon: const Icon(Icons.logout_rounded),
-        label: const Text('Sign out'),
-      ),
-    ],
-  );
+    );
+  }
 }
 
 class IosSearchEntry extends StatelessWidget {
@@ -529,25 +561,30 @@ class IosSearchEntry extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Material(
-    color: IosWorkspaceStyle.canvas,
-    borderRadius: BorderRadius.circular(30),
-    child: InkWell(
-      onTap: onTap,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Material(
+      color: IosWorkspaceStyle.canvas,
       borderRadius: BorderRadius.circular(30),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
-            const Icon(Icons.chevron_right_rounded, size: 20),
-          ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+          child: Row(
+            children: [
+              Icon(icon),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label, style: const TextStyle(fontSize: 16)),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 20),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class IosWelcomePage extends StatelessWidget {
@@ -558,69 +595,72 @@ class IosWelcomePage extends StatelessWidget {
   });
   final VoidCallback onSignIn, onRegister;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(26),
-        children: [
-          const SizedBox(height: 34),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: CutLinkLogo(width: 170, height: 52),
-          ),
-          const SizedBox(height: 58),
-          const Text(
-            'Your trade.\nIn your pocket.',
-            style: TextStyle(
-              fontSize: 40,
-              height: 1.1,
-              fontWeight: FontWeight.w800,
-              color: IosWorkspaceStyle.ink,
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Scaffold(
+      backgroundColor: CutLinkPalette.surface,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(26),
+          children: [
+            const SizedBox(height: 34),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: CutLinkLogo(width: 170, height: 52),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Connect with suppliers and butchers. Manage products, orders and accounts wherever work takes you.',
-            style: TextStyle(
-              fontSize: 17,
-              height: 1.5,
-              color: IosWorkspaceStyle.muted,
+            const SizedBox(height: 58),
+            Text(
+              'Your trade.\nIn your pocket.',
+              style: TextStyle(
+                fontSize: 40,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                color: IosWorkspaceStyle.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 36),
-          FilledButton(onPressed: onSignIn, child: const Text('Sign in')),
-          const SizedBox(height: 14),
-          OutlinedButton(
-            onPressed: onRegister,
-            child: const Text('Register your business'),
-          ),
-          const SizedBox(height: 34),
-          for (final entry in const [
-            (
-              'Products',
-              Icons.inventory_2_outlined,
-              'Find cuts or manage your inventory',
+            const SizedBox(height: 18),
+            Text(
+              'Connect with suppliers and butchers. Manage products, orders and accounts wherever work takes you.',
+              style: TextStyle(
+                fontSize: 17,
+                height: 1.5,
+                color: IosWorkspaceStyle.muted,
+              ),
             ),
-            (
-              'Orders',
-              Icons.receipt_long_outlined,
-              'Follow every order through to fulfilment',
+            const SizedBox(height: 36),
+            FilledButton(onPressed: onSignIn, child: const Text('Sign in')),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: onRegister,
+              child: const Text('Register your business'),
             ),
-            (
-              'Your business',
-              Icons.business_outlined,
-              'Keep accounts and support together',
-            ),
-          ])
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(entry.$2, color: IosWorkspaceStyle.red),
-              title: Text(entry.$1),
-              subtitle: Text(entry.$3),
-            ),
-        ],
+            const SizedBox(height: 34),
+            for (final entry in const [
+              (
+                'Products',
+                Icons.inventory_2_outlined,
+                'Find cuts or manage your inventory',
+              ),
+              (
+                'Orders',
+                Icons.receipt_long_outlined,
+                'Follow every order through to fulfilment',
+              ),
+              (
+                'Your business',
+                Icons.business_outlined,
+                'Keep accounts and support together',
+              ),
+            ])
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(entry.$2, color: IosWorkspaceStyle.red),
+                title: Text(entry.$1),
+                subtitle: Text(entry.$3),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

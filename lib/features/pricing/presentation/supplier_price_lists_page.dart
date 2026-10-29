@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -174,7 +175,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                       TextField(
                         controller: nameController,
                         autofocus: true,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Price list name',
                           hintText: 'Example: Public Marketplace Prices',
                           border: OutlineInputBorder(),
@@ -184,7 +185,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                       DropdownButtonFormField<String>(
                         isExpanded: isPhoneLayout(context),
                         initialValue: visibility,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Price visibility',
                           border: OutlineInputBorder(),
                         ),
@@ -215,8 +216,8 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                       const IosGap(height: 14),
                       Text(
                         _visibilityDescription(visibility),
-                        style: const TextStyle(
-                          color: Color(0xFF5E5E5E),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF5E5E5E),
                           height: 1.4,
                         ),
                       ),
@@ -288,13 +289,14 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return CutLinkWorkspaceTheme(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
         appBar: phoneAppBar(
           context,
           AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: CutLinkPalette.surface,
             surfaceTintColor: Colors.white,
             title: const Text(
               'Price Lists',

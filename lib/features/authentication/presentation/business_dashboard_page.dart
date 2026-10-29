@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_logo.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -39,8 +40,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
@@ -75,7 +77,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
                 ),
                 const IosGap(height: 14),
-                const Text(
+                Text(
                   'Your business has been approved. '
                   'Supplier and butcher dashboard features '
                   'will be added in the next stages.',
@@ -83,7 +85,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   style: TextStyle(
                     fontSize: 17,
                     height: 1.5,
-                    color: Color(0xFF5E5E5E),
+                    color: CutLinkPalette.color(0xFF5E5E5E),
                   ),
                 ),
                 const IosGap(height: 32),
@@ -123,13 +125,14 @@ class _DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Container(
       width: 220,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE0E0E0)),
       ),
       child: Column(
         children: [

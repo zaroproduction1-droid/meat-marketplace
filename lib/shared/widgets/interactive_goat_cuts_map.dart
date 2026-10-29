@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_drawing/path_drawing.dart';
@@ -113,7 +115,9 @@ class _InteractiveGoatCutsMapState extends State<InteractiveGoatCutsMap> {
   ];
 
   String? _cutAt(Offset localPosition, Size size) {
-    if (size.isEmpty) return null;
+    if (size.isEmpty) {
+      return null;
+    }
 
     final svgPoint = Offset(
       _viewBoxLeft + (localPosition.dx * _viewBoxWidth / size.width),
@@ -121,19 +125,24 @@ class _InteractiveGoatCutsMapState extends State<InteractiveGoatCutsMap> {
     );
 
     for (final region in _regions.reversed) {
-      if (region.hitTest(svgPoint)) return region.cut;
+      if (region.hitTest(svgPoint)) {
+        return region.cut;
+      }
     }
     return null;
   }
 
   void _updateHover(Offset localPosition, Size size) {
     final next = _cutAt(localPosition, size);
-    if (next == _hoveredCut) return;
+    if (next == _hoveredCut) {
+      return;
+    }
     setState(() => _hoveredCut = next);
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: widget.maxWidth),
@@ -143,9 +152,9 @@ class _InteractiveGoatCutsMapState extends State<InteractiveGoatCutsMap> {
             borderRadius: BorderRadius.circular(widget.borderRadius),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F6),
+                color: CutLinkPalette.color(0xFFF8F8F6),
                 borderRadius: BorderRadius.circular(widget.borderRadius),
-                border: Border.all(color: const Color(0xFFE0E0DD)),
+                border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -232,10 +241,14 @@ class _GoatRegion {
 
   bool hitTest(Offset point) {
     for (final rect in rects) {
-      if (rect.contains(point)) return true;
+      if (rect.contains(point)) {
+        return true;
+      }
     }
     for (final path in paths) {
-      if (path.contains(point)) return true;
+      if (path.contains(point)) {
+        return true;
+      }
     }
     return false;
   }
@@ -264,7 +277,9 @@ class _GoatHighlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
+    if (size.isEmpty) {
+      return;
+    }
 
     final sx = size.width / viewBoxWidth;
     final sy = size.height / viewBoxHeight;
@@ -276,7 +291,9 @@ class _GoatHighlightPainter extends CustomPainter {
     for (final region in regions) {
       final selected = region.cut == selectedCut;
       final hovered = region.cut == hoveredCut;
-      if (!selected && !hovered) continue;
+      if (!selected && !hovered) {
+        continue;
+      }
 
       final fill = Paint()
         ..style = PaintingStyle.fill

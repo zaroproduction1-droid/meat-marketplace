@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -53,7 +55,7 @@ Future<T?> showCutLinkPickerDialog<T>({
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
-            backgroundColor: const Color(0xFFF8F8F6),
+            backgroundColor: CutLinkPalette.color(0xFFF8F8F6),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 540, maxHeight: 600),
               child: Shortcuts(
@@ -70,10 +72,10 @@ Future<T?> showCutLinkPickerDialog<T>({
                           Expanded(
                             child: Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 19,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF252525),
+                                color: CutLinkPalette.color(0xFF252525),
                               ),
                             ),
                           ),
@@ -109,18 +111,18 @@ Future<T?> showCutLinkPickerDialog<T>({
                                     icon: const Icon(Icons.close, size: 18),
                                   ),
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: CutLinkPalette.surface,
                             isDense: true,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFDCDCD8),
+                              borderSide: BorderSide(
+                                color: CutLinkPalette.color(0xFFDCDCD8),
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFDCDCD8),
+                              borderSide: BorderSide(
+                                color: CutLinkPalette.color(0xFFDCDCD8),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -133,16 +135,16 @@ Future<T?> showCutLinkPickerDialog<T>({
                           ),
                         ),
                       ),
-                    const Divider(height: 1, color: Color(0xFFE0E0DC)),
+                    Divider(height: 1, color: CutLinkPalette.color(0xFFE0E0DC)),
                     Flexible(
                       child: filtered.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Padding(
                                 padding: EdgeInsets.all(28),
                                 child: Text(
                                   'No matching options',
                                   style: TextStyle(
-                                    color: Color(0xFF777777),
+                                    color: CutLinkPalette.color(0xFF777777),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -165,7 +167,7 @@ Future<T?> showCutLinkPickerDialog<T>({
 
                                 return Material(
                                   color: selected
-                                      ? const Color(0xFFF3E5E5)
+                                      ? CutLinkPalette.color(0xFFF3E5E5)
                                       : Colors.white,
                                   borderRadius: BorderRadius.circular(11),
                                   child: InkWell(
@@ -182,8 +184,10 @@ Future<T?> showCutLinkPickerDialog<T>({
                                         borderRadius: BorderRadius.circular(11),
                                         border: Border.all(
                                           color: selected
-                                              ? const Color(0xFFCBA6A6)
-                                              : const Color(0xFFE2E2DE),
+                                              ? CutLinkPalette.color(0xFFCBA6A6)
+                                              : CutLinkPalette.color(
+                                                  0xFFE2E2DE,
+                                                ),
                                         ),
                                       ),
                                       child: Row(
@@ -195,7 +199,9 @@ Future<T?> showCutLinkPickerDialog<T>({
                                             decoration: BoxDecoration(
                                               color: selected
                                                   ? cutLinkPickerRed
-                                                  : const Color(0xFFF1F1EE),
+                                                  : CutLinkPalette.color(
+                                                      0xFFF1F1EE,
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
@@ -207,7 +213,9 @@ Future<T?> showCutLinkPickerDialog<T>({
                                               size: 18,
                                               color: selected
                                                   ? Colors.white
-                                                  : const Color(0xFF666666),
+                                                  : CutLinkPalette.color(
+                                                      0xFF666666,
+                                                    ),
                                             ),
                                           ),
                                           const SizedBox(width: 11),
@@ -237,8 +245,11 @@ Future<T?> showCutLinkPickerDialog<T>({
                                                     maxLines: 2,
                                                     overflow:
                                                         TextOverflow.ellipsis,
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF777777),
+                                                    style: TextStyle(
+                                                      color:
+                                                          CutLinkPalette.color(
+                                                            0xFF777777,
+                                                          ),
                                                       fontSize: 11,
                                                       height: 1.2,
                                                     ),
@@ -304,13 +315,16 @@ class CutLinkPickerField<T> extends StatelessWidget {
 
   CutLinkPickerOption<T>? get _selected {
     for (final option in options) {
-      if (option.value == value) return option;
+      if (option.value == value) {
+        return option;
+      }
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final selected = _selected;
 
     return FormField<T>(
@@ -319,7 +333,9 @@ class CutLinkPickerField<T> extends StatelessWidget {
       validator: validator,
       builder: (field) {
         Future<void> open() async {
-          if (!enabled || loading) return;
+          if (!enabled || loading) {
+            return;
+          }
 
           final picked = await showCutLinkPickerDialog<T>(
             context: context,
@@ -330,7 +346,9 @@ class CutLinkPickerField<T> extends StatelessWidget {
             enableSearch: enableSearch,
           );
 
-          if (picked == null) return;
+          if (picked == null) {
+            return;
+          }
           field.didChange(picked);
           onChanged(picked);
         }
@@ -348,14 +366,16 @@ class CutLinkPickerField<T> extends StatelessWidget {
                   vertical: dense ? 7 : 9,
                 ),
                 decoration: BoxDecoration(
-                  color: enabled ? Colors.white : const Color(0xFFF2F2EF),
+                  color: enabled
+                      ? CutLinkPalette.surface
+                      : CutLinkPalette.color(0xFFF2F2EF),
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(
                     color: field.hasError
                         ? Colors.red.shade700
                         : selected != null
-                        ? const Color(0xFFCBB3B3)
-                        : const Color(0xFFDADAD6),
+                        ? CutLinkPalette.color(0xFFCBB3B3)
+                        : CutLinkPalette.color(0xFFDADAD6),
                   ),
                 ),
                 child: Row(
@@ -367,8 +387,8 @@ class CutLinkPickerField<T> extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: selected != null
-                              ? const Color(0xFFF3E5E5)
-                              : const Color(0xFFF1F1EE),
+                              ? CutLinkPalette.color(0xFFF3E5E5)
+                              : CutLinkPalette.color(0xFFF1F1EE),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: loading
@@ -386,7 +406,7 @@ class CutLinkPickerField<T> extends StatelessWidget {
                                 size: 17,
                                 color: selected != null
                                     ? cutLinkPickerRed
-                                    : const Color(0xFF777777),
+                                    : CutLinkPalette.color(0xFF777777),
                               ),
                       ),
                       const SizedBox(width: 10),
@@ -401,8 +421,8 @@ class CutLinkPickerField<T> extends StatelessWidget {
                               label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF777777),
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -415,8 +435,8 @@ class CutLinkPickerField<T> extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: selected != null
-                                  ? const Color(0xFF292929)
-                                  : const Color(0xFF999999),
+                                  ? CutLinkPalette.color(0xFF292929)
+                                  : CutLinkPalette.color(0xFF999999),
                               fontSize: dense ? 12.5 : 13.5,
                               fontWeight: FontWeight.w800,
                             ),
@@ -425,10 +445,10 @@ class CutLinkPickerField<T> extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
+                    Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 20,
-                      color: Color(0xFF666666),
+                      color: CutLinkPalette.color(0xFF666666),
                     ),
                   ],
                 ),
@@ -440,8 +460,8 @@ class CutLinkPickerField<T> extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: Text(
                   helperText!.trim(),
-                  style: const TextStyle(
-                    color: Color(0xFF777777),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
                     fontSize: 10.5,
                     height: 1.2,
                   ),

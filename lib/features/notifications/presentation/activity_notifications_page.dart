@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import 'notification_activity_tile.dart';
@@ -280,239 +281,246 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => CutLinkWorkspaceTheme(
-    child: Scaffold(
-      appBar: phoneAppBar(
-        context,
-        AppBar(
-          leading: const WorkspaceBackButton(),
-          title: const Text('Notifications'),
-          actions: [
-            TextButton.icon(
-              onPressed: _loading ? null : _markAll,
-              icon: const Icon(Icons.done_all_rounded, size: 18),
-              label: const Text('Mark all read'),
-            ),
-            IconButton(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Refresh',
-            ),
-          ],
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return CutLinkWorkspaceTheme(
+      child: Scaffold(
+        appBar: phoneAppBar(
+          context,
+          AppBar(
+            leading: const WorkspaceBackButton(),
+            title: const Text('Notifications'),
+            actions: [
+              TextButton.icon(
+                onPressed: _loading ? null : _markAll,
+                icon: const Icon(Icons.done_all_rounded, size: 18),
+                label: const Text('Mark all read'),
+              ),
+              IconButton(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Refresh',
+              ),
+            ],
+          ),
         ),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const CutLinkSectionHeading(
-                          title: 'Your activity inbox',
-                          subtitle:
-                              'Orders, conversations, invoices and account updates — all in one place.',
-                          icon: Icons.notifications_active_outlined,
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: CutLinkWorkspaceTheme.border,
-                            ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: RefreshIndicator(
+              onRefresh: _load,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const CutLinkSectionHeading(
+                            title: 'Your activity inbox',
+                            subtitle:
+                                'Orders, conversations, invoices and account updates — all in one place.',
+                            icon: Icons.notifications_active_outlined,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.tune_rounded,
-                                    size: 18,
-                                    color: CutLinkWorkspaceTheme.red,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Text(
-                                      'Activity',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: CutLinkPalette.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: CutLinkWorkspaceTheme.border,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.tune_rounded,
+                                      size: 18,
+                                      color: CutLinkWorkspaceTheme.red,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Activity',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  FilterChip(
-                                    label: const Text('Unread only'),
-                                    selected: _unread,
-                                    onSelected: (v) {
-                                      setState(() {
-                                        _unread = v;
-                                        _page = 0;
-                                      });
-                                      _load();
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const IosGap(height: 8),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    for (final cat in <String?>[
-                                      null,
-                                      'orders',
-                                      'quotes',
-                                      'invoices',
-                                      'messages',
-                                      'payments',
-                                      'credits',
-                                      'delivery',
-                                      'support',
-                                      'moderation',
-                                      'platform',
-                                    ])
-                                      IosPadding(
-                                        padding: const EdgeInsets.only(
-                                          right: 7,
-                                        ),
-                                        child: ChoiceChip(
-                                          label: Text(
-                                            cat == null
-                                                ? 'All activity'
-                                                : cat == 'moderation'
-                                                ? 'Product reports'
-                                                : cat == 'platform'
-                                                ? 'CutLink'
-                                                : '${cat[0].toUpperCase()}${cat.substring(1)}',
-                                          ),
-                                          selected: _category == cat,
-                                          onSelected: (_) {
-                                            setState(() {
-                                              _category = cat;
-                                              _page = 0;
-                                            });
-                                            _load();
-                                          },
-                                        ),
-                                      ),
+                                    FilterChip(
+                                      label: const Text('Unread only'),
+                                      selected: _unread,
+                                      onSelected: (v) {
+                                        setState(() {
+                                          _unread = v;
+                                          _page = 0;
+                                        });
+                                        _load();
+                                      },
+                                    ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const IosGap(height: 14),
-                        if (_loading || _opening)
-                          const LinearProgressIndicator(minHeight: 2),
-                        if (_error != null)
-                          IosPadding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
-                              _error!,
-                              style: const TextStyle(color: Colors.red),
+                                const IosGap(height: 8),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      for (final cat in <String?>[
+                                        null,
+                                        'orders',
+                                        'quotes',
+                                        'invoices',
+                                        'messages',
+                                        'payments',
+                                        'credits',
+                                        'delivery',
+                                        'support',
+                                        'moderation',
+                                        'platform',
+                                      ])
+                                        IosPadding(
+                                          padding: const EdgeInsets.only(
+                                            right: 7,
+                                          ),
+                                          child: ChoiceChip(
+                                            label: Text(
+                                              cat == null
+                                                  ? 'All activity'
+                                                  : cat == 'moderation'
+                                                  ? 'Product reports'
+                                                  : cat == 'platform'
+                                                  ? 'CutLink'
+                                                  : '${cat[0].toUpperCase()}${cat.substring(1)}',
+                                            ),
+                                            selected: _category == cat,
+                                            onSelected: (_) {
+                                              setState(() {
+                                                _category = cat;
+                                                _page = 0;
+                                              });
+                                              _load();
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                      ],
+                          const IosGap(height: 14),
+                          if (_loading || _opening)
+                            const LinearProgressIndicator(minHeight: 2),
+                          if (_error != null)
+                            IosPadding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                if (_rows.isEmpty && !_loading)
-                  const SliverToBoxAdapter(
-                    child: IosPadding(
-                      padding: EdgeInsets.all(40),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.done_all_rounded,
-                            size: 38,
-                            color: CutLinkWorkspaceTheme.red,
+                  if (_rows.isEmpty && !_loading)
+                    SliverToBoxAdapter(
+                      child: IosPadding(
+                        padding: EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.done_all_rounded,
+                              size: 38,
+                              color: CutLinkWorkspaceTheme.red,
+                            ),
+                            IosGap(height: 12),
+                            Text(
+                              'You’re all caught up',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            IosGap(height: 6),
+                            Text(
+                              'No notifications match this view.',
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF6A6E75),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => IosPadding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: NotificationActivityTile(
+                            row: _rows[i],
+                            onDelete: _opening
+                                ? null
+                                : () => _deleteNotification(_rows[i]),
+                            onTap: _opening ? null : () => _open(_rows[i]),
                           ),
-                          IosGap(height: 12),
-                          Text(
-                            'You’re all caught up',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                        ),
+                        childCount: _rows.length,
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: IosPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton.icon(
+                            onPressed: _page == 0 || _loading
+                                ? null
+                                : () {
+                                    _page--;
+                                    _load();
+                                  },
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            label: const Text('Previous'),
+                          ),
+                          IosPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'Page ${_page + 1}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          IosGap(height: 6),
-                          Text(
-                            'No notifications match this view.',
-                            style: TextStyle(color: Color(0xFF6A6E75)),
+                          TextButton.icon(
+                            onPressed: !_more || _loading
+                                ? null
+                                : () {
+                                    _page++;
+                                    _load();
+                                  },
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            label: const Text('Next'),
                           ),
                         ],
                       ),
                     ),
                   ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, i) => IosPadding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: NotificationActivityTile(
-                          row: _rows[i],
-                          onDelete: _opening
-                              ? null
-                              : () => _deleteNotification(_rows[i]),
-                          onTap: _opening ? null : () => _open(_rows[i]),
-                        ),
-                      ),
-                      childCount: _rows.length,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: IosPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _page == 0 || _loading
-                              ? null
-                              : () {
-                                  _page--;
-                                  _load();
-                                },
-                          icon: const Icon(Icons.chevron_left_rounded),
-                          label: const Text('Previous'),
-                        ),
-                        IosPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'Page ${_page + 1}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: !_more || _loading
-                              ? null
-                              : () {
-                                  _page++;
-                                  _load();
-                                },
-                          icon: const Icon(Icons.chevron_right_rounded),
-                          label: const Text('Next'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

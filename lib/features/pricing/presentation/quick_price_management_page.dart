@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/ios_cut_browser.dart';
 import '../../../shared/widgets/ios_workspace.dart';
@@ -521,7 +522,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
               key: ValueKey('$id:$status'),
               initialValue: status,
               isExpanded: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Availability',
                 isDense: true,
                 border: OutlineInputBorder(),
@@ -1312,11 +1313,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           label: const Text('All cuts'),
           selectedColor: _darkRed,
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           labelStyle: TextStyle(
             color: _selectedSectionId == null
                 ? Colors.white
-                : const Color(0xFF444444),
+                : CutLinkPalette.color(0xFF444444),
             fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
@@ -1339,11 +1340,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             label: Text(section['name']?.toString() ?? 'Cut'),
             selectedColor: _darkRed,
-            backgroundColor: Colors.white,
+            backgroundColor: CutLinkPalette.surface,
             labelStyle: TextStyle(
               color: _selectedSectionId == section['id']?.toString()
                   ? Colors.white
-                  : const Color(0xFF444444),
+                  : CutLinkPalette.color(0xFF444444),
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
@@ -1369,11 +1370,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           label: const Text('All subcategories'),
           selectedColor: _darkRed,
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           labelStyle: TextStyle(
             color: _selectedSpecificationId == null
                 ? Colors.white
-                : const Color(0xFF555555),
+                : CutLinkPalette.color(0xFF555555),
             fontSize: 11.5,
             fontWeight: FontWeight.w800,
           ),
@@ -1393,11 +1394,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             label: Text(specification['name']?.toString() ?? 'Subcategory'),
             selectedColor: _darkRed,
-            backgroundColor: Colors.white,
+            backgroundColor: CutLinkPalette.surface,
             labelStyle: TextStyle(
               color: _selectedSpecificationId == specification['id']?.toString()
                   ? Colors.white
-                  : const Color(0xFF555555),
+                  : CutLinkPalette.color(0xFF555555),
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
@@ -1422,7 +1423,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE2E2DE)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE2E2DE)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: IosPadding(
@@ -1471,8 +1472,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       Text(
                         '${_sectionName(product)}'
                         '${product['sku']?.toString().trim().isNotEmpty == true ? '  •  SKU ${product['sku']}' : ''}',
-                        style: const TextStyle(
-                          color: Color(0xFF6A6A6A),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF6A6A6A),
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1502,8 +1503,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                         const IosGap(height: 4),
                         Text(
                           lambSummary,
-                          style: const TextStyle(
-                            color: Color(0xFF4E5357),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF4E5357),
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1522,10 +1523,10 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                       _stockEditor(product),
                       if (_isCatchWeight(product)) ...[
                         const IosGap(height: 5),
-                        const Text(
+                        Text(
                           r'Carton order • $/kg catch-weight pricing',
                           style: TextStyle(
-                            color: Color(0xFF777777),
+                            color: CutLinkPalette.color(0xFF777777),
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1543,22 +1544,22 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                 children: [
                   productInfo,
                   const IosGap(height: 12),
-                  const Text(
+                  Text(
                     'STANDARD PRICE',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Color(0xFF777777),
+                      color: CutLinkPalette.color(0xFF777777),
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const IosGap(height: 5),
                   _priceCell(product: product, visibility: 'public'),
                   const IosGap(height: 10),
-                  const Text(
+                  Text(
                     'TRADE PRICE',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Color(0xFF777777),
+                      color: CutLinkPalette.color(0xFF777777),
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1568,11 +1569,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                     visibility: 'approved_customers',
                   ),
                   const IosGap(height: 10),
-                  const Text(
+                  Text(
                     'CUSTOMER SPECIFIC',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Color(0xFF777777),
+                      color: CutLinkPalette.color(0xFF777777),
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1616,9 +1617,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F2),
+        color: CutLinkPalette.color(0xFFF5F5F2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E2DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE2E2DE)),
       ),
       child: Row(
         children: [
@@ -1635,8 +1636,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                 const IosGap(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF686868),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF686868),
                     fontSize: 11.5,
                     height: 1.25,
                   ),
@@ -1694,13 +1695,15 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         suffixText: '/ ${_basisLabel(basis)}',
         isDense: true,
         filled: changed,
-        fillColor: changed ? const Color(0xFFFFF4E5) : Colors.white,
+        fillColor: changed ? CutLinkPalette.color(0xFFFFF4E5) : Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: changed ? const Color(0xFFE6A04B) : const Color(0xFFE3E3DF),
+            color: changed
+                ? const Color(0xFFE6A04B)
+                : CutLinkPalette.color(0xFFE3E3DF),
           ),
         ),
       ),
@@ -1718,7 +1721,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE3E3DF)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E3DF)),
         ),
         child: Row(
           children: [
@@ -1729,14 +1732,16 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                     : '$count customer price${count == 1 ? '' : 's'}',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: count == 0 ? const Color(0xFF777777) : _darkRed,
+                  color: count == 0
+                      ? CutLinkPalette.color(0xFF777777)
+                      : _darkRed,
                 ),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.people_alt_outlined,
               size: 18,
-              color: Color(0xFF666666),
+              color: CutLinkPalette.color(0xFF666666),
             ),
           ],
         ),
@@ -1756,14 +1761,15 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     super.build(context);
     return PhoneStockScaffold(
       ready: !_isLoading && _errorMessage == null,
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'Inventory & Pricing',
@@ -1830,9 +1836,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   horizontal: 16,
                   vertical: 10,
                 ),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE3E5E8))),
+                decoration: BoxDecoration(
+                  color: CutLinkPalette.surface,
+                  border: Border(
+                    top: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+                  ),
                 ),
                 child: PhoneRow(
                   mode: PhoneRowMode.wrap,
@@ -1878,9 +1886,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1993,12 +2001,12 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'PRODUCT',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF666A70),
+                      color: CutLinkPalette.color(0xFF666A70),
                     ),
                   ),
                 ),

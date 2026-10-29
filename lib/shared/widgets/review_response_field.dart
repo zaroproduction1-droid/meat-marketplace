@@ -52,7 +52,7 @@ class ReviewResponseField extends StatelessWidget {
             minLines: 3,
             maxLines: 6,
             maxLength: 2000,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Your response',
               border: OutlineInputBorder(),
             ),

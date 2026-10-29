@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -40,11 +41,15 @@ class _SupplierVipApplicationsPageState
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   List<Map<String, dynamic>> _maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
 
     return value
         .whereType<Map>()
@@ -154,20 +159,26 @@ class _SupplierVipApplicationsPageState
           .eq('supplier_business_id', supplierId)
           .order('submitted_at', ascending: false);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _applications = _maps(response);
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -183,7 +194,9 @@ class _SupplierVipApplicationsPageState
         return false;
       }
 
-      if (search.isEmpty) return true;
+      if (search.isEmpty) {
+        return true;
+      }
 
       final values = [
         application['butcher_trading_name_snapshot'],
@@ -213,8 +226,12 @@ class _SupplierVipApplicationsPageState
         .trim();
     final legal = application['butcher_legal_name_snapshot']?.toString().trim();
 
-    if (trading != null && trading.isNotEmpty) return trading;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (trading != null && trading.isNotEmpty) {
+      return trading;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
 
     return 'CutLink Butcher';
   }
@@ -235,8 +252,8 @@ class _SupplierVipApplicationsPageState
       'pending' => const Color(0xFF9A6500),
       'approved' => const Color(0xFF23683A),
       'declined' => const Color(0xFF9A3030),
-      'withdrawn' => const Color(0xFF686868),
-      _ => const Color(0xFF686868),
+      'withdrawn' => CutLinkPalette.color(0xFF686868),
+      _ => CutLinkPalette.color(0xFF686868),
     };
   }
 
@@ -245,14 +262,18 @@ class _SupplierVipApplicationsPageState
         ? value.toDouble()
         : double.tryParse(value?.toString() ?? '');
 
-    if (number == null) return '—';
+    if (number == null) {
+      return '—';
+    }
 
     final parts = number.toStringAsFixed(2).split('.');
     final reversed = parts.first.split('').reversed.toList();
     final grouped = <String>[];
 
     for (var i = 0; i < reversed.length; i++) {
-      if (i > 0 && i % 3 == 0) grouped.add(',');
+      if (i > 0 && i % 3 == 0) {
+        grouped.add(',');
+      }
       grouped.add(reversed[i]);
     }
 
@@ -260,10 +281,14 @@ class _SupplierVipApplicationsPageState
   }
 
   String _dateTime(dynamic value) {
-    if (value == null) return '—';
+    if (value == null) {
+      return '—';
+    }
 
     final parsed = DateTime.tryParse(value.toString())?.toLocal();
-    if (parsed == null) return value.toString();
+    if (parsed == null) {
+      return value.toString();
+    }
 
     String two(int value) => value.toString().padLeft(2, '0');
 
@@ -297,12 +322,13 @@ class _SupplierVipApplicationsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -325,9 +351,13 @@ class _SupplierVipApplicationsPageState
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -368,7 +398,7 @@ class _SupplierVipApplicationsPageState
               mode: PhoneRowMode.wrap,
               desktop: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -383,7 +413,7 @@ class _SupplierVipApplicationsPageState
                         Text(
                           'Review applications made directly to your supplier business. Your decisions, internal notes, credit settings and customer relationship remain private to your business.',
                           style: TextStyle(
-                            color: Color(0xFF606060),
+                            color: CutLinkPalette.color(0xFF606060),
                             height: 1.45,
                           ),
                         ),
@@ -412,10 +442,12 @@ class _SupplierVipApplicationsPageState
                         icon: const Icon(Icons.close),
                       ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: CutLinkPalette.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0DD)),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.color(0xFFE0E0DD),
+                  ),
                 ),
               ),
             ),
@@ -438,16 +470,16 @@ class _SupplierVipApplicationsPageState
                   vertical: 60,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE3E5E8)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     Icon(
                       Icons.workspace_premium_outlined,
                       size: 56,
-                      color: Color(0xFF8A8A8A),
+                      color: CutLinkPalette.color(0xFF8A8A8A),
                     ),
                     IosGap(height: 14),
                     Text(
@@ -481,9 +513,11 @@ class _SupplierVipApplicationsPageState
         setState(() => _filter = value);
       },
       selectedColor: _darkRed.withValues(alpha: 0.10),
-      side: BorderSide(color: selected ? _darkRed : const Color(0xFFDADAD7)),
+      side: BorderSide(
+        color: selected ? _darkRed : CutLinkPalette.color(0xFFDADAD7),
+      ),
       labelStyle: TextStyle(
-        color: selected ? _darkRed : const Color(0xFF555555),
+        color: selected ? _darkRed : CutLinkPalette.color(0xFF555555),
         fontWeight: FontWeight.w800,
       ),
     );
@@ -528,7 +562,7 @@ class _SupplierVipApplicationsPageState
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE0E0DD)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -564,16 +598,16 @@ class _SupplierVipApplicationsPageState
                       const IosGap(height: 5),
                       Text(
                         _applicationTypeLabel(application),
-                        style: const TextStyle(
-                          color: Color(0xFF555555),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF555555),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const IosGap(height: 6),
                       Text(
                         'Submitted ${_dateTime(application['submitted_at'])}',
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 13,
                         ),
                       ),
@@ -583,7 +617,9 @@ class _SupplierVipApplicationsPageState
                         Text(
                           'Estimated monthly purchases: '
                           '${_money(application['estimated_monthly_purchases'])}',
-                          style: const TextStyle(color: Color(0xFF555555)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF555555),
+                          ),
                         ),
                       ],
                     ],
@@ -654,7 +690,9 @@ class _SupplierVipApplicationDetailPageState
   bool _processing = false;
 
   List<Map<String, dynamic>> _maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
 
     return value
         .whereType<Map>()
@@ -670,8 +708,12 @@ class _SupplierVipApplicationDetailPageState
         ?.toString()
         .trim();
 
-    if (trading != null && trading.isNotEmpty) return trading;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (trading != null && trading.isNotEmpty) {
+      return trading;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
 
     return 'CutLink Butcher';
   }
@@ -686,15 +728,21 @@ class _SupplierVipApplicationDetailPageState
         ? value.toDouble()
         : double.tryParse(value?.toString() ?? '');
 
-    if (number == null) return '—';
+    if (number == null) {
+      return '—';
+    }
     return '\$${number.toStringAsFixed(2)}';
   }
 
   String _date(dynamic value) {
-    if (value == null) return '—';
+    if (value == null) {
+      return '—';
+    }
 
     final parsed = DateTime.tryParse(value.toString())?.toLocal();
-    if (parsed == null) return value.toString();
+    if (parsed == null) {
+      return value.toString();
+    }
 
     String two(int value) => value.toString().padLeft(2, '0');
 
@@ -742,7 +790,9 @@ class _SupplierVipApplicationDetailPageState
       builder: (_) => const _VipApprovalDialog(),
     );
 
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
     setState(() => _processing = true);
 
@@ -759,7 +809,9 @@ class _SupplierVipApplicationDetailPageState
         },
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${_name()} approved for VIP pricing.')),
@@ -771,7 +823,9 @@ class _SupplierVipApplicationDetailPageState
     } catch (error) {
       _message(error.toString());
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) {
+        setState(() => _processing = false);
+      }
     }
   }
 
@@ -799,7 +853,7 @@ class _SupplierVipApplicationDetailPageState
                     controller: notesController,
                     minLines: 3,
                     maxLines: 6,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Internal decline notes (optional)',
                       hintText: 'Private to your supplier business',
                       border: OutlineInputBorder(),
@@ -829,7 +883,9 @@ class _SupplierVipApplicationDetailPageState
     final notes = notesController.text.trim();
     notesController.dispose();
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     setState(() => _processing = true);
 
@@ -842,7 +898,9 @@ class _SupplierVipApplicationDetailPageState
         },
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('VIP application declined.')),
@@ -854,12 +912,16 @@ class _SupplierVipApplicationDetailPageState
     } catch (error) {
       _message(error.toString());
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) {
+        setState(() => _processing = false);
+      }
     }
   }
 
   void _message(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(
       context,
@@ -868,6 +930,7 @@ class _SupplierVipApplicationDetailPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final references =
         _maps(widget.application['vip_trade_application_references'])..sort(
           (a, b) => ((a['reference_order'] as num?)?.toInt() ?? 0).compareTo(
@@ -885,11 +948,11 @@ class _SupplierVipApplicationDetailPageState
         'vip_pricing_and_credit';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -914,18 +977,24 @@ class _SupplierVipApplicationDetailPageState
               ),
             ],
           ),
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
       bottomNavigationBar: pending
           ? SafeArea(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE3E5E8))),
+                decoration: BoxDecoration(
+                  color: CutLinkPalette.surface,
+                  border: Border(
+                    top: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+                  ),
                 ),
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
                 child: Center(
@@ -940,8 +1009,8 @@ class _SupplierVipApplicationDetailPageState
                               onPressed: _processing ? null : _decline,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF9A3030),
-                                side: const BorderSide(
-                                  color: Color(0xFFD9DDE1),
+                                side: BorderSide(
+                                  color: CutLinkPalette.color(0xFFD9DDE1),
                                 ),
                                 minimumSize: const Size.fromHeight(50),
                                 shape: RoundedRectangleBorder(
@@ -1169,20 +1238,23 @@ class _SupplierVipApplicationDetailPageState
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F6F3),
+                  color: CutLinkPalette.color(0xFFF3F6F3),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFD6E0D7)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFD6E0D7)),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lock_outline, color: Color(0xFF35613B)),
+                    Icon(
+                      Icons.lock_outline,
+                      color: CutLinkPalette.color(0xFF35613B),
+                    ),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'This application belongs only to your supplier business. Your decision, risk assessment, internal notes, payment terms and credit limit are not shared with another supplier.',
                         style: TextStyle(
-                          color: Color(0xFF35523A),
+                          color: CutLinkPalette.color(0xFF35523A),
                           fontWeight: FontWeight.w700,
                           height: 1.4,
                         ),
@@ -1202,9 +1274,9 @@ class _SupplierVipApplicationDetailPageState
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1232,8 +1304,8 @@ class _SupplierVipApplicationDetailPageState
               width: 210,
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xFF666666),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666666),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1255,9 +1327,9 @@ class _SupplierVipApplicationDetailPageState
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F7),
+        color: CutLinkPalette.color(0xFFF9F9F7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E2DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE2E2DE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1287,7 +1359,9 @@ class _SupplierVipApplicationDetailPageState
         children: [
           Icon(
             accepted ? Icons.check_circle : Icons.remove_circle_outline,
-            color: accepted ? const Color(0xFF23683A) : const Color(0xFF777777),
+            color: accepted
+                ? const Color(0xFF23683A)
+                : CutLinkPalette.color(0xFF777777),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1327,6 +1401,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final account = _paymentMethod == 'account';
 
     return phoneDialog(
@@ -1347,7 +1422,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                 DropdownButtonFormField<String>(
                   isExpanded: isPhoneLayout(context),
                   initialValue: _riskRating,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Internal risk assessment',
                     border: OutlineInputBorder(),
                   ),
@@ -1364,7 +1439,9 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                     DropdownMenuItem(value: 'high', child: Text('High risk')),
                   ],
                   onChanged: (value) {
-                    if (value == null) return;
+                    if (value == null) {
+                      return;
+                    }
                     setState(() => _riskRating = value);
                   },
                 ),
@@ -1372,7 +1449,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                 DropdownButtonFormField<String>(
                   isExpanded: isPhoneLayout(context),
                   initialValue: _paymentMethod,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Approved payment method',
                     border: OutlineInputBorder(),
                   ),
@@ -1385,7 +1462,9 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                     ),
                   ],
                   onChanged: (value) {
-                    if (value == null) return;
+                    if (value == null) {
+                      return;
+                    }
                     setState(() => _paymentMethod = value);
                   },
                 ),
@@ -1399,7 +1478,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                           child: TextField(
                             controller: _termsController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Payment terms',
                               suffixText: 'days',
                               border: OutlineInputBorder(),
@@ -1413,7 +1492,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Credit limit',
                               prefixText: '\$',
                               hintText: 'Optional',
@@ -1430,7 +1509,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                   controller: _notesController,
                   minLines: 3,
                   maxLines: 6,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Internal review notes',
                     hintText:
                         'Private to your supplier business. Not visible to the butcher or another supplier.',

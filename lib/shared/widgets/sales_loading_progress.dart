@@ -1,4 +1,7 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Stage and stock progress come from completed requests, never a fake timer.
@@ -59,6 +62,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final ready = widget.stage == 4;
     final stockProgress = widget.total == null
         ? null
@@ -82,9 +86,9 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFFE5DDDC)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE5DDDC)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -127,7 +131,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                       value: value,
                       minHeight: 8,
                       color: _red,
-                      backgroundColor: const Color(0xFFF1E8E7),
+                      backgroundColor: CutLinkPalette.color(0xFFF1E8E7),
                     ),
                   )
                 else
@@ -135,7 +139,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                     value: ready ? 1 : null,
                     minHeight: 8,
                     color: _red,
-                    backgroundColor: const Color(0xFFF1E8E7),
+                    backgroundColor: CutLinkPalette.color(0xFFF1E8E7),
                   ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -154,7 +158,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                         ),
                         label: Text(_labels[i]),
                         backgroundColor: i == widget.stage
-                            ? const Color(0xFFF1E8E7)
+                            ? CutLinkPalette.color(0xFFF1E8E7)
                             : Colors.white,
                       ),
                   ],

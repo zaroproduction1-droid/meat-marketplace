@@ -107,7 +107,7 @@ class _ProductBrandFieldState extends State<ProductBrandField> {
             child: TextFormField(
               controller: widget.controller,
               enabled: widget.enabled,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Your brand name',
                 border: OutlineInputBorder(),
               ),

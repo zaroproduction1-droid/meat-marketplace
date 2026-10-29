@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/supplier_product_attention_notice.dart';
 import '../../../shared/widgets/supplier_photo_terms_notice.dart';
@@ -1197,8 +1198,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
           if (_availableChickenAttributeValues(field.key).isNotEmpty) ...[
             Text(
               field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 9.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -1319,8 +1320,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
           if (_availableGoatAttributeValues(field.key).isNotEmpty) ...[
             Text(
               field.value.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 9.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -1463,13 +1464,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     super.build(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'My Stock',
@@ -1555,9 +1557,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     Widget animalPanel() {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -1582,8 +1584,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 _usesGradeStage
                     ? 'Choose the animal, cut, subcategory and $_gradeStageLabel.'
                     : 'Choose the animal, cut and subcategory.',
-                style: const TextStyle(
-                  color: Color(0xFF666666),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF666666),
                   fontSize: 10.5,
                 ),
               ),
@@ -1602,10 +1604,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                       maxWidth: 650,
                     ),
                     const IosGap(height: 8),
-                    const Text(
+                    Text(
                       'CUT',
                       style: TextStyle(
-                        color: Color(0xFF777777),
+                        color: CutLinkPalette.color(0xFF777777),
                         fontSize: 9.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1616,8 +1618,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                       const IosGap(height: 8),
                       Text(
                         'SUBCATEGORY',
-                        style: const TextStyle(
-                          color: Color(0xFF777777),
+                        style: TextStyle(
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 9.5,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1638,7 +1640,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                       Text(
                         _gradeStageLabel.toUpperCase(),
                         style: TextStyle(
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                           fontSize: 9.5,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1672,7 +1674,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Row(
               children: [
@@ -1681,7 +1683,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   height: 36,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5EAEA),
+                    color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(icon, size: 18, color: _darkRed),
@@ -1704,8 +1706,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                           subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF777777),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF777777),
                             fontSize: 10.5,
                           ),
                         ),
@@ -1735,11 +1737,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'No subcategories are linked to this cut yet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF777777),
+                    color: CutLinkPalette.color(0xFF777777),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1803,11 +1805,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'No stocked products are available for this subcategory yet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF777777),
+                    color: CutLinkPalette.color(0xFF777777),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1872,10 +1874,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.inventory_2_outlined,
                   size: 46,
-                  color: Color(0xFFAAAAAA),
+                  color: CutLinkPalette.color(0xFFAAAAAA),
                 ),
                 const IosGap(height: 10),
                 const Text(
@@ -1883,10 +1885,13 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
                 const IosGap(height: 4),
-                const Text(
+                Text(
                   'Add a product for this cut, subcategory or grade.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF777777), height: 1.35),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF777777),
+                    height: 1.35,
+                  ),
                 ),
                 const IosGap(height: 14),
                 FilledButton.icon(
@@ -1938,14 +1943,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   ),
             isDense: true,
             filled: true,
-            fillColor: const Color(0xFFFBFBF9),
+            fillColor: CutLinkPalette.color(0xFFFBFBF9),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+              borderSide: BorderSide(color: CutLinkPalette.color(0xFFDADAD6)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: Color(0xFFDADAD6)),
+              borderSide: BorderSide(color: CutLinkPalette.color(0xFFDADAD6)),
             ),
           ),
         ),
@@ -1980,9 +1985,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x07000000),
@@ -2012,8 +2017,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         const IosGap(height: 2),
                         Text(
                           subtitle,
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
                             fontSize: 10.5,
                           ),
                         ),
@@ -2027,7 +2032,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5EAEA),
+                        color: CutLinkPalette.color(0xFFF5EAEA),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -2078,7 +2083,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               child: directSearch
                   ? stockStage()
                   : !cutSelected
-                  ? const Center(
+                  ? Center(
                       child: IosPadding(
                         padding: EdgeInsets.all(28),
                         child: Column(
@@ -2087,7 +2092,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                             Icon(
                               Icons.touch_app_outlined,
                               size: 48,
-                              color: Color(0xFFAAAAAA),
+                              color: CutLinkPalette.color(0xFFAAAAAA),
                             ),
                             IosGap(height: 12),
                             Text(
@@ -2179,10 +2184,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         labelPadding: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
         selectedColor: _darkRed,
-        backgroundColor: Colors.white,
-        side: BorderSide(color: selected ? _darkRed : const Color(0xFFD9D9D5)),
+        backgroundColor: CutLinkPalette.surface,
+        side: BorderSide(
+          color: selected ? _darkRed : CutLinkPalette.color(0xFFD9D9D5),
+        ),
         labelStyle: TextStyle(
-          color: selected ? Colors.white : const Color(0xFF444444),
+          color: selected ? Colors.white : CutLinkPalette.color(0xFF444444),
           fontSize: 11.5,
           fontWeight: FontWeight.w800,
         ),
@@ -2251,7 +2258,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -2262,7 +2269,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Icon(icon, size: 19, color: _darkRed),
           ),
@@ -2371,16 +2378,16 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               selectedColor: _darkRed,
-              backgroundColor: Colors.white,
+              backgroundColor: CutLinkPalette.surface,
               side: BorderSide(
                 color: _selectedGradeId == grade['id']?.toString()
                     ? _darkRed
-                    : const Color(0xFFD9D9D5),
+                    : CutLinkPalette.color(0xFFD9D9D5),
               ),
               labelStyle: TextStyle(
                 color: _selectedGradeId == grade['id']?.toString()
                     ? Colors.white
-                    : const Color(0xFF444444),
+                    : CutLinkPalette.color(0xFF444444),
                 fontSize: 11.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -2416,7 +2423,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xFFE0E0DC)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DC)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: IosPadding(
@@ -2444,8 +2451,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                     Text(
                       '$section • ${products.length} '
                       '${products.length == 1 ? itemWord : itemWordPlural}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2507,7 +2514,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
                 return Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F6),
+                    color: CutLinkPalette.color(0xFFF8F8F6),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   padding: const EdgeInsets.symmetric(
@@ -2520,56 +2527,56 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                         width: chicken ? 245 : 78,
                         child: Text(
                           chicken ? 'VARIATION' : 'GRADE',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10.5,
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         flex: 2,
                         child: Text(
                           'STOCK',
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         flex: 2,
                         child: Text(
                           'STANDARD PRICE',
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         flex: 2,
                         child: Text(
                           'TRADE PRICE',
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         flex: 2,
                         child: Text(
                           'STATUS',
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -2584,7 +2591,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
             for (var index = 0; index < products.length; index++) ...[
               _buildGradeMatrixRow(products[index]),
               if (index != products.length - 1)
-                const Divider(height: 12, color: Color(0xFFE9E9E5)),
+                Divider(height: 12, color: CutLinkPalette.color(0xFFE9E9E5)),
             ],
           ],
         ),
@@ -2646,9 +2653,9 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   : 68,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3E8E8),
+                color: CutLinkPalette.color(0xFFF3E8E8),
                 borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: const Color(0xFFD8BEBE)),
+                border: Border.all(color: CutLinkPalette.color(0xFFD8BEBE)),
               ),
               child: Text(
                 chicken ? _chickenVariationLabel(product) : _gradeCode(product),
@@ -2685,7 +2692,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 prefixText: r'$ ',
                 border: OutlineInputBorder(),
@@ -2697,7 +2704,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 prefixText: r'$ ',
                 hintText: 'Optional',

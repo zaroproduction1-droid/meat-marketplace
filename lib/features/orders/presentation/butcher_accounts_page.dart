@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/sharp_logo.dart';
 import '../../../shared/security/retry_safe_payments.dart';
@@ -50,11 +51,15 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   double _asDouble(dynamic value) {
-    if (value is num) return value.toDouble();
+    if (value is num) {
+      return value.toDouble();
+    }
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
@@ -64,9 +69,15 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
     final method = account['payment_method']?.toString();
     final days = (account['payment_terms_days'] as num?)?.toInt() ?? 0;
 
-    if (method == 'prepaid') return 'Prepaid';
-    if (method == 'cod') return 'COD';
-    if (days > 0) return '$days days';
+    if (method == 'prepaid') {
+      return 'Prepaid';
+    }
+    if (method == 'cod') {
+      return 'COD';
+    }
+    if (days > 0) {
+      return '$days days';
+    }
     return 'Not set';
   }
 
@@ -98,7 +109,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       case 'clear':
         return const Color(0xFF2E7D32);
       default:
-        return const Color(0xFF666A70);
+        return CutLinkPalette.color(0xFF666A70);
     }
   }
 
@@ -114,20 +125,26 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         params: {'due_soon_days': 7},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _supplierAccounts = List<Map<String, dynamic>>.from(response as List);
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -137,7 +154,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
 
   List<Map<String, dynamic>> get _filteredAccounts {
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) return _supplierAccounts;
+    if (query.isEmpty) {
+      return _supplierAccounts;
+    }
 
     return _supplierAccounts.where((account) {
       return (account['supplier_name']?.toString() ?? '')
@@ -163,7 +182,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
 
   Future<void> _openSupplierAccount(Map<String, dynamic> account) async {
     final supplierId = account['supplier_business_id']?.toString();
-    if (supplierId == null || supplierId.isEmpty) return;
+    if (supplierId == null || supplierId.isEmpty) {
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -174,7 +195,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       ),
     );
 
-    if (mounted) await _loadAccounts();
+    if (mounted) {
+      await _loadAccounts();
+    }
   }
 
   Widget _summaryCard({
@@ -188,9 +211,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       width: 220,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,8 +224,8 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
           ],
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 10.5,
               fontWeight: FontWeight.w900,
             ),
@@ -211,7 +234,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? const Color(0xFF222222),
+              color: valueColor ?? CutLinkPalette.color(0xFF222222),
               fontSize: 21,
               fontWeight: FontWeight.w900,
             ),
@@ -220,7 +243,10 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             const IosGap(height: 3),
             Text(
               subtitle,
-              style: const TextStyle(color: Color(0xFF777777), fontSize: 10.5),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
+                fontSize: 10.5,
+              ),
             ),
           ],
         ],
@@ -237,9 +263,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: PhoneRow(
           mode: PhoneRowMode.wrap,
@@ -250,7 +276,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4E5E5),
+                  color: CutLinkPalette.color(0xFFF4E5E5),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -327,8 +353,8 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF888888),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF888888),
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
@@ -339,7 +365,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: valueColor ?? const Color(0xFF222222),
+              color: valueColor ?? CutLinkPalette.color(0xFF222222),
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -348,7 +374,10 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             const IosGap(height: 1),
             Text(
               subtitle,
-              style: const TextStyle(color: Color(0xFF777777), fontSize: 9.5),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
+                fontSize: 9.5,
+              ),
             ),
           ],
         ],
@@ -358,6 +387,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -392,11 +422,11 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -432,9 +462,13 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -490,7 +524,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                                 icon: const Icon(Icons.close),
                               ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: CutLinkPalette.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -509,9 +543,11 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                       Container(
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: CutLinkPalette.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE3E5E8)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFE3E5E8),
+                          ),
                           boxShadow: const [
                             BoxShadow(
                               color: Color(0x06000000),
@@ -520,10 +556,12 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                             ),
                           ],
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'No supplier accounts found.',
-                            style: TextStyle(color: Color(0xFF777777)),
+                            style: TextStyle(
+                              color: CutLinkPalette.color(0xFF777777),
+                            ),
                           ),
                         ),
                       )
@@ -586,20 +624,26 @@ class _ButcherSupplierAccountPageState
   }
 
   double _asDouble(dynamic value) {
-    if (value is num) return value.toDouble();
+    if (value is num) {
+      return value.toDouble();
+    }
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   String _money(dynamic value) => '\$${_asDouble(value).toStringAsFixed(2)}';
 
   DateTime? _parseDate(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return DateTime.tryParse(value.toString())?.toLocal();
   }
 
   String _date(dynamic value) {
     final d = _parseDate(value);
-    if (d == null) return '—';
+    if (d == null) {
+      return '—';
+    }
 
     return '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/'
@@ -853,7 +897,9 @@ class _ButcherSupplierAccountPageState
         );
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _butcherBusinessId = butcherId;
@@ -875,13 +921,17 @@ class _ButcherSupplierAccountPageState
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -893,9 +943,15 @@ class _ButcherSupplierAccountPageState
     final method = _summary?['payment_method']?.toString();
     final days = (_summary?['payment_terms_days'] as num?)?.toInt() ?? 0;
 
-    if (method == 'prepaid') return 'Prepaid';
-    if (method == 'cod') return 'COD';
-    if (days > 0) return '$days days';
+    if (method == 'prepaid') {
+      return 'Prepaid';
+    }
+    if (method == 'cod') {
+      return 'COD';
+    }
+    if (days > 0) {
+      return '$days days';
+    }
     return 'Not set';
   }
 
@@ -944,7 +1000,9 @@ class _ButcherSupplierAccountPageState
     final paid = _asDouble(invoice['amount_paid']);
     final credit = _asDouble(invoice['credit_applied']);
 
-    if (outstanding <= 0) return 'Paid';
+    if (outstanding <= 0) {
+      return 'Paid';
+    }
 
     final due = _parseDate(invoice['due_date']);
     final now = DateTime.now();
@@ -953,14 +1011,18 @@ class _ButcherSupplierAccountPageState
     if (due != null) {
       final dueOnly = DateTime(due.year, due.month, due.day);
 
-      if (dueOnly.isBefore(today)) return 'Overdue';
+      if (dueOnly.isBefore(today)) {
+        return 'Overdue';
+      }
 
       if (!dueOnly.isAfter(today.add(const Duration(days: 7)))) {
         return 'Due Soon';
       }
     }
 
-    if (paid > 0 || credit > 0) return 'Partially Paid';
+    if (paid > 0 || credit > 0) {
+      return 'Partially Paid';
+    }
 
     return 'Open';
   }
@@ -976,7 +1038,7 @@ class _ButcherSupplierAccountPageState
       case 'Partially Paid':
         return const Color(0xFF315A8C);
       default:
-        return const Color(0xFF555555);
+        return CutLinkPalette.color(0xFF555555);
     }
   }
 
@@ -1014,7 +1076,9 @@ class _ButcherSupplierAccountPageState
   }
 
   Future<void> _submitAccountPayment() async {
-    if (_loading) return;
+    if (_loading) {
+      return;
+    }
 
     final selected = _selectedInvoices;
 
@@ -1073,7 +1137,7 @@ class _ButcherSupplierAccountPageState
                               height: 46,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF4E5E5),
+                                color: CutLinkPalette.color(0xFFF4E5E5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -1102,8 +1166,8 @@ class _ButcherSupplierAccountPageState
                                         : 'Submit the payment and proposed invoice '
                                               'allocations. Nothing clears until the supplier '
                                               'confirms the funds were received.',
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF666666),
                                       fontSize: 12,
                                       height: 1.35,
                                     ),
@@ -1124,7 +1188,7 @@ class _ButcherSupplierAccountPageState
                             labelText: 'Payment amount',
                             prefixText: '\$',
                             filled: true,
-                            fillColor: const Color(0xFFF8F8F6),
+                            fillColor: CutLinkPalette.color(0xFFF8F8F6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(11),
                             ),
@@ -1143,7 +1207,7 @@ class _ButcherSupplierAccountPageState
                                   decoration: InputDecoration(
                                     labelText: 'Payment method',
                                     filled: true,
-                                    fillColor: const Color(0xFFF8F8F6),
+                                    fillColor: CutLinkPalette.color(0xFFF8F8F6),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(11),
                                     ),
@@ -1201,7 +1265,9 @@ class _ButcherSupplierAccountPageState
                                     decoration: InputDecoration(
                                       labelText: 'Payment date',
                                       filled: true,
-                                      fillColor: const Color(0xFFF8F8F6),
+                                      fillColor: CutLinkPalette.color(
+                                        0xFFF8F8F6,
+                                      ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(11),
                                       ),
@@ -1220,7 +1286,7 @@ class _ButcherSupplierAccountPageState
                             labelText: 'Reference',
                             hintText: 'Bank transfer reference, receipt, etc.',
                             filled: true,
-                            fillColor: const Color(0xFFF8F8F6),
+                            fillColor: CutLinkPalette.color(0xFFF8F8F6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(11),
                             ),
@@ -1233,7 +1299,7 @@ class _ButcherSupplierAccountPageState
                           decoration: InputDecoration(
                             labelText: 'Notes',
                             filled: true,
-                            fillColor: const Color(0xFFF8F8F6),
+                            fillColor: CutLinkPalette.color(0xFFF8F8F6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(11),
                             ),
@@ -1244,7 +1310,7 @@ class _ButcherSupplierAccountPageState
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8F8F6),
+                              color: CutLinkPalette.color(0xFFF8F8F6),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -1255,11 +1321,11 @@ class _ButcherSupplierAccountPageState
                                   style: TextStyle(fontWeight: FontWeight.w900),
                                 ),
                                 const IosGap(height: 4),
-                                const Text(
+                                Text(
                                   'You can change how much of the payment you '
                                   'want applied to each selected invoice.',
                                   style: TextStyle(
-                                    color: Color(0xFF777777),
+                                    color: CutLinkPalette.color(0xFF777777),
                                     fontSize: 11,
                                   ),
                                 ),
@@ -1285,8 +1351,10 @@ class _ButcherSupplierAccountPageState
                                               Text(
                                                 'Outstanding '
                                                 '${_money(invoice['outstanding_amount'])}',
-                                                style: const TextStyle(
-                                                  color: Color(0xFF777777),
+                                                style: TextStyle(
+                                                  color: CutLinkPalette.color(
+                                                    0xFF777777,
+                                                  ),
                                                   fontSize: 10.5,
                                                 ),
                                               ),
@@ -1305,7 +1373,7 @@ class _ButcherSupplierAccountPageState
                                                 ),
                                             onChanged: (_) =>
                                                 setDialogState(() {}),
-                                            decoration: const InputDecoration(
+                                            decoration: InputDecoration(
                                               labelText: 'Apply',
                                               prefixText: '\$',
                                               isDense: true,
@@ -1442,7 +1510,9 @@ class _ButcherSupplierAccountPageState
       controller.dispose();
     }
 
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
 
     setState(() => _loading = true);
 
@@ -1488,9 +1558,9 @@ class _ButcherSupplierAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1544,8 +1614,10 @@ class _ButcherSupplierAccountPageState
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFEEEEEA)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -1569,8 +1641,8 @@ class _ButcherSupplierAccountPageState
                     '${_date(submission['payment_date'])} • $allocationText',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777777),
                       fontSize: 10.5,
                     ),
                   ),
@@ -1585,7 +1657,7 @@ class _ButcherSupplierAccountPageState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3DF),
+                color: CutLinkPalette.color(0xFFFFF3DF),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: const Text(
@@ -1605,7 +1677,9 @@ class _ButcherSupplierAccountPageState
 
   Future<void> _openInvoice(Map<String, dynamic> invoice) async {
     final id = invoice['id']?.toString();
-    if (id == null || id.isEmpty) return;
+    if (id == null || id.isEmpty) {
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -1618,7 +1692,9 @@ class _ButcherSupplierAccountPageState
       ),
     );
 
-    if (mounted) await _loadPage();
+    if (mounted) {
+      await _loadPage();
+    }
   }
 
   Widget _metric(String label, dynamic value, {Color? color}) {
@@ -1626,17 +1702,17 @@ class _ButcherSupplierAccountPageState
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF777777),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777777),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -1645,7 +1721,7 @@ class _ButcherSupplierAccountPageState
             Text(
               _money(value),
               style: TextStyle(
-                color: color ?? const Color(0xFF222222),
+                color: color ?? CutLinkPalette.color(0xFF222222),
                 fontSize: 21,
                 fontWeight: FontWeight.w900,
               ),
@@ -1662,9 +1738,9 @@ class _ButcherSupplierAccountPageState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE1E1DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE1E1DD)),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -1680,8 +1756,8 @@ class _ButcherSupplierAccountPageState
                           'where the payment should be applied.'
                     : '${selected.length} invoice'
                           '${selected.length == 1 ? '' : 's'} selected for proposed allocation.',
-                style: const TextStyle(
-                  color: Color(0xFF555555),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF555555),
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1705,9 +1781,9 @@ class _ButcherSupplierAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1728,12 +1804,12 @@ class _ButcherSupplierAccountPageState
           ),
           const Divider(height: 1),
           if (rows.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.all(28),
               child: Center(
                 child: Text(
                   'No invoices in this view.',
-                  style: TextStyle(color: Color(0xFF777777)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF777777)),
                 ),
               ),
             )
@@ -1867,7 +1943,7 @@ class _ButcherSupplierAccountPageState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD9D9D5)),
+          border: Border.all(color: CutLinkPalette.color(0xFFD9D9D5)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1911,9 +1987,9 @@ class _ButcherSupplierAccountPageState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1927,12 +2003,12 @@ class _ButcherSupplierAccountPageState
           ),
           const Divider(height: 1),
           if (entries.isEmpty)
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.all(28),
               child: Center(
                 child: Text(
                   'No unallocated payments or credits requiring action.',
-                  style: TextStyle(color: Color(0xFF777777)),
+                  style: TextStyle(color: CutLinkPalette.color(0xFF777777)),
                 ),
               ),
             )
@@ -2020,8 +2096,10 @@ class _ButcherSupplierAccountPageState
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEA))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFEEEEEA)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -2040,8 +2118,8 @@ class _ButcherSupplierAccountPageState
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF777777),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777777),
                       fontSize: 11,
                     ),
                   ),
@@ -2083,8 +2161,8 @@ class _ButcherSupplierAccountPageState
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF888888),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF888888),
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
@@ -2134,6 +2212,7 @@ class _ButcherSupplierAccountPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'butcher_account',
       'id': widget.supplierBusinessId,
@@ -2169,11 +2248,11 @@ class _ButcherSupplierAccountPageState
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -2198,10 +2277,10 @@ class _ButcherSupplierAccountPageState
                         fontSize: 18,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Supplier Account',
                       style: TextStyle(
-                        color: Color(0xFF666A70),
+                        color: CutLinkPalette.color(0xFF666A70),
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2235,8 +2314,8 @@ class _ButcherSupplierAccountPageState
             OutlinedButton.icon(
               onPressed: _openStatement,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF34383D),
-                side: const BorderSide(color: Color(0xFFD9DDE1)),
+                foregroundColor: CutLinkPalette.color(0xFF34383D),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
@@ -2259,9 +2338,13 @@ class _ButcherSupplierAccountPageState
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -2319,9 +2402,11 @@ class _ButcherSupplierAccountPageState
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: CutLinkPalette.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE3E5E8)),
+                        border: Border.all(
+                          color: CutLinkPalette.color(0xFFE3E5E8),
+                        ),
                       ),
                       child: PhoneRow(
                         mode: PhoneRowMode.wrap,
@@ -2336,10 +2421,10 @@ class _ButcherSupplierAccountPageState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Payment Terms',
                                     style: TextStyle(
-                                      color: Color(0xFF777777),
+                                      color: CutLinkPalette.color(0xFF777777),
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w900,
                                     ),
@@ -2355,8 +2440,8 @@ class _ButcherSupplierAccountPageState
                                   const IosGap(height: 2),
                                   Text(
                                     _termsExplanation(),
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
+                                    style: TextStyle(
+                                      color: CutLinkPalette.color(0xFF666666),
                                       fontSize: 11.5,
                                     ),
                                   ),
@@ -2644,7 +2729,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Amount paid',
                   prefixText: r'$',
                   border: OutlineInputBorder(),
@@ -2654,7 +2739,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               TextField(
                 controller: noteController,
                 maxLines: 2,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Payment note / reference (optional)',
                   border: OutlineInputBorder(),
                 ),
@@ -2865,6 +2950,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'butcher_invoice',
       'id': widget.invoiceId,
@@ -2882,8 +2968,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     Widget itemsPanel() {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: CutLinkPalette.surface,
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -2944,9 +3030,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                                 ).isNotEmpty)
                                   Text(
                                     documentProductSpecifications(item),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFF646A70),
+                                      color: CutLinkPalette.color(0xFF646A70),
                                     ),
                                   ),
                                 if ((item['public_comment']
@@ -2968,8 +3054,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                                   actualWeight > 0
                                       ? '${actualWeight.toStringAsFixed(2)} kg × ${_money(unitPrice)}/kg'
                                       : '${item['ordered_quantity'] ?? ''} ${item['ordered_quantity_unit'] ?? ''} × ${_money(unitPrice)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
+                                  style: TextStyle(
+                                    color: CutLinkPalette.color(0xFF666666),
                                     fontSize: 11.5,
                                   ),
                                 ),
@@ -2997,8 +3083,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: CutLinkPalette.surface,
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: ListView(
@@ -3142,11 +3228,11 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: Text(
             _invoice['invoice_number']?.toString() ?? 'Invoice',
@@ -3226,7 +3312,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     if (paymentAllocations is List) {
       for (final raw in paymentAllocations.whereType<Map>()) {
         final allocation = Map<String, dynamic>.from(raw);
-        if (allocation['status']?.toString() != 'active') continue;
+        if (allocation['status']?.toString() != 'active') {
+          continue;
+        }
 
         final paymentRaw = allocation['account_payments'];
         final payment = paymentRaw is Map
@@ -3267,7 +3355,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
     if (creditAllocations is List) {
       for (final raw in creditAllocations.whereType<Map>()) {
         final allocation = Map<String, dynamic>.from(raw);
-        if (allocation['status']?.toString() != 'active') continue;
+        if (allocation['status']?.toString() != 'active') {
+          continue;
+        }
 
         final creditRaw = allocation['account_credits'];
         final credit = creditRaw is Map
@@ -3308,9 +3398,12 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
 
     if (rows.isEmpty) {
       rows.add(
-        const Text(
+        Text(
           'No payment allocations recorded yet.',
-          style: TextStyle(color: Color(0xFF777777), fontSize: 11.5),
+          style: TextStyle(
+            color: CutLinkPalette.color(0xFF777777),
+            fontSize: 11.5,
+          ),
         ),
       );
     }
@@ -3351,6 +3444,7 @@ class _DetailValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return SizedBox(
       width: 185,
       child: Column(
@@ -3358,8 +3452,8 @@ class _DetailValue extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),

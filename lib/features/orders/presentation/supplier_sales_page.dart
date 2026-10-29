@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../support/presentation/missing_item_request_button.dart';
 import '../../../shared/widgets/phone_stock_scaffold.dart';
@@ -1634,7 +1635,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             margin: const EdgeInsets.only(bottom: 14),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8F8F6),
+                              color: CutLinkPalette.color(0xFFF8F8F6),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Text(
@@ -1682,7 +1683,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           controller: notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Line notes (optional)',
                             border: OutlineInputBorder(),
                           ),
@@ -1771,7 +1772,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   const IosGap(height: 5),
                   Text(
                     'Choose one of your $_openSaleCount open sales or start another.',
-                    style: const TextStyle(color: Color(0xFF666666)),
+                    style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
                   ),
                   const IosGap(height: 12),
                   Flexible(
@@ -1780,8 +1781,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       children: [
                         if (_activeSale != null)
                           ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFFF4E5E5),
+                            leading: CircleAvatar(
+                              backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                               child: Icon(
                                 Icons.shopping_cart_checkout_outlined,
                                 color: _darkRed,
@@ -1824,8 +1825,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           ),
                         const Divider(),
                         ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFF4E5E5),
+                          leading: CircleAvatar(
+                            backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                             child: Icon(
                               Icons.add_business_outlined,
                               color: _darkRed,
@@ -1918,9 +1919,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F6),
+        color: CutLinkPalette.color(0xFFF8F8F6),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0DD)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
       ),
       child: Row(
         children: [
@@ -1998,7 +1999,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _darkRed.withValues(alpha: 0.35)),
         boxShadow: const [
@@ -2026,7 +2027,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4E5E5),
+                      color: CutLinkPalette.color(0xFFF4E5E5),
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: const Icon(
@@ -2052,8 +2053,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           '${_activeSaleLines.length == 1 ? '' : 's'}'
                           ' • $payment • $fulfilment'
                           ' • $date $time',
-                          style: const TextStyle(
-                            color: Color(0xFF666666),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF666666),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -2082,14 +2083,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           if (!_activeSaleMinimized) ...[
             const Divider(height: 1),
             if (_activeSaleLines.isEmpty)
-              const IosPadding(
+              IosPadding(
                 padding: EdgeInsets.all(22),
                 child: Text(
                   'No products added yet. Use Add to Sale from the '
                   'inventory on the right.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF666666),
+                    color: CutLinkPalette.color(0xFF666666),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -2407,7 +2408,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           height: 46,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF1E3),
+                            color: CutLinkPalette.color(0xFFFFF1E3),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -2416,7 +2417,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2432,7 +2433,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                 'This sale would take the customer '
                                 'over their approved account limit.',
                                 style: TextStyle(
-                                  color: Color(0xFF666666),
+                                  color: CutLinkPalette.color(0xFF666666),
                                   fontSize: 12,
                                 ),
                               ),
@@ -2445,7 +2446,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8F6),
+                        color: CutLinkPalette.color(0xFFF8F8F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -2550,7 +2551,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF666666),
+              color: CutLinkPalette.color(0xFF666666),
               fontSize: 11.5,
               fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
             ),
@@ -2559,7 +2560,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         Text(
           value,
           style: TextStyle(
-            color: warning ? const Color(0xFFB3261E) : const Color(0xFF222222),
+            color: warning
+                ? const Color(0xFFB3261E)
+                : CutLinkPalette.color(0xFF222222),
             fontSize: strong ? 13 : 12,
             fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
           ),
@@ -2773,9 +2776,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2847,9 +2850,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2873,9 +2876,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAFAF8),
+                          color: CutLinkPalette.color(0xFFFAFAF8),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE6E6E2)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFE6E6E2),
+                          ),
                         ),
                         child: PhoneRow(
                           mode: PhoneRowMode.wrap,
@@ -2967,9 +2972,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE0E0DD)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2996,8 +3001,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       ? 'Fixed-price items only. Catch-weight totals are finalised after weighing.'
                       : 'Estimated total',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666666),
                     fontSize: 11,
                     height: 1.35,
                   ),
@@ -3015,11 +3020,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
         return Dialog.fullscreen(
           child: Scaffold(
-            backgroundColor: const Color(0xFFF7F7F5),
+            backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
             appBar: phoneAppBar(
               context,
               AppBar(
-                backgroundColor: Colors.white,
+                backgroundColor: CutLinkPalette.surface,
                 surfaceTintColor: Colors.white,
                 leading: IconButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
@@ -3178,8 +3183,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -3228,7 +3233,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         visualDensity: VisualDensity.compact,
-        side: const BorderSide(color: Color(0xFFD8D8D4)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFD8D8D4)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       child: Row(
@@ -3289,7 +3294,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         visualDensity: VisualDensity.compact,
-        side: const BorderSide(color: Color(0xFFD8D8D4)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFD8D8D4)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       icon: Icon(icon, size: 18),
@@ -3314,17 +3319,19 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             constraints: const BoxConstraints(minHeight: 34),
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
             decoration: BoxDecoration(
-              color: selected ? _darkRed : Colors.white,
+              color: selected ? _darkRed : CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: selected ? _darkRed : const Color(0xFFD9D9D5),
+                color: selected ? _darkRed : CutLinkPalette.color(0xFFD9D9D5),
               ),
             ),
             child: Center(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF444444),
+                  color: selected
+                      ? Colors.white
+                      : CutLinkPalette.color(0xFF444444),
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                 ),
@@ -3344,7 +3351,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xFFF7F8FA),
+        color: CutLinkPalette.color(0xFFF7F8FA),
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -3355,7 +3362,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE3E5E8)),
+              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
             child: Icon(icon, size: 19, color: _darkRed),
           ),
@@ -3646,9 +3653,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                     children: [
                                       Text(
                                         entry.key,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: Color(0xFF6D7177),
+                                          color: CutLinkPalette.color(
+                                            0xFF6D7177,
+                                          ),
                                         ),
                                       ),
                                       SelectableText(
@@ -3680,9 +3689,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           ),
                         ],
                         const IosGap(height: 16),
-                        const Text(
+                        Text(
                           'Use Add to Sale to choose quantity and confirm the customer rate.',
-                          style: TextStyle(color: Color(0xFF6D7177)),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF6D7177),
+                          ),
                         ),
                       ],
                     ),
@@ -3708,10 +3719,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 6),
-      color: available ? Colors.white : const Color(0xFFFAFAF8),
+      color: available ? Colors.white : CutLinkPalette.color(0xFFFAFAF8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE3E5E8)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: IosPadding(
         padding: const EdgeInsets.all(10),
@@ -3759,9 +3770,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       const IosGap(height: 5),
                       Text(
                         'SKU ${product['sku'] ?? 'Not set'} • ${product['temperature_state'] ?? 'Not specified'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF6D7177),
+                          color: CutLinkPalette.color(0xFF6D7177),
                         ),
                       ),
                       if (summary.isNotEmpty) ...[
@@ -3814,12 +3825,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                   ? CrossAxisAlignment.start
                   : CrossAxisAlignment.end,
               children: [
-                const Text(
+                Text(
                   'STANDARD PRICE',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF777777),
+                    color: CutLinkPalette.color(0xFF777777),
                   ),
                 ),
                 Text(
@@ -3884,7 +3895,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: emphasized ? const Color(0xFFF4E5E5) : const Color(0xFFF4F4F1),
+        color: emphasized
+            ? CutLinkPalette.color(0xFFF4E5E5)
+            : CutLinkPalette.color(0xFFF4F4F1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -3893,14 +3906,14 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           Icon(
             icon,
             size: 13,
-            color: emphasized ? _darkRed : const Color(0xFF666666),
+            color: emphasized ? _darkRed : CutLinkPalette.color(0xFF666666),
           ),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
               style: TextStyle(
-                color: emphasized ? _darkRed : const Color(0xFF5F5F5F),
+                color: emphasized ? _darkRed : CutLinkPalette.color(0xFF5F5F5F),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -4055,9 +4068,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: child,
     );
@@ -4172,11 +4185,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                                       ),
                                 isDense: true,
                                 filled: true,
-                                fillColor: const Color(0xFFF7F8FA),
+                                fillColor: CutLinkPalette.color(0xFFF7F8FA),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(9),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE3E5E8),
+                                  borderSide: BorderSide(
+                                    color: CutLinkPalette.color(0xFFE3E5E8),
                                   ),
                                 ),
                               ),
@@ -4279,9 +4292,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         vertical: isPhoneLayout(context) ? 10 : 0,
         horizontal: 22,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+        ),
       ),
       child: Row(
         children: [
@@ -4289,7 +4304,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EAEA),
+              color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
@@ -4299,7 +4314,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             ),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -4312,7 +4327,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                 Text(
                   'Direct sales, quotes and active sales workspace',
                   style: TextStyle(
-                    color: Color(0xFF74787E),
+                    color: CutLinkPalette.color(0xFF74787E),
                     fontSize: 10.8,
                     fontWeight: FontWeight.w600,
                   ),
@@ -4332,9 +4347,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (widget.embedded) {
       return PhoneStockScaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
         phoneHeader: _workspaceHeader(),
         ready: !_isLoading && _errorMessage == null,
         body: _buildBody(),
@@ -4342,11 +4358,11 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     }
     return PhoneStockScaffold(
       ready: !_isLoading && _errorMessage == null,
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -4354,9 +4370,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
             'Sales',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE4E6E8)),
+            child: Divider(height: 1, color: CutLinkPalette.color(0xFFE4E6E8)),
           ),
           actions: [
             MissingItemRequestButton(

@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -232,32 +234,35 @@ class _ProductContentReportButtonState
   }
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: _active == null
-        ? 'Report a concern about this product or photo'
-        : 'Your business already reported this product. Open the ticket to add details. A new report is available after admin resolves or closes it.',
-    child: OutlinedButton.icon(
-      onPressed: _opening || _checking ? null : _report,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: _active != null
-            ? const Color(0xFF2E7D32)
-            : const Color(0xFF6E5656),
-        side: const BorderSide(color: Color(0xFFE1D5D5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Tooltip(
+      message: _active == null
+          ? 'Report a concern about this product or photo'
+          : 'Your business already reported this product. Open the ticket to add details. A new report is available after admin resolves or closes it.',
+      child: OutlinedButton.icon(
+        onPressed: _opening || _checking ? null : _report,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _active != null
+              ? const Color(0xFF2E7D32)
+              : CutLinkPalette.color(0xFF6E5656),
+          side: BorderSide(color: CutLinkPalette.color(0xFFE1D5D5)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+        ),
+        icon: Icon(
+          _active != null ? Icons.check_circle_outline : Icons.flag_outlined,
+          size: 17,
+        ),
+        label: Text(
+          _opening
+              ? 'Opening…'
+              : _checking
+              ? 'Checking report…'
+              : _active != null
+              ? 'Reported · View ticket'
+              : 'Report photo or product',
+        ),
       ),
-      icon: Icon(
-        _active != null ? Icons.check_circle_outline : Icons.flag_outlined,
-        size: 17,
-      ),
-      label: Text(
-        _opening
-            ? 'Opening…'
-            : _checking
-            ? 'Checking report…'
-            : _active != null
-            ? 'Reported · View ticket'
-            : 'Report photo or product',
-      ),
-    ),
-  );
+    );
+  }
 }

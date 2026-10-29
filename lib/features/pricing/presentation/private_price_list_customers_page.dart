@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -174,13 +175,14 @@ class _PrivatePriceListCustomersPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return CutLinkWorkspaceTheme(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
         appBar: phoneAppBar(
           context,
           AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: CutLinkPalette.surface,
             surfaceTintColor: Colors.white,
             title: Text(
               widget.priceListName,
@@ -306,7 +308,7 @@ class _PrivatePriceListCustomersPageState
             return Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Color(0xFFE0E0E0)),
+                side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: SwitchListTile(

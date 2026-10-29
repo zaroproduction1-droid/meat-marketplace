@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -91,15 +92,15 @@ class _AdminProductNotificationsBellState
                     padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
                     child: Row(
                       children: [
-                        const CircleAvatar(
-                          backgroundColor: Color(0xFFF5E9E9),
+                        CircleAvatar(
+                          backgroundColor: CutLinkPalette.color(0xFFF5E9E9),
                           child: Icon(
                             Icons.notifications_outlined,
                             color: CutLinkWorkspaceTheme.red,
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -114,7 +115,7 @@ class _AdminProductNotificationsBellState
                                 'Product reports and corrections',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF66717E),
+                                  color: CutLinkPalette.color(0xFF66717E),
                                 ),
                               ),
                             ],
@@ -278,22 +279,24 @@ class _AdminProductNotificationsBellState
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ValueListenableBuilder<Map<String, dynamic>>(
-        valueListenable: _view,
-        builder: (_, data, _) {
-          final count = data['enabled'] == false
-              ? 0
-              : (data['unread_count'] as num? ?? 0).toInt();
-          return IconButton(
-            tooltip: 'Notifications',
-            onPressed: _show,
-            icon: Badge(
-              isLabelVisible: count > 0,
-              label: Text(count > 99 ? '99+' : '$count'),
-              child: const Icon(Icons.notifications_outlined),
-            ),
-          );
-        },
-      );
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return ValueListenableBuilder<Map<String, dynamic>>(
+      valueListenable: _view,
+      builder: (_, data, _) {
+        final count = data['enabled'] == false
+            ? 0
+            : (data['unread_count'] as num? ?? 0).toInt();
+        return IconButton(
+          tooltip: 'Notifications',
+          onPressed: _show,
+          icon: Badge(
+            isLabelVisible: count > 0,
+            label: Text(count > 99 ? '99+' : '$count'),
+            child: const Icon(Icons.notifications_outlined),
+          ),
+        );
+      },
+    );
+  }
 }

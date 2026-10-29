@@ -86,7 +86,9 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
       final rows = await query
           .order('created_at', ascending: false)
           .range(_page * 40, _page * 40 + 40);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _more = rows.length > 40;
         _rows = rows.take(40).map((e) => Map<String, dynamic>.from(e)).toList();
@@ -111,7 +113,9 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
         ),
       ),
     );
-    if (mounted) await _load();
+    if (mounted) {
+      await _load();
+    }
   }
 
   @override
@@ -224,7 +228,7 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                                   horizontal: 18,
                                   vertical: 10,
                                 ),
-                                titleTextStyle: const TextStyle(
+                                titleTextStyle: TextStyle(
                                   color: CutLinkWorkspaceTheme.ink,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
@@ -254,7 +258,9 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                                       ),
                                     ),
                                   );
-                                  if (mounted) _load();
+                                  if (mounted) {
+                                    _load();
+                                  }
                                 },
                               ),
                             );
@@ -381,9 +387,13 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -401,7 +411,9 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
             .select('supplier_credit_note_lines(*)')
             .eq('invoice_id', id),
       ]);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       for (final l in _lines) {
         l.dispose();
       }
@@ -430,9 +442,13 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
         }
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -490,7 +506,9 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
           ],
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -498,9 +516,13 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -712,7 +734,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                       enabled: !_busy,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Customer-visible notes (optional)',
                         border: OutlineInputBorder(),
                       ),
@@ -768,9 +790,13 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -878,7 +904,9 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
     );
     amount.dispose();
     reference.dispose();
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -896,11 +924,17 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
         },
       );
       _refundKey = null;
-      if (mounted) await _load();
+      if (mounted) {
+        await _load();
+      }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -926,7 +960,9 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
         );
       }
       final rows = await q.order('due_date').limit(100);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (rows.isEmpty) {
         setState(
           () => _error =
@@ -1003,7 +1039,9 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
         ),
       );
       amount.dispose();
-      if (result == null || !mounted) return;
+      if (result == null || !mounted) {
+        return;
+      }
       await Supabase.instance.client.rpc(
         'allocate_account_credit',
         params: {
@@ -1011,11 +1049,17 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
           'allocations_json': [result],
         },
       );
-      if (mounted) await _load();
+      if (mounted) {
+        await _load();
+      }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -1034,7 +1078,9 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not open document: $e');
+      if (mounted) {
+        setState(() => _error = 'Could not open document: $e');
+      }
     }
   }
 

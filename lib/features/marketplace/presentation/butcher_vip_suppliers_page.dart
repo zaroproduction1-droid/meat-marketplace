@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/security/upload_safety.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -40,7 +41,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _load() async {
@@ -54,20 +57,26 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
         'list_suppliers_for_butcher_vip',
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _suppliers = _maps(response);
         _loading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _loading = false;
@@ -76,7 +85,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   }
 
   List<Map<String, dynamic>> _maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
 
     return value
         .whereType<Map>()
@@ -87,7 +98,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
   List<Map<String, dynamic>> get _filteredSuppliers {
     final search = _searchController.text.trim().toLowerCase();
 
-    if (search.isEmpty) return _suppliers;
+    if (search.isEmpty) {
+      return _suppliers;
+    }
 
     return _suppliers.where((supplier) {
       final values = [
@@ -108,8 +121,12 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     final trading = supplier['trading_name']?.toString().trim();
     final legal = supplier['legal_name']?.toString().trim();
 
-    if (trading != null && trading.isNotEmpty) return trading;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (trading != null && trading.isNotEmpty) {
+      return trading;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
 
     return 'Supplier';
   }
@@ -141,24 +158,30 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       'pending' => const Color(0xFF9A6500),
       'declined' => const Color(0xFF9A3030),
       'suspended' => const Color(0xFF9A3030),
-      _ => const Color(0xFF5F5F5F),
+      _ => CutLinkPalette.color(0xFF5F5F5F),
     };
   }
 
   DateTime? _date(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     return DateTime.tryParse(value.toString())?.toLocal();
   }
 
   Duration? _cooldownRemaining(dynamic declinedAt) {
     final declined = _date(declinedAt);
-    if (declined == null) return null;
+    if (declined == null) {
+      return null;
+    }
 
     final remaining = declined
         .add(const Duration(hours: 24))
         .difference(DateTime.now());
 
-    if (remaining.isNegative || remaining.inSeconds <= 0) return null;
+    if (remaining.isNegative || remaining.inSeconds <= 0) {
+      return null;
+    }
     return remaining;
   }
 
@@ -166,7 +189,9 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
 
-    if (hours > 0) return '${hours}h ${minutes}m remaining';
+    if (hours > 0) {
+      return '${hours}h ${minutes}m remaining';
+    }
     return '${duration.inMinutes.clamp(1, 59)}m remaining';
   }
 
@@ -225,11 +250,15 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       ),
     );
 
-    if (changed == true) await _load();
+    if (changed == true) {
+      await _load();
+    }
   }
 
   void _message(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(
       context,
@@ -238,12 +267,13 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -266,9 +296,13 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
             ),
             const SizedBox(width: 10),
           ],
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -310,28 +344,34 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             ),
             const IosGap(height: 8),
-            const Text(
+            Text(
               'Your CutLink approval already gives you access to each supplier’s Standard Price. VIP pricing is separate and must be approved by each supplier individually.',
-              style: TextStyle(color: Color(0xFF606060), height: 1.45),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF606060),
+                height: 1.45,
+              ),
             ),
             const IosGap(height: 20),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F7F4),
+                color: CutLinkPalette.color(0xFFF4F7F4),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFD7E3D8)),
+                border: Border.all(color: CutLinkPalette.color(0xFFD7E3D8)),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lock_outline, color: Color(0xFF35613B)),
+                  Icon(
+                    Icons.lock_outline,
+                    color: CutLinkPalette.color(0xFF35613B),
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Every supplier relationship is private and independent. Approval from one supplier does not approve you with another supplier, and suppliers cannot see another supplier’s decision, private review notes or account terms.',
                       style: TextStyle(
-                        color: Color(0xFF35523A),
+                        color: CutLinkPalette.color(0xFF35523A),
                         fontWeight: FontWeight.w700,
                         height: 1.4,
                       ),
@@ -353,22 +393,24 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                         icon: const Icon(Icons.close),
                       ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: CutLinkPalette.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0DD)),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.color(0xFFE0E0DD),
+                  ),
                 ),
               ),
             ),
             const IosGap(height: 18),
             if (_filteredSuppliers.isEmpty)
-              const IosPadding(
+              IosPadding(
                 padding: EdgeInsets.symmetric(vertical: 60),
                 child: Center(
                   child: Text(
                     'No suppliers match your search.',
                     style: TextStyle(
-                      color: Color(0xFF666666),
+                      color: CutLinkPalette.color(0xFF666666),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -433,7 +475,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE0E0DD)),
+        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
       ),
       child: IosPadding(
         padding: const EdgeInsets.all(19),
@@ -467,7 +509,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                     const IosGap(height: 4),
                     Text(
                       _location(supplier),
-                      style: const TextStyle(color: Color(0xFF666666)),
+                      style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
                     ),
                     const IosGap(height: 8),
                     Wrap(
@@ -640,8 +682,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     final trading = widget.supplier['trading_name']?.toString().trim();
     final legal = widget.supplier['legal_name']?.toString().trim();
 
-    if (trading != null && trading.isNotEmpty) return trading;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (trading != null && trading.isNotEmpty) {
+      return trading;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
 
     return 'Supplier';
   }
@@ -652,7 +698,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
     );
 
-    if (result.isEmpty) return;
+    if (result.isEmpty) {
+      return;
+    }
 
     final additions = <_PendingDocument>[];
 
@@ -685,7 +733,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       );
     }
 
-    if (!mounted || additions.isEmpty) return;
+    if (!mounted || additions.isEmpty) {
+      return;
+    }
 
     setState(() {
       _documents.addAll(additions);
@@ -780,7 +830,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
   }
 
   List<Map<String, dynamic>> _maps(dynamic value) {
-    if (value is! List) return [];
+    if (value is! List) {
+      return [];
+    }
 
     return value
         .whereType<Map>()
@@ -789,7 +841,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    if (_submitting) {
+      return;
+    }
 
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -864,7 +918,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
         );
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('VIP application sent to ${_supplierName()}.')),
@@ -927,7 +983,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
   }
 
   void _message(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(
       context,
@@ -943,14 +1001,15 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final creditRequested = _applicationType == 'vip_pricing_and_credit';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -975,9 +1034,13 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               ),
             ],
           ),
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFE3E5E8)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: CutLinkPalette.color(0xFFE3E5E8),
+            ),
           ),
         ),
       ),
@@ -1000,9 +1063,11 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       ? Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F6F9),
+                            color: CutLinkPalette.color(0xFFF3F6F9),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFD6E0EA)),
+                            border: Border.all(
+                              color: CutLinkPalette.color(0xFFD6E0EA),
+                            ),
                           ),
                           child: const Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1056,7 +1121,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         TextFormField(
                           controller: _primaryContact,
                           enabled: !_submitting,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Primary contact name',
                             border: OutlineInputBorder(),
                           ),
@@ -1066,7 +1131,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         TextFormField(
                           controller: _position,
                           enabled: !_submitting,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Position / role',
                             hintText: 'Owner, Director, Purchasing Manager',
                             border: OutlineInputBorder(),
@@ -1082,7 +1147,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Years trading',
                             border: OutlineInputBorder(),
                           ),
@@ -1093,7 +1158,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText:
                                 'Estimated monthly purchases with this supplier',
                             prefixText: '\$',
@@ -1109,7 +1174,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                             controller: _requestedTerms,
                             enabled: !_submitting,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Requested payment terms',
                               suffixText: 'days',
                               border: OutlineInputBorder(),
@@ -1121,7 +1186,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Requested credit limit',
                               prefixText: '\$',
                               hintText: 'Optional',
@@ -1136,7 +1201,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         enabled: !_submitting,
                         minLines: 3,
                         maxLines: 6,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Message to supplier (optional)',
                           hintText:
                               'Tell the supplier about your business, expected purchasing or existing relationship.',
@@ -1195,14 +1260,16 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F8F6),
+                          color: CutLinkPalette.color(0xFFF8F8F6),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E2DE)),
+                          border: Border.all(
+                            color: CutLinkPalette.color(0xFFE2E2DE),
+                          ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Accepted examples: commercial credit report, recent supplier statements, financial statement or trade-reference documents. PDF/JPG/PNG, maximum 10 MB each.',
                           style: TextStyle(
-                            color: Color(0xFF606060),
+                            color: CutLinkPalette.color(0xFF606060),
                             height: 1.4,
                           ),
                         ),
@@ -1350,11 +1417,11 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                   ),
                 ),
                 const IosGap(height: 12),
-                const Text(
+                Text(
                   'Submitting an application does not guarantee VIP pricing, credit approval or particular payment terms. The supplier independently makes the commercial decision.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF707070),
+                    color: CutLinkPalette.color(0xFF707070),
                     fontSize: 12.5,
                     height: 1.4,
                   ),
@@ -1378,7 +1445,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return Material(
       color: selected
           ? _darkRed.withValues(alpha: 0.055)
-          : const Color(0xFFF9F9F7),
+          : CutLinkPalette.color(0xFFF9F9F7),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: _submitting
@@ -1395,7 +1462,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? _darkRed : const Color(0xFFE3E5E8),
+              color: selected ? _darkRed : CutLinkPalette.color(0xFFE3E5E8),
               width: selected ? 1.6 : 1,
             ),
           ),
@@ -1408,12 +1475,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 decoration: BoxDecoration(
                   color: selected
                       ? _darkRed.withValues(alpha: 0.10)
-                      : const Color(0xFFF0F0ED),
+                      : CutLinkPalette.color(0xFFF0F0ED),
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? _darkRed : const Color(0xFF666A70),
+                  color: selected ? _darkRed : CutLinkPalette.color(0xFF666A70),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1425,14 +1492,16 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       title,
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: selected ? _darkRed : const Color(0xFF222222),
+                        color: selected
+                            ? _darkRed
+                            : CutLinkPalette.color(0xFF222222),
                       ),
                     ),
                     const IosGap(height: 5),
                     Text(
                       description,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         height: 1.4,
                       ),
                     ),
@@ -1442,7 +1511,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               const SizedBox(width: 12),
               Icon(
                 selected ? Icons.check_circle : Icons.circle_outlined,
-                color: selected ? _darkRed : const Color(0xFFAAAAAA),
+                color: selected ? _darkRed : CutLinkPalette.color(0xFFAAAAAA),
               ),
             ],
           ),
@@ -1455,9 +1524,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1487,9 +1556,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                   ),
                 ),
                 const IosGap(height: 5),
-                const Text(
+                Text(
                   'Your Standard Price access is unchanged while this application is reviewed.',
-                  style: TextStyle(color: Color(0xFF606060), height: 1.4),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF606060),
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -1507,9 +1579,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E5E8)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1521,7 +1593,10 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
           const IosGap(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF666666), height: 1.4),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF666666),
+              height: 1.4,
+            ),
           ),
           const IosGap(height: 18),
           child,
@@ -1536,9 +1611,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F7),
+        color: CutLinkPalette.color(0xFFF9F9F7),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFE2E2DE)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE2E2DE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1571,7 +1646,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             TextFormField(
               controller: reference.businessName,
               enabled: !_submitting,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Business / supplier name',
                 border: OutlineInputBorder(),
               ),
@@ -1579,7 +1654,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             TextFormField(
               controller: reference.contactName,
               enabled: !_submitting,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Contact name',
                 border: OutlineInputBorder(),
               ),
@@ -1591,7 +1666,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               controller: reference.email,
               enabled: !_submitting,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Contact email',
                 border: OutlineInputBorder(),
               ),
@@ -1600,7 +1675,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               controller: reference.phone,
               enabled: !_submitting,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Contact phone',
                 border: OutlineInputBorder(),
               ),
@@ -1611,7 +1686,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             TextFormField(
               controller: reference.contactPosition,
               enabled: !_submitting,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Contact position (optional)',
                 border: OutlineInputBorder(),
               ),
@@ -1622,7 +1697,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Years trading with them (optional)',
                 border: OutlineInputBorder(),
               ),

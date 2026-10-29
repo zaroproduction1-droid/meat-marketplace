@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:flutter/material.dart';
@@ -156,6 +157,7 @@ class _PersonalAccountSettingsPageState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final email =
         widget.signInEmail ??
         (widget.loadProfile == null
@@ -185,9 +187,12 @@ class _PersonalAccountSettingsPageState
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
                 const IosGap(height: 6),
-                const Text(
+                Text(
                   'Your name appears on new support tickets and messages.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF6D7177)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: CutLinkPalette.color(0xFF6D7177),
+                  ),
                 ),
                 const IosGap(height: 16),
                 LayoutBuilder(
@@ -243,11 +248,14 @@ class _PersonalAccountSettingsPageState
                   child: SelectableText(email),
                 ),
                 const IosGap(height: 8),
-                const Text(
+                Text(
                   'Previously sent messages keep their original name. '
                   'Save your contact details here; use the business save action '
                   'for the company details below.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6D7177)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CutLinkPalette.color(0xFF6D7177),
+                  ),
                 ),
                 if (_saveError != null) ...[
                   const IosGap(height: 12),

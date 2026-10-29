@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 
@@ -50,6 +51,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return PublicAuthFrame(
       title: 'Your business. Connected.',
       description:
@@ -58,7 +60,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'How will you use CutLink?',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -69,7 +71,7 @@ class _RegistrationTypePageState extends State<RegistrationTypePage> {
             ),
           ),
           const IosGap(height: 16),
-          const Text(
+          Text(
             'Choose your business type. You will provide your '
             'business and verification details in the following steps.',
             textAlign: TextAlign.center,
@@ -176,6 +178,7 @@ class _BusinessTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -222,7 +225,7 @@ class _BusinessTypeCard extends StatelessWidget {
                   selected ? Icons.check_circle : Icons.radio_button_unchecked,
                   color: selected
                       ? PublicPagePalette.accent
-                      : const Color(0xFF999999),
+                      : CutLinkPalette.color(0xFF999999),
                   size: 28,
                 ),
               ],
@@ -230,7 +233,7 @@ class _BusinessTypeCard extends StatelessWidget {
             const IosGap(height: 25),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 23,
                 fontWeight: FontWeight.w800,
                 color: PublicPagePalette.text,
@@ -239,7 +242,7 @@ class _BusinessTypeCard extends StatelessWidget {
             const IosGap(height: 13),
             Text(
               description,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 height: 1.5,
                 color: PublicPagePalette.muted,

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
@@ -44,7 +45,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<String> _resolveSupplierBusinessId() async {
@@ -79,7 +82,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     for (final row in businesses) {
       if (row['business_type']?.toString() == 'supplier') {
         final id = row['id']?.toString();
-        if (id != null && id.isNotEmpty) return id;
+        if (id != null && id.isNotEmpty) {
+          return id;
+        }
       }
     }
 
@@ -131,7 +136,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
           .eq('status', 'draft')
           .order('created_at', ascending: false);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _quotes = (response as List)
@@ -141,13 +148,17 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
         _isLoading = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
@@ -156,7 +167,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
   }
 
   Map<String, dynamic>? _nestedMap(dynamic raw) {
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -164,7 +177,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
   }
 
   List<Map<String, dynamic>> _nestedList(dynamic raw) {
-    if (raw is! List) return [];
+    if (raw is! List) {
+      return [];
+    }
     return raw
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
@@ -199,8 +214,12 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
     return _quotes.where((quote) {
       final activity = _activityDate(quote);
-      if (activity == null || !activity.isBefore(start)) return false;
-      if (query.isEmpty) return true;
+      if (activity == null || !activity.isBefore(start)) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
 
       final account = _nestedMap(quote['supplier_customer_accounts']);
       final items = _nestedList(quote['order_items']);
@@ -237,8 +256,12 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final customer = account?['customer_name']?.toString().trim();
     final legal = account?['legal_name']?.toString().trim();
 
-    if (customer != null && customer.isNotEmpty) return customer;
-    if (legal != null && legal.isNotEmpty) return legal;
+    if (customer != null && customer.isNotEmpty) {
+      return customer;
+    }
+    if (legal != null && legal.isNotEmpty) {
+      return legal;
+    }
     return 'Customer';
   }
 
@@ -246,7 +269,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final parsed = value == null
         ? null
         : DateTime.tryParse(value.toString())?.toLocal();
-    if (parsed == null) return '';
+    if (parsed == null) {
+      return '';
+    }
 
     final day = parsed.day.toString().padLeft(2, '0');
     final month = parsed.month.toString().padLeft(2, '0');
@@ -263,7 +288,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final editRequested = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => SupplierQuotePage(orderId: id)),
     );
-    if (editRequested != true || !mounted) return;
+    if (editRequested != true || !mounted) {
+      return;
+    }
 
     final onQuoteSelected = widget.onQuoteSelected;
     if (onQuoteSelected != null) {
@@ -288,7 +315,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE0E0DD)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
           ),
           child: Row(
             children: [
@@ -297,7 +324,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5EAEA),
+                  color: CutLinkPalette.color(0xFFF5EAEA),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Icon(
@@ -324,10 +351,10 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                             ),
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.chevron_right,
                           size: 18,
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                         ),
                       ],
                     ),
@@ -347,8 +374,8 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                       '${items.length} line${items.length == 1 ? '' : 's'}'
                       ' • ${pickup ? 'Pickup' : 'Delivery'}'
                       '${activity == null ? '' : ' • ${_displayDate(activity.toIso8601String())}'}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666666),
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -399,8 +426,8 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF777777),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF777777),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -417,9 +444,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     }) {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0DD)),
+          border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -443,8 +470,8 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                         const IosGap(height: 2),
                         Text(
                           subtitle,
-                          style: const TextStyle(
-                            color: Color(0xFF777777),
+                          style: TextStyle(
+                            color: CutLinkPalette.color(0xFF777777),
                             fontSize: 11,
                           ),
                         ),
@@ -457,7 +484,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5EAEA),
+                      color: CutLinkPalette.color(0xFFF5EAEA),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -507,7 +534,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
               ),
         isDense: true,
         filled: true,
-        fillColor: const Color(0xFFF8F8F6),
+        fillColor: CutLinkPalette.color(0xFFF8F8F6),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(9),
           borderSide: BorderSide.none,
@@ -525,7 +552,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -540,7 +567,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                         Text(
                           'Select any quote to reopen it inside the Sales workspace.',
                           style: TextStyle(
-                            color: Color(0xFF666666),
+                            color: CutLinkPalette.color(0xFF666666),
                             fontSize: 12,
                           ),
                         ),
@@ -607,16 +634,20 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (widget.embedded) {
-      return ColoredBox(color: const Color(0xFFF7F8FA), child: _buildBody());
+      return ColoredBox(
+        color: CutLinkPalette.color(0xFFF7F8FA),
+        child: _buildBody(),
+      );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: const Text(
             'Quotes',

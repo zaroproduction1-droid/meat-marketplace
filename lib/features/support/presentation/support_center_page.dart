@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/local_draft_recovery.dart';
@@ -451,13 +452,13 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                               color: _darkRed,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.support_agent,
-                              color: Colors.white,
+                              color: CutLinkPalette.surface,
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -472,7 +473,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                                 Text(
                                   'Tell us what happened and we will help you here.',
                                   style: TextStyle(
-                                    color: Color(0xFF666A70),
+                                    color: CutLinkPalette.color(0xFF666A70),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -490,7 +491,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         controller: subjectController,
                         autofocus: true,
                         maxLength: 160,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'What do you need help with?',
                           hintText: 'Example: Unable to dispatch an order',
                           border: OutlineInputBorder(),
@@ -503,7 +504,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             DropdownButtonFormField<String>(
                               isExpanded: isPhoneLayout(context),
                               initialValue: category,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder(),
                               ),
@@ -524,7 +525,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             DropdownButtonFormField<String>(
                               isExpanded: isPhoneLayout(context),
                               initialValue: priority,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Priority',
                                 border: OutlineInputBorder(),
                               ),
@@ -579,7 +580,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         minLines: 5,
                         maxLines: 8,
                         maxLength: 8000,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Describe the issue',
                           hintText:
                               'Include what you were doing, what you expected and what happened.',
@@ -1021,6 +1022,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return UnsavedChangesGuard(
       isDirty: () => _hasUnsentDrafts,
       isBusy: () => _sending,
@@ -1037,12 +1039,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         child: Scaffold(
           backgroundColor: widget.adminMode
               ? AdminTheme.canvas
-              : const Color(0xFFF7F8FA),
+              : CutLinkPalette.color(0xFFF7F8FA),
           appBar: phoneAppBar(
             context,
             AppBar(
               leading: const WorkspaceBackButton(),
-              backgroundColor: Colors.white,
+              backgroundColor: CutLinkPalette.surface,
               surfaceTintColor: Colors.white,
               title: Row(
                 children: [
@@ -1075,9 +1077,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 ),
                 const SizedBox(width: 8),
               ],
-              bottom: const PreferredSize(
+              bottom: PreferredSize(
                 preferredSize: Size.fromHeight(1),
-                child: Divider(height: 1, color: Color(0xFFE2E5E8)),
+                child: Divider(
+                  height: 1,
+                  color: CutLinkPalette.color(0xFFE2E5E8),
+                ),
               ),
             ),
           ),
@@ -1190,11 +1195,13 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         icon: const Icon(Icons.close),
                       ),
                 filled: true,
-                fillColor: const Color(0xFFF7F8FA),
+                fillColor: CutLinkPalette.color(0xFFF7F8FA),
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: Color(0xFFE0E3E6)),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.color(0xFFE0E3E6),
+                  ),
                 ),
               ),
             ),
@@ -1245,7 +1252,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     final selected = _selectedTicket?['id'] == ticket['id'];
     final unread = _isUnread(ticket);
     return Material(
-      color: selected ? const Color(0xFFF9EEEE) : const Color(0xFFFDFDFC),
+      color: selected
+          ? CutLinkPalette.color(0xFFF9EEEE)
+          : CutLinkPalette.color(0xFFFDFDFC),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () => _openTicket(ticket),
@@ -1255,7 +1264,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? _darkRed : const Color(0xFFE3E5E8),
+              color: selected ? _darkRed : CutLinkPalette.color(0xFFE3E5E8),
             ),
           ),
           child: Column(
@@ -1339,8 +1348,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   '${ticket['business_name'] ?? 'Business'} • ${ticket['requester_name'] ?? 'User'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF666A70),
+                  style: TextStyle(
+                    color: CutLinkPalette.color(0xFF666A70),
                     fontSize: 11,
                   ),
                 ),
@@ -1352,8 +1361,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   const Spacer(),
                   Text(
                     _relativeDate(ticket['updated_at']),
-                    style: const TextStyle(
-                      color: Color(0xFF777B82),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF777B82),
                       fontSize: 10.5,
                     ),
                   ),
@@ -1517,7 +1526,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1569,8 +1578,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                       widget.adminMode
                           ? '${ticket['business_name']} • ${ticket['requester_name']} • ${_categoryLabel(ticket['category']?.toString() ?? 'other')}'
                           : '${_categoryLabel(ticket['category']?.toString() ?? 'other')} • Opened ${_formatDate(ticket['created_at'])}',
-                      style: const TextStyle(
-                        color: Color(0xFF666A70),
+                      style: TextStyle(
+                        color: CutLinkPalette.color(0xFF666A70),
                         fontSize: 11.5,
                       ),
                     ),
@@ -1622,7 +1631,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ),
         Container(
           width: double.infinity,
-          color: const Color(0xFFF2F4F7),
+          color: CutLinkPalette.color(0xFFF2F4F7),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Wrap(
             spacing: 12,
@@ -1677,18 +1686,20 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         if (widget.adminMode) _adminActionBar(ticket),
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFE1E4E7))),
+          decoration: BoxDecoration(
+            color: CutLinkPalette.surface,
+            border: Border(
+              top: BorderSide(color: CutLinkPalette.color(0xFFE1E4E7)),
+            ),
           ),
           child: closed
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lock_outline,
                       size: 18,
-                      color: Color(0xFF666A70),
+                      color: CutLinkPalette.color(0xFF666A70),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -1740,11 +1751,11 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                                     : 'Reply to CutLink Support…',
                                 counterText: '',
                                 filled: true,
-                                fillColor: const Color(0xFFF7F8FA),
+                                fillColor: CutLinkPalette.color(0xFFF7F8FA),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFDDE1E5),
+                                  borderSide: BorderSide(
+                                    color: CutLinkPalette.color(0xFFDDE1E5),
                                   ),
                                 ),
                               ),
@@ -1789,9 +1800,11 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE1E4E7))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          top: BorderSide(color: CutLinkPalette.color(0xFFE1E4E7)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1898,7 +1911,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       style: OutlinedButton.styleFrom(
         foregroundColor: active ? Colors.white : _navy,
         backgroundColor: active ? _darkRed : Colors.white,
-        side: BorderSide(color: active ? _darkRed : const Color(0xFFD6DADF)),
+        side: BorderSide(
+          color: active ? _darkRed : CutLinkPalette.color(0xFFD6DADF),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -1915,8 +1930,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       label: Text(label),
       selected: selected,
       onSelected: _sending ? null : (_) => onSelected(),
-      selectedColor: const Color(0xFFF3DDE0),
-      side: BorderSide(color: selected ? _darkRed : const Color(0xFFD6DADF)),
+      selectedColor: CutLinkPalette.color(0xFFF3DDE0),
+      side: BorderSide(
+        color: selected ? _darkRed : CutLinkPalette.color(0xFFD6DADF),
+      ),
       labelStyle: TextStyle(
         color: selected ? _darkRed : _navy,
         fontSize: 10.5,
@@ -1978,14 +1995,16 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
         decoration: BoxDecoration(
-          color: mine ? _navy : Colors.white,
+          color: mine ? _navy : CutLinkPalette.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(14),
             topRight: const Radius.circular(14),
             bottomLeft: Radius.circular(mine ? 14 : 4),
             bottomRight: Radius.circular(mine ? 4 : 14),
           ),
-          border: mine ? null : Border.all(color: const Color(0xFFE0E3E6)),
+          border: mine
+              ? null
+              : Border.all(color: CutLinkPalette.color(0xFFE0E3E6)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x09000000),
@@ -2016,7 +2035,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   Text(
                     _formatMessageTime(message['created_at']),
                     style: TextStyle(
-                      color: mine ? Colors.white54 : const Color(0xFF888B90),
+                      color: mine
+                          ? Colors.white54
+                          : CutLinkPalette.color(0xFF888B90),
                       fontSize: 9.5,
                     ),
                   ),
@@ -2028,7 +2049,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               Text(
                 messageText,
                 style: TextStyle(
-                  color: mine ? Colors.white : const Color(0xFF202327),
+                  color: mine ? Colors.white : CutLinkPalette.color(0xFF202327),
                   height: 1.38,
                 ),
               ),
@@ -2054,8 +2075,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       padding: const EdgeInsets.only(top: 4),
       child: Material(
         color: mine
-            ? Colors.white.withValues(alpha: 0.12)
-            : const Color(0xFFF5F6F8),
+            ? CutLinkPalette.surface.withValues(alpha: 0.12)
+            : CutLinkPalette.color(0xFFF5F6F8),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: () => _openAttachment(attachment),
@@ -2080,7 +2101,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: mine ? Colors.white : const Color(0xFF202327),
+                          color: mine
+                              ? Colors.white
+                              : CutLinkPalette.color(0xFF202327),
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2091,7 +2114,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         style: TextStyle(
                           color: mine
                               ? Colors.white70
-                              : const Color(0xFF6E7379),
+                              : CutLinkPalette.color(0xFF6E7379),
                           fontSize: 9.5,
                         ),
                       ),
@@ -2102,7 +2125,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 Icon(
                   Icons.open_in_new_rounded,
                   size: 16,
-                  color: mine ? Colors.white70 : const Color(0xFF6E7379),
+                  color: mine
+                      ? Colors.white70
+                      : CutLinkPalette.color(0xFF6E7379),
                 ),
               ],
             ),
@@ -2128,9 +2153,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 constraints: const BoxConstraints(maxWidth: 250),
                 padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F8FA),
+                  color: CutLinkPalette.color(0xFFF7F8FA),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFDDE1E5)),
+                  border: Border.all(color: CutLinkPalette.color(0xFFDDE1E5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -2222,7 +2247,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   ? 'New supplier and butcher requests will appear here.'
                   : 'If you need help, create a ticket and chat with CutLink.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF666A70)),
+              style: TextStyle(color: CutLinkPalette.color(0xFF666A70)),
             ),
             if (!widget.adminMode) ...[
               const IosGap(height: 16),
@@ -2240,7 +2265,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   Widget _emptySelection() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -2253,7 +2278,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           IosGap(height: 6),
           Text(
             'The full conversation and ticket controls will appear here.',
-            style: TextStyle(color: Color(0xFF666A70)),
+            style: TextStyle(color: CutLinkPalette.color(0xFF666A70)),
           ),
         ],
       ),
@@ -2265,7 +2290,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       'awaiting_support' => ('Waiting on CutLink', const Color(0xFF9A5B00)),
       'waiting_on_customer' => ('Waiting on You', const Color(0xFF315A8C)),
       'resolved' => ('Resolved', const Color(0xFF2E7D32)),
-      'closed' => ('Closed', const Color(0xFF666A70)),
+      'closed' => ('Closed', CutLinkPalette.color(0xFF666A70)),
       _ => ('Open', _darkRed),
     };
 
@@ -2294,7 +2319,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     final colour = switch (priority) {
       'urgent' => const Color(0xFFB3261E),
       'high' => const Color(0xFFB85F00),
-      'low' => const Color(0xFF607080),
+      'low' => CutLinkPalette.color(0xFF607080),
       _ => const Color(0xFF315A8C),
     };
     return Row(

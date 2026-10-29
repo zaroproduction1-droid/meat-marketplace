@@ -1,7 +1,10 @@
+import '../theme/cutlink_appearance.dart';
 import '../../features/orders/presentation/supplier_work_order_page.dart';
 import '../navigation/page_location.dart';
 import '../../features/credits/presentation/credit_notes_page.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -57,7 +60,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
   }
 
   Future<void> _reload() async {
-    if (_fetching || _sending) return;
+    if (_fetching || _sending) {
+      return;
+    }
     _fetching = true;
     final follow =
         !_loading && _scroll.hasClients && _scroll.position.extentAfter < 100;
@@ -76,7 +81,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
             .eq('id', widget.issue['id'].toString())
             .single(),
       ]).timeout(const Duration(seconds: 20));
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final rows = (values[0] as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
@@ -98,7 +105,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
         _loading = false;
         _error = null;
       });
-      if (follow && changed) _toLatest();
+      if (follow && changed) {
+        _toLatest();
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -125,7 +134,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
 
   Future<void> _send() async {
     final body = _text.text.trim();
-    if (_sending || body.isEmpty) return;
+    if (_sending || body.isEmpty) {
+      return;
+    }
     setState(() {
       _sending = true;
       _error = null;
@@ -141,7 +152,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
           })
           .select()
           .single();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _text.clear();
       setState(() {
         if (!_messages.any((m) => m['id'] == row['id'])) {
@@ -158,7 +171,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
         );
       }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
   }
 
@@ -218,7 +233,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                     controller: note,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Reason / outcome',
                       border: OutlineInputBorder(),
                     ),
@@ -251,7 +266,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
     );
     final body = note.text.trim();
     note.dispose();
-    if (accepted != true || !mounted) return;
+    if (accepted != true || !mounted) {
+      return;
+    }
     setState(() => _sending = true);
     bool success = false;
     try {
@@ -267,11 +284,17 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
       _sent = true;
       success = true;
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
-    if (mounted && success) await _reload();
+    if (mounted && success) {
+      await _reload();
+    }
   }
 
   Future<void> _credits({bool create = false}) async {
@@ -285,7 +308,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
           .inFilter('status', ['issued', 'part_paid', 'paid'])
           .limit(1)
           .maybeSingle();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (invoice == null) {
         setState(
           () => _error = 'No issued invoice is available for this order yet.',
@@ -307,22 +332,34 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
       );
       success = true;
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
-    if (mounted && success) await _reload();
+    if (mounted && success) {
+      await _reload();
+    }
   }
 
   Future<void> _replacement() async {
-    if (_sending) return;
+    if (_sending) {
+      return;
+    }
     if (widget.onReplacement != null) {
       setState(() => _sending = true);
       try {
         await widget.onReplacement!();
-        if (mounted) await _reload();
+        if (mounted) {
+          await _reload();
+        }
       } finally {
-        if (mounted) setState(() => _sending = false);
+        if (mounted) {
+          setState(() => _sending = false);
+        }
       }
       return;
     }
@@ -361,7 +398,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
       if (id == null || id.isEmpty) {
         throw StateError('The replacement work order was not returned.');
       }
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => SupplierWorkOrderPage(orderId: id),
@@ -448,7 +487,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
 
   String _date(dynamic value) {
     final d = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
-    if (d == null) return '';
+    if (d == null) {
+      return '';
+    }
     return '${d.day}/${d.month}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
@@ -462,9 +503,11 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: own ? const Color(0xFF111C27) : Colors.white,
+            color: own
+                ? CutLinkPalette.color(0xFF111C27)
+                : CutLinkPalette.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE1E3E5)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE1E3E5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,7 +516,9 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                 '${own ? 'You' : widget.otherParty} • ${_date(message['created_at'])}',
                 style: TextStyle(
                   fontSize: 11,
-                  color: own ? Colors.white70 : const Color(0xFF656970),
+                  color: own
+                      ? Colors.white70
+                      : CutLinkPalette.color(0xFF656970),
                 ),
               ),
               const SizedBox(height: 5),
@@ -482,7 +527,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: own ? Colors.white : const Color(0xFF20252B),
+                  color: own ? Colors.white : CutLinkPalette.color(0xFF20252B),
                 ),
               ),
             ],
@@ -494,6 +539,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {
       'page': 'issue',
       'id': widget.issue['id'],
@@ -511,7 +557,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
     return PopScope(
       canPop: !_sending,
       child: Dialog(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
         insetPadding: EdgeInsets.all(
           MediaQuery.sizeOf(context).width < 600 ? 8 : 24,
         ),
@@ -523,7 +569,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
           child: Column(
             children: [
               Container(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
                 child: Row(
                   children: [
@@ -574,7 +620,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                             padding: const EdgeInsets.all(14),
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF4E9E9),
+                              color: CutLinkPalette.color(0xFFF4E9E9),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -622,15 +668,18 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                   ),
                 ),
               Container(
-                color: Colors.white,
+                color: CutLinkPalette.surface,
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
                     _resolutionActions(),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Use this conversation for messages. Use the actions below to complete the issue.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF656970)),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: CutLinkPalette.color(0xFF656970),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -643,7 +692,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                             minLines: 1,
                             maxLines: 4,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Write a message…',
                               border: OutlineInputBorder(),
                             ),

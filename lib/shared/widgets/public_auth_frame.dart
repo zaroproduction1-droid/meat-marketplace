@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import 'cutlink_logo.dart';
 import 'ios_workspace.dart';
 import '../../features/legal/presentation/legal_info_page.dart';
@@ -22,11 +23,12 @@ class PublicAuthFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     if (useIosWorkspace(context)) {
       return Theme(
         data: IosWorkspaceStyle.theme(Theme.of(context)),
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           appBar: AppBar(title: const CutLinkLogo(width: 115, height: 32)),
           body: SafeArea(
             child: SingleChildScrollView(
@@ -40,7 +42,7 @@ class PublicAuthFrame extends StatelessWidget {
                       if (step != null) ...[
                         Text(
                           'Step $step of 3',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: IosWorkspaceStyle.muted,
                             fontWeight: FontWeight.w600,
                           ),
@@ -72,19 +74,19 @@ class PublicAuthFrame extends StatelessWidget {
         ),
       );
     }
-    const ink = PublicPagePalette.background;
+    final ink = PublicPagePalette.background;
     const red = Color(0xFF933744);
     final theme = ThemeData(
-      brightness: Brightness.light,
+      brightness: Theme.of(context).brightness,
       colorScheme: ColorScheme.fromSeed(
         seedColor: red,
-        brightness: Brightness.light,
+        brightness: Theme.of(context).brightness,
         surface: PublicPagePalette.surface,
       ),
     );
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: PublicPagePalette.border),
+      borderSide: BorderSide(color: PublicPagePalette.border),
     );
     final formWithNotices = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,7 +108,7 @@ class PublicAuthFrame extends StatelessWidget {
         const SizedBox(height: 20),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: PublicPagePalette.text,
             fontSize: 34,
             fontWeight: FontWeight.w800,
@@ -116,7 +118,7 @@ class PublicAuthFrame extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             color: PublicPagePalette.muted,
             fontSize: 16,
             height: 1.6,
@@ -142,7 +144,7 @@ class PublicAuthFrame extends StatelessWidget {
                 ),
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: PublicPagePalette.muted,
                     fontSize: 12,
                   ),
@@ -235,7 +237,7 @@ class PublicAuthFrame extends StatelessWidget {
           foregroundColor: PublicPagePalette.text,
           surfaceTintColor: Colors.transparent,
           title: const CutLinkLogo(),
-          bottom: const PreferredSize(
+          bottom: PreferredSize(
             preferredSize: Size.fromHeight(1),
             child: Divider(height: 1, color: PublicPagePalette.border),
           ),

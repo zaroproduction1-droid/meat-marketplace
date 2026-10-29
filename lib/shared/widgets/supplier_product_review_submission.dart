@@ -1,3 +1,4 @@
+import '../theme/cutlink_appearance.dart';
 import 'cutlink_review_theme.dart';
 import 'review_response_field.dart';
 
@@ -171,6 +172,7 @@ class _SubmitProductChangesDialogState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final fields = (widget.status['changed_fields'] as List? ?? [])
         .map(supplierCorrectionFieldLabel)
         .toSet()
@@ -205,9 +207,12 @@ class _SubmitProductChangesDialogState
                     onChanged: (v) => setState(() => _correction = v),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Only saved changes are submitted. This does not remove any restriction or automatically approve the product. CutLink must review it.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CutLinkPalette.color(0xFF666666),
+                    ),
                   ),
                   if (_error != null)
                     Padding(

@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 import 'workspace_back_button.dart';
@@ -32,9 +34,12 @@ class _UnsavedChangesGuardState extends State<UnsavedChangesGuard> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final navigation = context
-        .dependOnInheritedWidgetOfExactType<WorkspaceNavigationScope>()
-        ?.navigation;
+    final active = WorkspaceActivityScope.activeOf(context);
+    final navigation = active
+        ? context
+              .dependOnInheritedWidgetOfExactType<WorkspaceNavigationScope>()
+              ?.navigation
+        : null;
     if (navigation != _navigation) {
       _navigation?.unregister(this);
       _navigation = navigation;
@@ -65,7 +70,7 @@ class _UnsavedChangesGuardState extends State<UnsavedChangesGuard> {
           await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: Colors.white,
+              backgroundColor: CutLinkPalette.surface,
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -121,13 +126,14 @@ class _UnsavedChangesGuardState extends State<UnsavedChangesGuard> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final outerBack = context
         .dependOnInheritedWidgetOfExactType<WorkspaceBackScope>()
         ?.onBack;
     return PopScope<Object?>(
-      canPop: _allowExit,
+      canPop: _allowExit || !WorkspaceActivityScope.activeOf(context),
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
+        if (!didPop && WorkspaceActivityScope.activeOf(context)) {
           _requestExit(result);
         }
       },

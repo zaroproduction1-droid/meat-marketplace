@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/navigation/page_location.dart';
 import '../../../shared/widgets/phone_layout.dart';
@@ -154,7 +155,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _quote = quote;
         _supplier = Map<String, dynamic>.from(supplierRaw);
@@ -180,7 +183,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = error is PostgrestException ? error.message : error.toString();
         _loading = false;
@@ -202,10 +207,14 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   String _date(dynamic value, {bool time = false}) {
     final parsed = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
-    if (parsed == null) return '—';
+    if (parsed == null) {
+      return '—';
+    }
     final date =
         '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
-    if (!time) return date;
+    if (!time) {
+      return date;
+    }
     return '$date ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
   }
 
@@ -248,9 +257,13 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   Map<String, dynamic>? get _selectedLine {
     final id = _selectedLineId;
-    if (id == null) return null;
+    if (id == null) {
+      return null;
+    }
     for (final item in _items) {
-      if (item['id']?.toString() == id) return item;
+      if (item['id']?.toString() == id) {
+        return item;
+      }
     }
     return null;
   }
@@ -267,7 +280,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   void _openQuoteLineAction(String action) {
     final item = _selectedLine;
-    if (item == null) return;
+    if (item == null) {
+      return;
+    }
 
     if (action == 'remove') {
       _removeSelectedQuoteLine();
@@ -307,7 +322,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   Future<void> _saveSelectedQuoteLineAction() async {
     final item = _selectedLine;
-    if (item == null || _lineAction == null || _savingLine) return;
+    if (item == null || _lineAction == null || _savingLine) {
+      return;
+    }
 
     var discountType = item['discount_type']?.toString();
     if (discountType != 'percent' && discountType != 'fixed') {
@@ -365,21 +382,31 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           'p_remove': false,
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _lineAction = null);
       await _load();
     } on PostgrestException catch (error) {
-      if (mounted) _message(error.message);
+      if (mounted) {
+        _message(error.message);
+      }
     } catch (error) {
-      if (mounted) _message(error.toString());
+      if (mounted) {
+        _message(error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _savingLine = false);
+      if (mounted) {
+        setState(() => _savingLine = false);
+      }
     }
   }
 
   Future<void> _removeSelectedQuoteLine() async {
     final item = _selectedLine;
-    if (item == null || _savingLine) return;
+    if (item == null || _savingLine) {
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -406,7 +433,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         ),
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
 
     setState(() => _savingLine = true);
     try {
@@ -423,16 +452,22 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
           'p_remove': true,
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _selectedLineId = null;
         _lineAction = null;
       });
       await _load();
     } on PostgrestException catch (error) {
-      if (mounted) _message(error.message);
+      if (mounted) {
+        _message(error.message);
+      }
     } finally {
-      if (mounted) setState(() => _savingLine = false);
+      if (mounted) {
+        setState(() => _savingLine = false);
+      }
     }
   }
 
@@ -448,7 +483,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         params: {'target_order_id': widget.orderId},
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -456,16 +493,24 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         ),
       );
     } on PostgrestException catch (error) {
-      if (mounted) _message(error.message);
+      if (mounted) {
+        _message(error.message);
+      }
     } catch (error) {
-      if (mounted) _message(error.toString());
+      if (mounted) {
+        _message(error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _convertingToWorkOrder = false);
+      if (mounted) {
+        setState(() => _convertingToWorkOrder = false);
+      }
     }
   }
 
   void _message(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -475,9 +520,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     height: 49,
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(top: BorderSide(color: Color(0xFFF0F1F2))),
+    decoration: BoxDecoration(
+      color: CutLinkPalette.surface,
+      border: Border(top: BorderSide(color: CutLinkPalette.color(0xFFF0F1F2))),
     ),
     child: PhoneRow(
       mode: PhoneRowMode.scroll,
@@ -496,13 +541,17 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     child: TextButton.icon(
       onPressed: () => setState(() => _tab = index),
       style: TextButton.styleFrom(
-        foregroundColor: _tab == index ? Colors.white : const Color(0xFF5E6369),
-        backgroundColor: _tab == index ? _darkRed : const Color(0xFFF4F5F6),
+        foregroundColor: _tab == index
+            ? Colors.white
+            : CutLinkPalette.color(0xFF5E6369),
+        backgroundColor: _tab == index
+            ? _darkRed
+            : CutLinkPalette.color(0xFFF4F5F6),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(9),
           side: BorderSide(
-            color: _tab == index ? _darkRed : const Color(0xFFE1E3E6),
+            color: _tab == index ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
           ),
         ),
       ),
@@ -543,8 +592,8 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                           children: [
                             Text(
                               label,
-                              style: const TextStyle(
-                                color: Color(0xFF777777),
+                              style: TextStyle(
+                                color: CutLinkPalette.color(0xFF777777),
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: .35,
@@ -676,8 +725,8 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                               item['public_comment']?.toString().trim() ?? '';
                           return Material(
                             color: selected
-                                ? const Color(0xFFF7EDED)
-                                : const Color(0xFFFBFBF9),
+                                ? CutLinkPalette.color(0xFFF7EDED)
+                                : CutLinkPalette.color(0xFFFBFBF9),
                             borderRadius: BorderRadius.circular(9),
                             child: InkWell(
                               onTap: () => _selectQuoteLine(item),
@@ -692,7 +741,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                   border: Border.all(
                                     color: selected
                                         ? _darkRed
-                                        : const Color(0xFFE4E4E0),
+                                        : CutLinkPalette.color(0xFFE4E4E0),
                                     width: selected ? 1.5 : 1,
                                   ),
                                 ),
@@ -711,7 +760,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                             size: 18,
                                             color: selected
                                                 ? _darkRed
-                                                : const Color(0xFF999999),
+                                                : CutLinkPalette.color(
+                                                    0xFF999999,
+                                                  ),
                                           ),
                                           const SizedBox(width: 9),
                                           Expanded(
@@ -737,9 +788,12 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                                     documentProductSpecifications(
                                                       item,
                                                     ),
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 10.5,
-                                                      color: Color(0xFF646A70),
+                                                      color:
+                                                          CutLinkPalette.color(
+                                                            0xFF646A70,
+                                                          ),
                                                     ),
                                                   ),
                                                 Text(
@@ -748,8 +802,10 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF777777),
+                                                  style: TextStyle(
+                                                    color: CutLinkPalette.color(
+                                                      0xFF777777,
+                                                    ),
                                                     fontSize: 10.5,
                                                   ),
                                                 ),
@@ -797,7 +853,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                           vertical: 6,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF8F3F3),
+                                          color: CutLinkPalette.color(
+                                            0xFFF8F3F3,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             7,
                                           ),
@@ -867,9 +925,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                         .isNotEmpty)
                       Text(
                         'Internal: ${quote['internal_notes']}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
-                          color: Color(0xFF777777),
+                          color: CutLinkPalette.color(0xFF777777),
                         ),
                       ),
                   ],
@@ -884,7 +942,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   Widget _buildQuoteLineDock() {
     final item = _selectedLine;
-    if (item == null) return const SizedBox.shrink();
+    if (item == null) {
+      return const SizedBox.shrink();
+    }
 
     Widget actionButton({
       required String label,
@@ -914,7 +974,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     }
 
     return Container(
-      color: const Color(0xFFFAFAF8),
+      color: CutLinkPalette.color(0xFFFAFAF8),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1008,7 +1068,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
       Widget typeField() => DropdownButtonFormField<String?>(
         initialValue: _selectedDiscountType,
         isExpanded: true,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Discount',
           isDense: true,
           border: OutlineInputBorder(),
@@ -1028,7 +1088,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
             ? null
             : (value) => setState(() {
                 _selectedDiscountType = value;
-                if (value == null) _lineEditorController.clear();
+                if (value == null) {
+                  _lineEditorController.clear();
+                }
               }),
       );
 
@@ -1090,7 +1152,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Delivery charge for this quote',
                   prefixText: r'$',
                   isDense: true,
@@ -1135,9 +1197,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   }
 
   BoxDecoration _panel() => BoxDecoration(
-    color: Colors.white,
+    color: CutLinkPalette.surface,
     borderRadius: BorderRadius.circular(12),
-    border: Border.all(color: const Color(0xFFE0E0DD)),
+    border: Border.all(color: CutLinkPalette.color(0xFFE0E0DD)),
   );
   Widget _summary(String label, dynamic value) => Container(
     width: 220,
@@ -1165,7 +1227,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
   Widget _preview() => Column(
     children: [
       Container(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         padding: const EdgeInsets.all(12),
         child: const Row(
           children: [
@@ -1229,7 +1291,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFF5EAEA),
+                    backgroundColor: CutLinkPalette.color(0xFFF5EAEA),
                     child: Icon(
                       event[2] as IconData,
                       color: _darkRed,
@@ -1251,13 +1313,14 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     PageLocation.track(context, {'page': 'quote', 'id': widget.orderId});
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
       appBar: phoneAppBar(
         context,
         AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: CutLinkPalette.surface,
           surfaceTintColor: Colors.white,
           title: Text(
             _loading ? 'Quote' : _number,

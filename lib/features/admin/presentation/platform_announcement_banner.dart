@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'announcement_style.dart';
 
@@ -87,6 +88,7 @@ class _PlatformAnnouncementBannerState extends State<PlatformAnnouncementBanner>
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final rows = _rows
         .where((r) => !_dismissed.contains('${r['id']}'))
         .toList();
@@ -113,7 +115,7 @@ class _PlatformAnnouncementBannerState extends State<PlatformAnnouncementBanner>
     }
 
     return Material(
-      color: const Color(0xFFF5F6F8),
+      color: CutLinkPalette.color(0xFFF5F6F8),
       child: SafeArea(
         bottom: false,
         child: IosPadding(

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/widgets/cutlink_workspace_theme.dart';
@@ -33,9 +34,9 @@ class BusinessAnalyticsPage extends StatefulWidget {
 class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   static const Color _darkRed = Color(0xFF8B1E2D);
   static const Color _deepNavy = Color(0xFF081625);
-  static const Color _canvas = Color(0xFFF7F8FA);
-  static const Color _border = Color(0xFFE3E5E8);
-  static const Color _muted = Color(0xFF6A6E75);
+  static final Color _canvas = Color(0xFFF7F8FA);
+  static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
+  static Color get _muted => CutLinkPalette.color(0xFF6A6E75);
   static const Color _positive = Color(0xFF2E7D32);
   static const Color _warning = Color(0xFF9A5B00);
   static const Color _danger = Color(0xFFB3261E);
@@ -656,8 +657,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         vertical: isPhoneLayout(context) ? 10 : 0,
         horizontal: 22,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
         border: Border(bottom: BorderSide(color: _border)),
       ),
       child: PhoneRow(
@@ -668,7 +669,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5EAEA),
+                color: CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
@@ -696,8 +697,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     _isSupplier
                         ? 'Sales, customers, stock and fulfilment performance'
                         : 'Spend, suppliers, products and purchasing performance',
-                    style: const TextStyle(
-                      color: Color(0xFF74787E),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF74787E),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -725,7 +726,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               label: const Text('Download PDF'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _darkRed,
-                side: const BorderSide(color: Color(0xFFD7A8AE)),
+                side: BorderSide(color: CutLinkPalette.color(0xFFD7A8AE)),
                 visualDensity: VisualDensity.compact,
               ),
             ),
@@ -772,8 +773,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   ? _darkRed
                   : _border,
             ),
-            selectedColor: const Color(0xFFF5EAEA),
-            backgroundColor: Colors.white,
+            selectedColor: CutLinkPalette.color(0xFFF5EAEA),
+            backgroundColor: CutLinkPalette.surface,
             labelStyle: TextStyle(
               color:
                   _customStartDate == null &&
@@ -796,7 +797,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 : _border,
           ),
           backgroundColor: _customStartDate != null && _customEndDate != null
-              ? const Color(0xFFF5EAEA)
+              ? CutLinkPalette.color(0xFFF5EAEA)
               : Colors.white,
           labelStyle: TextStyle(
             color: _customStartDate != null && _customEndDate != null
@@ -834,7 +835,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _border),
       ),
@@ -847,7 +848,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F0F1),
+                  color: CutLinkPalette.color(0xFFF7F0F1),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Icon(icon, size: 17, color: _darkRed),
@@ -890,7 +891,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           const IosGap(height: 13),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: _muted,
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -918,8 +919,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF8A8E94),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF8A8E94),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1003,12 +1004,12 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   ),
                 ),
                 const IosGap(height: 4),
-                const Text(
+                Text(
                   'Ranked by return cases. Values show associated credit notes.',
                   style: TextStyle(fontSize: 12, color: _muted),
                 ),
                 if (leaders.isEmpty)
-                  const IosPadding(
+                  IosPadding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Text(
                       'No returned goods recorded in this period.',
@@ -1024,7 +1025,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         height: 30,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF7F0F1),
+                          color: CutLinkPalette.color(0xFFF7F0F1),
                           borderRadius: BorderRadius.circular(9),
                         ),
                         child: Text(
@@ -1050,10 +1051,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             const IosGap(height: 3),
                             Text(
                               '${CutLinkNumbers.integer(_integer(leaders[i]['cases']))} returns • ${CutLinkNumbers.number(_number(leaders[i]['kg']), decimals: 2)} kg',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: _muted,
-                              ),
+                              style: TextStyle(fontSize: 12, color: _muted),
                             ),
                           ],
                         ),
@@ -1078,7 +1076,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       ),
                       minHeight: 4,
                       color: _darkRed,
-                      backgroundColor: const Color(0xFFF0F1F3),
+                      backgroundColor: CutLinkPalette.color(0xFFF0F1F3),
                     ),
                   ),
                 ],
@@ -1193,7 +1191,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _border),
       ),
@@ -1219,7 +1217,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       const IosGap(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _muted,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1232,7 +1230,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               ],
             ),
           ),
-          const Divider(height: 1, color: _border),
+          Divider(height: 1, color: _border),
           child,
         ],
       ),
@@ -1287,8 +1285,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: i < 3
-                                ? const Color(0xFFF7F0F1)
-                                : const Color(0xFFF4F5F6),
+                                ? CutLinkPalette.color(0xFFF7F0F1)
+                                : CutLinkPalette.color(0xFFF4F5F6),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -1323,7 +1321,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                       ? 0
                                       : (_number(data[i]['value']) / maxValue)
                                             .clamp(0, 1),
-                                  backgroundColor: const Color(0xFFF0F1F2),
+                                  backgroundColor: CutLinkPalette.color(
+                                    0xFFF0F1F2,
+                                  ),
                                   valueColor: const AlwaysStoppedAnimation(
                                     _darkRed,
                                   ),
@@ -1346,10 +1346,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             if (data[i]['orders'] != null)
                               Text(
                                 '${CutLinkNumbers.integer(_integer(data[i]['orders']))} orders',
-                                style: const TextStyle(
-                                  color: _muted,
-                                  fontSize: 9.5,
-                                ),
+                                style: TextStyle(color: _muted, fontSize: 9.5),
                               ),
                           ],
                         ),
@@ -1406,7 +1403,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                       0,
                                       1,
                                     ),
-                              backgroundColor: const Color(0xFFF0F1F2),
+                              backgroundColor: CutLinkPalette.color(0xFFF0F1F2),
                               valueColor: AlwaysStoppedAnimation(_mixColour(i)),
                             ),
                           ),
@@ -1419,7 +1416,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                 ? '0%'
                                 : '${CutLinkNumbers.number(((_number(data[i]['value']) / total) * 100), decimals: 0)}%',
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _muted,
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
@@ -1437,13 +1434,13 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
   }
 
   Color _mixColour(int index) {
-    const colours = [
+    final colours = [
       _darkRed,
       Color(0xFF315A8C),
       Color(0xFF9A5B00),
       Color(0xFF2E7D32),
       Color(0xFF6A4C93),
-      Color(0xFF47666D),
+      CutLinkPalette.color(0xFF47666D),
     ];
     return colours[index % colours.length];
   }
@@ -1500,10 +1497,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                 ? '0%'
                                 : '${CutLinkNumbers.number(((_integer(rows[i]['count']) / total) * 100), decimals: 0)}%',
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: _muted,
-                              fontSize: 9.5,
-                            ),
+                            style: TextStyle(color: _muted, fontSize: 9.5),
                           ),
                         ),
                       ],
@@ -1625,18 +1619,14 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               child: LinearProgressIndicator(
                 minHeight: 9,
                 value: (inStockPct / 100).clamp(0, 1),
-                backgroundColor: const Color(0xFFF0F1F2),
+                backgroundColor: CutLinkPalette.color(0xFFF0F1F2),
                 valueColor: const AlwaysStoppedAnimation(_positive),
               ),
             ),
             const IosGap(height: 14),
             Row(
               children: [
-                const Icon(
-                  Icons.local_shipping_outlined,
-                  size: 17,
-                  color: _muted,
-                ),
+                Icon(Icons.local_shipping_outlined, size: 17, color: _muted),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -1717,12 +1707,12 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               child: LinearProgressIndicator(
                 minHeight: 10,
                 value: (concentration / 100).clamp(0, 1),
-                backgroundColor: const Color(0xFFF0F1F2),
+                backgroundColor: CutLinkPalette.color(0xFFF0F1F2),
                 valueColor: AlwaysStoppedAnimation(riskColor),
               ),
             ),
             const IosGap(height: 12),
-            const Text(
+            Text(
               'A very high share can increase exposure to price changes, stock shortages or service disruption from one supplier.',
               style: TextStyle(color: _muted, fontSize: 12, height: 1.45),
             ),
@@ -1755,7 +1745,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: _muted,
               fontSize: 9.2,
               fontWeight: FontWeight.w700,
@@ -1909,7 +1899,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         const IosGap(height: 2),
                         Text(
                           insights[i].body,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _muted,
                             fontSize: 10,
                             height: 1.4,
@@ -1937,16 +1927,16 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.query_stats_rounded,
-            color: Color(0xFFB0B3B7),
+            color: CutLinkPalette.color(0xFFB0B3B7),
             size: 34,
           ),
           const IosGap(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: _muted,
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
@@ -1981,7 +1971,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: _muted, fontSize: 11),
+                  style: TextStyle(color: _muted, fontSize: 11),
                 ),
                 const IosGap(height: 14),
                 FilledButton.icon(
@@ -2031,10 +2021,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                 _isSupplier
                                     ? 'Track the numbers that drive sales, cash flow, stock availability and service.'
                                     : 'Understand purchasing spend, supplier dependence, product mix and order performance.',
-                                style: const TextStyle(
-                                  color: _muted,
-                                  fontSize: 11.5,
-                                ),
+                                style: TextStyle(color: _muted, fontSize: 11.5),
                               ),
                             ],
                           ),
@@ -2050,10 +2037,10 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F3F6),
+                      color: CutLinkPalette.color(0xFFF0F3F6),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
@@ -2086,6 +2073,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final body = ColoredBox(
       color: _canvas,
       child: Column(
@@ -2125,8 +2113,8 @@ class BusinessAnalyticsOverviewPanel extends StatefulWidget {
 class _BusinessAnalyticsOverviewPanelState
     extends State<BusinessAnalyticsOverviewPanel> {
   static const Color _darkRed = Color(0xFF8B1E2D);
-  static const Color _border = Color(0xFFE3E5E8);
-  static const Color _muted = Color(0xFF6A6E75);
+  static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
+  static Color get _muted => CutLinkPalette.color(0xFF6A6E75);
 
   int _days = 30;
   bool _loading = true;
@@ -2337,6 +2325,7 @@ class _BusinessAnalyticsOverviewPanelState
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     const options = <int, String>{
       1: 'Today',
       7: '7D',
@@ -2398,8 +2387,8 @@ class _BusinessAnalyticsOverviewPanelState
                       side: BorderSide(
                         color: _days == entry.key ? _darkRed : _border,
                       ),
-                      selectedColor: const Color(0xFFF5EAEA),
-                      backgroundColor: Colors.white,
+                      selectedColor: CutLinkPalette.color(0xFFF5EAEA),
+                      backgroundColor: CutLinkPalette.surface,
                       labelStyle: TextStyle(
                         color: _days == entry.key ? _darkRed : _muted,
                         fontSize: 10.5,
@@ -2471,7 +2460,7 @@ class _BusinessAnalyticsOverviewPanelState
         const IosGap(height: 14),
         Text(
           '$_periodLabel • Hover or tap the graph for the exact daily value',
-          style: const TextStyle(
+          style: TextStyle(
             color: _muted,
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -2481,7 +2470,7 @@ class _BusinessAnalyticsOverviewPanelState
         SizedBox(
           height: 190,
           child: trend.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'No activity in this period',
                     style: TextStyle(
@@ -2505,20 +2494,21 @@ class _OverviewMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: CutLinkPalette.color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE7E9EC)),
+        border: Border.all(color: CutLinkPalette.color(0xFFE7E9EC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF6A6E75),
+            style: TextStyle(
+              color: CutLinkPalette.color(0xFF6A6E75),
               fontSize: 9.5,
               fontWeight: FontWeight.w800,
             ),
@@ -2531,8 +2521,8 @@ class _OverviewMetric extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF081625),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF081625),
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -2616,6 +2606,7 @@ class _TrendChartState extends State<_TrendChart> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final values = widget.data.map((e) => _number(e['value'])).toList();
     final maxValue = values.fold<double>(0, math.max);
     final total = values.fold<double>(0, (sum, value) => sum + value);
@@ -2630,15 +2621,18 @@ class _TrendChartState extends State<_TrendChart> {
           children: [
             Text(
               _money(total),
-              style: const TextStyle(
-                color: Color(0xFF081625),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF081625),
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const Text(
+            Text(
               'total',
-              style: TextStyle(color: Color(0xFF777C82), fontSize: 10),
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF777C82),
+                fontSize: 10,
+              ),
             ),
             if (_selectedIndex != null)
               Text(
@@ -2696,19 +2690,28 @@ class _TrendChartState extends State<_TrendChart> {
             Expanded(
               child: Text(
                 _label(widget.data.first['bucket']),
-                style: const TextStyle(color: Color(0xFF8A8E94), fontSize: 9),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF8A8E94),
+                  fontSize: 9,
+                ),
               ),
             ),
             if (widget.data.length > 2)
               Text(
                 _label(widget.data[widget.data.length ~/ 2]['bucket']),
-                style: const TextStyle(color: Color(0xFF8A8E94), fontSize: 9),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF8A8E94),
+                  fontSize: 9,
+                ),
               ),
             Expanded(
               child: Text(
                 _label(widget.data.last['bucket']),
                 textAlign: TextAlign.right,
-                style: const TextStyle(color: Color(0xFF8A8E94), fontSize: 9),
+                style: TextStyle(
+                  color: CutLinkPalette.color(0xFF8A8E94),
+                  fontSize: 9,
+                ),
               ),
             ),
           ],
@@ -2734,7 +2737,7 @@ class _TrendPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final gridPaint = Paint()
-      ..color = const Color(0xFFECEEF0)
+      ..color = CutLinkPalette.color(0xFFECEEF0)
       ..strokeWidth = 1;
 
     for (var i = 0; i <= 4; i++) {

@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
@@ -87,7 +88,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   void _refreshView() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadCustomerOptions() async {
@@ -101,7 +104,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           .eq('supplier_business_id', supplierBusinessId)
           .eq('active', true)
           .order('customer_name');
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _customerOptions = (response as List)
             .whereType<Map>()
@@ -118,7 +123,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Future<String> _resolveSupplierBusinessId() async {
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
-    if (user == null) throw Exception('No signed-in user was found.');
+    if (user == null) {
+      throw Exception('No signed-in user was found.');
+    }
 
     final memberships = await client
         .from('business_memberships')
@@ -147,14 +154,16 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   Future<void> _loadAllDocuments({bool append = false}) async {
-    if (append && (_isLoadingMore || !_hasMore)) return;
+    if (append && (_isLoadingMore || !_hasMore)) {
+      return;
+    }
     final version = ++_searchVersion;
     setState(() {
       _hasSearched = true;
       if (append) {
         _isLoadingMore = true;
       } else {
-        _isLoading = true;
+        _isLoading = _documents.isEmpty;
         _loadedOrderCount = 0;
         _hasMore = true;
         _errorMessage = null;
@@ -235,7 +244,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       ];
       final hasMore = pageLengths.any((length) => length == _pageSize);
 
-      if (!mounted || version != _searchVersion) return;
+      if (!mounted || version != _searchVersion) {
+        return;
+      }
       setState(() {
         _documents = append ? [..._documents, ...documents] : documents;
         _documents.sort((a, b) => b.sortDate.compareTo(a.sortDate));
@@ -245,14 +256,18 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         _isLoadingMore = false;
       });
     } on PostgrestException catch (error) {
-      if (!mounted || version != _searchVersion) return;
+      if (!mounted || version != _searchVersion) {
+        return;
+      }
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
         _isLoadingMore = false;
       });
     } catch (error) {
-      if (!mounted || version != _searchVersion) return;
+      if (!mounted || version != _searchVersion) {
+        return;
+      }
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
@@ -310,7 +325,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     final documents = _maps(
       data['rows'],
     ).map(_UnifiedDocument.fromCredit).toList();
-    if (!mounted || !_showCredits || version != _searchVersion) return;
+    if (!mounted || !_showCredits || version != _searchVersion) {
+      return;
+    }
     setState(() {
       _documents = append ? [..._documents, ...documents] : documents;
       _creditTotal = (data['total'] as num).toInt();
@@ -363,7 +380,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     // the work-order and invoice records become their searchable documents.
     query = query.eq('status', 'draft');
     final number = _documentNumberController.text.trim();
-    if (number.isNotEmpty) query = query.ilike('quote_number', '%$number%');
+    if (number.isNotEmpty) {
+      query = query.ilike('quote_number', '%$number%');
+    }
     query = _applyCustomerToTopLevelQuery(query);
     final response = await query
         .order('updated_at', ascending: false)
@@ -403,7 +422,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           )
         ''')
         .eq('supplier_business_id', supplierBusinessId);
-    if (_selectedStatus != null) query = query.eq('status', _selectedStatus!);
+    if (_selectedStatus != null) {
+      query = query.eq('status', _selectedStatus!);
+    }
     final number = _documentNumberController.text.trim();
     if (number.isNotEmpty) {
       query = query.ilike('work_order_number', '%$number%');
@@ -451,9 +472,13 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         .eq('supplier_business_id', supplierBusinessId);
 
     query = _applyCustomerToTopLevelQuery(query);
-    if (_selectedStatus != null) query = query.eq('status', _selectedStatus!);
+    if (_selectedStatus != null) {
+      query = query.eq('status', _selectedStatus!);
+    }
     final number = _documentNumberController.text.trim();
-    if (number.isNotEmpty) query = query.ilike('invoice_number', '%$number%');
+    if (number.isNotEmpty) {
+      query = query.ilike('invoice_number', '%$number%');
+    }
     final response = await query
         .order('updated_at', ascending: false)
         .range(offset, offset + _pageSize - 1);
@@ -462,7 +487,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   dynamic _applyCustomerToTopLevelQuery(dynamic query) {
     final customer = _selectedCustomer;
-    if (customer == null) return query;
+    if (customer == null) {
+      return query;
+    }
     final butcherId = customer.linkedButcherBusinessId;
     return butcherId == null
         ? query.eq('supplier_customer_account_id', customer.accountId)
@@ -472,7 +499,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   static Map<String, dynamic>? _nestedMap(dynamic raw) {
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -480,7 +509,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   }
 
   static List<Map<String, dynamic>> _maps(dynamic raw) {
-    if (raw is! List) return const [];
+    if (raw is! List) {
+      return const [];
+    }
     return raw
         .whereType<Map>()
         .map((value) => Map<String, dynamic>.from(value))
@@ -493,9 +524,13 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    if (_showCredits) return _documents;
+    if (_showCredits) {
+      return _documents;
+    }
     return _documents.where((document) {
-      if (!_matchesSelectedType(document)) return false;
+      if (!_matchesSelectedType(document)) {
+        return false;
+      }
       if (_selectedCustomer != null &&
           !document.matchesCustomer(_selectedCustomer!)) {
         return false;
@@ -522,7 +557,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ),
         _ => null,
       };
-      if (start != null && document.sortDate.isBefore(start)) return false;
+      if (start != null && document.sortDate.isBefore(start)) {
+        return false;
+      }
       if (_dateRange == _DocumentDateRange.custom && _customDateRange != null) {
         final end = _customDateRange!.end.add(const Duration(days: 1));
         if (document.sortDate.isBefore(_customDateRange!.start) ||
@@ -653,7 +690,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ),
       );
     }
-    if (mounted && _hasSearched) await _loadAllDocuments();
+    if (mounted && _hasSearched) {
+      await _loadAllDocuments();
+    }
   }
 
   Widget _header() {
@@ -663,9 +702,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         vertical: isPhoneLayout(context) ? 10 : 0,
         horizontal: 20,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3E5E8))),
+      decoration: BoxDecoration(
+        color: CutLinkPalette.surface,
+        border: Border(
+          bottom: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
+        ),
       ),
       child: PhoneRow(
         mode: PhoneRowMode.wrap,
@@ -675,7 +716,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5EAEA),
+                color: CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: const Icon(
@@ -685,7 +726,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
               ),
             ),
             const SizedBox(width: 11),
-            const Expanded(
+            Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,7 +739,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   Text(
                     'Search quotes, work orders, invoices and credit notes when you need them',
                     style: TextStyle(
-                      color: Color(0xFF74787E),
+                      color: CutLinkPalette.color(0xFF74787E),
                       fontSize: 10.8,
                       fontWeight: FontWeight.w600,
                     ),
@@ -732,8 +773,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Widget _typeSelector() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F1F3),
-        border: Border.all(color: const Color(0xFFDDE0E4)),
+        color: CutLinkPalette.color(0xFFF0F1F3),
+        border: Border.all(color: CutLinkPalette.color(0xFFDDE0E4)),
         borderRadius: BorderRadius.circular(13),
         boxShadow: const [
           BoxShadow(
@@ -818,7 +859,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           });
         },
         style: TextButton.styleFrom(
-          foregroundColor: selected ? Colors.white : const Color(0xFF565B61),
+          foregroundColor: selected
+              ? Colors.white
+              : CutLinkPalette.color(0xFF565B61),
           backgroundColor: selected ? _darkRed : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           shape: RoundedRectangleBorder(
@@ -925,8 +968,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       child: Text(
         text,
         textAlign: align,
-        style: const TextStyle(
-          color: Color(0xFF74787E),
+        style: TextStyle(
+          color: CutLinkPalette.color(0xFF74787E),
           fontSize: 9.5,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.35,
@@ -975,8 +1018,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E5E8)),
+          color: CutLinkPalette.surface,
+          border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
           borderRadius: BorderRadius.circular(14),
         ),
         child: LayoutBuilder(
@@ -1068,8 +1111,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                   padding: const EdgeInsets.only(bottom: 11),
                   child: Text(
                     '${_showCredits ? _creditTotal : _filteredDocuments.length} result${(_showCredits ? _creditTotal : _filteredDocuments.length) == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Color(0xFF686D73),
+                    style: TextStyle(
+                      color: CutLinkPalette.color(0xFF686D73),
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1089,7 +1132,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     displayStringForOption: (option) => option.displayName,
     optionsBuilder: (value) {
       final query = value.text.trim().toLowerCase();
-      if (query.isEmpty) return const Iterable<_CustomerOption>.empty();
+      if (query.isEmpty) {
+        return const Iterable<_CustomerOption>.empty();
+      }
       return _customerOptions.where(
         (customer) => customer.searchText.contains(query),
       );
@@ -1169,7 +1214,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       if (_selectedCustomer != null) {
         setState(() => _selectedCustomer = null);
       }
-      if (executeSearch) _loadAllDocuments();
+      if (executeSearch) {
+        _loadAllDocuments();
+      }
       return;
     }
     final matches = _customerOptions
@@ -1180,10 +1227,14 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         .toList();
     if (exact.length == 1) {
       _selectCustomer(exact.single);
-      if (executeSearch) _loadAllDocuments();
+      if (executeSearch) {
+        _loadAllDocuments();
+      }
     } else if (matches.length == 1) {
       _selectCustomer(matches.single);
-      if (executeSearch) _loadAllDocuments();
+      if (executeSearch) {
+        _loadAllDocuments();
+      }
     } else if (_showCredits && executeSearch) {
       _loadAllDocuments();
     } else {
@@ -1238,12 +1289,12 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     hintText: hint,
     isDense: true,
     filled: true,
-    fillColor: const Color(0xFFFAFAFB),
+    fillColor: CutLinkPalette.color(0xFFFAFAFB),
     contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(9),
-      borderSide: const BorderSide(color: Color(0xFFE3E5E8)),
+      borderSide: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
     ),
   );
 
@@ -1268,7 +1319,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       ),
     ],
     onChanged: (value) async {
-      if (value == null) return;
+      if (value == null) {
+        return;
+      }
       if (value == _DocumentDateRange.custom) {
         final picked = await showDateRangePicker(
           context: context,
@@ -1276,7 +1329,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
           lastDate: DateTime.now().add(const Duration(days: 365)),
           initialDateRange: _customDateRange,
         );
-        if (picked == null || !mounted) return;
+        if (picked == null || !mounted) {
+          return;
+        }
         setState(() {
           _dateRange = value;
           _customDateRange = picked;
@@ -1300,7 +1355,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE3E5E8)),
+            border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: isPhoneLayout(context)
@@ -1339,7 +1394,10 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         const IosGap(height: 6),
         Text(
           '${document.dateLabel} • ${document.source}',
-          style: const TextStyle(fontSize: 11, color: Color(0xFF666A70)),
+          style: TextStyle(
+            fontSize: 11,
+            color: CutLinkPalette.color(0xFF666A70),
+          ),
         ),
         const IosGap(height: 8),
         Wrap(
@@ -1408,7 +1466,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         width: _showCredits ? 145 : 100,
         child: _statusChip(document.status),
       ),
-      const Icon(Icons.chevron_right, size: 18, color: Color(0xFF777B80)),
+      Icon(
+        Icons.chevron_right,
+        size: 18,
+        color: CutLinkPalette.color(0xFF777B80),
+      ),
     ],
   );
 
@@ -1443,7 +1505,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       const SizedBox(width: 10),
       SizedBox(width: 100, child: _statusChip(document.paymentStatus)),
       SizedBox(width: 85, child: _statusChip(document.status)),
-      const Icon(Icons.chevron_right, size: 18, color: Color(0xFF777B80)),
+      Icon(
+        Icons.chevron_right,
+        size: 18,
+        color: CutLinkPalette.color(0xFF777B80),
+      ),
     ],
   );
 
@@ -1459,7 +1525,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
   Widget _muted(String value) => Text(
     value,
     overflow: TextOverflow.ellipsis,
-    style: const TextStyle(fontSize: 11, color: Color(0xFF666A70)),
+    style: TextStyle(fontSize: 11, color: CutLinkPalette.color(0xFF666A70)),
   );
 
   Widget _statusChip(String label) => Align(
@@ -1467,7 +1533,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F2F4),
+        color: CutLinkPalette.color(0xFFF1F2F4),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1484,7 +1550,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5EAEA),
+        color: CutLinkPalette.color(0xFFF5EAEA),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1518,8 +1584,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final content = ColoredBox(
-      color: const Color(0xFFF7F8FA),
+      color: CutLinkPalette.color(0xFFF7F8FA),
       child: Column(
         children: [
           _header(),
@@ -1527,9 +1594,11 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         ],
       ),
     );
-    if (widget.embedded) return content;
+    if (widget.embedded) {
+      return content;
+    }
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: CutLinkPalette.color(0xFFF7F8FA),
       body: SafeArea(child: content),
     );
   }
@@ -1542,34 +1611,40 @@ class _SearchPrompt extends StatelessWidget {
   final bool credits;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 440),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.manage_search_rounded,
-            size: 54,
-            color: Color(0xFF741C1C),
-          ),
-          const IosGap(height: 12),
-          Text(
-            credits ? 'Search credit notes' : 'Search invoices',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-          ),
-          const IosGap(height: 7),
-          Text(
-            credits
-                ? 'Choose filters or enter a customer, credit or invoice number, product, SKU, reason or notes, then press Enter. Press Enter with empty filters to show all credit notes.'
-                : 'Choose filters or enter a customer, document number, or description, then press Enter. Press Enter with empty filters to show every quote, work order, and invoice.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF6D7278), height: 1.45),
-          ),
-        ],
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.manage_search_rounded,
+              size: 54,
+              color: Color(0xFF741C1C),
+            ),
+            const IosGap(height: 12),
+            Text(
+              credits ? 'Search credit notes' : 'Search invoices',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const IosGap(height: 7),
+            Text(
+              credits
+                  ? 'Choose filters or enter a customer, credit or invoice number, product, SKU, reason or notes, then press Enter. Press Enter with empty filters to show all credit notes.'
+                  : 'Choose filters or enter a customer, document number, or description, then press Enter. Press Enter with empty filters to show every quote, work order, and invoice.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: CutLinkPalette.color(0xFF6D7278),
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ColumnHeading extends StatelessWidget {
@@ -1578,15 +1653,18 @@ class _ColumnHeading extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: const TextStyle(
-      color: Color(0xFF74787E),
-      fontSize: 9.5,
-      fontWeight: FontWeight.w900,
-      letterSpacing: 0.35,
-    ),
-  );
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return Text(
+      text,
+      style: TextStyle(
+        color: CutLinkPalette.color(0xFF74787E),
+        fontSize: 9.5,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.35,
+      ),
+    );
+  }
 }
 
 class _CustomerOption {
@@ -1806,22 +1884,32 @@ class _UnifiedDocument {
       : label(statusValue);
   String get source => sourceLabel(sourceValue);
   String get paymentStatus {
-    if (statusValue == 'void') return 'Void';
-    if (statusValue == 'paid') return 'Paid';
+    if (statusValue == 'void') {
+      return 'Void';
+    }
+    if (statusValue == 'paid') {
+      return 'Paid';
+    }
     if (statusValue == 'part_paid' || (amountPaid ?? 0) > 0) {
       return 'Part Paid';
     }
-    if (statusValue == 'issued') return 'Outstanding';
+    if (statusValue == 'issued') {
+      return 'Outstanding';
+    }
     return status;
   }
 
   String get documentNumberSearch => number.toLowerCase();
   String get description {
-    if (itemDescriptions.isEmpty) return '-';
+    if (itemDescriptions.isEmpty) {
+      return '-';
+    }
     final visible = itemDescriptions.take(3).join(', ');
     final hasMore = itemDescriptions.length > 3;
     final text = hasMore ? '$visible...' : visible;
-    if (text.length <= 64) return text;
+    if (text.length <= 64) {
+      return text;
+    }
     return '${text.substring(0, 61).trimRight()}...';
   }
 
@@ -1865,7 +1953,9 @@ class _UnifiedDocument {
   }
 
   static List<String> _itemDescriptions(dynamic raw) {
-    if (raw is! List) return const [];
+    if (raw is! List) {
+      return const [];
+    }
     final seen = <String>{};
     final descriptions = <String>[];
     for (final item in raw.whereType<Map>()) {
@@ -1878,7 +1968,9 @@ class _UnifiedDocument {
   }
 
   static Map<String, dynamic>? _map(dynamic raw) {
-    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       return Map<String, dynamic>.from(raw.first as Map);
     }
@@ -1895,7 +1987,9 @@ class _UnifiedDocument {
       butcher?['legal_name'],
     ]) {
       final text = value?.toString().trim();
-      if (text != null && text.isNotEmpty) return text;
+      if (text != null && text.isNotEmpty) {
+        return text;
+      }
     }
     return 'Customer';
   }

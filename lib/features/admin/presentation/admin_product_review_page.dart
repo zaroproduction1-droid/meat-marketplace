@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/cutlink_review_theme.dart';
 
@@ -333,6 +334,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
     final data = _data;
     final state = data?['workflow_state']?.toString() ?? 'reported';
     final review = data?['supplier_review'] as Map? ?? const {};
@@ -414,7 +416,7 @@ class _AdminProductReviewPageState extends State<AdminProductReviewPage> {
                             ),
                             if (_changed)
                               Card(
-                                color: const Color(0xFFFFF2E5),
+                                color: CutLinkPalette.color(0xFFFFF2E5),
                                 child: ListTile(
                                   title: const Text('Supplier update received'),
                                   trailing: TextButton(
@@ -662,67 +664,73 @@ class _DecisionDialogState extends State<_DecisionDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => CutLinkReviewTheme(
-    child: AlertDialog(
-      title: Text(_title),
-      content: SizedBox(
-        width: 560,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(switch (widget.decision) {
-                  'waive' => 'Close this report without changing the product.',
-                  'approve' =>
-                    'Confirm the saved product is now correct. The supplier case will close.',
-                  'remove' =>
-                    'This listing will be removed and cannot be restored. The supplier must add a new product from the start with a new SKU. Existing orders and invoices are retained.',
-                  _ =>
-                    'The supplier will receive this request and can save and confirm their correction. For a photo issue, the reported photo is removed and replacement uploads are allowed.',
-                }),
-                const IosGap(height: 14),
-                ReviewResponseField(
-                  label: 'Reason / response',
-                  options: _options,
-                  value: _choice,
-                  controller: _other,
-                  onChanged: (v) => setState(() => _choice = v),
-                ),
-              ],
+  Widget build(BuildContext context) {
+    AppearanceScope.watch(context);
+    return CutLinkReviewTheme(
+      child: AlertDialog(
+        title: Text(_title),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _form,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(switch (widget.decision) {
+                    'waive' =>
+                      'Close this report without changing the product.',
+                    'approve' =>
+                      'Confirm the saved product is now correct. The supplier case will close.',
+                    'remove' =>
+                      'This listing will be removed and cannot be restored. The supplier must add a new product from the start with a new SKU. Existing orders and invoices are retained.',
+                    _ =>
+                      'The supplier will receive this request and can save and confirm their correction. For a photo issue, the reported photo is removed and replacement uploads are allowed.',
+                  }),
+                  const IosGap(height: 14),
+                  ReviewResponseField(
+                    label: 'Reason / response',
+                    options: _options,
+                    value: _choice,
+                    controller: _other,
+                    onChanged: (v) => setState(() => _choice = v),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!_form.currentState!.validate()) {
+                return;
+              }
+              final reason = _choice == 'other'
+                  ? 'other'
+                  : widget.decision == 'request_fix'
+                  ? _choice!
+                  : widget.decision == 'remove'
+                  ? (_choice == 'food_safety'
+                        ? 'food_safety'
+                        : 'product_details')
+                  : 'corrected';
+              Navigator.pop(context, <String, String>{
+                'reason': reason,
+                'note': _choice == 'other'
+                    ? _other.text.trim()
+                    : _options[_choice]!,
+              });
+            },
+            child: Text(_title),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (!_form.currentState!.validate()) {
-              return;
-            }
-            final reason = _choice == 'other'
-                ? 'other'
-                : widget.decision == 'request_fix'
-                ? _choice!
-                : widget.decision == 'remove'
-                ? (_choice == 'food_safety' ? 'food_safety' : 'product_details')
-                : 'corrected';
-            Navigator.pop(context, <String, String>{
-              'reason': reason,
-              'note': _choice == 'other'
-                  ? _other.text.trim()
-                  : _options[_choice]!,
-            });
-          },
-          child: Text(_title),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
