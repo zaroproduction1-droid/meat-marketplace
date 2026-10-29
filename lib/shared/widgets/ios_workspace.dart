@@ -1,3 +1,4 @@
+import 'ios_dashboard_style.dart';
 import '../theme/cutlink_appearance.dart';
 
 import 'package:flutter/foundation.dart';
@@ -258,101 +259,151 @@ class IosBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    AppearanceScope.watch(context);
+    final p = IosDashboardPalette.of(context);
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final height = 66.0 + ((scale - 1).clamp(0.0, 1.0) * 10);
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-      child: NativeGlassSurface(
-        child: Material(
-          color: Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.all(5),
-            child: Row(
-              children: [
-                for (var i = 0; i < tabs.length; i++)
-                  Expanded(
-                    child: Semantics(
-                      selected: index == i,
-                      button: true,
-                      label: tabs[i].label,
-                      child: Tooltip(
-                        message: tabs[i].label,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(32),
-                          onTap: () => onSelected(i),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: index == i
-                                  ? Theme.of(context).colorScheme.onSurface
-                                        .withValues(alpha: .09)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(32),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Badge(
-                                  isLabelVisible: tabs[i].badge > 0,
-                                  label: Text(
-                                    tabs[i].badge > 99
-                                        ? '99+'
-                                        : '${tabs[i].badge}',
-                                  ),
-                                  child: tabs[i].label == 'Add' && i == 2
-                                      ? const CircleAvatar(
-                                          radius: 17,
-                                          backgroundColor:
-                                              IosWorkspaceStyle.red,
-                                          child: Icon(
-                                            Icons.add,
-                                            color: Colors.white,
-                                            size: 25,
-                                          ),
-                                        )
-                                      : Icon(
-                                          tabs[i].icon,
-                                          color: index == i
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.primary
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurface,
-                                          size: 25,
-                                        ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  tabs[i].label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 10,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(38),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: p.dark ? .22 : .08),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: NativeGlassSurface(
+          child: SizedBox(
+            height: height,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  for (var i = 0; i < tabs.length; i++)
+                    Expanded(
+                      child: Semantics(
+                        selected: index == i,
+                        button: true,
+                        label: tabs[i].label,
+                        child: Tooltip(
+                          message: tabs[i].label,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => onSelected(i),
+                              borderRadius: BorderRadius.circular(30),
+                              child: AnimatedContainer(
+                                duration:
+                                    MediaQuery.disableAnimationsOf(context)
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 180),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: index == i
+                                      ? (p.dark
+                                            ? Colors.white.withValues(
+                                                alpha: .075,
+                                              )
+                                            : const Color(
+                                                0xFFEDE5E5,
+                                              ).withValues(alpha: .60))
+                                      : Colors.transparent,
+                                  border: Border.all(
                                     color: index == i
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
+                                        ? Colors.white.withValues(
+                                            alpha: p.dark ? .07 : .55,
+                                          )
+                                        : Colors.transparent,
+                                    width: .5,
                                   ),
                                 ),
-                              ],
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 35,
+                                      child: Center(
+                                        child: i == 2
+                                            ? Container(
+                                                width: 37,
+                                                height: 37,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: p.dark
+                                                      ? Colors.white.withValues(
+                                                          alpha: .06,
+                                                        )
+                                                      : Colors.white.withValues(
+                                                          alpha: .65,
+                                                        ),
+                                                  border: Border.all(
+                                                    color: Colors.white
+                                                        .withValues(
+                                                          alpha: p.dark
+                                                              ? .10
+                                                              : .85,
+                                                        ),
+                                                    width: .7,
+                                                  ),
+                                                ),
+                                                child: Center(
+                                                  child: _icon(i, p),
+                                                ),
+                                              )
+                                            : _icon(i, p),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      tabs[i].label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w500,
+                                        color: index == i ? p.accent : p.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _icon(int i, IosDashboardPalette p) {
+    final add = i == 2 && tabs[i].label == 'Add';
+    final icon = tabs[i].label == 'Home' && index == i
+        ? Icons.home_rounded
+        : tabs[i].icon;
+    return Badge(
+      isLabelVisible: tabs[i].badge > 0,
+      backgroundColor: IosDashboardPalette.burgundy,
+      textColor: Colors.white,
+      textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
+      label: Text(tabs[i].badge > 99 ? '99+' : '${tabs[i].badge}'),
+      child: add
+          ? const CircleAvatar(
+              radius: 15,
+              backgroundColor: IosDashboardPalette.burgundy,
+              child: Icon(Icons.add, color: Colors.white, size: 22),
+            )
+          : Icon(icon, size: 23, color: index == i ? p.accent : p.ink),
     );
   }
 }

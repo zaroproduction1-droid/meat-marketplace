@@ -1,3 +1,5 @@
+import 'ios_dashboard_style.dart';
+
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -41,7 +43,8 @@ class _NativeGlassSurfaceState extends State<NativeGlassSurface> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final palette = IosDashboardPalette.of(context);
+    final dark = palette.dark;
     final reduce =
         MediaQuery.of(context).accessibleNavigation ||
         MediaQuery.of(context).highContrast;
@@ -65,8 +68,11 @@ class _NativeGlassSurfaceState extends State<NativeGlassSurface> {
                       ),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: (dark ? const Color(0xFF252528) : Colors.white)
-                              .withValues(alpha: reduce ? 1 : .76),
+                          color:
+                              (dark
+                                      ? const Color(0xFF252629)
+                                      : const Color(0xFFFCFAF7))
+                                  .withValues(alpha: reduce ? 1 : .72),
                           borderRadius: BorderRadius.circular(38),
                           border: Border.all(
                             color: Colors.white.withValues(

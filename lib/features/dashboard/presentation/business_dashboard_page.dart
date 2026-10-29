@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_dashboard_style.dart';
+import '../../marketplace/presentation/marketplace_product_details_page.dart';
 import '../../../shared/widgets/retained_ios_workspace.dart';
 import '../../../shared/widgets/ios_dashboard_home.dart';
 import '../../../shared/theme/cutlink_appearance.dart';
@@ -94,6 +96,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String? _businessId;
   Map<String, dynamic>? _restrictedAccess;
   String? _businessName;
+  String _iosAccountFirstName = '';
+  Map<String, Map<String, dynamic>> _iosBuyAgainProducts = {};
+  String? _iosBuyAgainScope;
+  DateTime? _iosBuyAgainLoadedAt;
+  int _iosBuyAgainRevision = 0;
+  bool _iosOpeningProduct = false;
   String? _businessType;
   String? _businessLogoUrl;
 
@@ -169,7 +177,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       _restrictedAccess = null;
       final profileRows = await client
           .from('profiles')
-          .select('is_admin')
+          .select('is_admin, first_name')
           .eq('id', user.id)
           .limit(1);
 
@@ -543,6 +551,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       setState(() {
         _businessId = businessId;
         _businessName = businessName;
+        _iosAccountFirstName = profileRows.isEmpty
+            ? ''
+            : profileRows.first['first_name']?.toString().trim() ?? '';
         _businessType = businessType;
         _businessLogoUrl = businessLogoUrl;
         _dashboardPreferences = loadedDashboardPreferences;
@@ -562,6 +573,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _isLoading = false;
       });
 
+      if (businessType == 'butcher' && useIosWorkspace(context)) {
+        unawaited(_loadIosBuyAgainProducts());
+      }
       _ensureRealtimeSubscription(businessId, businessType ?? '');
       _loadNotificationCount();
       if (!_restoredLocation) {
@@ -1621,7 +1635,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           onBack: () => _iosNavigation.navigate(_iosBack),
           child: Scaffold(
             extendBody: true,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            backgroundColor: IosDashboardPalette.of(context).canvas,
             bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
                 ? null
                 : IosBottomBar(
@@ -1630,7 +1644,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       const IosTab('Home', Icons.home_outlined),
                       IosTab(
                         'My CutLink',
-                        Icons.person_outline_rounded,
+                        Icons.storefront_outlined,
                         badge: _notificationUnreadCount + _supportUnreadCount,
                       ),
                       IosTab(
@@ -1648,7 +1662,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         supplier ? 'Inventory' : 'Saved',
                         supplier
                             ? Icons.inventory_2_outlined
-                            : Icons.favorite_border_rounded,
+                            : Icons.bookmark_border_rounded,
                       ),
                     ],
                     onSelected: (index) => _iosNavigation.navigate(() {
@@ -1895,6 +1909,164 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
+  Future<void> _loadIosBuyAgainProducts({bool force = false}) async {
+    if (!mounted || _businessType != 'butcher' || !useIosWorkspace(context)) {
+      return;
+    }
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final ids = <String>{};
+    for (final order in _butcherOrders) {
+      final items = order['order_items'];
+      if (items is! List) {
+        continue;
+      }
+      for (final item in items.whereType<Map>()) {
+        final id = item['product_id']?.toString() ?? '';
+        if (id.isNotEmpty) {
+          ids.add(id);
+        }
+        if (ids.length >= 2) {
+          break;
+        }
+      }
+      if (ids.length >= 2) {
+        break;
+      }
+    }
+    final scope = '$userId:${ids.join(',')}';
+    if (!force &&
+        scope == _iosBuyAgainScope &&
+        _iosBuyAgainLoadedAt != null &&
+        DateTime.now().difference(_iosBuyAgainLoadedAt!) <
+            const Duration(minutes: 2)) {
+      return;
+    }
+    if (userId == null) {
+      return;
+    }
+    final revision = ++_iosBuyAgainRevision;
+    _iosBuyAgainScope = scope;
+    _iosBuyAgainLoadedAt = DateTime.now();
+    try {
+      final rows = ids.isEmpty
+          ? <Map<String, dynamic>>[]
+          : List<Map<String, dynamic>>.from(
+              await Supabase.instance.client
+                  .rpc(
+                    'catalogue_products',
+                    params: {'p_product_ids': ids.toList()},
+                  )
+                  .select(
+                    'id, photo_path, active, product_prices(*,price_lists(*))',
+                  )
+                  .timeout(const Duration(seconds: 12)),
+            );
+      if (!mounted ||
+          revision != _iosBuyAgainRevision ||
+          Supabase.instance.client.auth.currentUser?.id != userId) {
+        return;
+      }
+      setState(
+        () => _iosBuyAgainProducts = {
+          for (final row in rows) row['id'].toString(): row,
+        },
+      );
+    } catch (_) {
+      // Keep the explicitly labelled historical price; never invent a current one.
+      if (mounted && revision == _iosBuyAgainRevision) {
+        setState(() => _iosBuyAgainProducts = {});
+      }
+    }
+  }
+
+  Future<void> _openIosBuyAgain(String productId, String name) async {
+    if (_iosOpeningProduct) {
+      return;
+    }
+    if (productId.isEmpty) {
+      _openPage(
+        MarketplaceProductsPage(
+          initialSearch: {'query': name},
+          butcherBusinessId: _businessId,
+          onBack: _iosBack,
+        ),
+      );
+      return;
+    }
+    _iosOpeningProduct = true;
+    try {
+      final product = await Supabase.instance.client
+          .rpc(
+            'catalogue_products',
+            params: {
+              'p_product_ids': [productId],
+            },
+          )
+          .eq('id', productId)
+          .eq('active', true)
+          .select(
+            '*, meat_animals(id,code,name), meat_sections(id,name), meat_specifications(id,name), '
+            'meat_grades(id,code,name), businesses(id,trading_name,legal_name,logo_path), product_prices(*,price_lists(*))',
+          )
+          .maybeSingle()
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) {
+        return;
+      }
+      if (product == null) {
+        throw StateError('Product unavailable');
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MarketplaceProductDetailsPage(
+            product: Map<String, dynamic>.from(product),
+          ),
+        ),
+      );
+      if (mounted) {
+        unawaited(_loadDashboard(showLoading: false));
+        unawaited(_loadIosBuyAgainProducts(force: true));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This product is unavailable or could not load. Please retry or search for an alternative.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _iosOpeningProduct = false;
+    }
+  }
+
+  String _iosFulfilmentNote(Map<String, dynamic> order) {
+    if (order['status'] == 'ready' && order['fulfilment_method'] == 'pickup') {
+      return 'Ready for pickup';
+    }
+    final date = DateTime.tryParse(
+      order['requested_fulfilment_date']?.toString() ?? '',
+    );
+    if (date == null) {
+      return _orderStatusLabel(order['status']?.toString());
+    }
+    final now = DateTime.now();
+    final days = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+    if (days == 0) {
+      return 'Scheduled today';
+    }
+    if (days == 1) {
+      return 'Scheduled tomorrow';
+    }
+    return 'Scheduled ${_date(order['requested_fulfilment_date'])}';
+  }
+
   Widget _iosHome(bool supplier) {
     void orders() => _openPage(
       supplier
@@ -1920,13 +2092,31 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               order['fulfilment_method'] == 'pickup',
         )
         .length;
+    active.sort((a, b) {
+      final first = DateTime.tryParse(
+        a['requested_fulfilment_date']?.toString() ?? '',
+      );
+      final second = DateTime.tryParse(
+        b['requested_fulfilment_date']?.toString() ?? '',
+      );
+      if (first == null && second == null) {
+        return 0;
+      }
+      if (first == null) {
+        return 1;
+      }
+      if (second == null) {
+        return -1;
+      }
+      return first.compareTo(second);
+    });
     final recent = <DashboardActionRow>[];
     if (supplier) {
-      for (final order in _supplierOrders.take(3)) {
+      for (final order in _supplierOrders.take(2)) {
         recent.add(
           DashboardActionRow(
             _supplierCustomerName(order),
-            'Order #${order['order_number'] ?? ''} · ${_orderStatusLabel(order['status']?.toString())}',
+            '${cutLinkOrderReference(order['order_number'])} · ${_orderStatusLabel(order['status']?.toString())}',
             Icons.receipt_long_outlined,
             () async {
               await Navigator.of(context).push(
@@ -1948,12 +2138,15 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         recent.add(
           DashboardActionRow(
             _supplierName(order),
-            'Order #${order['order_number'] ?? ''} · ${_orderStatusLabel(order['status']?.toString())}',
-            Icons.local_shipping_outlined,
+            'Order ${cutLinkOrderReference(order['order_number'])}',
+            order['fulfilment_method'] == 'pickup'
+                ? Icons.inventory_2_outlined
+                : Icons.local_shipping_outlined,
             () => _openPage(
               SubmittedOrdersPage(initialOrderId: order['id']?.toString()),
               workspaceKey: 'order_${order['id']}',
             ),
+            detail: _iosFulfilmentNote(order),
           ),
         );
       }
@@ -1967,36 +2160,38 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       }
       for (final item in items.whereType<Map>()) {
         final name = item['product_name_snapshot']?.toString().trim() ?? '';
-        if (name.isEmpty || !seen.add(name) || again.length >= 3) {
+        final productId = item['product_id']?.toString() ?? '';
+        if (name.isEmpty ||
+            again.length >= 2 ||
+            !seen.add(
+              productId.isEmpty ? '${_supplierName(order)}:$name' : productId,
+            )) {
           continue;
         }
-        // Historical prices are labelled explicitly. Search checks current prices
-        // and permissions before anything can be added to an order.
         final price = _asDouble(item['unit_price']);
+        final product = _iosBuyAgainProducts[productId];
         again.add(
           DashboardActionRow(
             name,
-            '${_supplierName(order)}${price > 0 ? ' · Last paid ${_money(price)}' : ''}',
+            _supplierName(order),
             Icons.replay_rounded,
-            () => _openPage(
-              MarketplaceProductsPage(
-                initialSearch: {'query': name},
-                butcherBusinessId: _businessId,
-                onBack: _iosBack,
-              ),
-            ),
+            () => _openIosBuyAgain(productId, name),
+            product: product,
+            historicalPrice: price > 0 ? _money(price) : null,
+            onOrder: () => _openIosBuyAgain(productId, name),
           ),
         );
       }
-      if (again.length >= 3) {
+      if (again.length >= 2) {
         break;
       }
     }
     return IosDashboardHome(
       supplier: supplier,
       businessName: _businessName ?? 'My business',
-      greeting: _greeting(),
-      avatar: _businessLogoBadge(size: 40, fallback: supplier ? 'S' : 'B'),
+      greeting:
+          '${_greeting()}${_iosAccountFirstName.isEmpty ? '' : ', $_iosAccountFirstName'}',
+      avatar: _businessLogoBadge(size: 32, fallback: supplier ? 'S' : 'B'),
       unread: _notificationUnreadCount,
       cartCount: _butcherCartItemCount,
       onNotifications: () =>
@@ -2016,6 +2211,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         );
       },
       onOrders: orders,
+      onWorkOrders: () => _openSalesOrders('work_orders'),
+      nextOrderTitle:
+          active.isNotEmpty && active.first['fulfilment_method'] == 'pickup'
+          ? 'Your next pickup'
+          : 'Your next delivery',
       onSaved: saved,
       onRefresh: () => _loadDashboard(showLoading: false),
       metrics: supplier
@@ -2034,8 +2234,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               ),
               DashboardMetric(
                 _supplierLowStockCount,
-                'Stock alerts',
-                Icons.inventory_2_outlined,
+                'Low stock',
+                Icons.warning_amber_rounded,
                 inventory,
               ),
             ]
