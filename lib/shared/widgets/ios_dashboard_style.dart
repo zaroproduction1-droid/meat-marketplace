@@ -12,8 +12,8 @@ class IosDashboardPalette {
   Color get border => dark ? const Color(0xFF303135) : const Color(0xFFE6E2DE);
   Color get ink => dark ? const Color(0xFFFAFAFA) : const Color(0xFF121212);
   Color get muted => dark ? const Color(0xFFB2B2B6) : const Color(0xFF626264);
-  Color get accent => dark ? const Color(0xFFD95470) : const Color(0xFF850E25);
-  static const burgundy = Color(0xFF850E25);
+  Color get accent => dark ? const Color(0xFFFF657A) : const Color(0xFFA51C34);
+  static const burgundy = Color(0xFFA51C34);
   ThemeData theme(ThemeData base) => base.copyWith(
     scaffoldBackgroundColor: canvas,
     colorScheme: base.colorScheme.copyWith(

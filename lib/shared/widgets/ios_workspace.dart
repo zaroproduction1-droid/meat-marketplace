@@ -12,7 +12,7 @@ bool useIosWorkspace(BuildContext context) =>
     !kIsWeb && Theme.of(context).platform == TargetPlatform.iOS;
 
 abstract final class IosWorkspaceStyle {
-  static const red = Color(0xFF850E25);
+  static Color get red => CutLinkPalette.actionRed;
   static Color get ink => CutLinkPalette.color(0xFF191919);
   static Color get muted => CutLinkPalette.color(0xFF687078);
   static Color get canvas => CutLinkPalette.color(0xFFF7F7F7);
@@ -59,7 +59,7 @@ abstract final class IosWorkspaceStyle {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: red, width: 1.5),
+        borderSide: BorderSide(color: red, width: 1.5),
       ),
       errorMaxLines: 3,
       helperMaxLines: 3,
@@ -68,7 +68,7 @@ abstract final class IosWorkspaceStyle {
       style: FilledButton.styleFrom(
         minimumSize: const Size(48, 50),
         shape: const StadiumBorder(),
-        backgroundColor: red,
+        backgroundColor: CutLinkPalette.buttonRed,
         foregroundColor: Colors.white,
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
@@ -496,7 +496,7 @@ class IosAccountHub extends StatelessWidget {
                   backgroundColor: CutLinkPalette.color(0xFFF4E5E8),
                   child: Text(
                     name.trim().isEmpty ? 'C' : name.trim()[0].toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 25,
                       color: IosWorkspaceStyle.red,
                     ),

@@ -171,10 +171,10 @@ class InteractiveAnimalBrowser extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.pets_outlined,
                         size: 58,
-                        color: Color(0xFF741C1C),
+                        color: CutLinkPalette.actionRed,
                       ),
                       const SizedBox(height: 14),
                       Text(
@@ -293,13 +293,11 @@ class _AnimalTab extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const _darkRed = Color(0xFF741C1C);
-
   @override
   Widget build(BuildContext context) {
     AppearanceScope.watch(context);
     return Material(
-      color: selected ? _darkRed : Colors.white,
+      color: selected ? CutLinkPalette.buttonRed : CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
@@ -313,7 +311,9 @@ class _AnimalTab extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? _darkRed : CutLinkPalette.color(0xFFD8D8D4),
+              color: selected
+                  ? CutLinkPalette.buttonRed
+                  : CutLinkPalette.color(0xFFD8D8D4),
             ),
           ),
           alignment: Alignment.center,
@@ -396,7 +396,7 @@ class AnimalCatalogueControls extends StatelessWidget {
         final button = FilledButton.icon(
           onPressed: onBrowse,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF741C1C),
+            backgroundColor: CutLinkPalette.buttonRed,
           ),
           icon: const Icon(Icons.menu_book_outlined, size: 20),
           label: const Text('Browse animal catalogue'),

@@ -2664,12 +2664,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
             decoration: BoxDecoration(
               color: selected
-                  ? const Color(0xFF741C1C)
+                  ? CutLinkPalette.buttonRed
                   : CutLinkPalette.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: selected
-                    ? const Color(0xFF741C1C)
+                    ? CutLinkPalette.buttonRed
                     : CutLinkPalette.color(0xFFD9D9D5),
               ),
             ),
@@ -2763,7 +2763,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
-            child: Icon(icon, size: 19, color: const Color(0xFF741C1C)),
+            child: Icon(icon, size: 19, color: CutLinkPalette.actionRed),
           ),
         ),
       ),
@@ -2866,7 +2866,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               showCheckmark: false,
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              selectedColor: const Color(0xFF741C1C),
+              selectedColor: CutLinkPalette.buttonRed,
               backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
               side: BorderSide(color: CutLinkPalette.color(0xFFD7B8B8)),
               label: Text(
@@ -2874,7 +2874,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 style: TextStyle(
                   color: _selectedGradeId == grade['id']?.toString()
                       ? Colors.white
-                      : const Color(0xFF741C1C),
+                      : CutLinkPalette.actionRed,
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
@@ -2912,8 +2912,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Color(0xFF741C1C),
+        style: TextStyle(
+          color: CutLinkPalette.actionRed,
           fontSize: 11,
           fontWeight: FontWeight.w800,
         ),
@@ -2980,15 +2980,15 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.storefront_outlined,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               SizedBox(width: 10),
@@ -3036,7 +3036,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
               child: FilledButton(
                 onPressed: _openCart,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF741C1C),
+                  backgroundColor: CutLinkPalette.buttonRed,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -3070,14 +3070,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                                 color: CutLinkPalette.surface,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: const Color(0xFF741C1C),
+                                  color: CutLinkPalette.actionRed,
                                   width: 1.5,
                                 ),
                               ),
                               child: Text(
                                 _cartItemCount > 99 ? '99+' : '$_cartItemCount',
-                                style: const TextStyle(
-                                  color: Color(0xFF741C1C),
+                                style: TextStyle(
+                                  color: CutLinkPalette.actionRed,
                                   fontSize: 9.5,
                                   height: 1,
                                   fontWeight: FontWeight.w900,
@@ -3206,8 +3206,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     final fallback = Center(
       child: Text(
         name.isEmpty ? 'S' : name.substring(0, 1).toUpperCase(),
-        style: const TextStyle(
-          color: Color(0xFF741C1C),
+        style: TextStyle(
+          color: CutLinkPalette.actionRed,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -3239,8 +3239,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF741C1C),
+            style: TextStyle(
+              color: CutLinkPalette.actionRed,
               fontSize: 12.5,
               fontWeight: FontWeight.w900,
             ),
@@ -3455,10 +3455,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                             requestedQuantity: _cartQuantity(product),
                           ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF741C1C),
+                      backgroundColor: CutLinkPalette.buttonRed,
                     ),
                     icon: adding
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 15,
                             height: 15,
                             child: CircularProgressIndicator(
@@ -3687,7 +3687,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
   Widget _iosProductRow(Map<String, dynamic> product) {
     final adding = _addingProductId == product['id']?.toString();
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
@@ -3793,7 +3793,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(
+                              : Icon(
                                   Icons.add_shopping_cart,
                                   color: IosWorkspaceStyle.red,
                                 ),
@@ -3823,10 +3823,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
@@ -3898,7 +3898,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 _availableOnly ? Icons.inventory_2 : Icons.inventory_2_outlined,
                 size: 16,
                 color: _availableOnly
-                    ? const Color(0xFF741C1C)
+                    ? CutLinkPalette.actionRed
                     : CutLinkPalette.color(0xFF666A70),
               ),
               const SizedBox(width: 6),
@@ -3906,7 +3906,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                 'Available only',
                 style: TextStyle(
                   color: _availableOnly
-                      ? const Color(0xFF741C1C)
+                      ? CutLinkPalette.actionRed
                       : CutLinkPalette.color(0xFF555555),
                   fontSize: 10.5,
                   fontWeight: FontWeight.w900,
@@ -4110,7 +4110,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       Widget? trailing,
     }) {
       return Material(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: onTap,
@@ -4131,7 +4131,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Icon(icon, size: 18, color: const Color(0xFF741C1C)),
+                  child: Icon(icon, size: 18, color: CutLinkPalette.actionRed),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -4164,10 +4164,10 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                   const SizedBox(width: 8),
                   trailing,
                 ] else
-                  const Icon(
+                  Icon(
                     Icons.chevron_right,
                     size: 19,
-                    color: Color(0xFF741C1C),
+                    color: CutLinkPalette.actionRed,
                   ),
               ],
             ),
@@ -4642,8 +4642,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                                 : _stockError != null
                                 ? 'Not loaded'
                                 : '$_stockTotal result${_stockTotal == 1 ? '' : 's'}',
-                            style: const TextStyle(
-                              color: Color(0xFF741C1C),
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontSize: 10.5,
                               fontWeight: FontWeight.w900,
                             ),
@@ -4766,11 +4766,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             child: Row(
               children: [
-                const Icon(
-                  Icons.menu_book,
-                  color: IosWorkspaceStyle.red,
-                  size: 22,
-                ),
+                Icon(Icons.menu_book, color: IosWorkspaceStyle.red, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

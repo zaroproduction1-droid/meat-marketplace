@@ -1045,7 +1045,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                       ? null
                       : () => Navigator.of(dialogContext).pop(true),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF741C1C),
+                    backgroundColor: CutLinkPalette.buttonRed,
                   ),
                   child: const Text('Cancel Order'),
                 ),
@@ -1191,7 +1191,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                 style: TextStyle(
                   color: supplier
                       ? const Color(0xFF315A8C)
-                      : const Color(0xFF741C1C),
+                      : CutLinkPalette.actionRed,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w900,
                 ),
@@ -1271,7 +1271,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   color: CutLinkPalette.color(0xFFF5EAEA),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 17, color: const Color(0xFF741C1C)),
+                child: Icon(icon, size: 17, color: CutLinkPalette.actionRed),
               ),
               const SizedBox(width: 9),
               Expanded(
@@ -1756,7 +1756,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     FilledButton.icon(
                       onPressed: saving ? null : submitIssue,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF741C1C),
+                        backgroundColor: CutLinkPalette.buttonRed,
                       ),
                       icon: saving
                           ? const SizedBox(
@@ -2480,7 +2480,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             FilledButton.icon(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF741C1C),
+                backgroundColor: CutLinkPalette.buttonRed,
               ),
               icon: const Icon(Icons.task_alt),
               label: Text(pickup ? 'Mark Collected' : 'Mark Received'),
@@ -2927,8 +2927,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                     const IosGap(height: 2),
                                     Text(
                                       _supplierName(order),
-                                      style: const TextStyle(
-                                        color: Color(0xFF741C1C),
+                                      style: TextStyle(
+                                        color: CutLinkPalette.actionRed,
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -2974,8 +2974,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                         child: Center(
                           child: Text(
                             '${_countForTab('issues')} open',
-                            style: const TextStyle(
-                              color: Color(0xFF741C1C),
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -3089,11 +3089,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.shopping_bag_outlined,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               SizedBox(width: 10),
@@ -3107,7 +3107,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             OutlinedButton.icon(
               onPressed: _openIssuesPanel,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF741C1C),
+                foregroundColor: CutLinkPalette.actionRed,
                 side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -3206,11 +3206,11 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           controller: _tabController,
                           isScrollable: true,
                           tabAlignment: TabAlignment.start,
-                          labelColor: const Color(0xFF741C1C),
+                          labelColor: CutLinkPalette.actionRed,
                           unselectedLabelColor: CutLinkPalette.color(
                             0xFF666A70,
                           ),
-                          indicatorColor: const Color(0xFF741C1C),
+                          indicatorColor: CutLinkPalette.actionRed,
                           indicatorWeight: 3,
                           labelPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -3286,10 +3286,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               const Text(
@@ -3325,7 +3325,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(tab.icon, size: 68, color: const Color(0xFF741C1C)),
+              Icon(tab.icon, size: 68, color: CutLinkPalette.actionRed),
               const IosGap(height: 16),
               Text(
                 'No ${tab.label.toLowerCase()} orders',
@@ -3449,8 +3449,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           _supplierName(order),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF741C1C),
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,
                           ),
@@ -3550,7 +3550,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     ],
                   ),
                   const SizedBox(width: 10),
-                  const Icon(Icons.chevron_right, color: Color(0xFF741C1C)),
+                  Icon(Icons.chevron_right, color: CutLinkPalette.actionRed),
                 ],
               );
 
@@ -3622,10 +3622,10 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
               padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.inventory_2_outlined,
                     size: 19,
-                    color: Color(0xFF741C1C),
+                    color: CutLinkPalette.actionRed,
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -3817,7 +3817,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                                 Navigator.of(context).pop();
                               },
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF741C1C),
+                          backgroundColor: CutLinkPalette.buttonRed,
                         ),
                         icon: const Icon(Icons.check),
                         label: const Text('OK, Remove Order'),
@@ -3862,7 +3862,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     ? null
                     : () => _markOrderReceived(order),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF741C1C),
+                  backgroundColor: CutLinkPalette.buttonRed,
                 ),
                 icon: const Icon(Icons.task_alt),
                 label: Text(
@@ -3908,7 +3908,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                               ? null
                               : () => _followUpIssue(order, existingIssue)),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF741C1C),
+                      backgroundColor: CutLinkPalette.buttonRed,
                     ),
                     icon: Icon(
                       existingIssue == null
@@ -3963,8 +3963,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                     children: [
                       Text(
                         _supplierName(order),
-                        style: const TextStyle(
-                          color: Color(0xFF741C1C),
+                        style: TextStyle(
+                          color: CutLinkPalette.actionRed,
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
                         ),

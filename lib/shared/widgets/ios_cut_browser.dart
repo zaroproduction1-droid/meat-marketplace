@@ -28,7 +28,7 @@ class IosCutSelectionBar extends StatelessWidget {
         ? ''
         : '${animal[0]}${animal.substring(1).toLowerCase()}';
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'customer_price_display.dart';
 import 'ios_dashboard_style.dart';
+import 'ios_dashboard_sections.dart';
 
 class DashboardActionRow {
   const DashboardActionRow(
@@ -54,7 +55,11 @@ class IosDashboardHome extends StatelessWidget {
     this.onCart,
     this.cartCount = 0,
     this.nextOrderTitle = 'Your next delivery',
+    this.sections,
+    this.shortcuts = const {},
   });
+  final List<IosDashboardSection>? sections;
+  final Map<String, DashboardActionRow> shortcuts;
   final bool supplier;
   final String businessName, greeting, nextOrderTitle;
   final Widget avatar;
@@ -101,64 +106,83 @@ class IosDashboardHome extends StatelessWidget {
                   color: p.ink,
                 ),
               ),
-              if (!supplier) ...[
-                const SizedBox(height: 14),
-                _search(p),
-                const SizedBox(height: 14),
-                _categories(p),
-              ],
-              const SizedBox(height: 14),
-              _metrics(p),
-              if (supplier) ...[
-                _heading(p, 'Needs your attention'),
-                _panel(
-                  p,
-                  attention,
-                  empty: 'You are all caught up.',
-                  attentionOnly: true,
-                ),
-                _heading(p, 'Recent orders', onOrders),
-                _panel(
-                  p,
-                  recent.take(2).toList(),
-                  empty: 'Your new orders will appear here.',
-                  customers: true,
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 46,
-                  child: FilledButton(
-                    onPressed: onWorkOrders ?? onOrders,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: IosDashboardPalette.burgundy,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      minimumSize: const Size(44, 44),
-                      shape: const StadiumBorder(),
-                      textStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    child: const Text('View work orders'),
-                  ),
-                ),
-              ] else ...[
-                _heading(p, nextOrderTitle, onOrders),
-                _panel(
-                  p,
-                  recent.take(1).toList(),
-                  empty: 'Your next order will appear here.',
-                  delivery: true,
-                ),
-                _heading(p, 'Buy again', onSaved),
-                _buyAgain(p),
-              ],
+              if (!supplier) ...[const SizedBox(height: 14), _search(p)],
+              for (final section in IosDashboardSection.normalise(
+                supplier,
+                sections,
+              ))
+                if (section.visible) ..._section(p, section.id),
             ],
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _section(IosDashboardPalette p, String id) {
+    switch (id) {
+      case 'ios_categories':
+        return [const SizedBox(height: 14), _categories(p)];
+      case 'ios_metrics':
+        return [const SizedBox(height: 14), _metrics(p)];
+      case 'ios_attention':
+        return [
+          _heading(p, 'Needs your attention'),
+          _panel(
+            p,
+            attention,
+            empty: 'You are all caught up.',
+            attentionOnly: true,
+          ),
+        ];
+      case 'ios_recent':
+        return [
+          _heading(p, 'Recent orders', onOrders),
+          _panel(
+            p,
+            recent.take(2).toList(),
+            empty: 'Your new orders will appear here.',
+            customers: true,
+          ),
+        ];
+      case 'ios_delivery':
+        return [
+          _heading(p, nextOrderTitle, onOrders),
+          _panel(
+            p,
+            recent.take(1).toList(),
+            empty: 'Your next order will appear here.',
+            delivery: true,
+          ),
+        ];
+      case 'ios_buy_again':
+        return [_heading(p, 'Buy again', onSaved), _buyAgain(p)];
+      case 'ios_work_orders':
+        return [
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 46,
+            child: FilledButton(
+              onPressed: onWorkOrders ?? onOrders,
+              style: FilledButton.styleFrom(
+                backgroundColor: IosDashboardPalette.burgundy,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('View work orders'),
+            ),
+          ),
+        ];
+      default:
+        final shortcut = shortcuts[id];
+        if (shortcut == null) {
+          return [];
+        }
+        return [
+          const SizedBox(height: 14),
+          _panel(p, [shortcut], empty: ''),
+        ];
+    }
   }
 
   Widget _header(IosDashboardPalette p) => SizedBox(

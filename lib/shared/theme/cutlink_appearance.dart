@@ -73,6 +73,12 @@ abstract final class CutLinkPalette {
   }
 
   static Color get surface => color(0xFFFFFFFF);
+
+  /// Brighter red for readable actions, without changing photographs or logos.
+  static Color get actionRed => CutLinkAppearance.instance.isDark
+      ? const Color(0xFFFF657A)
+      : const Color(0xFFA51C34);
+  static Color get buttonRed => const Color(0xFFA51C34);
 }
 
 /// Depend on the preference even on screens using legacy paint constants.

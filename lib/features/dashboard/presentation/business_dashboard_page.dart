@@ -1,4 +1,5 @@
 import '../../../shared/widgets/ios_dashboard_style.dart';
+import '../../../shared/widgets/ios_dashboard_sections.dart';
 import '../../marketplace/presentation/marketplace_product_details_page.dart';
 import '../../../shared/widgets/retained_ios_workspace.dart';
 import '../../../shared/widgets/ios_dashboard_home.dart';
@@ -2188,6 +2189,47 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     }
     return IosDashboardHome(
       supplier: supplier,
+      sections: [
+        for (final item in _dashboardPreferences.where(
+          (item) => item.id.startsWith('ios_'),
+        ))
+          IosDashboardSection(item.id, visible: item.visible),
+      ],
+      shortcuts: {
+        'ios_invoices': DashboardActionRow(
+          'Invoices',
+          'View accounts and invoices',
+          Icons.receipt_long_outlined,
+          () => supplier
+              ? _openPage(
+                  const SupplierUnifiedOrdersPage(
+                    embedded: true,
+                    initialType: SupplierDocumentType.invoices,
+                  ),
+                )
+              : _openPage(const ButcherAccountsPage()),
+        ),
+        'ios_analytics': DashboardActionRow(
+          'Analytics',
+          'View business performance',
+          Icons.insights_outlined,
+          _openAnalytics,
+        ),
+        'ios_accounts': DashboardActionRow(
+          'Accounts',
+          'Review your business accounts',
+          Icons.account_balance_wallet_outlined,
+          () => supplier
+              ? _openPage(const SupplierCustomerRequestsPage())
+              : _openPage(const ButcherAccountsPage()),
+        ),
+        'ios_support': DashboardActionRow(
+          'Support',
+          'Contact CutLink',
+          Icons.support_agent_outlined,
+          _openSupport,
+        ),
+      },
       businessName: _businessName ?? 'My business',
       greeting:
           '${_greeting()}${_iosAccountFirstName.isEmpty ? '' : ', $_iosAccountFirstName'}',
@@ -2462,6 +2504,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ];
 
     return [
+      for (final section in IosDashboardSection.defaults(type == 'supplier'))
+        _DashboardTilePreference(
+          id: section.id,
+          visible: section.visible,
+          wide: true,
+        ),
       for (final id in ids)
         _DashboardTilePreference(
           id: id,
@@ -2520,6 +2568,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   String _dashboardTileTitle(String id) {
+    if (id.startsWith('ios_')) {
+      return IosDashboardSection.title(id);
+    }
     switch (id) {
       case 'supplier_attention':
       case 'butcher_attention':
@@ -2726,7 +2777,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Widget _buildCustomDashboardGrid() {
     final visible = _dashboardPreferences
-        .where((item) => item.visible)
+        .where((item) => item.visible && !item.id.startsWith('ios_'))
         .toList();
     if (visible.isEmpty) {
       return Container(
@@ -2813,11 +2864,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     );
   }
 
-  Future<void> _saveDashboardPreferences() async {
+  Future<bool> _saveDashboardPreferences() async {
     final user = Supabase.instance.client.auth.currentUser;
     final businessId = _businessId;
     if (user == null || businessId == null) {
-      return;
+      return false;
     }
 
     try {
@@ -2827,22 +2878,29 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         'layout': [for (final item in _dashboardPreferences) item.toJson()],
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'user_id,business_id');
-    } on PostgrestException catch (error) {
+      return true;
+    } catch (error) {
       if (!mounted) {
-        return;
+        return false;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Dashboard layout could not be saved: ${error.message}',
+            'Dashboard layout could not be saved: ${error is PostgrestException ? error.message : 'Please check your connection and retry.'}',
           ),
         ),
       );
+      return false;
     }
   }
 
   Future<void> _showDashboardCustomiser() async {
-    final local = [for (final item in _dashboardPreferences) item.copy()];
+    final ios = useIosWorkspace(context);
+    bool belongs(_DashboardTilePreference item) =>
+        item.id.startsWith('ios_') == ios;
+    final local = [
+      for (final item in _dashboardPreferences.where(belongs)) item.copy(),
+    ];
     final result = await showDialog<List<_DashboardTilePreference>>(
       context: context,
       builder: (dialogContext) {
@@ -2865,7 +2923,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Drag cards to change their order. Hide cards you do not need, or make important cards full width.',
+                        ios
+                            ? 'Drag sections to change their order. Switch sections or shortcuts on or off. Your laptop layout stays separate.'
+                            : 'Drag cards to change their order. Hide cards you do not need, or make important cards full width.',
                         style: TextStyle(
                           color: CutLinkPalette.color(0xFF666A70),
                           height: 1.4,
@@ -2918,56 +2978,59 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                       ),
                                     ),
                                   ),
-                                  PopupMenuButton<bool>(
-                                    tooltip: 'Card size',
-                                    initialValue: item.wide,
-                                    onSelected: (wide) {
-                                      setDialogState(() => item.wide = wide);
-                                    },
-                                    itemBuilder: (context) => const [
-                                      PopupMenuItem(
-                                        value: false,
-                                        child: Text('Normal width'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: true,
-                                        child: Text('Full width'),
-                                      ),
-                                    ],
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 7,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: CutLinkPalette.color(
-                                            0xFFD9DCE0,
-                                          ),
+                                  if (!ios)
+                                    PopupMenuButton<bool>(
+                                      tooltip: 'Card size',
+                                      initialValue: item.wide,
+                                      onSelected: (wide) {
+                                        setDialogState(() => item.wide = wide);
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem(
+                                          value: false,
+                                          child: Text('Normal width'),
                                         ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            item.wide
-                                                ? Icons.aspect_ratio_rounded
-                                                : Icons.crop_square_rounded,
-                                            size: 15,
+                                        PopupMenuItem(
+                                          value: true,
+                                          child: Text('Full width'),
+                                        ),
+                                      ],
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            item.wide ? 'Wide' : 'Normal',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
+                                          border: Border.all(
+                                            color: CutLinkPalette.color(
+                                              0xFFD9DCE0,
                                             ),
                                           ),
-                                        ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              item.wide
+                                                  ? Icons.aspect_ratio_rounded
+                                                  : Icons.crop_square_rounded,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              item.wide ? 'Wide' : 'Normal',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
                                   const SizedBox(width: 8),
                                   Switch.adaptive(
                                     value: item.visible,
@@ -2996,7 +3059,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                       setDialogState(() {
                         local
                           ..clear()
-                          ..addAll([for (final item in defaults) item.copy()]);
+                          ..addAll([
+                            for (final item in defaults.where(belongs))
+                              item.copy(),
+                          ]);
                       });
                     },
                     child: const Text('Reset Default'),
@@ -3021,10 +3087,27 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (result == null || !mounted) {
       return;
     }
+    final previous = [for (final item in _dashboardPreferences) item.copy()];
     setState(() {
-      _dashboardPreferences = [for (final item in result) item.copy()];
+      _dashboardPreferences = [
+        for (final item in _dashboardPreferences.where(
+          (item) => !belongs(item),
+        ))
+          item.copy(),
+        for (final item in result) item.copy(),
+      ];
     });
-    await _saveDashboardPreferences();
+    final saved = await _saveDashboardPreferences();
+    if (!mounted) {
+      return;
+    }
+    if (!saved) {
+      setState(() => _dashboardPreferences = previous);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Dashboard layout saved')));
+    }
   }
 
   Widget _summaryGrid() {
