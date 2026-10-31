@@ -251,6 +251,7 @@ class _ButcherFavouriteProductsPanelState
             builder: (context, constraints) {
               final size = constraints.maxWidth;
               return CatalogueProductImage(
+                allowGenericPreview: true,
                 product: product,
                 thumbnail: true,
                 imageHeight: size - 2,

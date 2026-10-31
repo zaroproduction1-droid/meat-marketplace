@@ -627,7 +627,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
       final available = product['active'] == true;
       return Card(
         elevation: 0,
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         margin: const EdgeInsets.only(bottom: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -640,6 +640,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
             children: [
               if (isProduct) ...[
                 CatalogueProductImage(
+                  allowGenericPreview: true,
                   product: product,
                   thumbnail: true,
                   imageWidth: 92,

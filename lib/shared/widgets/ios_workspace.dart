@@ -1,4 +1,5 @@
 import 'ios_dashboard_style.dart';
+import '../theme/workspace_message_theme.dart';
 import '../theme/cutlink_appearance.dart';
 
 import 'package:flutter/foundation.dart';
@@ -99,13 +100,7 @@ abstract final class IosWorkspaceStyle {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
     ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: ink,
-      contentTextStyle: TextStyle(color: Colors.white),
-      showCloseIcon: true,
-      closeIconColor: Colors.white,
-    ),
+    snackBarTheme: workspaceMessageTheme(base.brightness),
   );
 }
 

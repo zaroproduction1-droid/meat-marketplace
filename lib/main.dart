@@ -1,3 +1,4 @@
+import 'shared/theme/workspace_message_theme.dart';
 import 'shared/theme/cutlink_appearance.dart';
 
 import 'dart:convert';
@@ -77,6 +78,7 @@ class CutLinkApp extends StatelessWidget {
           useMaterial3: true,
           brightness: Brightness.dark,
           fontFamily: 'Arial',
+          snackBarTheme: workspaceMessageTheme(Brightness.dark),
           scaffoldBackgroundColor: const Color(0xFF111113),
           colorScheme:
               ColorScheme.fromSeed(
@@ -118,23 +120,7 @@ class CutLinkApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
           fontFamily: 'Arial',
-          snackBarTheme: SnackBarThemeData(
-            behavior: SnackBarBehavior.floating,
-            width: 440,
-            backgroundColor: const Color(0xFF111C27),
-            elevation: 10,
-            showCloseIcon: true,
-            closeIconColor: Colors.white70,
-            actionTextColor: const Color(0xFFFFD7D7),
-            contentTextStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+          snackBarTheme: workspaceMessageTheme(Brightness.light),
         ),
         home: const LandingPage(),
       ),

@@ -3631,6 +3631,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         CatalogueProductImage(
+                          allowGenericPreview: true,
                           product: product,
                           imageHeight: 230,
                         ),
@@ -3733,6 +3734,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CatalogueProductImage(
+                  allowGenericPreview: true,
                   product: product,
                   thumbnail: true,
                   imageWidth: narrow ? 96 : 136,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'catalogue_product_image.dart';
 
 import 'customer_price_display.dart';
 import 'ios_dashboard_style.dart';
@@ -681,18 +682,6 @@ class _BuyAgainTileState extends State<_BuyAgainTile> {
     final row = widget.row;
     final p = widget.palette;
     final large = MediaQuery.textScalerOf(context).scale(1) > 1.3;
-    final photo = row.product?['photo_path']?.toString().trim() ?? '';
-    final imageUrl = photo.isEmpty
-        ? null
-        : Supabase.instance.client.storage
-              .from('product-photos')
-              .getPublicUrl(photo);
-    Widget placeholder() => ColoredBox(
-      color: p.search,
-      child: Center(
-        child: Icon(Icons.image_outlined, size: 23, color: p.muted),
-      ),
-    );
     final price = row.product != null
         ? CustomerPriceDisplay(
             product: row.product!,
@@ -729,16 +718,14 @@ class _BuyAgainTileState extends State<_BuyAgainTile> {
                 child: SizedBox(
                   width: 54,
                   height: 54,
-                  child: imageUrl == null
-                      ? placeholder()
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          cacheWidth: 216,
-                          filterQuality: FilterQuality.high,
-                          semanticLabel: '${row.title}, supplier photo',
-                          errorBuilder: (_, _, _) => placeholder(),
-                        ),
+                  child: CatalogueProductImage(
+                    product: row.product ?? const {},
+                    thumbnail: true,
+                    imageWidth: 54,
+                    imageHeight: 54,
+                    fit: BoxFit.cover,
+                    allowGenericPreview: true,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -1439,7 +1439,11 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   width: 72,
                   child: Column(
                     children: [
-                      CatalogueProductImage(product: product, thumbnail: true),
+                      CatalogueProductImage(
+                        allowGenericPreview: true,
+                        product: product,
+                        thumbnail: true,
+                      ),
                       if (gradeCode != 'NA' &&
                           gradeCode != 'N/A' &&
                           gradeCode != 'LAMB')

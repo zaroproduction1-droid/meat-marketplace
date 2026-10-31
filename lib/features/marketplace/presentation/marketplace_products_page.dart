@@ -3282,6 +3282,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CatalogueProductImage(
+                allowGenericPreview: true,
                 product: product,
                 thumbnail: true,
                 imageWidth: narrow ? 96 : 136,
@@ -3707,6 +3708,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: CatalogueProductImage(
+                        allowGenericPreview: true,
                         product: product,
                         thumbnail: true,
                         imageWidth: 112,

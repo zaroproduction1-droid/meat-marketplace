@@ -1958,7 +1958,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     params: {'p_product_ids': ids.toList()},
                   )
                   .select(
-                    'id, photo_path, active, product_prices(*,price_lists(*))',
+                    'id, photo_path, active, availability_status, meat_animals(code), meat_sections(id,code,name), product_prices(*,price_lists(*))',
                   )
                   .timeout(const Duration(seconds: 12)),
             );

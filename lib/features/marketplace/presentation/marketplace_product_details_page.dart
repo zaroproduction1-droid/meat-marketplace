@@ -1184,7 +1184,10 @@ class _MarketplaceProductDetailsPageState
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CatalogueProductImage(product: widget.product),
+        CatalogueProductImage(
+          allowGenericPreview: true,
+          product: widget.product,
+        ),
         ProductContentReportButton(
           product: widget.product,
           businessId: _favourites.businessId,
