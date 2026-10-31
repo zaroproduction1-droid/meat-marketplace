@@ -1,10 +1,56 @@
 import 'dart:async';
 
+import 'package:cutlink/shared/widgets/launch_page_ready.dart';
+
 import 'package:cutlink/shared/widgets/cutlink_launch_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  for (final reduced in [false, true]) {
+    testWidgets(
+      'Launch cover waits for the usable destination, Reduce Motion $reduced',
+      (tester) async {
+        VoidCallback? pageReady;
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+              child: child!,
+            ),
+            home: CutLinkLaunchGate(
+              initialise: () async {},
+              waitForFirstPage: true,
+              child: Builder(
+                builder: (context) {
+                  pageReady = () => LaunchPageReady.signal(context);
+                  return const Text('Destination mounted');
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 3));
+        expect(find.text('Destination mounted'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('cutlink-launch-cover')),
+          findsOneWidget,
+        );
+        pageReady!();
+        await tester.pump();
+        await tester.pump();
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('cutlink-launch-cover')),
+          findsNothing,
+        );
+        expect(find.text('Destination mounted'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'Startup runs during the animation and the ready app mounts once',
     (tester) async {

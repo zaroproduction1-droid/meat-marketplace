@@ -1,3 +1,4 @@
+import '../../../shared/widgets/launch_page_ready.dart';
 import '../../../shared/widgets/ios_dashboard_style.dart';
 import '../../../shared/widgets/ios_dashboard_sections.dart';
 import '../../marketplace/presentation/marketplace_product_details_page.dart';
@@ -75,6 +76,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   bool _restoredLocation = false;
   bool _isLoading = true;
+  bool _launchContentReady = false;
   bool _isAdmin = false;
   bool _sidebarCollapsed = false;
   final _mobileNavigationScroll = ScrollController();
@@ -575,8 +577,24 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       });
 
       if (businessType == 'butcher' && useIosWorkspace(context)) {
-        unawaited(_loadIosBuyAgainProducts());
+        await _loadIosBuyAgainProducts();
       }
+      if (mounted && useIosWorkspace(context) && !_launchContentReady) {
+        for (final name in ['beef', 'lamb', 'chicken']) {
+          if (!mounted) {
+            return;
+          }
+          await precacheImage(
+            AssetImage('assets/images/cutlink-category-$name.png'),
+            context,
+            onError: (_, _) {},
+          );
+        }
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() => _launchContentReady = true);
       _ensureRealtimeSubscription(businessId, businessType ?? '');
       _loadNotificationCount();
       if (!_restoredLocation) {
@@ -1498,6 +1516,13 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   @override
   Widget build(BuildContext context) {
     AppearanceScope.watch(context);
+    if (!_isLoading &&
+        (_launchContentReady ||
+            (_isAdmin && _businessId == null) ||
+            _errorMessage != null ||
+            _restrictedAccess != null)) {
+      LaunchPageReady.signal(context);
+    }
     if (_restrictedAccess != null) {
       return RestrictedAccountPage(access: _restrictedAccess!);
     }

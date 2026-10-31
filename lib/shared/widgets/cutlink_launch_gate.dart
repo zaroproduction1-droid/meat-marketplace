@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'launch_page_ready.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
@@ -11,18 +13,22 @@ class CutLinkLaunchGate extends StatefulWidget {
     super.key,
     required this.initialise,
     required this.child,
+    this.waitForFirstPage = false,
   });
   final Future<void> Function() initialise;
   final Widget child;
+  final bool waitForFirstPage;
 
   @override
   State<CutLinkLaunchGate> createState() => _CutLinkLaunchGateState();
 }
 
 class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _animation;
+  late final AnimationController _ambient;
   bool _ready = false;
+  bool _pageReady = false;
   bool _failed = false;
   bool _running = false;
   bool _covered = true;
@@ -33,12 +39,19 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
   @override
   void initState() {
     super.initState();
+    _ambient = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    );
     _animation =
         AnimationController(
           vsync: this,
-          duration: const Duration(milliseconds: 850),
+          duration: const Duration(milliseconds: 1100),
         )..addStatusListener((status) {
           if (status == AnimationStatus.completed) {
+            if (!_reduceMotion && !_failed) {
+              _ambient.repeat(reverse: true);
+            }
             _reveal();
           }
         });
@@ -53,6 +66,7 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
       _motionConfigured = true;
       _reduceMotion = reduceMotion;
       if (reduceMotion) {
+        _ambient.stop();
         _animation.value = 1;
       } else if (!_animation.isCompleted) {
         _animation.forward();
@@ -77,6 +91,7 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
       _reveal();
     } catch (_) {
       if (mounted) {
+        _ambient.stop();
         setState(() => _failed = true);
       }
     } finally {
@@ -85,13 +100,18 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
   }
 
   void _reveal() {
-    if (!mounted || !_ready || !_animation.isCompleted || _leaving) {
+    if (!mounted ||
+        !_ready ||
+        (widget.waitForFirstPage && !_pageReady) ||
+        !_animation.isCompleted ||
+        _leaving) {
       return;
     }
     // Paint the ready app behind the cover first, preserving its state while
     // the cover fades; no second startup, route replacement or duplicate login.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_leaving) {
+        _ambient.stop();
         setState(() {
           _leaving = true;
           if (_reduceMotion) {
@@ -104,6 +124,7 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
 
   @override
   void dispose() {
+    _ambient.dispose();
     _animation.dispose();
     super.dispose();
   }
@@ -117,7 +138,19 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
         if (_ready)
           ExcludeSemantics(
             excluding: _covered,
-            child: IgnorePointer(ignoring: _covered, child: widget.child),
+            child: IgnorePointer(
+              ignoring: _covered,
+              child: LaunchPageReady(
+                onReady: () {
+                  if (!mounted || _pageReady) {
+                    return;
+                  }
+                  setState(() => _pageReady = true);
+                  _reveal();
+                },
+                child: widget.child,
+              ),
+            ),
           ),
         if (_covered)
           Positioned.fill(
@@ -142,7 +175,7 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
                     color: const Color(0xFF171719),
                     child: SafeArea(
                       child: AnimatedBuilder(
-                        animation: _animation,
+                        animation: Listenable.merge([_animation, _ambient]),
                         builder: (context, _) {
                           final t = Curves.easeOutCubic.transform(
                             _animation.value,
@@ -162,23 +195,30 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
                                 image: true,
                                 child: ExcludeSemantics(
                                   child: SizedBox(
-                                    width: 300,
-                                    height: 115,
+                                    width: 340,
+                                    height: 150,
                                     child: Stack(
                                       clipBehavior: Clip.none,
                                       children: [
                                         Positioned(
                                           left: 0,
                                           top: 0,
-                                          width: 110,
-                                          height: 110,
+                                          width: 145,
+                                          height: 145,
                                           child: Transform.translate(
                                             offset: Offset(
-                                              95 * (1 - word),
+                                              97.5 * (1 - word),
                                               8 * (1 - t),
                                             ),
                                             child: Transform.scale(
-                                              scale: .88 + .12 * t,
+                                              scale:
+                                                  (.88 + .12 * t) *
+                                                  (_animation.isCompleted &&
+                                                          !_reduceMotion
+                                                      ? .985 +
+                                                            .015 *
+                                                                _ambient.value
+                                                      : 1),
                                               child: Opacity(
                                                 opacity: t,
                                                 child: ShaderMask(
@@ -208,9 +248,9 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
                                           ),
                                         ),
                                         Positioned(
-                                          left: 110,
+                                          left: 138,
                                           right: 0,
-                                          top: 29,
+                                          top: 43,
                                           child: Opacity(
                                             opacity: word,
                                             child: Transform.translate(
@@ -235,9 +275,9 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
                                           ),
                                         ),
                                         Positioned(
-                                          left: 114,
+                                          left: 140,
                                           right: 30,
-                                          bottom: 6,
+                                          bottom: 20,
                                           child: Opacity(
                                             opacity: word,
                                             child: Align(
@@ -279,7 +319,9 @@ class _CutLinkLaunchGateState extends State<CutLinkLaunchGate>
                                   ),
                                   child: const Text('Try again'),
                                 ),
-                              ] else if (_animation.isCompleted && !_ready)
+                              ] else if (_animation.isCompleted &&
+                                  (!_ready ||
+                                      (widget.waitForFirstPage && !_pageReady)))
                                 Semantics(
                                   label: 'Finishing startup',
                                   liveRegion: true,

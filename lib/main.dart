@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'shared/widgets/cutlink_launch_gate.dart';
+import 'shared/widgets/launch_page_ready.dart';
 import 'shared/theme/workspace_message_theme.dart';
 import 'shared/theme/cutlink_appearance.dart';
 
@@ -24,6 +25,7 @@ Future<void> main() async {
     runApp(
       CutLinkLaunchGate(
         initialise: _initialiseCutLink,
+        waitForFirstPage: true,
         child: const CutLinkApp(),
       ),
     );
@@ -174,6 +176,9 @@ class _LandingPageState extends State<LandingPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (Supabase.instance.client.auth.currentSession == null) {
+      LaunchPageReady.signal(context);
+    }
     if (useIosWorkspace(context)) {
       return IosWelcomePage(
         onSignIn: () => Navigator.of(

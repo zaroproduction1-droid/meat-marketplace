@@ -1,3 +1,4 @@
+import '../../../shared/widgets/launch_page_ready.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/public_auth_frame.dart';
 import '../../../shared/widgets/ios_workspace.dart';
@@ -192,6 +193,7 @@ class _SignInPageState extends State<SignInPage> {
       return;
     }
     if (access['pending'] == true) {
+      LaunchPageReady.signal(context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const PendingVerificationPage()),
         (route) => route.isFirst,
@@ -200,6 +202,7 @@ class _SignInPageState extends State<SignInPage> {
     }
     if (access['restrictions'] is List &&
         (access['restrictions'] as List).isNotEmpty) {
+      LaunchPageReady.signal(context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => RestrictedAccountPage(access: access),
@@ -225,6 +228,7 @@ class _SignInPageState extends State<SignInPage> {
         throw Exception('The business type could not be identified.');
       }
 
+      LaunchPageReady.signal(context);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) =>
@@ -242,6 +246,9 @@ class _SignInPageState extends State<SignInPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLoading) {
+      LaunchPageReady.signal(context);
+    }
     const darkRed = Color(0xFF933744);
 
     if (widget.restoreSession && _isLoading) {
