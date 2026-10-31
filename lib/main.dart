@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+import 'shared/widgets/cutlink_launch_gate.dart';
 import 'shared/theme/workspace_message_theme.dart';
 import 'shared/theme/cutlink_appearance.dart';
 
@@ -17,6 +20,20 @@ import 'features/authentication/presentation/registration_type_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    runApp(
+      CutLinkLaunchGate(
+        initialise: _initialiseCutLink,
+        child: const CutLinkApp(),
+      ),
+    );
+  } else {
+    await _initialiseCutLink();
+    runApp(const CutLinkApp());
+  }
+}
+
+Future<void> _initialiseCutLink() async {
   await dotenv.load(fileName: '.env');
 
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
@@ -56,13 +73,11 @@ Future<void> main() async {
     throw StateError('SUPABASE_URL must be an HTTPS project endpoint.');
   }
 
+  await CutLinkAppearance.instance.load();
   await Supabase.initialize(
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
-
-  await CutLinkAppearance.instance.load();
-  runApp(const CutLinkApp());
 }
 
 class CutLinkApp extends StatelessWidget {
