@@ -1,3 +1,4 @@
+import 'package:cutlink/shared/widgets/sharp_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cutlink/features/landing/presentation/cutlink_landing_content.dart';
@@ -21,15 +22,26 @@ void main() {
           ),
         ),
       );
-      expect(find.text('CutLink'), findsWidgets);
+      await tester.pumpAndSettle();
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is SharpLogo &&
+              widget.semanticLabel == 'CutLink' &&
+              widget.image is AssetImage,
+        ),
+        findsWidgets,
+      );
       expect(tester.takeException(), isNull);
       final supplier = find.text('Join as a supplier').first;
-      await tester.ensureVisible(supplier);
-      await tester.tap(supplier);
+      await Scrollable.ensureVisible(tester.element(supplier), alignment: .35);
+      await tester.pumpAndSettle();
+      await tester.tap(supplier.hitTestable());
       expect(selected, BusinessType.supplier);
       final butcher = find.text('Join as a butcher').first;
-      await tester.ensureVisible(butcher);
-      await tester.tap(butcher);
+      await Scrollable.ensureVisible(tester.element(butcher), alignment: .35);
+      await tester.pumpAndSettle();
+      await tester.tap(butcher.hitTestable());
       expect(selected, BusinessType.butcher);
       expect(tester.takeException(), isNull);
     });

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:cutlink/features/authentication/presentation/personal_account_settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,7 +41,7 @@ void main() {
         'phone': '',
       });
       expect(
-        find.text('Your account details have been saved.'),
+        find.text('Your contact details have been saved.'),
         findsOneWidget,
       );
     },
@@ -93,6 +94,6 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(save);
     await tester.pumpAndSettle();
-    expect(find.text('Your account details have been saved.'), findsOneWidget);
+    expect(find.text('Your contact details have been saved.'), findsOneWidget);
   });
 }

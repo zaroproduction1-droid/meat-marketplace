@@ -604,12 +604,12 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.storefront_outlined,
                   size: 19,
-                  color: Color(0xFF741C1C),
+                  color: CutLinkPalette.actionRed,
                 ),
                 SizedBox(width: 8),
                 Text(
@@ -1058,9 +1058,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     }
 
     final status = issue['status']?.toString();
-    final supplierHasReplied = _issueMessages(
-      issue,
-    ).any((message) => message['sender_role']?.toString() == 'supplier');
+    final supplierHasReplied = _issueMessages(issue)
+        .any((message) => message['sender_role']?.toString() == 'supplier');
 
     if (status == 'requested' && !supplierHasReplied) {
       addSystem('Waiting for supplier response.', reportedAt);
@@ -1303,9 +1302,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (_) {
       if (mounted) {
@@ -1514,9 +1512,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   await _loadOrders();
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
+                    ScaffoldMessenger.of(dialogContext)
+                        .showSnackBar(SnackBar(content: Text(error.message)));
 
                     setDialogState(() {
                       saving = false;
@@ -1604,7 +1601,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                             Text(
                               'Final amount will be calculated automatically as actual kg × locked rate.',
                               style: TextStyle(
-                                color: Colors.grey.shade700,
+                                color: CutLinkPalette.color(0xFF616161),
                                 height: 1.4,
                               ),
                             ),
@@ -1709,9 +1706,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1843,9 +1839,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1922,9 +1917,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2046,7 +2040,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 return Material(
                   color: selected
                       ? CutLinkPalette.color(0xFFF5EAEA)
-                      : Colors.white,
+                      : CutLinkPalette.surface,
                   borderRadius: BorderRadius.circular(9),
                   child: InkWell(
                     onTap: () =>
@@ -2110,8 +2104,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                           const SizedBox(width: 6),
                           Text(
                             status.replaceAll('_', ' '),
-                            style: const TextStyle(
-                              color: Color(0xFF741C1C),
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
                             ),
@@ -2187,8 +2181,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                     const IosGap(height: 2),
                                     Text(
                                       'Order ${cutLinkOrderReference(order['order_number'])} • ${_customerName(order)}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF741C1C),
+                                      style: TextStyle(
+                                        color: CutLinkPalette.actionRed,
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -2289,7 +2283,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   context,
                   AppBar(
                     backgroundColor: CutLinkPalette.surface,
-                    surfaceTintColor: Colors.white,
+                    surfaceTintColor: Colors.transparent,
                     title: const Text(
                       'Marketplace Issues',
                       style: TextStyle(fontWeight: FontWeight.w800),
@@ -2308,8 +2302,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         child: Center(
                           child: Text(
                             '${entries.length} ${showClosed ? 'closed' : 'open'}',
-                            style: const TextStyle(
-                              color: Color(0xFF741C1C),
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -2540,9 +2534,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                 tabAlignment: TabAlignment.start,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                labelColor: const Color(0xFF741C1C),
+                labelColor: CutLinkPalette.actionRed,
                 unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
-                indicatorColor: const Color(0xFF741C1C),
+                indicatorColor: CutLinkPalette.actionRed,
                 indicatorWeight: 3,
                 tabs: [for (final tab in _tabs) _buildTab(tab)],
               ),
@@ -2568,9 +2562,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
               color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_outlined,
-              color: Color(0xFF741C1C),
+              color: CutLinkPalette.actionRed,
               size: 19,
             ),
           ),
@@ -2600,7 +2594,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           OutlinedButton.icon(
             onPressed: _openIssuesPanel,
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF741C1C),
+              foregroundColor: CutLinkPalette.actionRed,
               side: BorderSide(color: CutLinkPalette.color(0xFFDDB7BC)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -2734,10 +2728,10 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               const Text(
@@ -2783,7 +2777,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(tab.icon, size: 70, color: const Color(0xFF741C1C)),
+                      Icon(tab.icon, size: 70, color: CutLinkPalette.actionRed),
                       const IosGap(height: 18),
                       Text(
                         _emptyTitle(tab.key),
@@ -2979,7 +2973,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
         : _money(invoiceTotal);
 
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -3042,8 +3036,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                                 _customerName(order),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF741C1C),
+                                style: TextStyle(
+                                  color: CutLinkPalette.actionRed,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -3174,7 +3168,7 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
 
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () => _openWorkOrder(order),
@@ -3201,9 +3195,9 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                     color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.assignment_outlined,
-                    color: Color(0xFF741C1C),
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
                 const SizedBox(width: 13),
@@ -3233,8 +3227,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                         _customerName(order),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF741C1C),
+                        style: TextStyle(
+                          color: CutLinkPalette.actionRed,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -3370,8 +3364,8 @@ class _SupplierOrdersPageState extends State<SupplierOrdersPage>
                   const IosGap(height: 5),
                   Text(
                     _customerName(order),
-                    style: const TextStyle(
-                      color: Color(0xFF741C1C),
+                    style: TextStyle(
+                      color: CutLinkPalette.actionRed,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

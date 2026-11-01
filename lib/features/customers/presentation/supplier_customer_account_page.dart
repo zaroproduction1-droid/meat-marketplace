@@ -173,9 +173,10 @@ class _SupplierCustomerAccountPageState
           .order('payment_date', ascending: false)
           .order('created_at', ascending: false);
 
-      final paymentIds = List<Map<String, dynamic>>.from(
-        paymentsResponse,
-      ).map((e) => e['id']?.toString()).whereType<String>().toList();
+      final paymentIds = List<Map<String, dynamic>>.from(paymentsResponse)
+          .map((e) => e['id']?.toString())
+          .whereType<String>()
+          .toList();
 
       List<Map<String, dynamic>> allocations = [];
       if (paymentIds.isNotEmpty) {
@@ -232,9 +233,10 @@ class _SupplierCustomerAccountPageState
           .order('credit_date', ascending: false)
           .order('created_at', ascending: false);
 
-      final creditIds = List<Map<String, dynamic>>.from(
-        creditsResponse,
-      ).map((e) => e['id']?.toString()).whereType<String>().toList();
+      final creditIds = List<Map<String, dynamic>>.from(creditsResponse)
+          .map((e) => e['id']?.toString())
+          .whereType<String>()
+          .toList();
 
       List<Map<String, dynamic>> creditAllocations = [];
       if (creditIds.isNotEmpty) {
@@ -727,9 +729,9 @@ class _SupplierCustomerAccountPageState
                           color: CutLinkPalette.color(0xFFF4E5E5),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.account_balance_wallet_outlined,
-                          color: _darkRed,
+                          color: CutLinkPalette.actionRed,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -823,7 +825,7 @@ class _SupplierCustomerAccountPageState
                         const SizedBox(width: 8),
                         FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
+                            backgroundColor: CutLinkPalette.buttonRed,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 18,
                               vertical: 14,
@@ -881,15 +883,13 @@ class _SupplierCustomerAccountPageState
       await _loadPage();
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Payment allocated.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Payment allocated.')));
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -956,9 +956,9 @@ class _SupplierCustomerAccountPageState
                               color: CutLinkPalette.color(0xFFF4E5E5),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.payments_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1145,7 +1145,7 @@ class _SupplierCustomerAccountPageState
                             const SizedBox(width: 8),
                             FilledButton.icon(
                               style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
+                                backgroundColor: CutLinkPalette.buttonRed,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 18,
                                   vertical: 14,
@@ -1232,9 +1232,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1314,8 +1313,8 @@ class _SupplierCustomerAccountPageState
                               ),
                               Text(
                                 'Available: ${_money(available)}',
-                                style: const TextStyle(
-                                  color: _darkRed,
+                                style: TextStyle(
+                                  color: CutLinkPalette.actionRed,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -1458,7 +1457,7 @@ class _SupplierCustomerAccountPageState
                                     style: TextStyle(
                                       color: invalid
                                           ? const Color(0xFFB3261E)
-                                          : _darkRed,
+                                          : CutLinkPalette.actionRed,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -1481,7 +1480,9 @@ class _SupplierCustomerAccountPageState
                       child: const Text('Cancel'),
                     ),
                     FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       onPressed: () {
                         final result = <Map<String, dynamic>>[];
 
@@ -1551,9 +1552,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       for (final controller in controllers.values) {
@@ -1652,9 +1652,9 @@ class _SupplierCustomerAccountPageState
                   Text(
                     'Total allocation: ${_money(total)}',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                   ),
                 ],
@@ -1666,7 +1666,9 @@ class _SupplierCustomerAccountPageState
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 child: const Text('Confirm Allocation'),
               ),
@@ -1693,9 +1695,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1830,7 +1831,9 @@ class _SupplierCustomerAccountPageState
                     child: const Text('Cancel'),
                   ),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     onPressed: () {
                       final amount = double.tryParse(
                         amountController.text.trim(),
@@ -1893,9 +1896,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2196,9 +2198,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       for (final controller in controllers.values) {
@@ -2277,15 +2278,13 @@ class _SupplierCustomerAccountPageState
       await _loadPage();
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Payment reversed.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Payment reversed.')));
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2367,9 +2366,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2620,9 +2618,8 @@ class _SupplierCustomerAccountPageState
               .select('amount')
               .eq('payment_id', paymentId)
               .eq('status', 'active');
-          final allocated = List<Map<String, dynamic>>.from(
-            allocationRows,
-          ).fold<double>(0, (sum, row) => sum + _asDouble(row['amount']));
+          final allocated = List<Map<String, dynamic>>.from(allocationRows)
+              .fold<double>(0, (sum, row) => sum + _asDouble(row['amount']));
           confirmedUnallocated = (paymentAmount - allocated)
               .clamp(0, double.infinity)
               .toDouble();
@@ -2647,9 +2644,8 @@ class _SupplierCustomerAccountPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2918,7 +2914,7 @@ class _SupplierCustomerAccountPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 18, color: valueColor ?? _darkRed),
+            Icon(icon, size: 18, color: valueColor ?? CutLinkPalette.actionRed),
             const IosGap(height: 8),
           ],
           Text(
@@ -2977,7 +2973,11 @@ class _SupplierCustomerAccountPageState
         mode: PhoneRowMode.wrap,
         desktop: Row(
           children: [
-            const Icon(Icons.touch_app_outlined, size: 18, color: _darkRed),
+            Icon(
+              Icons.touch_app_outlined,
+              size: 18,
+              color: CutLinkPalette.actionRed,
+            ),
             const SizedBox(width: 9),
             Expanded(
               child: Text(
@@ -3114,11 +3114,11 @@ class _SupplierCustomerAccountPageState
                           onTap: () => _openInvoice(invoice),
                           child: Text(
                             invoice['invoice_number']?.toString() ?? 'Invoice',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w900,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                               decoration: TextDecoration.underline,
-                              decorationColor: _darkRed,
+                              decorationColor: CutLinkPalette.actionRed,
                             ),
                           ),
                         ),
@@ -3380,7 +3380,7 @@ class _SupplierCustomerAccountPageState
                     },
             ),
             const SizedBox(width: 2),
-            const Icon(Icons.payments_outlined, color: _darkRed),
+            Icon(Icons.payments_outlined, color: CutLinkPalette.actionRed),
             const SizedBox(width: 10),
             Expanded(
               flex: 3,
@@ -3537,7 +3537,11 @@ class _SupplierCustomerAccountPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 58, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 58,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 14),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -3622,7 +3626,10 @@ class _SupplierCustomerAccountPageState
             mode: PhoneRowMode.wrap,
             desktop: Row(
               children: [
-                const Icon(Icons.calendar_month_outlined, color: _darkRed),
+                Icon(
+                  Icons.calendar_month_outlined,
+                  color: CutLinkPalette.actionRed,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -3698,9 +3705,9 @@ class _SupplierCustomerAccountPageState
                                   color: CutLinkPalette.color(0xFFF8EEEE),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.receipt_long_outlined,
-                                  color: _darkRed,
+                                  color: CutLinkPalette.actionRed,
                                   size: 23,
                                 ),
                               ),
@@ -3734,10 +3741,10 @@ class _SupplierCustomerAccountPageState
                       ),
                       const IosGap(height: 18),
                       if (_account?['account_hold'] == true) ...[
-                        const Text(
+                        Text(
                           'ACCOUNT ON HOLD',
                           style: TextStyle(
-                            color: _darkRed,
+                            color: CutLinkPalette.actionRed,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -3781,15 +3788,15 @@ class _SupplierCustomerAccountPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
           title: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.account_balance_wallet_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               const SizedBox(width: 10),
@@ -3907,7 +3914,7 @@ class _SupplierCustomerAccountPageState
                   ? _allocateSelectedPayment
                   : null,
               style: FilledButton.styleFrom(
-                backgroundColor: _darkRed,
+                backgroundColor: CutLinkPalette.buttonRed,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 15,

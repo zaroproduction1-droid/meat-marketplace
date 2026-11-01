@@ -7,8 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/phone_layout.dart';
 
 typedef AccountProfileLoader = Future<Map<String, dynamic>> Function();
-typedef AccountProfileSaver =
-    Future<Map<String, dynamic>> Function(Map<String, dynamic> values);
+typedef AccountProfileSaver = Future<Map<String, dynamic>> Function(
+  Map<String, dynamic> values,
+);
 
 /// The signed-in person's identity, separate from business and accounts contacts.
 class PersonalAccountSettingsPage extends StatefulWidget {
@@ -144,8 +145,7 @@ class _PersonalAccountSettingsPageState
     } catch (_) {
       if (mounted) {
         setState(
-          () => _saveError =
-              'Could not save your details. Your changes are kept here; try again.',
+          () => _saveError = 'Could not save your details. Your changes are kept here; try again.',
         );
       }
     } finally {
@@ -261,7 +261,7 @@ class _PersonalAccountSettingsPageState
                   const IosGap(height: 12),
                   Text(
                     _saveError!,
-                    style: const TextStyle(color: Color(0xFF741C1C)),
+                    style: TextStyle(color: CutLinkPalette.actionRed),
                   ),
                 ],
                 const IosGap(height: 16),

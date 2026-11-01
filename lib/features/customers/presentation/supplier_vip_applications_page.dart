@@ -16,8 +16,6 @@ class SupplierVipApplicationsPage extends StatefulWidget {
 
 class _SupplierVipApplicationsPageState
     extends State<SupplierVipApplicationsPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   bool _loading = true;
   String? _error;
 
@@ -329,13 +327,17 @@ class _SupplierVipApplicationsPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.workspace_premium_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'VIP Applications',
@@ -377,7 +379,11 @@ class _SupplierVipApplicationsPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_error!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -512,12 +518,16 @@ class _SupplierVipApplicationsPageState
       onSelected: (_) {
         setState(() => _filter = value);
       },
-      selectedColor: _darkRed.withValues(alpha: 0.10),
+      selectedColor: CutLinkPalette.actionRed.withValues(alpha: 0.10),
       side: BorderSide(
-        color: selected ? _darkRed : CutLinkPalette.color(0xFFDADAD7),
+        color: selected
+            ? CutLinkPalette.actionRed
+            : CutLinkPalette.color(0xFFDADAD7),
       ),
       labelStyle: TextStyle(
-        color: selected ? _darkRed : CutLinkPalette.color(0xFF555555),
+        color: selected
+            ? CutLinkPalette.actionRed
+            : CutLinkPalette.color(0xFF555555),
         fontWeight: FontWeight.w800,
       ),
     );
@@ -559,7 +569,7 @@ class _SupplierVipApplicationsPageState
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
@@ -578,10 +588,13 @@ class _SupplierVipApplicationsPageState
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: _darkRed.withValues(alpha: 0.08),
+                    color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: const Icon(Icons.storefront_outlined, color: _darkRed),
+                  child: Icon(
+                    Icons.storefront_outlined,
+                    color: CutLinkPalette.actionRed,
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
@@ -685,8 +698,6 @@ class SupplierVipApplicationDetailPage extends StatefulWidget {
 
 class _SupplierVipApplicationDetailPageState
     extends State<SupplierVipApplicationDetailPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   bool _processing = false;
 
   List<Map<String, dynamic>> _maps(dynamic value) {
@@ -923,9 +934,8 @@ class _SupplierVipApplicationDetailPageState
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -953,15 +963,15 @@ class _SupplierVipApplicationDetailPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 8,
           title: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.workspace_premium_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 21,
               ),
               const SizedBox(width: 9),
@@ -1027,7 +1037,7 @@ class _SupplierVipApplicationDetailPageState
                             child: FilledButton.icon(
                               onPressed: _processing ? null : _approve,
                               style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
+                                backgroundColor: CutLinkPalette.buttonRed,
                                 foregroundColor: Colors.white,
                                 minimumSize: const Size.fromHeight(50),
                                 shape: RoundedRectangleBorder(
@@ -1511,8 +1521,7 @@ class _VipApprovalDialogState extends State<_VipApprovalDialog> {
                   maxLines: 6,
                   decoration: InputDecoration(
                     labelText: 'Internal review notes',
-                    hintText:
-                        'Private to your supplier business. Not visible to the butcher or another supplier.',
+                    hintText: 'Private to your supplier business. Not visible to the butcher or another supplier.',
                     border: OutlineInputBorder(),
                   ),
                 ),

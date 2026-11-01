@@ -38,8 +38,6 @@ class AddProductPage extends StatefulWidget {
 }
 
 class _AddProductPageState extends State<AddProductPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   var _formKey = GlobalKey<FormState>();
   final _draftKey = GlobalKey<LocalDraftRecoveryState>();
   final _draftUser = Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -692,9 +690,9 @@ class _AddProductPageState extends State<AddProductPage> {
           .eq('is_active', true)
           .order('display_order');
 
-      final ids = List<Map<String, dynamic>>.from(
-        mappings,
-      ).map((e) => e['grade_id'].toString()).toList();
+      final ids = List<Map<String, dynamic>>.from(mappings)
+          .map((e) => e['grade_id'].toString())
+          .toList();
 
       if (ids.isEmpty) {
         if (!mounted) {
@@ -779,7 +777,9 @@ class _AddProductPageState extends State<AddProductPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () {
                 if (name.text.trim().isEmpty) {
                   return;
@@ -1153,7 +1153,11 @@ class _AddProductPageState extends State<AddProductPage> {
                         color: CutLinkPalette.color(0xFFF4EAEA),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(icon, color: _darkRed, size: 21),
+                      child: Icon(
+                        icon,
+                        color: CutLinkPalette.actionRed,
+                        size: 21,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1297,7 +1301,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   : Icons.touch_app_outlined,
                               size: 18,
                               color: hasValue
-                                  ? _darkRed
+                                  ? CutLinkPalette.actionRed
                                   : CutLinkPalette.color(0xFF777777),
                             ),
                     ),
@@ -1806,8 +1810,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           const IosGap(height: 14),
                           _sectionCard(
                             title: 'Supplier specification',
-                            subtitle:
-                                'Standard options used by suppliers and butcher search.',
+                            subtitle: 'Standard options used by suppliers and butcher search.',
                             icon: Icons.tune_outlined,
                             child: Column(
                               children: [
@@ -1886,8 +1889,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           _sectionCard(
                             title: 'Optional chicken details',
                             collapsed: true,
-                            subtitle:
-                                'These describe the actual product variation without creating duplicate sub-categories.',
+                            subtitle: 'These describe the actual product variation without creating duplicate sub-categories.',
                             icon: Icons.tune_outlined,
                             child: _chickenSpecifications(),
                           ),
@@ -1909,8 +1911,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         const IosGap(height: 14),
                         _sectionCard(
                           title: 'Product Details',
-                          subtitle:
-                              'Supplier SKU, product identity, brand and description.',
+                          subtitle: 'Supplier SKU, product identity, brand and description.',
                           icon: Icons.sell_outlined,
                           child: Column(
                             children: [
@@ -1929,8 +1930,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   readOnly: true,
                                   decoration: InputDecoration(
                                     labelText: 'Product Name',
-                                    helperText:
-                                        'Linked to the selected CutLink sub-cut.',
+                                    helperText: 'Linked to the selected CutLink sub-cut.',
                                     prefixIcon: Icon(Icons.link_outlined),
                                     border: OutlineInputBorder(),
                                   ),
@@ -1996,8 +1996,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
                             final inventory = _sectionCard(
                               title: 'Inventory',
-                              subtitle:
-                                  'Stock, minimum order and product availability.',
+                              subtitle: 'Stock, minimum order and product availability.',
                               icon: Icons.warehouse_outlined,
                               child: Column(
                                 children: [
@@ -2099,8 +2098,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         if (_isGoat)
                           _sectionCard(
                             title: 'Pack weight',
-                            subtitle:
-                                'Weight of the pack. Piece size is recorded separately.',
+                            subtitle: 'Weight of the pack. Piece size is recorded separately.',
                             icon: Icons.inventory_2_outlined,
                             child: TextFormField(
                               controller: _goatCartonWeight,
@@ -2118,8 +2116,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         if (_usesGradeStage)
                           _sectionCard(
                             title: 'Additional Product Details',
-                            subtitle:
-                                'Secondary red-meat attributes. These do not replace the selected category.',
+                            subtitle: 'Secondary red-meat attributes. These do not replace the selected category.',
                             icon: Icons.fact_check_outlined,
                             child: Column(
                               children: [
@@ -2236,8 +2233,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         if (!_usesGeneralSubcuts)
                           _sectionCard(
                             title: 'Supplier Notes',
-                            subtitle:
-                                'Optional internal/trade specification information.',
+                            subtitle: 'Optional internal/trade specification information.',
                             icon: Icons.notes_outlined,
                             child: TextFormField(
                               controller: _supplierNotes,
@@ -2267,7 +2263,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 height: 50,
                                 child: FilledButton.icon(
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: _darkRed,
+                                    backgroundColor: CutLinkPalette.buttonRed,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 24,
                                     ),

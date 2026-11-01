@@ -55,6 +55,23 @@ abstract final class CutLinkPalette {
     final g = (light >> 8) & 255;
     final b = light & 255;
     final luminance = (r * .2126 + g * .7152 + b * .0722);
+    final spread =
+        [r, g, b].reduce((a, b) => a > b ? a : b) -
+        [r, g, b].reduce((a, b) => a < b ? a : b);
+    // Preserve semantic status hues instead of turning red/green/blue to grey.
+    if (spread > 22) {
+      final hsl = HSLColor.fromColor(Color(0xFF000000 | (light & 0xFFFFFF)));
+      final tinted = luminance >= 195
+          ? hsl
+                .withLightness(.16)
+                .withSaturation(hsl.saturation.clamp(.15, .38).toDouble())
+                .toColor()
+          : hsl
+                .withLightness(hsl.lightness.clamp(.70, .82).toDouble())
+                .withSaturation(hsl.saturation.clamp(.35, .72).toDouble())
+                .toColor();
+      return tinted.withAlpha(alpha);
+    }
     final int dark;
     if (luminance >= 246) {
       dark = 0xFF1C1C1E;

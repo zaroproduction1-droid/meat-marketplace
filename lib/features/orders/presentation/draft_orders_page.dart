@@ -814,7 +814,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           desktop: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: _darkRed),
+              Icon(icon, size: 15, color: CutLinkPalette.actionRed),
               const SizedBox(width: 6),
               Text(
                 text,
@@ -1000,7 +1000,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       icon,
                       size: 19,
                       color: selected
-                          ? _darkRed
+                          ? CutLinkPalette.actionRed
                           : CutLinkPalette.color(0xFF5B6168),
                     ),
                     const SizedBox(width: 7),
@@ -1021,7 +1021,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                           : Icons.radio_button_off,
                       size: 18,
                       color: selected
-                          ? _darkRed
+                          ? CutLinkPalette.actionRed
                           : CutLinkPalette.color(0xFFB0B3B8),
                     ),
                   ],
@@ -1275,7 +1275,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               child: const Text('Remove Order'),
             ),
           ],
@@ -1389,7 +1391,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                       pickup
                           ? Icons.store_mall_directory_outlined
                           : Icons.local_shipping_outlined,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -1538,8 +1540,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           CutLinkNotice.show(
             context,
             title: 'Delivery address required',
-            message:
-                'Add an active delivery address in Settings before submitting this order.',
+            message: 'Add an active delivery address in Settings before submitting this order.',
             error: true,
           );
           return;
@@ -1556,8 +1557,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           CutLinkNotice.show(
             context,
             title: 'Delivery address incomplete',
-            message:
-                'Your delivery address must include an address line and postcode before submitting.',
+            message: 'Your delivery address must include an address line and postcode before submitting.',
             error: true,
           );
           return;
@@ -1685,7 +1685,9 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: selected ? _darkRed : Colors.transparent,
+                    color: selected
+                        ? CutLinkPalette.actionRed
+                        : Colors.transparent,
                     width: 3,
                   ),
                 ),
@@ -1737,7 +1739,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                     selected ? Icons.expand_less : Icons.expand_more,
                     size: 19,
                     color: selected
-                        ? _darkRed
+                        ? CutLinkPalette.actionRed
                         : CutLinkPalette.color(0xFF777B80),
                   ),
                 ],
@@ -1759,15 +1761,15 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.shopping_cart_outlined,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               SizedBox(width: 10),
@@ -1844,7 +1846,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 child: IconButton(
                   onPressed: () => _cancelSupplierDraft(order),
                   icon: const Icon(Icons.close_rounded),
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                   style: IconButton.styleFrom(
                     backgroundColor: CutLinkPalette.color(0xFFFFF3F3),
                   ),
@@ -2024,10 +2026,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.store_mall_directory_outlined,
                     size: 20,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                   ),
                   const SizedBox(width: 9),
                   Expanded(
@@ -2106,7 +2108,7 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
                 ? null
                 : () => _submitOrder(order),
             style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
+              backgroundColor: CutLinkPalette.buttonRed,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -2132,10 +2134,10 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               const Text(
@@ -2170,7 +2172,11 @@ class _DraftOrdersPageState extends State<DraftOrdersPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shopping_cart_outlined, size: 58, color: _darkRed),
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 58,
+                  color: CutLinkPalette.actionRed,
+                ),
                 IosGap(height: 18),
                 Text(
                   'Your cart is ready when you are',

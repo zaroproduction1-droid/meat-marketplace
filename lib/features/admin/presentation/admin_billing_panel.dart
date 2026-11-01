@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'dart:async';
@@ -160,10 +161,10 @@ class _AdminBillingPanelState extends State<AdminBillingPanel> {
             const IosGap(height: 16),
             if ('${_details['legal_name'] ?? ''}'.isEmpty ||
                 '${_details['email'] ?? ''}'.isEmpty)
-              const Text(
+              Text(
                 'Business name and billing email still need to be added.',
                 style: TextStyle(
-                  color: AdminTheme.accent,
+                  color: CutLinkPalette.actionRed,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -488,8 +489,8 @@ class BillingAccountCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 '${PlatformAdminService.money(account['overdue'])} overdue',
-                style: const TextStyle(
-                  color: AdminTheme.accent,
+                style: TextStyle(
+                  color: CutLinkPalette.actionRed,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -680,9 +681,8 @@ class _AdminBusinessBillingState extends State<AdminBusinessBilling> {
       return BillingError(message: _error!, onRetry: _load);
     }
     final managed = _membership.isNotEmpty && _membership['legacy'] != true;
-    final adminBusiness = PlatformAdminService.rows(
-      widget.business['members'],
-    ).any((member) => member['is_admin'] == true);
+    final adminBusiness = PlatformAdminService.rows(widget.business['members'])
+        .any((member) => member['is_admin'] == true);
     final eligible =
         widget.business['active'] == true &&
         widget.business['verification_status'] == 'approved' &&

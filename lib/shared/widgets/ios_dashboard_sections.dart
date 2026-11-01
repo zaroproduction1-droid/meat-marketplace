@@ -40,7 +40,7 @@ class IosDashboardSection {
         'ios_recent': 'Recent orders',
         'ios_delivery': 'Next delivery or pickup',
         'ios_work_orders': 'Work orders shortcut',
-        'ios_buy_again': 'Buy again',
+        'ios_buy_again': 'Favourite products',
         'ios_invoices': 'Invoices shortcut',
         'ios_analytics': 'Analytics shortcut',
         'ios_accounts': 'Accounts shortcut',

@@ -88,9 +88,9 @@ class ProductReviewDetails extends StatelessWidget {
               if (product['supplier_name'] != null)
                 Text(
                   product['supplier_name'].toString(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF741C1C),
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
               const SizedBox(height: 12),

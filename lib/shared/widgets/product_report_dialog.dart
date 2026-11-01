@@ -134,8 +134,8 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
           const SizedBox(height: 4),
           Text(
             supplierName,
-            style: const TextStyle(
-              color: Color(0xFF741C1C),
+            style: TextStyle(
+              color: CutLinkPalette.actionRed,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -256,7 +256,7 @@ class _ProductReportDialogState extends State<ProductReportDialog> {
                       backgroundColor: CutLinkPalette.color(0xFFF5E8E8),
                       child: Icon(
                         Icons.flag_outlined,
-                        color: Color(0xFF741C1C),
+                        color: CutLinkPalette.actionRed,
                       ),
                     ),
                     const SizedBox(width: 12),

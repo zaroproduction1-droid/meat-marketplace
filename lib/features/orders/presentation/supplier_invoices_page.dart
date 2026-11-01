@@ -18,8 +18,6 @@ class SupplierInvoicesPage extends StatefulWidget {
 
 class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
     with SingleTickerProviderStateMixin {
-  static const _darkRed = Color(0xFF741C1C);
-
   late final TabController _tabController;
 
   bool _isLoading = true;
@@ -375,9 +373,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -540,9 +537,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                       color: CutLinkPalette.color(0xFFF5EAEA),
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.receipt_long_outlined,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       size: 21,
                     ),
                   ),
@@ -575,8 +572,8 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                               'Customer',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -631,7 +628,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                     ],
                   ),
                   const SizedBox(width: 10),
-                  const Icon(Icons.chevron_right, color: _darkRed),
+                  Icon(Icons.chevron_right, color: CutLinkPalette.actionRed),
                 ],
               );
 
@@ -676,7 +673,11 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -718,7 +719,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                     children: [
                       Icon(
                         Icons.receipt_long_outlined,
-                        color: _darkRed,
+                        color: CutLinkPalette.actionRed,
                         size: 22,
                       ),
                       SizedBox(width: 10),
@@ -753,8 +754,7 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText:
-                      'Search invoice number, customer, reference or sales order',
+                  hintText: 'Search invoice number, customer, reference or sales order',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
@@ -794,9 +794,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
                   controller: _tabController,
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  labelColor: _darkRed,
+                  labelColor: CutLinkPalette.actionRed,
                   unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
-                  indicatorColor: _darkRed,
+                  indicatorColor: CutLinkPalette.actionRed,
                   indicatorWeight: 3,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                   labelStyle: const TextStyle(
@@ -880,9 +880,9 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
               color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.request_quote_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
               size: 19,
             ),
           ),
@@ -941,13 +941,17 @@ class _SupplierInvoicesPageState extends State<SupplierInvoicesPage>
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.request_quote_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.request_quote_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'Invoices',

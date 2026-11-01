@@ -511,9 +511,8 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _tabs() => Container(
@@ -551,7 +550,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(9),
           side: BorderSide(
-            color: _tab == index ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
+            color: _tab == index
+                ? CutLinkPalette.actionRed
+                : CutLinkPalette.color(0xFFE1E3E6),
           ),
         ),
       ),
@@ -680,9 +681,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                         mode: PhoneRowMode.wrap,
                         desktop: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.list_alt_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                               size: 18,
                             ),
                             const SizedBox(width: 7),
@@ -697,7 +698,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                             Text(
                               'Select an item for actions',
                               style: TextStyle(
-                                color: Colors.grey.shade600,
+                                color: CutLinkPalette.color(0xFF757575),
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -759,7 +760,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                                 : Icons.radio_button_unchecked,
                                             size: 18,
                                             color: selected
-                                                ? _darkRed
+                                                ? CutLinkPalette.actionRed
                                                 : CutLinkPalette.color(
                                                     0xFF999999,
                                                   ),
@@ -819,8 +820,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                               ),
                                               child: Text(
                                                 '-${_money(discount)}',
-                                                style: const TextStyle(
-                                                  color: _darkRed,
+                                                style: TextStyle(
+                                                  color:
+                                                      CutLinkPalette.actionRed,
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w900,
                                                 ),
@@ -864,10 +866,10 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(
+                                            Icon(
                                               Icons.chat_bubble_outline,
                                               size: 14,
-                                              color: _darkRed,
+                                              color: CutLinkPalette.actionRed,
                                             ),
                                             const SizedBox(width: 6),
                                             Expanded(
@@ -1048,7 +1050,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
     Widget saveButton() => FilledButton.icon(
       onPressed: _savingLine ? null : _saveSelectedQuoteLineAction,
       style: FilledButton.styleFrom(
-        backgroundColor: _darkRed,
+        backgroundColor: CutLinkPalette.buttonRed,
         visualDensity: VisualDensity.compact,
       ),
       icon: _savingLine
@@ -1294,7 +1296,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                     backgroundColor: CutLinkPalette.color(0xFFF5EAEA),
                     child: Icon(
                       event[2] as IconData,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       size: 19,
                     ),
                   ),
@@ -1321,7 +1323,7 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: Text(
             _loading ? 'Quote' : _number,
             style: const TextStyle(fontWeight: FontWeight.w900),
@@ -1334,7 +1336,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                       onPressed: _convertingToWorkOrder
                           ? null
                           : _convertToWorkOrder,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       icon: _convertingToWorkOrder
                           ? const SizedBox(
                               width: 16,
@@ -1361,7 +1365,9 @@ class _SupplierQuotePageState extends State<SupplierQuotePage> {
                   const SizedBox(width: 7),
                   FilledButton.icon(
                     onPressed: _print,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     icon: const Icon(Icons.print_outlined, size: 17),
                     label: const Text('Print'),
                   ),

@@ -1,3 +1,6 @@
+import '../../../shared/widgets/ios_workspace.dart';
+import '../../../shared/widgets/compact_workspace_tile.dart';
+import '../../../shared/formatters/cutlink_numbers.dart';
 import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../support/presentation/missing_item_request_button.dart';
@@ -98,6 +101,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
   void _changeStockFilters(VoidCallback change) {
     setState(change);
+    _facetRevision.value++;
     _queueStockSearch();
   }
 
@@ -199,8 +203,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
       setState(() {
         _facetScope = null;
-        _facetError =
-            'Filter options could not load. Your stock search is still available.';
+        _facetError = 'Filter options could not load. Your stock search is still available.';
       });
     } finally {
       if (mounted && request == _facetRequest) {
@@ -583,9 +586,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
       final order = Map<String, dynamic>.from(raw);
       final account = _nestedMap(order['supplier_customer_accounts']);
-      final existingItems = _nestedList(
-        order['order_items'],
-      ).where((item) => item['invoice_excluded'] != true).toList();
+      final existingItems = _nestedList(order['order_items'])
+          .where((item) => item['invoice_excluded'] != true)
+          .toList();
       if (account == null) {
         throw Exception('The work order customer could not be loaded.');
       }
@@ -655,9 +658,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -973,17 +975,15 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -1623,8 +1623,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       children: [
                         Text(
                           'Sale: $_activeSaleCustomerName',
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -1713,7 +1713,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             'notes': notesController.text.trim(),
                           })
                         : null,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     icon: Icon(
                       existing == null ? Icons.add : Icons.save_outlined,
                     ),
@@ -1785,7 +1787,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                               child: Icon(
                                 Icons.shopping_cart_checkout_outlined,
-                                color: _darkRed,
+                                color: CutLinkPalette.actionRed,
                               ),
                             ),
                             title: Text(
@@ -1799,9 +1801,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               '${_activeSaleLines.length == 1 ? '' : 's'} • Currently open',
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(
-                              sheetContext,
-                            ).pop({'type': 'active'}),
+                            onTap: () =>
+                                Navigator.of(sheetContext)
+                                    .pop({'type': 'active'}),
                           ),
                         for (var i = 0; i < _parkedSales.length; i++)
                           ListTile(
@@ -1819,9 +1821,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               '${_parkedSaleLineCount(_parkedSales[i]) == 1 ? '' : 's'} • Open sale',
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(
-                              sheetContext,
-                            ).pop({'type': 'parked', 'index': i}),
+                            onTap: () =>
+                                Navigator.of(sheetContext)
+                                    .pop({'type': 'parked', 'index': i}),
                           ),
                         const Divider(),
                         ListTile(
@@ -1829,7 +1831,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                             backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
                             child: Icon(
                               Icons.add_business_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                           ),
                           title: const Text(
@@ -1925,7 +1927,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.dynamic_feed_outlined, color: _darkRed),
+          Icon(Icons.dynamic_feed_outlined, color: CutLinkPalette.actionRed),
           const SizedBox(width: 10),
           Text(
             'Open Sales ($_openSaleCount)',
@@ -2001,7 +2003,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       decoration: BoxDecoration(
         color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _darkRed.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: CutLinkPalette.actionRed.withValues(alpha: 0.35),
+        ),
         boxShadow: const [
           BoxShadow(
             blurRadius: 12,
@@ -2030,9 +2034,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       color: CutLinkPalette.color(0xFFF4E5E5),
                       borderRadius: BorderRadius.circular(11),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.shopping_cart_checkout_outlined,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2105,9 +2109,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           message: 'Already on this work order',
                           child: Icon(Icons.check_circle, color: Colors.green),
                         )
-                      : const Tooltip(
+                      : Tooltip(
                           message: 'New product',
-                          child: Icon(Icons.add_circle, color: _darkRed),
+                          child: Icon(
+                            Icons.add_circle,
+                            color: CutLinkPalette.actionRed,
+                          ),
                         ),
                   title: Text(
                     _activeSaleLines[index]['product_name']?.toString() ??
@@ -2178,7 +2185,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               _activeSaleRpcItems().isEmpty
                           ? null
                           : _reviewActiveSale,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       icon: const Icon(Icons.receipt_long_outlined),
                       label: Text(
                         _activeSale?['work_order_order_id'] != null
@@ -2324,9 +2333,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -2508,7 +2516,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         const SizedBox(width: 8),
                         FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
+                            backgroundColor: CutLinkPalette.buttonRed,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 18,
                               vertical: 14,
@@ -2531,9 +2539,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return proceed == true;
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
       return false;
     }
@@ -2718,9 +2725,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -2785,7 +2791,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               children: [
                 Row(
                   children: [
-                    Icon(icon, size: 18, color: _darkRed),
+                    Icon(icon, size: 18, color: CutLinkPalette.actionRed),
                     const SizedBox(width: 7),
                     Text(
                       title,
@@ -2921,13 +2927,13 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               ),
                               if (catchWeight) ...[
                                 const SizedBox(width: 10),
-                                const Tooltip(
+                                Tooltip(
                                   message:
                                       'Final total pending warehouse weight',
                                   child: Icon(
                                     Icons.scale_outlined,
                                     size: 17,
-                                    color: _darkRed,
+                                    color: CutLinkPalette.actionRed,
                                   ),
                                 ),
                               ],
@@ -2960,7 +2966,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           final workOrderButton = FilledButton.icon(
             onPressed: () => Navigator.of(dialogContext).pop('work_order'),
             style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
+              backgroundColor: CutLinkPalette.buttonRed,
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             icon: const Icon(Icons.assignment_outlined),
@@ -2989,10 +2995,10 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       ? _money(_saleEstimatedTotal())
                       : _money(_saleEstimatedTotal()),
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w900,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
                 const IosGap(height: 5),
@@ -3025,7 +3031,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               context,
               AppBar(
                 backgroundColor: CutLinkPalette.surface,
-                surfaceTintColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
                 leading: IconButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   icon: const Icon(Icons.close),
@@ -3122,7 +3128,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 child: const Text('Save Quote'),
               ),
             ],
@@ -3159,7 +3167,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 child: Text(
                   addingToWorkOrder ? 'Add Products' : 'Create Work Order',
                 ),
@@ -3364,7 +3374,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
-            child: Icon(icon, size: 19, color: _darkRed),
+            child: Icon(icon, size: 19, color: CutLinkPalette.actionRed),
           ),
         ),
       ),
@@ -3713,6 +3723,37 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     final available =
         product['availability_status']?.toString() != 'out_of_stock';
     final summary = _salesProductSummary(product);
+    if (useIosWorkspace(context)) {
+      return CompactWorkspaceTile(
+        title: LambProductDetails.title(product, _specificationName(product)),
+        subtitle: [
+          summary,
+          _quantityLabel(product),
+        ].where((value) => value.isNotEmpty).join(' · '),
+        leading: CatalogueProductImage(
+          product: product,
+          thumbnail: true,
+          imageWidth: 80,
+          imageHeight: 88,
+          fit: BoxFit.cover,
+          allowGenericPreview: true,
+        ),
+        onTap: () => _openSalesProductInfo(product),
+        detail: Text(
+          price == null
+              ? 'Price not set'
+              : '${_money(price)} / ${_basisLabel(product)}',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        trailing: IconButton(
+          tooltip: available ? 'Add to sale' : 'Out of stock',
+          onPressed: available ? () => _handleAddToSale(product) : null,
+          icon: const Icon(Icons.add_circle),
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      );
+    }
+
     final grade = [_gradeCode(product), _gradeName(product)]
         .where((value) => value.isNotEmpty && value != '—' && value != 'LAMB')
         .toSet()
@@ -3720,7 +3761,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 6),
-      color: available ? Colors.white : CutLinkPalette.color(0xFFFAFAF8),
+      color: available
+          ? CutLinkPalette.surface
+          : CutLinkPalette.color(0xFFFAFAF8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: CutLinkPalette.color(0xFFE3E5E8)),
@@ -3859,7 +3902,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                       onPressed: available
                           ? () => _handleAddToSale(product)
                           : null,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       icon: const Icon(
                         Icons.add_shopping_cart_outlined,
                         size: 17,
@@ -3908,14 +3953,18 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           Icon(
             icon,
             size: 13,
-            color: emphasized ? _darkRed : CutLinkPalette.color(0xFF666666),
+            color: emphasized
+                ? CutLinkPalette.actionRed
+                : CutLinkPalette.color(0xFF666666),
           ),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
               style: TextStyle(
-                color: emphasized ? _darkRed : CutLinkPalette.color(0xFF5F5F5F),
+                color: emphasized
+                    ? CutLinkPalette.actionRed
+                    : CutLinkPalette.color(0xFF5F5F5F),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -4024,8 +4073,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               Text(
                                 _facetsLoading
                                     ? 'Loading sub-cuts…'
-                                    : _facetError ??
-                                          'No sub-cuts available in this section.',
+                                    : _facetError ?? 'No sub-cuts available in this section.',
                               ),
                           ],
                         );
@@ -4044,6 +4092,184 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       ),
     );
   }
+
+  Future<void> _showCompactStockFilters() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: ValueListenableBuilder<int>(
+          valueListenable: _facetRevision,
+          builder: (_, _, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Filter stock',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _skuSearchController,
+                decoration: const InputDecoration(
+                  labelText: 'SKU',
+                  prefixIcon: Icon(Icons.qr_code),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _salesStockFilters(),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => Navigator.pop(sheet),
+                child: const Text('Show stock'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _compactSalesBody() => RefreshIndicator(
+    onRefresh: _loadStock,
+    child: CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _openNewSale(),
+                        icon: const Icon(Icons.add, size: 19),
+                        label: const Text('New sale'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Quotes',
+                      onPressed: _openQuotes,
+                      icon: const Icon(Icons.description_outlined),
+                    ),
+                    IconButton(
+                      tooltip: 'Orders',
+                      onPressed: () => _openOrders(initialTabKey: 'new'),
+                      icon: Badge(
+                        isLabelVisible: _newMarketplaceItemCount > 0,
+                        label: Text('$_newMarketplaceItemCount'),
+                        child: const Icon(Icons.receipt_long_outlined),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_openSaleCount > 0)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: Text(
+                      'Open sales ($_openSaleCount)',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    children: [_openSalesSwitcher()],
+                  ),
+                if (_activeSale != null)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    initiallyExpanded: true,
+                    title: const Text(
+                      'Current sale',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    children: [_activeSalePanel()],
+                  ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search stock',
+                    prefixIcon: Icon(Icons.search),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _showCompactStockFilters,
+                        icon: const Icon(Icons.tune, size: 17),
+                        label: const Text('Filters'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: _openSalesCatalogue,
+                        icon: const Icon(Icons.menu_book_outlined, size: 17),
+                        label: const Text('Animal & cut'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _pageLoading
+                      ? 'Searching…'
+                      : '${CutLinkNumbers.integer(_stockTotal)} products',
+                  key: _stockHeaderKey,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (_pageLoading) const LinearProgressIndicator(minHeight: 2),
+                if (_pageError != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(_pageError!),
+                    trailing: TextButton(
+                      onPressed: () => _loadStockPage(offset: _stockOffset),
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, index) => _buildProductCard(_products[index]),
+              childCount: _products.length,
+            ),
+          ),
+        ),
+        if (!_pageLoading && _pageError == null && _products.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('No matching stock. Adjust the search or filters.'),
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
+            child: _stockPagination(),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildBody() {
     if (_isLoading) {
@@ -4064,6 +4290,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
           ],
         ),
       );
+    }
+    if (useIosWorkspace(context)) {
+      return _compactSalesBody();
     }
     final products = _products;
     Widget panel(Widget child) => Container(
@@ -4103,7 +4332,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                         FilledButton.icon(
                           onPressed: () => _openNewSale(),
                           style: FilledButton.styleFrom(
-                            backgroundColor: _darkRed,
+                            backgroundColor: CutLinkPalette.buttonRed,
                           ),
                           icon: const Icon(
                             Icons.add_shopping_cart_outlined,
@@ -4160,8 +4389,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               _pageLoading
                                   ? 'Searching…'
                                   : '$_stockTotal results',
-                              style: const TextStyle(
-                                color: _darkRed,
+                              style: TextStyle(
+                                color: CutLinkPalette.actionRed,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -4288,6 +4517,26 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
   }
 
   Widget _workspaceHeader() {
+    if (useIosWorkspace(context)) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Sales',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              onPressed: _loadStock,
+              tooltip: 'Refresh sales',
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       height: isPhoneLayout(context) ? null : 62,
       padding: EdgeInsets.symmetric(
@@ -4309,9 +4558,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
               color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.point_of_sale_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
               size: 19,
             ),
           ),
@@ -4365,7 +4614,7 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           title: const Text(

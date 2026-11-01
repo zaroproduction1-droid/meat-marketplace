@@ -151,9 +151,8 @@ class _PrivatePriceListCustomersPageState
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() => _savingCustomers.remove(butcherBusinessId));
@@ -183,7 +182,7 @@ class _PrivatePriceListCustomersPageState
           context,
           AppBar(
             backgroundColor: CutLinkPalette.surface,
-            surfaceTintColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             title: Text(
               widget.priceListName,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -244,10 +243,10 @@ class _PrivatePriceListCustomersPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
@@ -263,13 +262,17 @@ class _PrivatePriceListCustomersPageState
     }
 
     if (_customers.isEmpty) {
-      return const Center(
+      return Center(
         child: IosPadding(
           padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.people_outline, size: 72, color: Color(0xFF741C1C)),
+              Icon(
+                Icons.people_outline,
+                size: 72,
+                color: CutLinkPalette.actionRed,
+              ),
               IosGap(height: 20),
               Text(
                 'No approved customers',

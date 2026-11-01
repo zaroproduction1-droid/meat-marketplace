@@ -16,8 +16,6 @@ class SupplierWorkOrdersPage extends StatefulWidget {
 
 class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
     with SingleTickerProviderStateMixin {
-  static const _darkRed = Color(0xFF741C1C);
-
   late final TabController _tabController;
 
   bool _isLoading = true;
@@ -555,8 +553,8 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   const IosGap(height: 6),
                   Text(
                     _customerName(workOrder),
-                    style: const TextStyle(
-                      color: _darkRed,
+                    style: TextStyle(
+                      color: CutLinkPalette.actionRed,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -650,7 +648,11 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -689,7 +691,11 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warehouse_outlined, color: _darkRed, size: 24),
+                    Icon(
+                      Icons.warehouse_outlined,
+                      color: CutLinkPalette.actionRed,
+                      size: 24,
+                    ),
                     SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -768,9 +774,9 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
                   controller: _tabController,
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  labelColor: _darkRed,
+                  labelColor: CutLinkPalette.actionRed,
                   unselectedLabelColor: CutLinkPalette.color(0xFF666A70),
-                  indicatorColor: _darkRed,
+                  indicatorColor: CutLinkPalette.actionRed,
                   indicatorWeight: 3,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                   tabs: [
@@ -838,13 +844,17 @@ class _SupplierWorkOrdersPageState extends State<SupplierWorkOrdersPage>
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.assignment_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'Work Orders',

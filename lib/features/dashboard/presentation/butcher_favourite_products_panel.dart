@@ -206,10 +206,10 @@ class _ButcherFavouriteProductsPanelState
             child: InkWell(
               onTap: widget.onManage,
               borderRadius: BorderRadius.circular(10),
-              child: const Icon(
+              child: Icon(
                 Icons.add_photo_alternate_outlined,
                 size: 36,
-                color: Color(0xFF8B1E2D),
+                color: CutLinkPalette.actionRed,
               ),
             ),
           ),

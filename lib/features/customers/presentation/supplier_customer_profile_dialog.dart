@@ -251,9 +251,9 @@ class _SupplierCustomerProfileDialogState
   Widget _contextStatus() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (_loading) const LinearProgressIndicator(color: _red),
+      if (_loading) LinearProgressIndicator(color: CutLinkPalette.actionRed),
       if (_contextError != null) ...[
-        Text(_contextError!, style: const TextStyle(color: _red)),
+        Text(_contextError!, style: TextStyle(color: CutLinkPalette.actionRed)),
         TextButton(
           onPressed: _loadContext,
           child: const Text('Retry summary and history'),
@@ -388,7 +388,10 @@ class _SupplierCustomerProfileDialogState
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(
+            fontSize: 12,
+            color: CutLinkPalette.color(0xFF666666),
+          ),
         ),
         const IosGap(height: 6),
         Text(
@@ -641,7 +644,10 @@ class _SupplierCustomerProfileDialogState
             children: [
               Row(
                 children: [
-                  const Icon(Icons.manage_accounts_outlined, color: _red),
+                  Icon(
+                    Icons.manage_accounts_outlined,
+                    color: CutLinkPalette.actionRed,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -736,7 +742,9 @@ class _SupplierCustomerProfileDialogState
                   const SizedBox(width: 12),
                   FilledButton(
                     onPressed: _save,
-                    style: FilledButton.styleFrom(backgroundColor: _red),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     child: const Text('Save changes'),
                   ),
                 ],

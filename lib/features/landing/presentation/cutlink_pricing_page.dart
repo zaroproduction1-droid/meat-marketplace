@@ -64,9 +64,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              verified
-                  ? 'Founding availability refreshed.'
-                  : 'We couldn’t check places right now. Your place is confirmed after approval.',
+              verified ? 'Founding availability refreshed.' : 'We couldn’t check places right now. Your place is confirmed after approval.',
             ),
           ),
         );
@@ -331,23 +329,19 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
             children: [
               _Note(
                 icon: Icons.verified_outlined,
-                text:
-                    'CutLink approves your business and confirms your founding place. Places follow confirmation order.',
+                text: 'CutLink approves your business and confirms your founding place. Places follow confirmation order.',
               ),
               _Note(
                 icon: Icons.event_available_outlined,
-                text:
-                    'Your 6 free months start on the date CutLink confirms your membership.',
+                text: 'Your 6 free months start on the date CutLink confirms your membership.',
               ),
               _Note(
                 icon: Icons.receipt_long_outlined,
-                text:
-                    'You pay the amounts shown above using your invoice payment details. Half-price amounts are rounded to cents.',
+                text: 'You pay the amounts shown above using your invoice payment details. Half-price amounts are rounded to cents.',
               ),
               _Note(
                 icon: Icons.info_outline_rounded,
-                text:
-                    'If founding places are filled or paused, standard pricing applies only after confirmation. Pausing or cancelling doesn’t restart an offer or free up a place.',
+                text: 'If founding places are filled or paused, standard pricing applies only after confirmation. Pausing or cancelling doesn’t restart an offer or free up a place.',
               ),
             ],
           ),
@@ -364,7 +358,7 @@ class _CutLinkPricingPageState extends State<CutLinkPricingPage> {
       backgroundColor: CutLinkPalette.surface,
       appBar: AppBar(
         backgroundColor: CutLinkPalette.surface,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: _royal,
         title: const CutLinkLogo(width: 132, height: 32),
         actions: [

@@ -490,7 +490,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Send Invoice'),
             ),
@@ -537,9 +539,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       });
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -588,7 +589,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () {
                 final parsed = double.tryParse(
                   controller.text.replaceAll(',', '').trim(),
@@ -624,16 +627,14 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Payment recorded.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Payment recorded.')));
 
       await _loadPage();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -736,9 +737,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
       await _loadPage();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -776,14 +776,12 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         _invoice = {...?_invoice, ...Map<String, dynamic>.from(updated)};
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Invoice notes saved.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Invoice notes saved.')));
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -841,15 +839,15 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
           title: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.receipt_long_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               const SizedBox(width: 10),
@@ -930,7 +928,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
             const SizedBox(width: 7),
             FilledButton.icon(
               onPressed: _isLoading || _isSaving ? null : _printInvoice,
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               icon: const Icon(Icons.print_outlined, size: 17),
               label: const Text('Print'),
             ),
@@ -997,7 +997,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9),
             side: BorderSide(
-              color: selected ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
+              color: selected
+                  ? CutLinkPalette.actionRed
+                  : CutLinkPalette.color(0xFFE1E3E6),
             ),
           ),
         ),
@@ -1233,7 +1235,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                   color: CutLinkPalette.color(0xFFF5EAEA),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(event.icon, size: 16, color: _darkRed),
+                child: Icon(
+                  event.icon,
+                  size: 16,
+                  color: CutLinkPalette.actionRed,
+                ),
               ),
               if (!last)
                 Expanded(
@@ -1284,7 +1290,11 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -1331,7 +1341,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
           desktop: Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 18, color: _darkRed),
+                Icon(icon, size: 18, color: CutLinkPalette.actionRed),
                 const SizedBox(width: 7),
               ],
               Text(
@@ -1489,10 +1499,10 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 mode: PhoneRowMode.wrap,
                 desktop: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.inventory_2_outlined,
                       size: 19,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                     const SizedBox(width: 8),
                     const Text(
@@ -1693,7 +1703,7 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                     ? _sendInvoiceToButcher
                     : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
@@ -1865,9 +1875,9 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
               color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
               size: 20,
             ),
           ),
@@ -1886,8 +1896,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 const IosGap(height: 2),
                 Text(
                   clean(_invoice?['customer_name_snapshot']),
-                  style: const TextStyle(
-                    color: _darkRed,
+                  style: TextStyle(
+                    color: CutLinkPalette.actionRed,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -2017,8 +2027,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
         ),
         child: Text(
           value,
-          style: const TextStyle(
-            color: _darkRed,
+          style: TextStyle(
+            color: CutLinkPalette.actionRed,
             fontSize: 10.5,
             fontWeight: FontWeight.w800,
           ),
@@ -2127,8 +2137,8 @@ class _SupplierInvoicePageState extends State<SupplierInvoicePage> {
                 const IosGap(height: 7),
                 Text(
                   'Discount: ${_money(item['discount_amount'])}',
-                  style: const TextStyle(
-                    color: _darkRed,
+                  style: TextStyle(
+                    color: CutLinkPalette.actionRed,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                   ),

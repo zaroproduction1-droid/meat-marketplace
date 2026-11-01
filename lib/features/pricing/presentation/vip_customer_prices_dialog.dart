@@ -234,8 +234,8 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
     final fallback = Center(
       child: Text(
         initials.isEmpty ? 'B' : initials,
-        style: const TextStyle(
-          color: _red,
+        style: TextStyle(
+          color: CutLinkPalette.actionRed,
           fontSize: 17,
           fontWeight: FontWeight.w800,
         ),
@@ -339,7 +339,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                             style: TextStyle(
                               fontSize: 12,
                               color: dirty
-                                  ? _red
+                                  ? CutLinkPalette.actionRed
                                   : CutLinkPalette.color(0xFF6B7280),
                             ),
                           ),
@@ -372,12 +372,17 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: dirty ? _red : CutLinkPalette.color(0xFFD1D5DB),
+                        color: dirty
+                            ? CutLinkPalette.actionRed
+                            : CutLinkPalette.color(0xFFD1D5DB),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _red, width: 2),
+                      borderSide: BorderSide(
+                        color: CutLinkPalette.actionRed,
+                        width: 2,
+                      ),
                     ),
                   ),
                 );
@@ -595,11 +600,11 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (_saveFailed)
-                      const IosPadding(
+                      IosPadding(
                         padding: EdgeInsets.only(bottom: 10),
                         child: Text(
                           'Save failed. Your edits are kept. Check the queued prices and try again.',
-                          style: TextStyle(color: _red),
+                          style: TextStyle(color: CutLinkPalette.actionRed),
                         ),
                       ),
                     if (_saveSucceeded)
@@ -627,7 +632,7 @@ class _VipCustomerPricesDialogState extends State<VipCustomerPricesDialog> {
                       key: const ValueKey('vip-save-all'),
                       onPressed: _saving || count == 0 ? null : _saveAll,
                       style: FilledButton.styleFrom(
-                        backgroundColor: _red,
+                        backgroundColor: CutLinkPalette.buttonRed,
                         padding: const EdgeInsets.all(16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

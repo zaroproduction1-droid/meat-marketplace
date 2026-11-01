@@ -168,13 +168,13 @@ Future<T?> showCutLinkPickerDialog<T>({
                                 return Material(
                                   color: selected
                                       ? CutLinkPalette.color(0xFFF3E5E5)
-                                      : Colors.white,
+                                      : CutLinkPalette.surface,
                                   borderRadius: BorderRadius.circular(11),
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(11),
-                                    onTap: () => Navigator.of(
-                                      dialogContext,
-                                    ).pop(option.value),
+                                    onTap: () =>
+                                        Navigator.of(dialogContext)
+                                            .pop(option.value),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 13,

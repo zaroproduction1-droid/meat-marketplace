@@ -157,9 +157,8 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                   message = 'A price list with this name already exists.';
                 }
 
-                ScaffoldMessenger.of(
-                  dialogContext,
-                ).showSnackBar(SnackBar(content: Text(message)));
+                ScaffoldMessenger.of(dialogContext)
+                    .showSnackBar(SnackBar(content: Text(message)));
               }
             }
 
@@ -297,7 +296,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
           context,
           AppBar(
             backgroundColor: CutLinkPalette.surface,
-            surfaceTintColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             title: const Text(
               'Price Lists',
               style: TextStyle(fontWeight: FontWeight.w700),
@@ -348,10 +347,10 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
@@ -373,10 +372,10 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.price_change_outlined,
                 size: 80,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 24),
               const Text(
@@ -412,8 +411,7 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
       children: [
         const CutLinkSectionHeading(
           title: 'Pricing & customer offers',
-          subtitle:
-              'Standard pricing for the marketplace, Trade pricing for approved customers and private lists for agreed VIP rates.',
+          subtitle: 'Standard pricing for the marketplace, Trade pricing for approved customers and private lists for agreed VIP rates.',
           icon: Icons.price_change_outlined,
         ),
         TextField(
@@ -454,9 +452,9 @@ class _SupplierPriceListsPageState extends State<SupplierPriceListsPage> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.sell_outlined,
-                          color: Color(0xFF741C1C),
+                          color: CutLinkPalette.actionRed,
                         ),
                         const SizedBox(width: 12),
                         Expanded(

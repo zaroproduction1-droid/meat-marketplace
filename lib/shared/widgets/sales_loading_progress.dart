@@ -25,7 +25,6 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
   late final AnimationController _pulse;
   Timer? _clock;
   int _seconds = 0;
-  static const _red = Color(0xFF741C1C);
   static const _labels = ['Connect', 'Stock', 'Catalogue', 'Orders', 'Ready'];
 
   @override
@@ -100,7 +99,9 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                         ? Icons.check_circle_rounded
                         : Icons.inventory_2_outlined,
                     size: 54,
-                    color: ready ? Colors.green.shade700 : _red,
+                    color: ready
+                        ? Colors.green.shade700
+                        : CutLinkPalette.actionRed,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -130,7 +131,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                     builder: (context, value, child) => LinearProgressIndicator(
                       value: value,
                       minHeight: 8,
-                      color: _red,
+                      color: CutLinkPalette.actionRed,
                       backgroundColor: CutLinkPalette.color(0xFFF1E8E7),
                     ),
                   )
@@ -138,7 +139,7 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                   LinearProgressIndicator(
                     value: ready ? 1 : null,
                     minHeight: 8,
-                    color: _red,
+                    color: CutLinkPalette.actionRed,
                     backgroundColor: CutLinkPalette.color(0xFFF1E8E7),
                   ),
                 const SizedBox(height: 16),
@@ -154,7 +155,9 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                               ? Icons.check
                               : Icons.circle,
                           size: 14,
-                          color: i <= widget.stage ? _red : Colors.grey,
+                          color: i <= widget.stage
+                              ? CutLinkPalette.actionRed
+                              : Colors.grey,
                         ),
                         label: Text(_labels[i]),
                         backgroundColor: i == widget.stage
@@ -170,7 +173,10 @@ class _SalesLoadingProgressState extends State<SalesLoadingProgress>
                         ? 'Large stock lists can take longer. Progress updates as each batch arrives. ${_seconds}s elapsed.'
                         : 'Loading your latest stock and pricing...',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CutLinkPalette.color(0xFF666666),
+                    ),
                   ),
                 ],
               ],

@@ -166,8 +166,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error =
-              'Message could not be sent. Your draft has been kept; check the conversation before retrying.',
+          () => _error = 'Message could not be sent. Your draft has been kept; check the conversation before retrying.',
         );
       }
     } finally {
@@ -573,7 +572,7 @@ class _OrderIssueChatState extends State<OrderIssueChat> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.forum_outlined, color: Color(0xFF741C1C)),
+                    Icon(Icons.forum_outlined, color: CutLinkPalette.actionRed),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

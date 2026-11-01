@@ -22,8 +22,6 @@ class SupplierMarketplaceOrderDetailPage extends StatefulWidget {
 
 class _SupplierMarketplaceOrderDetailPageState
     extends State<SupplierMarketplaceOrderDetailPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -361,9 +359,9 @@ class _SupplierMarketplaceOrderDetailPageState
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.schedule_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -459,7 +457,7 @@ class _SupplierMarketplaceOrderDetailPageState
                             });
                           },
                     style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
+                      backgroundColor: CutLinkPalette.buttonRed,
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.check_circle_outline),
@@ -500,9 +498,8 @@ class _SupplierMarketplaceOrderDetailPageState
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -593,9 +590,8 @@ class _SupplierMarketplaceOrderDetailPageState
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       controller.dispose();
@@ -615,7 +611,7 @@ class _SupplierMarketplaceOrderDetailPageState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: _darkRed),
+          Icon(icon, size: 18, color: CutLinkPalette.actionRed),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -655,7 +651,7 @@ class _SupplierMarketplaceOrderDetailPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'New Marketplace Order',
             style: TextStyle(fontWeight: FontWeight.w800),
@@ -671,7 +667,11 @@ class _SupplierMarketplaceOrderDetailPageState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 54, color: _darkRed),
+                    Icon(
+                      Icons.error_outline,
+                      size: 54,
+                      color: CutLinkPalette.actionRed,
+                    ),
                     const IosGap(height: 14),
                     Text(_error!, textAlign: TextAlign.center),
                     const IosGap(height: 16),
@@ -715,9 +715,9 @@ class _SupplierMarketplaceOrderDetailPageState
                       color: CutLinkPalette.color(0xFFF4E5E5),
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.storefront_outlined,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -735,8 +735,8 @@ class _SupplierMarketplaceOrderDetailPageState
                         const IosGap(height: 4),
                         Text(
                           _customerName(),
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                           ),
@@ -956,8 +956,8 @@ class _SupplierMarketplaceOrderDetailPageState
                         children: [
                           Text(
                             '${_money(item['unit_price'])}/${_unit(item['price_basis']?.toString())}',
-                            style: const TextStyle(
-                              color: _darkRed,
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontWeight: FontWeight.w900,
                               fontSize: 16,
                             ),
@@ -1013,7 +1013,7 @@ class _SupplierMarketplaceOrderDetailPageState
                     FilledButton.icon(
                       onPressed: _saving ? null : _accept,
                       style: FilledButton.styleFrom(
-                        backgroundColor: _darkRed,
+                        backgroundColor: CutLinkPalette.buttonRed,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 18,
                           vertical: 15,

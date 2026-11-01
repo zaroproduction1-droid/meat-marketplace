@@ -17,8 +17,6 @@ class SupplierCreateOrderPage extends StatefulWidget {
 }
 
 class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   final _customerSearchController = TextEditingController();
   final _customerReferenceController = TextEditingController();
   final _deliveryNotesController = TextEditingController();
@@ -137,9 +135,10 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
       final customers = byId.values.toList()
         ..sort(
-          (a, b) => _customerName(
-            a,
-          ).toLowerCase().compareTo(_customerName(b).toLowerCase()),
+          (a, b) =>
+              _customerName(a)
+                  .toLowerCase()
+                  .compareTo(_customerName(b).toLowerCase()),
         );
 
       if (!mounted) {
@@ -462,7 +461,9 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 onPressed: () {
                   final customerName = businessNameController.text.trim();
 
@@ -554,9 +555,10 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
       setState(() {
         _customers = [..._customers, customer]
           ..sort(
-            (a, b) => _customerName(
-              a,
-            ).toLowerCase().compareTo(_customerName(b).toLowerCase()),
+            (a, b) =>
+                _customerName(a)
+                    .toLowerCase()
+                    .compareTo(_customerName(b).toLowerCase()),
           );
         _isSavingCustomer = false;
       });
@@ -779,8 +781,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
     return _sectionCard(
       title: '1. Customer',
-      subtitle:
-          'Search the customer you are selling to. Press Enter to show matching customers.',
+      subtitle: 'Search the customer you are selling to. Press Enter to show matching customers.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -810,7 +811,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                 FilledButton.icon(
                   onPressed: _isSavingCustomer ? null : _addCustomer,
                   style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
+                    backgroundColor: CutLinkPalette.buttonRed,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 17,
@@ -832,14 +833,14 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: _darkRed),
+                  Icon(Icons.check_circle, color: CutLinkPalette.actionRed),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Selling to ${_customerName(_selectedCustomer!)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: _darkRed,
+                        color: CutLinkPalette.actionRed,
                       ),
                     ),
                   ),
@@ -880,7 +881,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                           FilledButton.icon(
                             onPressed: _isSavingCustomer ? null : _addCustomer,
                             style: FilledButton.styleFrom(
-                              backgroundColor: _darkRed,
+                              backgroundColor: CutLinkPalette.buttonRed,
                             ),
                             icon: const Icon(Icons.person_add_alt_1),
                             label: const Text('Add New Customer'),
@@ -904,7 +905,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                               external
                                   ? Icons.person_outline
                                   : Icons.storefront_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                           ),
                           title: Text(
@@ -949,8 +950,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
 
     return _sectionCard(
       title: '2. Payment & Fulfilment',
-      subtitle:
-          'Set how the customer will pay and when the order will be collected or delivered.',
+      subtitle: 'Set how the customer will pay and when the order will be collected or delivered.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1186,7 +1186,11 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -1241,7 +1245,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
                             ? null
                             : _continueToDraft,
                         style: FilledButton.styleFrom(
-                          backgroundColor: _darkRed,
+                          backgroundColor: CutLinkPalette.buttonRed,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 22,
                             vertical: 16,
@@ -1270,7 +1274,7 @@ class _SupplierCreateOrderPageState extends State<SupplierCreateOrderPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'New Sale',
             style: TextStyle(fontWeight: FontWeight.w800),

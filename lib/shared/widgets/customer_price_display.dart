@@ -134,7 +134,7 @@ class CustomerPriceDisplay extends StatelessWidget {
               _money(amount, basis),
               style: TextStyle(
                 color: discounted
-                    ? const Color(0xFF1B7439)
+                    ? CutLinkPalette.color(0xFF1B7439)
                     : CutLinkPalette.color(0xFF20252B),
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
@@ -161,7 +161,7 @@ class CustomerPriceDisplay extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: discounted
-                  ? const Color(0xFF1B7439)
+                  ? CutLinkPalette.color(0xFF1B7439)
                   : CutLinkPalette.color(0xFF666666),
             ),
           ),

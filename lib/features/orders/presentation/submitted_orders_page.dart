@@ -1,3 +1,6 @@
+import '../../../shared/widgets/ios_workspace.dart';
+import '../../../shared/widgets/compact_workspace_tile.dart';
+import '../../../shared/formatters/order_reference.dart';
 import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/order_issue_chat.dart';
@@ -217,20 +220,20 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return;
       }
 
-      final visibleOrders = List<Map<String, dynamic>>.from(response).where((
-        order,
-      ) {
-        final supplierRejected =
-            order['status']?.toString() == 'declined' &&
-            order['order_source']?.toString() == 'marketplace';
+      final visibleOrders = List<Map<String, dynamic>>.from(response)
+          .where((order) {
+            final supplierRejected =
+                order['status']?.toString() == 'declined' &&
+                order['order_source']?.toString() == 'marketplace';
 
-        if (supplierRejected &&
-            order['butcher_rejection_acknowledged_at'] != null) {
-          return false;
-        }
+            if (supplierRejected &&
+                order['butcher_rejection_acknowledged_at'] != null) {
+              return false;
+            }
 
-        return true;
-      }).toList();
+            return true;
+          })
+          .toList();
 
       await _loadDeliveryTrackingForOrders(visibleOrders);
 
@@ -250,9 +253,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
           _searchController.text =
               selected.first['order_number']?.toString() ?? '';
           final index = _tabs.indexWhere(
-            (t) => _ordersForTab(
-              t.key,
-            ).any((o) => o['id'] == widget.initialOrderId),
+            (t) =>
+                _ordersForTab(t.key)
+                    .any((o) => o['id'] == widget.initialOrderId),
           );
           if (index >= 0) {
             _tabController.index = index;
@@ -422,9 +425,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
   }
 
   bool _hasFailedDeliveryAttempt(Map<String, dynamic> order) {
-    return _deliveryStops(
-      order,
-    ).any((stop) => stop['stop_status']?.toString() == 'failed');
+    return _deliveryStops(order)
+        .any((stop) => stop['stop_status']?.toString() == 'failed');
   }
 
   String _deliveryRunDate(Map<String, dynamic> order) {
@@ -988,9 +990,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       await _loadOrders();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1088,9 +1089,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -1529,9 +1529,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   }
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
+                    ScaffoldMessenger.of(dialogContext)
+                        .showSnackBar(SnackBar(content: Text(error.message)));
 
                     setDialogState(() {
                       saving = false;
@@ -1727,8 +1726,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                             enabled: !saving,
                             decoration: InputDecoration(
                               labelText: 'Describe the issue',
-                              hintText:
-                                  'Explain what is wrong, the affected quantity, condition and any important delivery details.',
+                              hintText: 'Explain what is wrong, the affected quantity, condition and any important delivery details.',
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -2442,9 +2440,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -2516,9 +2513,8 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
       Navigator.of(context).pop();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2963,7 +2959,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                   context,
                   AppBar(
                     backgroundColor: CutLinkPalette.surface,
-                    surfaceTintColor: Colors.white,
+                    surfaceTintColor: Colors.transparent,
                     title: const Text(
                       'Issues & Returns',
                       style: TextStyle(fontWeight: FontWeight.w800),
@@ -3085,7 +3081,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         AppBar(
           leading: const WorkspaceBackButton(),
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
@@ -3104,54 +3100,65 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
             ],
           ),
           actions: [
-            OutlinedButton.icon(
-              onPressed: _openIssuesPanel,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: CutLinkPalette.actionRed,
-                side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
+            if (useIosWorkspace(context))
+              IconButton(
+                tooltip: 'Issues and returns',
+                onPressed: _openIssuesPanel,
+                icon: Badge(
+                  isLabelVisible: _countForTab('issues') > 0,
+                  label: Text('${_countForTab('issues')}'),
+                  child: const Icon(Icons.report_problem_outlined),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: _openIssuesPanel,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: CutLinkPalette.actionRed,
+                  side: BorderSide(color: CutLinkPalette.color(0xFFD9DDE1)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-              ),
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.report_problem_outlined),
-                  if (_countForTab('issues') > 0)
-                    Positioned(
-                      right: -9,
-                      top: -8,
-                      child: Container(
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB3261E),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          _countForTab('issues') > 99
-                              ? '99+'
-                              : _countForTab('issues').toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.report_problem_outlined),
+                    if (_countForTab('issues') > 0)
+                      Positioned(
+                        right: -9,
+                        top: -8,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB3261E),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            _countForTab('issues') > 99
+                                ? '99+'
+                                : _countForTab('issues').toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
+                label: const Text('Issues & Returns'),
               ),
-              label: const Text('Issues & Returns'),
-            ),
             IconButton(
               onPressed: _loadOrders,
               tooltip: 'Refresh orders',
@@ -3172,8 +3179,9 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText:
-                                  'Search order number, supplier, product, SKU or reference',
+                              hintText: useIosWorkspace(context)
+                                  ? 'Search orders or suppliers'
+                                  : 'Search order number, supplier, product, SKU or reference',
                               prefixIcon: const Icon(Icons.search, size: 19),
                               suffixIcon: _searchController.text.isEmpty
                                   ? null
@@ -3364,7 +3372,71 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
     final statusDate = _bestDate(order);
     final invoice = _sentInvoiceForOrder(order);
     final pickup = order['fulfilment_method']?.toString() == 'pickup';
-
+    if (useIosWorkspace(context)) {
+      final amount = invoice?['total_amount'] ?? order['total_amount'];
+      final pendingTotal =
+          invoice == null && (double.tryParse('$amount') ?? 0) == 0;
+      return CompactWorkspaceTile(
+        title: _supplierName(order),
+        subtitle:
+            '${cutLinkOrderReference(order['order_number'])} · ${items.length} ${items.length == 1 ? 'item' : 'items'} · ${pickup ? 'Pickup' : 'Delivery'}',
+        onTap: () => _openOrderWorkspace(order),
+        leading: CircleAvatar(
+          radius: 20,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+          child: Icon(
+            pickup
+                ? Icons.shopping_bag_outlined
+                : Icons.local_shipping_outlined,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        detail: Text(
+          _deliveryTrackingLabel(order),
+          maxLines: 2,
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        footer: Row(
+          children: [
+            if (_hasOpenIssues(order))
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(
+                  _issues(order).any(_hasSupplierUpdate)
+                      ? Icons.mark_chat_unread_outlined
+                      : Icons.report_problem_outlined,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            if (_isReplacementOrder(order))
+              const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Text('Replacement', style: TextStyle(fontSize: 11)),
+              ),
+            Expanded(
+              child: Text(
+                _requestedSchedule(order),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              pendingTotal ? 'Total pending' : _money(amount),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      );
+    }
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -3937,7 +4009,7 @@ class _SubmittedOrdersPageState extends State<SubmittedOrdersPage>
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: Text(
             order['order_number']?.toString() ?? 'Order',
             style: const TextStyle(fontWeight: FontWeight.w800),

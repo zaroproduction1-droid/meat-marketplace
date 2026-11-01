@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import 'subscription_billing_page.dart';
 
@@ -115,10 +116,10 @@ class _RestrictedAccountPageState extends State<RestrictedAccountPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lock_outline_rounded,
                       size: 52,
-                      color: CutLinkWorkspaceTheme.red,
+                      color: CutLinkPalette.actionRed,
                     ),
                     const IosGap(height: 18),
                     Text(

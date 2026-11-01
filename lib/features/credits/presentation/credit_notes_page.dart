@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/workspace_loading.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
@@ -160,8 +161,7 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                   padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: CutLinkSectionHeading(
                     title: 'Credits & refunds',
-                    subtitle:
-                        'Invoice adjustments, returned goods and available account credit.',
+                    subtitle: 'Invoice adjustments, returned goods and available account credit.',
                     icon: Icons.assignment_return_outlined,
                   ),
                 ),
@@ -220,9 +220,9 @@ class _CreditNotesPageState extends State<CreditNotesPage> {
                                 vertical: 5,
                               ),
                               child: ListTile(
-                                leading: const Icon(
+                                leading: Icon(
                                   Icons.receipt_long_outlined,
-                                  color: Color(0xFF741C1C),
+                                  color: CutLinkPalette.actionRed,
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 18,
@@ -475,8 +475,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
           w < 0 ||
           w > l.weightRemaining) {
         setState(
-          () => _error =
-              'Check amounts, returned units and kg against the remaining invoice quantities.',
+          () => _error = 'Check amounts, returned units and kg against the remaining invoice quantities.',
         );
         return;
       }
@@ -579,8 +578,7 @@ class _CreditNoteEditorState extends State<CreditNoteEditor> {
                 children: [
                   const CutLinkSectionHeading(
                     title: 'Create a credit',
-                    subtitle:
-                        'Credit the original invoice. Any unused balance stays on the customer account.',
+                    subtitle: 'Credit the original invoice. Any unused balance stays on the customer account.',
                     icon: Icons.assignment_return_outlined,
                   ),
                   if (_busy) const LinearProgressIndicator(),
@@ -965,8 +963,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
       }
       if (rows.isEmpty) {
         setState(
-          () => _error =
-              'No unpaid invoices. The credit remains available on this customer’s account.',
+          () => _error = 'No unpaid invoices. The credit remains available on this customer’s account.',
         );
         return;
       }
@@ -1188,8 +1185,7 @@ class _CreditNoteDetailState extends State<CreditNoteDetail> {
                                 children: [
                                   const CutLinkSectionHeading(
                                     title: 'Credit summary',
-                                    subtitle:
-                                        'Allocation, returned goods and refund history.',
+                                    subtitle: 'Allocation, returned goods and refund history.',
                                     icon: Icons.receipt_long_outlined,
                                   ),
                                   Text(

@@ -24,7 +24,6 @@ class SupplierSettingsPage extends StatelessWidget {
   final bool embedded;
   final VoidCallback? onBrandingChanged;
 
-  static const _darkRed = Color(0xFF741C1C);
   static Color get _canvas => CutLinkPalette.color(0xFFF7F8FA);
   static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
   static Color get _muted => CutLinkPalette.color(0xFF666A70);
@@ -64,7 +63,11 @@ class SupplierSettingsPage extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.tune_outlined, color: _darkRed, size: 22),
+                    Icon(
+                      Icons.tune_outlined,
+                      color: CutLinkPalette.actionRed,
+                      size: 22,
+                    ),
                     SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -98,8 +101,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.local_shipping_outlined,
                     title: 'Delivery settings',
-                    subtitle:
-                        'Delivery availability, lead times, cut-off and delivery defaults.',
+                    subtitle: 'Delivery availability, lead times, cut-off and delivery defaults.',
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const SupplierDeliverySettingsPage(
@@ -111,8 +113,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.business_outlined,
                     title: 'Business Profile',
-                    subtitle:
-                        'Trading name, legal name, contact details and business address.',
+                    subtitle: 'Trading name, legal name, contact details and business address.',
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -124,8 +125,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.receipt_long_outlined,
                     title: 'Invoice Configuration',
-                    subtitle:
-                        'Company logo, ABN, invoice contact details, address and banking details.',
+                    subtitle: 'Company logo, ABN, invoice contact details, address and banking details.',
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -139,8 +139,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.privacy_tip_outlined,
                     title: 'Privacy',
-                    subtitle:
-                        'Control marketplace profile visibility and customer access to contact details.',
+                    subtitle: 'Control marketplace profile visibility and customer access to contact details.',
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -152,8 +151,7 @@ class SupplierSettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.notifications_outlined,
                     title: 'Notifications',
-                    subtitle:
-                        'Choose which order, quote, payment and invoice activity should notify you.',
+                    subtitle: 'Choose which order, quote, payment and invoice activity should notify you.',
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -222,9 +220,9 @@ class SupplierSettingsPage extends StatelessWidget {
               color: CutLinkPalette.color(0xFFF5EAEA),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.settings_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
               size: 19,
             ),
           ),
@@ -278,13 +276,17 @@ class SupplierSettingsPage extends StatelessWidget {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.settings_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.settings_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'Settings',
@@ -316,7 +318,6 @@ class _SettingsTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
-  static const _darkRed = Color(0xFF741C1C);
   static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
   static Color get _muted => CutLinkPalette.color(0xFF666A70);
 
@@ -324,7 +325,7 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     AppearanceScope.watch(context);
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -353,7 +354,7 @@ class _SettingsTile extends StatelessWidget {
                   color: CutLinkPalette.color(0xFFF8EEEE),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: _darkRed, size: 20),
+                child: Icon(icon, color: CutLinkPalette.actionRed, size: 20),
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -596,15 +597,13 @@ class _SupplierProfileSettingsPageState
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) {
@@ -890,26 +889,22 @@ class _SupplierInvoiceConfigurationPageState
         _logoBytes = bytes;
       });
       widget.onBrandingChanged?.call();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Company logo updated.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Company logo updated.')));
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } on StorageException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -944,14 +939,12 @@ class _SupplierInvoiceConfigurationPageState
         _logoBytes = null;
       });
       widget.onBrandingChanged?.call();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Company logo removed.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Company logo removed.')));
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1107,9 +1100,8 @@ class _SupplierInvoiceConfigurationPageState
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1449,9 +1441,7 @@ class _SupplierNotificationSettingsPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e is PostgrestException
-                  ? e.message
-                  : 'Could not save notification preferences. Please try again.',
+              e is PostgrestException ? e.message : 'Could not save notification preferences. Please try again.',
             ),
           ),
         );
@@ -1599,13 +1589,13 @@ class _SettingsFormScaffold extends StatelessWidget {
       context,
       AppBar(
         backgroundColor: CutLinkPalette.surface,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 8,
         title: Row(
           children: [
-            Icon(_pageIcon, color: _darkRed, size: 21),
+            Icon(_pageIcon, color: CutLinkPalette.actionRed, size: 21),
             const SizedBox(width: 9),
             Text(
               title,
@@ -1628,7 +1618,9 @@ class _SettingsFormScaffold extends StatelessWidget {
       return Scaffold(
         backgroundColor: _canvas,
         appBar: _appBar(context),
-        body: const Center(child: CircularProgressIndicator(color: _darkRed)),
+        body: Center(
+          child: CircularProgressIndicator(color: CutLinkPalette.actionRed),
+        ),
       );
     }
 
@@ -1657,7 +1649,11 @@ class _SettingsFormScaffold extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, color: _darkRed, size: 30),
+                  Icon(
+                    Icons.error_outline,
+                    color: CutLinkPalette.actionRed,
+                    size: 30,
+                  ),
                   const IosGap(height: 12),
                   Text(
                     error!,
@@ -1670,7 +1666,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                   const IosGap(height: 18),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
+                      backgroundColor: CutLinkPalette.buttonRed,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 18,
@@ -1725,7 +1721,11 @@ class _SettingsFormScaffold extends StatelessWidget {
                         color: CutLinkPalette.color(0xFFF8EEEE),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(_pageIcon, color: _darkRed, size: 23),
+                      child: Icon(
+                        _pageIcon,
+                        color: CutLinkPalette.actionRed,
+                        size: 23,
+                      ),
                     ),
                     const SizedBox(width: 13),
                     Expanded(
@@ -1778,7 +1778,7 @@ class _SettingsFormScaffold extends StatelessWidget {
                   height: 48,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
+                      backgroundColor: CutLinkPalette.buttonRed,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: _darkRed.withValues(alpha: 0.45),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1833,7 +1833,7 @@ class _SectionHeading extends StatelessWidget {
               width: 4,
               height: 20,
               decoration: BoxDecoration(
-                color: const Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),

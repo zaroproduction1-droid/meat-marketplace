@@ -369,16 +369,14 @@ class _SupplierCustomerRequestsPageState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -398,16 +396,14 @@ class _SupplierCustomerRequestsPageState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -450,9 +446,8 @@ class _SupplierCustomerRequestsPageState
         _ => 'Customer relationship updated.',
       };
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
       await _loadPage();
     } on PostgrestException catch (error) {
@@ -460,17 +455,15 @@ class _SupplierCustomerRequestsPageState
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -575,9 +568,8 @@ class _SupplierCustomerRequestsPageState
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -746,12 +738,12 @@ class _SupplierCustomerRequestsPageState
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: _darkRed.withValues(alpha: 0.08),
+              color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.workspace_premium_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
             ),
           ),
           const SizedBox(width: 14),
@@ -809,7 +801,9 @@ class _SupplierCustomerRequestsPageState
           const SizedBox(width: 12),
           FilledButton.icon(
             onPressed: _openVipApplications,
-            style: FilledButton.styleFrom(backgroundColor: _darkRed),
+            style: FilledButton.styleFrom(
+              backgroundColor: CutLinkPalette.buttonRed,
+            ),
             icon: const Icon(Icons.open_in_new),
             label: Text(hasPending ? 'Review Now' : 'Open'),
           ),
@@ -843,7 +837,11 @@ class _SupplierCustomerRequestsPageState
               color: CutLinkPalette.color(0xFFF4E5E5),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.search, color: _darkRed, size: 20),
+            child: Icon(
+              Icons.search,
+              color: CutLinkPalette.actionRed,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -852,8 +850,7 @@ class _SupplierCustomerRequestsPageState
               textInputAction: TextInputAction.search,
               onSubmitted: _applyCustomerSearch,
               decoration: InputDecoration(
-                hintText:
-                    'Search CutLink members or external customers, then press Enter',
+                hintText: 'Search CutLink members or external customers, then press Enter',
                 filled: true,
                 fillColor: CutLinkPalette.color(0xFFFAFAFB),
                 border: OutlineInputBorder(
@@ -870,7 +867,10 @@ class _SupplierCustomerRequestsPageState
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(11),
-                  borderSide: const BorderSide(color: _darkRed, width: 1.2),
+                  borderSide: BorderSide(
+                    color: CutLinkPalette.actionRed,
+                    width: 1.2,
+                  ),
                 ),
                 suffixIcon: _appliedCustomerSearch.isEmpty
                     ? null
@@ -887,7 +887,7 @@ class _SupplierCustomerRequestsPageState
             onPressed: () =>
                 _applyCustomerSearch(_customerSearchController.text),
             style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
+              backgroundColor: CutLinkPalette.buttonRed,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             ),
             icon: const Icon(Icons.search, size: 18),
@@ -907,13 +907,17 @@ class _SupplierCustomerRequestsPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.people_alt_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.people_alt_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'Customers & Accounts',
@@ -927,7 +931,7 @@ class _SupplierCustomerRequestsPageState
               child: FilledButton.icon(
                 onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 11,
@@ -973,7 +977,11 @@ class _SupplierCustomerRequestsPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 20),
@@ -1127,7 +1135,7 @@ class _SupplierCustomerRequestsPageState
                   action: FilledButton.icon(
                     onPressed: _openAddExternalCustomerDialog,
                     style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
+                      backgroundColor: CutLinkPalette.buttonRed,
                       visualDensity: VisualDensity.compact,
                     ),
                     icon: const Icon(Icons.add, size: 17),
@@ -1157,8 +1165,7 @@ class _SupplierCustomerRequestsPageState
                         Expanded(
                           child: panel(
                             title: 'CutLink Members',
-                            subtitle:
-                                'Registered CutLink butcher members and commercial account settings.',
+                            subtitle: 'Registered CutLink butcher members and commercial account settings.',
                             child: cutLinkList(),
                           ),
                         ),
@@ -1171,7 +1178,7 @@ class _SupplierCustomerRequestsPageState
                             action: FilledButton.icon(
                               onPressed: _openAddExternalCustomerDialog,
                               style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
+                                backgroundColor: CutLinkPalette.buttonRed,
                                 visualDensity: VisualDensity.compact,
                               ),
                               icon: const Icon(Icons.add, size: 17),
@@ -1207,7 +1214,7 @@ class _SupplierCustomerRequestsPageState
         padding: const EdgeInsets.all(28),
         child: Column(
           children: [
-            Icon(icon, size: 54, color: _darkRed),
+            Icon(icon, size: 54, color: CutLinkPalette.actionRed),
             const IosGap(height: 14),
             Text(
               title,
@@ -1259,9 +1266,9 @@ class _SupplierCustomerRequestsPageState
                     color: CutLinkPalette.color(0xFFF4E5E5),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.storefront_outlined,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                     size: 20,
                   ),
                 ),
@@ -1315,7 +1322,7 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: _darkRed),
+                Icon(Icons.chevron_right, color: CutLinkPalette.actionRed),
                 PopupMenuButton<String>(
                   tooltip: 'Member actions',
                   onSelected: (value) {
@@ -1404,9 +1411,8 @@ class _SupplierCustomerRequestsPageState
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: _accountStatusColor(
-                              accountStatus,
-                            ).withValues(alpha: 0.08),
+                            color: _accountStatusColor(accountStatus)
+                                .withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1522,9 +1528,9 @@ class _SupplierCustomerRequestsPageState
                     color: CutLinkPalette.color(0xFFF4E5E5),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person_outline,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                     size: 20,
                   ),
                 ),
@@ -1558,7 +1564,7 @@ class _SupplierCustomerRequestsPageState
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: _darkRed),
+                Icon(Icons.chevron_right, color: CutLinkPalette.actionRed),
                 PopupMenuButton<String>(
                   tooltip: 'Customer actions',
                   onSelected: (value) {
@@ -1622,9 +1628,8 @@ class _SupplierCustomerRequestsPageState
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: _accountStatusColor(
-                            accountStatus,
-                          ).withValues(alpha: 0.08),
+                          color: _accountStatusColor(accountStatus)
+                              .withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(

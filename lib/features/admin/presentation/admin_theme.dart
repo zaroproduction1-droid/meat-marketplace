@@ -15,7 +15,7 @@ class AdminTheme extends StatelessWidget {
   static Color get ink => CutLinkPalette.color(0xFF172638);
   static Color get muted => CutLinkPalette.color(0xFF647386);
   static Color get canvas => CutLinkPalette.color(0xFFF3F5F8);
-  static const accent = Color(0xFF741C1C);
+  static const accent = Color(0xFFA51C34);
   static Color get line => CutLinkPalette.color(0xFFE3E8EF);
   @override
   Widget build(BuildContext context) {
@@ -372,7 +372,11 @@ class AdminStatTile extends StatelessWidget {
                       color: CutLinkPalette.color(0xFFF4E8E9),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(icon, size: 19, color: AdminTheme.accent),
+                    child: Icon(
+                      icon,
+                      size: 19,
+                      color: CutLinkPalette.actionRed,
+                    ),
                   ),
                   const Spacer(),
                   if (onTap != null)

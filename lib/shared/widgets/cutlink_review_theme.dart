@@ -72,7 +72,7 @@ class CutLinkReviewTheme extends StatelessWidget {
                 ),
               ),
               listTileTheme: ListTileThemeData(
-                iconColor: CutLinkWorkspaceTheme.red,
+                iconColor: CutLinkPalette.actionRed,
                 titleTextStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -84,9 +84,11 @@ class CutLinkReviewTheme extends StatelessWidget {
                   color: CutLinkPalette.color(0xFF66717E),
                 ),
               ),
-              dropdownMenuTheme: const DropdownMenuThemeData(
+              dropdownMenuTheme: DropdownMenuThemeData(
                 menuStyle: MenuStyle(
-                  backgroundColor: WidgetStatePropertyAll(Colors.white),
+                  backgroundColor: WidgetStatePropertyAll(
+                    CutLinkPalette.surface,
+                  ),
                 ),
               ),
             ),

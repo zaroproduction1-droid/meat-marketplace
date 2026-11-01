@@ -64,8 +64,6 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
   @override
   bool get wantKeepAlive => true;
 
-  static const _darkRed = Color(0xFF741C1C);
-
   final TextEditingController _searchController = TextEditingController();
 
   final _skuController = TextEditingController();
@@ -1312,7 +1310,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           label: const Text('All cuts'),
-          selectedColor: _darkRed,
+          selectedColor: CutLinkPalette.actionRed,
           backgroundColor: CutLinkPalette.surface,
           labelStyle: TextStyle(
             color: _selectedSectionId == null
@@ -1339,7 +1337,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             label: Text(section['name']?.toString() ?? 'Cut'),
-            selectedColor: _darkRed,
+            selectedColor: CutLinkPalette.actionRed,
             backgroundColor: CutLinkPalette.surface,
             labelStyle: TextStyle(
               color: _selectedSectionId == section['id']?.toString()
@@ -1369,7 +1367,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           label: const Text('All subcategories'),
-          selectedColor: _darkRed,
+          selectedColor: CutLinkPalette.actionRed,
           backgroundColor: CutLinkPalette.surface,
           labelStyle: TextStyle(
             color: _selectedSpecificationId == null
@@ -1393,7 +1391,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             label: Text(specification['name']?.toString() ?? 'Subcategory'),
-            selectedColor: _darkRed,
+            selectedColor: CutLinkPalette.actionRed,
             backgroundColor: CutLinkPalette.surface,
             labelStyle: TextStyle(
               color: _selectedSpecificationId == specification['id']?.toString()
@@ -1421,7 +1419,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(color: CutLinkPalette.color(0xFFE2E2DE)),
         borderRadius: BorderRadius.circular(12),
@@ -1451,9 +1449,9 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                           message: gradeName,
                           child: Text(
                             gradeCode,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                           ),
                         ),
@@ -1496,10 +1494,10 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                             productProgram(product),
                             product['marbling_score']?.toString() ?? '',
                           ].where((v) => v.isNotEmpty).join(' • '),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
-                            color: _darkRed,
+                            color: CutLinkPalette.actionRed,
                           ),
                         ),
                       ],
@@ -1627,7 +1625,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       ),
       child: Row(
         children: [
-          Icon(icon, color: _darkRed, size: 20),
+          Icon(icon, color: CutLinkPalette.actionRed, size: 20),
           const SizedBox(width: 9),
           Expanded(
             child: Column(
@@ -1689,7 +1687,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         amountText: value,
       ),
       style: TextStyle(
-        color: _darkRed,
+        color: CutLinkPalette.actionRed,
         fontSize: 13,
         fontWeight: FontWeight.w900,
       ),
@@ -1738,7 +1736,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
                   fontWeight: FontWeight.w900,
                   color: count == 0
                       ? CutLinkPalette.color(0xFF777777)
-                      : _darkRed,
+                      : CutLinkPalette.actionRed,
                 ),
               ),
             ),
@@ -1758,9 +1756,8 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -1774,7 +1771,7 @@ class _QuickPriceManagementPageState extends State<QuickPriceManagementPage>
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'Inventory & Pricing',
             maxLines: 1,

@@ -537,7 +537,7 @@ class _PhoneCatalogueZoomState extends State<_PhoneCatalogueZoom> {
   }
 }
 
-/// The diagram always fits; only the separate cut/sub-cut choices scroll.
+/// On phones the diagram and choices scroll together; desktop keeps two panes.
 class AnimalCatalogueLayout extends StatelessWidget {
   const AnimalCatalogueLayout({
     super.key,
@@ -556,15 +556,20 @@ class AnimalCatalogueLayout extends StatelessWidget {
           child: choices,
         );
         if (box.maxWidth < 800) {
-          return Column(
-            children: [
-              SizedBox(
-                height: (box.maxHeight * 0.56).clamp(140.0, 440.0),
-                child: map,
-              ),
-              const Divider(height: 1),
-              Expanded(child: options),
-            ],
+          return SingleChildScrollView(
+            key: const PageStorageKey('whole-animal-catalogue'),
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: (box.maxWidth * .92).clamp(230.0, 460.0).toDouble(),
+                  child: map,
+                ),
+                const Divider(height: 1),
+                Padding(padding: const EdgeInsets.all(14), child: choices),
+              ],
+            ),
           );
         }
         return Row(
@@ -589,6 +594,20 @@ class _CatalogueViewport extends StatefulWidget {
 
 class _CatalogueViewportState extends State<_CatalogueViewport> {
   final _controller = TransformationController();
+  bool _zoomed = false;
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_updateZoom);
+  }
+
+  void _updateZoom() {
+    final zoomed = _controller.value.getMaxScaleOnAxis() > 1.01;
+    if (zoomed != _zoomed && mounted) {
+      setState(() => _zoomed = zoomed);
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -604,6 +623,24 @@ class _CatalogueViewportState extends State<_CatalogueViewport> {
           child: ClipRect(
             child: InteractiveViewer(
               transformationController: _controller,
+              panEnabled: _zoomed,
+              onInteractionUpdate: (details) {
+                if (_zoomed ||
+                    details.pointerCount != 1 ||
+                    details.scale != 1) {
+                  return;
+                }
+                final scroll = Scrollable.maybeOf(context);
+                if (scroll == null ||
+                    scroll.axisDirection != AxisDirection.down) {
+                  return;
+                }
+                final position = scroll.position;
+                final next = (position.pixels - details.focalPointDelta.dy)
+                    .clamp(position.minScrollExtent, position.maxScrollExtent)
+                    .toDouble();
+                position.jumpTo(next);
+              },
               minScale: 1,
               maxScale: 5,
               child: SizedBox.expand(child: widget.child),

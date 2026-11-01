@@ -672,9 +672,9 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 color: CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.bar_chart_rounded,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 20,
               ),
             ),
@@ -725,7 +725,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   : const Icon(Icons.picture_as_pdf_outlined, size: 17),
               label: const Text('Download PDF'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: _darkRed,
+                foregroundColor: CutLinkPalette.actionRed,
                 side: BorderSide(color: CutLinkPalette.color(0xFFD7A8AE)),
                 visualDensity: VisualDensity.compact,
               ),
@@ -770,7 +770,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   _customStartDate == null &&
                       _customEndDate == null &&
                       _days == entry.key
-                  ? _darkRed
+                  ? CutLinkPalette.actionRed
                   : _border,
             ),
             selectedColor: CutLinkPalette.color(0xFFF5EAEA),
@@ -780,7 +780,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   _customStartDate == null &&
                       _customEndDate == null &&
                       _days == entry.key
-                  ? _darkRed
+                  ? CutLinkPalette.actionRed
                   : _muted,
               fontSize: 11,
               fontWeight: FontWeight.w900,
@@ -793,7 +793,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           onPressed: _pickDateRange,
           side: BorderSide(
             color: _customStartDate != null && _customEndDate != null
-                ? _darkRed
+                ? CutLinkPalette.actionRed
                 : _border,
           ),
           backgroundColor: _customStartDate != null && _customEndDate != null
@@ -801,7 +801,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
               : Colors.white,
           labelStyle: TextStyle(
             color: _customStartDate != null && _customEndDate != null
-                ? _darkRed
+                ? CutLinkPalette.actionRed
                 : _muted,
             fontSize: 11,
             fontWeight: FontWeight.w900,
@@ -851,7 +851,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   color: CutLinkPalette.color(0xFFF7F0F1),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 17, color: _darkRed),
+                child: Icon(icon, size: 17, color: CutLinkPalette.actionRed),
               ),
               const Spacer(),
               if (change != null)
@@ -939,8 +939,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     );
     return _sectionCard(
       title: 'Credits, refunds & returns',
-      subtitle:
-          'Selected period • refunds are part of credits, not an additional deduction.',
+      subtitle: 'Selected period • refunds are part of credits, not an additional deduction.',
       child: IosPadding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
@@ -1030,8 +1029,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         ),
                         child: Text(
                           '${i + 1}',
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1075,7 +1074,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                         1.0,
                       ),
                       minHeight: 4,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       backgroundColor: CutLinkPalette.color(0xFFF0F1F3),
                     ),
                   ),
@@ -1292,7 +1291,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                           child: Text(
                             '${i + 1}',
                             style: TextStyle(
-                              color: i < 3 ? _darkRed : _muted,
+                              color: i < 3 ? CutLinkPalette.actionRed : _muted,
                               fontSize: 10.5,
                               fontWeight: FontWeight.w900,
                             ),
@@ -1848,8 +1847,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
         const _Insight(
           icon: Icons.check_circle_outline_rounded,
           title: 'No major exceptions detected',
-          body:
-              'The selected period does not show any obvious performance warning from the metrics available in CutLink.',
+          body: 'The selected period does not show any obvious performance warning from the metrics available in CutLink.',
           colour: _positive,
         ),
       );
@@ -1961,7 +1959,11 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, color: _darkRed, size: 46),
+                Icon(
+                  Icons.error_outline,
+                  color: CutLinkPalette.actionRed,
+                  size: 46,
+                ),
                 const IosGap(height: 12),
                 const Text(
                   'Analytics could not be loaded',
@@ -2385,12 +2387,16 @@ class _BusinessAnalyticsOverviewPanelState
                       onSelected: (_) => _changeDays(entry.key),
                       showCheckmark: false,
                       side: BorderSide(
-                        color: _days == entry.key ? _darkRed : _border,
+                        color: _days == entry.key
+                            ? CutLinkPalette.actionRed
+                            : _border,
                       ),
                       selectedColor: CutLinkPalette.color(0xFFF5EAEA),
                       backgroundColor: CutLinkPalette.surface,
                       labelStyle: TextStyle(
-                        color: _days == entry.key ? _darkRed : _muted,
+                        color: _days == entry.key
+                            ? CutLinkPalette.actionRed
+                            : _muted,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w900,
                       ),

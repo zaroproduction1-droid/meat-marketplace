@@ -25,7 +25,6 @@ class SupplierQuoteEditorPage extends StatefulWidget {
 }
 
 class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
-  static const _darkRed = Color(0xFF741C1C);
   final _sourceReferenceController = TextEditingController();
   final _customerReferenceController = TextEditingController();
   final _deliveryNotesController = TextEditingController();
@@ -547,7 +546,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                     child: const Text('Cancel'),
                   ),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     onPressed: () {
                       final businessName = businessNameController.text.trim();
 
@@ -646,9 +647,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -938,7 +938,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                             'notes': notesController.text.trim(),
                           })
                         : null,
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     icon: const Icon(Icons.add),
                     label: const Text('Add'),
                   ),
@@ -1116,9 +1118,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       _customerReferenceController.text,
     );
     if (blocked != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(blocked)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(blocked)));
       return;
     }
 
@@ -1157,7 +1158,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Save Quote'),
             ),
@@ -1241,9 +1244,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
           return;
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Quote saved.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Quote saved.')));
 
         Navigator.of(context).pop(quoteId);
       }
@@ -1252,9 +1254,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -1277,9 +1278,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
       _customerReferenceController.text,
     );
     if (blocked != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(blocked)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(blocked)));
       return;
     }
 
@@ -1318,7 +1318,9 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Create Work Order'),
             ),
@@ -1422,9 +1424,8 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -1441,7 +1442,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'Phone Sales Desk',
             style: TextStyle(fontWeight: FontWeight.w700),
@@ -1463,7 +1464,11 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -1524,7 +1529,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _addCustomerInline,
                     style: FilledButton.styleFrom(
-                      backgroundColor: _darkRed,
+                      backgroundColor: CutLinkPalette.buttonRed,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 18,
                         vertical: 18,
@@ -1893,7 +1898,7 @@ class _SupplierQuoteEditorPageState extends State<SupplierQuoteEditorPage> {
                       final workOrderButton = FilledButton.icon(
                         onPressed: _isSaving ? null : _createWorkOrder,
                         style: FilledButton.styleFrom(
-                          backgroundColor: _darkRed,
+                          backgroundColor: CutLinkPalette.buttonRed,
                           padding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                         icon: _isSaving

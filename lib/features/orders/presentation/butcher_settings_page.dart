@@ -253,9 +253,8 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unable to update logo: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Unable to update logo: $e')));
       }
     } finally {
       if (mounted) {
@@ -287,10 +286,10 @@ class _ButcherBrandingCardState extends State<_ButcherBrandingCard> {
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
                       : _bytes == null
-                      ? const Icon(
+                      ? Icon(
                           Icons.storefront_outlined,
                           size: 34,
-                          color: Color(0xFF741C1C),
+                          color: CutLinkPalette.actionRed,
                         )
                       : SharpLogo.memory(_bytes!),
                 ),
@@ -368,7 +367,7 @@ class _SettingsTile extends StatelessWidget {
     AppearanceScope.watch(context);
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
@@ -385,10 +384,10 @@ class _SettingsTile extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF741C1C).withValues(alpha: 0.08),
+                  color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF741C1C)),
+                child: Icon(icon, color: CutLinkPalette.actionRed),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -614,15 +613,13 @@ class _ButcherProfileSettingsPageState
       );
     } on PostgrestException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) {
@@ -1163,9 +1160,9 @@ class _ButcherDeliveryAddressesPageState
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(16),
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.location_on_outlined,
-                            color: Color(0xFF8B1E1E),
+                            color: CutLinkPalette.actionRed,
                           ),
                           title: Row(
                             children: [
@@ -1464,9 +1461,7 @@ class _ButcherNotificationSettingsPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e is PostgrestException
-                  ? e.message
-                  : 'Could not save notification preferences. Please try again.',
+              e is PostgrestException ? e.message : 'Could not save notification preferences. Please try again.',
             ),
           ),
         );

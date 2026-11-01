@@ -270,7 +270,7 @@ class _TodayNotificationsBellState extends State<TodayNotificationsBell>
                                       Icon(
                                         Icons.notifications_none_rounded,
                                         size: 36,
-                                        color: CutLinkWorkspaceTheme.red,
+                                        color: CutLinkPalette.actionRed,
                                       ),
                                       IosGap(height: 10),
                                       Text(

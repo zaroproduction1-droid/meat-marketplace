@@ -110,7 +110,7 @@ class _MarketplaceProductDetailsPageState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF741C1C)),
+          Icon(icon, size: 18, color: CutLinkPalette.actionRed),
           const SizedBox(width: 9),
           Expanded(
             child: SelectableText(
@@ -121,10 +121,10 @@ class _MarketplaceProductDetailsPageState
         ],
       ),
     );
-    const fallbackLogo = Icon(
+    final fallbackLogo = Icon(
       Icons.storefront_outlined,
       size: 34,
-      color: Color(0xFF741C1C),
+      color: CutLinkPalette.actionRed,
     );
     return Container(
       padding: const EdgeInsets.all(14),
@@ -295,9 +295,8 @@ class _MarketplaceProductDetailsPageState
         _isCheckingRelationship = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
@@ -360,9 +359,8 @@ class _MarketplaceProductDetailsPageState
         message = 'A supplier relationship already exists.';
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -684,7 +682,7 @@ class _MarketplaceProductDetailsPageState
             code,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: const Color(0xFF741C1C),
+              color: CutLinkPalette.actionRed,
               fontSize: code.length > 3 ? 25 : 33,
               height: 1,
               fontWeight: FontWeight.w900,
@@ -920,9 +918,8 @@ class _MarketplaceProductDetailsPageState
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
@@ -1049,9 +1046,8 @@ class _MarketplaceProductDetailsPageState
   }
 
   Future<void> _openDraftOrdersPage() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => const DraftOrdersPage()));
   }
 
   Widget _buildRelationshipButton() {
@@ -1161,7 +1157,7 @@ class _MarketplaceProductDetailsPageState
             mode: PhoneRowMode.wrap,
             desktop: Row(
               children: [
-                Icon(icon, color: const Color(0xFF741C1C), size: 18),
+                Icon(icon, color: CutLinkPalette.actionRed, size: 18),
                 const SizedBox(width: 7),
                 Text(
                   title,
@@ -1293,9 +1289,9 @@ class _MarketplaceProductDetailsPageState
                       catchWeightKgPricing
                           ? 'Pending weight'
                           : _formatMoney(estimatedTotal ?? 0),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF741C1C),
+                        color: CutLinkPalette.actionRed,
                       ),
                     ),
                   ],
@@ -1500,8 +1496,8 @@ class _MarketplaceProductDetailsPageState
                         const IosGap(height: 5),
                         Text(
                           _supplierName(),
-                          style: const TextStyle(
-                            color: Color(0xFF741C1C),
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1712,7 +1708,7 @@ class _MarketplaceProductDetailsPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'Product Details',
             style: TextStyle(fontWeight: FontWeight.w800),

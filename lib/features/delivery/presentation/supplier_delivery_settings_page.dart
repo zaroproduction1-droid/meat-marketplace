@@ -287,26 +287,26 @@ class _SupplierDeliverySettingsPageState
       _drivers = List<Map<String, dynamic>>.from(results[0] as List);
       _vehicles = List<Map<String, dynamic>>.from(results[1] as List);
       _runs = List<Map<String, dynamic>>.from(results[2] as List);
-      _readyOrders = List<Map<String, dynamic>>.from(results[3] as List).where((
-        order,
-      ) {
-        final invoices = order['invoices'];
-        final orderId = order['id']?.toString();
-        final status = order['status']?.toString();
+      _readyOrders = List<Map<String, dynamic>>.from(results[3] as List)
+          .where((order) {
+            final invoices = order['invoices'];
+            final orderId = order['id']?.toString();
+            final status = order['status']?.toString();
 
-        if (invoices is! List ||
-            invoices.isEmpty ||
-            orderId == null ||
-            activeOrderIds.contains(orderId)) {
-          return false;
-        }
+            if (invoices is! List ||
+                invoices.isEmpty ||
+                orderId == null ||
+                activeOrderIds.contains(orderId)) {
+              return false;
+            }
 
-        if (status == 'processing') {
-          return true;
-        }
+            if (status == 'processing') {
+              return true;
+            }
 
-        return status == 'dispatched' && failedOrderIds.contains(orderId);
-      }).toList();
+            return status == 'dispatched' && failedOrderIds.contains(orderId);
+          })
+          .toList();
     });
   }
 
@@ -917,7 +917,7 @@ class _SupplierDeliverySettingsPageState
           mode: PhoneRowMode.wrap,
           desktop: Row(
             children: [
-              Icon(icon, color: _darkRed),
+              Icon(icon, color: CutLinkPalette.actionRed),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,8 +996,7 @@ class _SupplierDeliverySettingsPageState
         const IosGap(height: 18),
         _sectionCard(
           title: 'Delivery Operations',
-          subtitle:
-              'Create delivery runs from invoiced orders that are ready to leave the warehouse.',
+          subtitle: 'Create delivery runs from invoiced orders that are ready to leave the warehouse.',
           child: PhoneRow(
             mode: PhoneRowMode.wrap,
             desktop: Row(
@@ -1050,7 +1049,7 @@ class _SupplierDeliverySettingsPageState
         );
         final status = run['status']?.toString() ?? 'draft';
         return Card(
-          color: Colors.white,
+          color: CutLinkPalette.surface,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
@@ -1073,9 +1072,9 @@ class _SupplierDeliverySettingsPageState
                 ),
                 Text(
                   _runStatusLabel(status),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
               ],
@@ -1221,9 +1220,9 @@ class _SupplierDeliverySettingsPageState
                       const IosGap(height: 10),
                       for (final driver in _drivers)
                         ListTile(
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.badge_outlined,
-                            color: _darkRed,
+                            color: CutLinkPalette.actionRed,
                           ),
                           title: Text(
                             driver['display_name']?.toString() ?? 'Driver',
@@ -1256,9 +1255,9 @@ class _SupplierDeliverySettingsPageState
                       const IosGap(height: 10),
                       for (final vehicle in _vehicles)
                         ListTile(
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.local_shipping_outlined,
-                            color: _darkRed,
+                            color: CutLinkPalette.actionRed,
                           ),
                           title: Text(
                             vehicle['display_name']?.toString() ?? 'Vehicle',
@@ -1318,8 +1317,7 @@ class _SupplierDeliverySettingsPageState
           const IosGap(height: 16),
           _sectionCard(
             title: 'Delivery Zones',
-            subtitle:
-                'Manage delivery areas, postcodes, minimums, fees and lead times.',
+            subtitle: 'Manage delivery areas, postcodes, minimums, fees and lead times.',
             child: Column(
               children: [
                 Align(
@@ -1375,8 +1373,7 @@ class _SupplierDeliverySettingsPageState
         children: [
           _sectionCard(
             title: 'General Delivery Rules',
-            subtitle:
-                'Manage your delivery minimum, lead time, cut-off and customer-facing notes.',
+            subtitle: 'Manage your delivery minimum, lead time, cut-off and customer-facing notes.',
             child: Column(
               children: [
                 TextField(
@@ -1425,12 +1422,12 @@ class _SupplierDeliverySettingsPageState
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
                   ),
-                  child: const Row(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
                         Icons.store_mall_directory_outlined,
-                        color: _darkRed,
+                        color: CutLinkPalette.actionRed,
                       ),
                       SizedBox(width: 10),
                       Expanded(
@@ -1499,9 +1496,9 @@ class _SupplierDeliverySettingsPageState
               Row(
                 children: [
                   const WorkspaceBackButton(),
-                  const Icon(
+                  Icon(
                     Icons.local_shipping_outlined,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                     size: 24,
                   ),
                   const SizedBox(width: 10),
@@ -1551,12 +1548,14 @@ class _SupplierDeliverySettingsPageState
                         avatar: Icon(
                           icons[i],
                           size: 18,
-                          color: selected ? Colors.white : _darkRed,
+                          color: selected
+                              ? Colors.white
+                              : CutLinkPalette.actionRed,
                         ),
                         label: Text(labels[i]),
                         showCheckmark: false,
                         selected: selected,
-                        selectedColor: _darkRed,
+                        selectedColor: CutLinkPalette.actionRed,
                         backgroundColor: CutLinkPalette.color(0xFFF7F7F5),
                         labelStyle: TextStyle(
                           color: selected
@@ -1573,7 +1572,7 @@ class _SupplierDeliverySettingsPageState
                         ),
                         side: BorderSide(
                           color: selected
-                              ? _darkRed
+                              ? CutLinkPalette.actionRed
                               : CutLinkPalette.color(0xFFE1E3E5),
                         ),
                         onSelected: (_) {
@@ -2089,8 +2088,7 @@ class _SupplierDeliverySettingsPageState
                             decoration: InputDecoration(
                               labelText: 'Postcodes',
                               hintText: 'Example: 2164, 2165, 2166, 2170',
-                              helperText:
-                                  'Separate postcodes with commas, spaces or new lines.',
+                              helperText: 'Separate postcodes with commas, spaces or new lines.',
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -2130,7 +2128,9 @@ class _SupplierDeliverySettingsPageState
                     ),
                     FilledButton(
                       onPressed: saving ? null : saveZone,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       child: saving
                           ? const SizedBox(
                               width: 18,
@@ -2175,7 +2175,9 @@ class _SupplierDeliverySettingsPageState
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 child: const Text('Delete'),
               ),
             ],
@@ -2214,9 +2216,8 @@ class _SupplierDeliverySettingsPageState
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _sectionCard({
@@ -2225,7 +2226,7 @@ class _SupplierDeliverySettingsPageState
     required Widget child,
   }) {
     return Card(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -2350,7 +2351,7 @@ class _SupplierDeliverySettingsPageState
                       ? Icons.local_shipping_outlined
                       : Icons.pause_circle_outline,
                   color: zone['active'] == true
-                      ? _darkRed
+                      ? CutLinkPalette.actionRed
                       : CutLinkPalette.color(0xFF888888),
                 ),
                 const SizedBox(width: 13),
@@ -2442,7 +2443,7 @@ class _SupplierDeliverySettingsPageState
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: _darkRed,
+            backgroundColor: CutLinkPalette.buttonRed,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             shape: RoundedRectangleBorder(
@@ -2452,7 +2453,7 @@ class _SupplierDeliverySettingsPageState
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: _darkRed,
+            foregroundColor: CutLinkPalette.actionRed,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -2471,10 +2472,10 @@ class _SupplierDeliverySettingsPageState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.error_outline,
                         size: 56,
-                        color: _darkRed,
+                        color: CutLinkPalette.actionRed,
                       ),
                       const IosGap(height: 14),
                       Text(_errorMessage!, textAlign: TextAlign.center),

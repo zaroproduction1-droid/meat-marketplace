@@ -57,11 +57,13 @@ class IosDashboardHome extends StatelessWidget {
     this.cartCount = 0,
     this.nextOrderTitle = 'Your next delivery',
     this.sections,
+    this.favouritesMode = false,
     this.shortcuts = const {},
   });
   final List<IosDashboardSection>? sections;
   final Map<String, DashboardActionRow> shortcuts;
   final bool supplier;
+  final bool favouritesMode;
   final String businessName, greeting, nextOrderTitle;
   final Widget avatar;
   final int unread, cartCount;
@@ -157,7 +159,14 @@ class IosDashboardHome extends StatelessWidget {
           ),
         ];
       case 'ios_buy_again':
-        return [_heading(p, 'Buy again', onSaved), _buyAgain(p)];
+        return [
+          _heading(
+            p,
+            favouritesMode ? 'Favourite products' : 'Buy again',
+            onSaved,
+          ),
+          _buyAgain(p),
+        ];
       case 'ios_work_orders':
         return [
           const SizedBox(height: 14),
@@ -627,15 +636,25 @@ class IosDashboardHome extends StatelessWidget {
         ? Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Products from your recent orders will appear here.',
+              favouritesMode
+                  ? 'Save products and choose up to four for Home.'
+                  : 'Products from your recent orders will appear here.',
               style: TextStyle(fontSize: 12, color: p.muted),
             ),
           )
         : Column(
             children: [
-              for (var i = 0; i < buyAgain.length && i < 2; i++) ...[
+              for (
+                var i = 0;
+                i < buyAgain.length && i < (favouritesMode ? 4 : 2);
+                i++
+              ) ...[
                 if (i > 0) Divider(height: .8, indent: 70, color: p.border),
-                _BuyAgainTile(row: buyAgain[i], palette: p),
+                _BuyAgainTile(
+                  row: buyAgain[i],
+                  palette: p,
+                  favourite: favouritesMode,
+                ),
               ],
             ],
           ),
@@ -650,7 +669,12 @@ class IosDashboardHome extends StatelessWidget {
 }
 
 class _BuyAgainTile extends StatefulWidget {
-  const _BuyAgainTile({required this.row, required this.palette});
+  const _BuyAgainTile({
+    required this.row,
+    required this.palette,
+    required this.favourite,
+  });
+  final bool favourite;
   final DashboardActionRow row;
   final IosDashboardPalette palette;
   @override
@@ -692,7 +716,10 @@ class _BuyAgainTileState extends State<_BuyAgainTile> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('Last paid', style: TextStyle(fontSize: 9, color: p.muted)),
+              Text(
+                widget.favourite ? 'View price' : 'Last paid',
+                style: TextStyle(fontSize: 9, color: p.muted),
+              ),
               if (row.historicalPrice != null)
                 Text(
                   row.historicalPrice!,
@@ -769,7 +796,8 @@ class _BuyAgainTileState extends State<_BuyAgainTile> {
               ],
               const SizedBox(width: 3),
               Semantics(
-                label: 'Order ${row.title}',
+                label:
+                    '${widget.favourite && row.onOrder == null ? 'View' : 'Order'} ${row.title}',
                 button: true,
                 child: InkResponse(
                   onTap: _order,
@@ -793,8 +821,10 @@ class _BuyAgainTileState extends State<_BuyAgainTile> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(
-                                Icons.add,
+                            : Icon(
+                                widget.favourite && row.onOrder == null
+                                    ? Icons.chevron_right
+                                    : Icons.add,
                                 color: Colors.white,
                                 size: 20,
                               ),

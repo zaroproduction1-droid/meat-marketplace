@@ -117,8 +117,7 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
     final note = await requestContentReason(
       context,
       title: 'Resolve this report',
-      description:
-          'Use this when no product action is needed. Choose an outcome for the reporting business. Product actions close the report automatically.',
+      description: 'Use this when no product action is needed. Choose an outcome for the reporting business. Product actions close the report automatically.',
       submitLabel: 'Resolve report',
       maxLength: 2000,
       productReview: true,
@@ -321,9 +320,9 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
         const IosGap(height: 3),
         Text(
           snapshot['supplier_name']?.toString() ?? 'Supplier',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: Color(0xFF741C1C),
+            color: CutLinkPalette.actionRed,
           ),
         ),
         const IosGap(height: 7),
@@ -391,9 +390,9 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.flag_outlined,
-                    color: Color(0xFF741C1C),
+                    color: CutLinkPalette.actionRed,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -476,10 +475,10 @@ class _ProductReportContextPanelState extends State<ProductReportContextPanel> {
                         ),
                       ),
                     if (data['restricted'] == true)
-                      const Text(
+                      Text(
                         'Photo uploads are currently blocked for this product.',
                         style: TextStyle(
-                          color: Color(0xFF741C1C),
+                          color: CutLinkPalette.actionRed,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),

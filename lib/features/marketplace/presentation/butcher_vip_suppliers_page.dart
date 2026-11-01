@@ -18,8 +18,6 @@ class ButcherVipSuppliersPage extends StatefulWidget {
 }
 
 class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   final TextEditingController _searchController = TextEditingController();
 
   bool _loading = true;
@@ -260,9 +258,8 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -274,13 +271,17 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.workspace_premium_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.workspace_premium_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               SizedBox(width: 10),
               Text(
                 'VIP Supplier Access',
@@ -322,7 +323,11 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_error!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -472,7 +477,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DD)),
@@ -486,12 +491,12 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: _darkRed.withValues(alpha: 0.08),
+                  color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.local_shipping_outlined,
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                 ),
               ),
               const SizedBox(width: 15),
@@ -561,7 +566,7 @@ class _ButcherVipSuppliersPageState extends State<ButcherVipSuppliersPage> {
               FilledButton.icon(
                 onPressed: disabled ? null : () => _openApplication(supplier),
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -987,9 +992,8 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _required(String? value, String label) {
@@ -1010,15 +1014,15 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 8,
           title: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.workspace_premium_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 21,
               ),
               const SizedBox(width: 9),
@@ -1096,16 +1100,14 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                               value: 'vip_pricing_only',
                               icon: Icons.workspace_premium_outlined,
                               title: 'VIP pricing only',
-                              description:
-                                  'Apply for this supplier’s VIP/Trade pricing. Standard CutLink pricing remains available while your application is reviewed.',
+                              description: 'Apply for this supplier’s VIP/Trade pricing. Standard CutLink pricing remains available while your application is reviewed.',
                             ),
                             const IosGap(height: 12),
                             _applicationTypeCard(
                               value: 'vip_pricing_and_credit',
                               icon: Icons.account_balance_wallet_outlined,
                               title: 'VIP pricing + credit account',
-                              description:
-                                  'Also ask the supplier to consider payment terms and a credit limit.',
+                              description: 'Also ask the supplier to consider payment terms and a credit limit.',
                             ),
                           ],
                         ),
@@ -1113,8 +1115,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 const IosGap(height: 18),
                 _section(
                   title: '2. Applicant details',
-                  subtitle:
-                      'Your registered CutLink business details are attached automatically. Add the person the supplier should contact about this application.',
+                  subtitle: 'Your registered CutLink business details are attached automatically. Add the person the supplier should contact about this application.',
                   child: Column(
                     children: [
                       _twoColumns(
@@ -1159,8 +1160,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                             decimal: true,
                           ),
                           decoration: InputDecoration(
-                            labelText:
-                                'Estimated monthly purchases with this supplier',
+                            labelText: 'Estimated monthly purchases with this supplier',
                             prefixText: '\$',
                             hintText: 'Optional',
                             border: OutlineInputBorder(),
@@ -1203,8 +1203,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                         maxLines: 6,
                         decoration: InputDecoration(
                           labelText: 'Message to supplier (optional)',
-                          hintText:
-                              'Tell the supplier about your business, expected purchasing or existing relationship.',
+                          hintText: 'Tell the supplier about your business, expected purchasing or existing relationship.',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -1214,8 +1213,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 const IosGap(height: 18),
                 _section(
                   title: '3. Trade references',
-                  subtitle:
-                      'Provide at least two businesses the supplier may contact to verify your trading history.',
+                  subtitle: 'Provide at least two businesses the supplier may contact to verify your trading history.',
                   child: Column(
                     children: [
                       for (
@@ -1252,8 +1250,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 const IosGap(height: 18),
                 _section(
                   title: '4. Supporting documents',
-                  subtitle:
-                      'Optional documents can help the supplier assess your application. Files are private to you and the supplier you are applying to.',
+                  subtitle: 'Optional documents can help the supplier assess your application. Files are private to you and the supplier you are applying to.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1308,8 +1305,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 const IosGap(height: 18),
                 _section(
                   title: '5. Permissions & declaration',
-                  subtitle:
-                      'These permissions apply only to this application and this supplier.',
+                  subtitle: 'These permissions apply only to this application and this supplier.',
                   child: Column(
                     children: [
                       CheckboxListTile(
@@ -1397,7 +1393,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 SizedBox(
                   height: 54,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     onPressed: _submitting ? null : _submit,
                     icon: _submitting
                         ? const SizedBox(
@@ -1480,7 +1478,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? _darkRed : CutLinkPalette.color(0xFF666A70),
+                  color: selected
+                      ? CutLinkPalette.actionRed
+                      : CutLinkPalette.color(0xFF666A70),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1493,7 +1493,7 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         color: selected
-                            ? _darkRed
+                            ? CutLinkPalette.actionRed
                             : CutLinkPalette.color(0xFF222222),
                       ),
                     ),
@@ -1511,7 +1511,9 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
               const SizedBox(width: 12),
               Icon(
                 selected ? Icons.check_circle : Icons.circle_outlined,
-                color: selected ? _darkRed : CutLinkPalette.color(0xFFAAAAAA),
+                color: selected
+                    ? CutLinkPalette.actionRed
+                    : CutLinkPalette.color(0xFFAAAAAA),
               ),
             ],
           ),
@@ -1535,12 +1537,12 @@ class _ButcherVipApplicationPageState extends State<ButcherVipApplicationPage> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: _darkRed.withValues(alpha: 0.08),
+              color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.workspace_premium_outlined,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
             ),
           ),
           const SizedBox(width: 14),

@@ -22,8 +22,6 @@ class SupplierQuotesPage extends StatefulWidget {
 }
 
 class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
-  static const _darkRed = Color(0xFF741C1C);
-
   final _historySearchController = TextEditingController();
 
   bool _isLoading = true;
@@ -306,7 +304,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
     final pickup = quote['fulfilment_method']?.toString() == 'pickup';
 
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: () => _openQuote(quote),
@@ -327,9 +325,9 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                   color: CutLinkPalette.color(0xFFF5EAEA),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.description_outlined,
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                   size: 19,
                 ),
               ),
@@ -363,8 +361,8 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                       _customerName(quote),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _darkRed,
+                      style: TextStyle(
+                        color: CutLinkPalette.actionRed,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -402,7 +400,11 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 56,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 14),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 16),
@@ -489,8 +491,8 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
                     ),
                     child: Text(
                       '${data.length}',
-                      style: const TextStyle(
-                        color: _darkRed,
+                      style: TextStyle(
+                        color: CutLinkPalette.actionRed,
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
                       ),
@@ -648,7 +650,7 @@ class _SupplierQuotesPageState extends State<SupplierQuotesPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'Quotes',
             style: TextStyle(fontWeight: FontWeight.w900),

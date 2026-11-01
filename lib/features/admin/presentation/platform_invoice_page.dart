@@ -1,3 +1,4 @@
+import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -146,8 +147,7 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
     final saved = await adminForm(
       context,
       title: 'Restore business access',
-      explanation:
-          'All subscription invoices must be paid or voided. Confirm the payments are verified before restoring access.',
+      explanation: 'All subscription invoices must be paid or voided. Confirm the payments are verified before restoring access.',
       submitLabel: 'Restore access',
       fields: const [],
       submit: (_) async {
@@ -167,13 +167,11 @@ class _PlatformInvoicePageState extends State<PlatformInvoicePage> {
     final saved = await adminForm(
       context,
       title: 'Record subscription payment',
-      explanation:
-          'Record funds you have received. This does not charge a card or move money.',
+      explanation: 'Record funds you have received. This does not charge a card or move money.',
       submitLabel: 'Confirm received',
       initial: {
-        'amount': PlatformAdminService.amount(
-          _invoice!['outstanding'],
-        ).toStringAsFixed(2),
+        'amount': PlatformAdminService.amount(_invoice!['outstanding'])
+            .toStringAsFixed(2),
         'paid_on': PlatformAdminService.iso(DateTime.now()),
         'method': 'bank_transfer',
       },
@@ -727,10 +725,10 @@ class _InvoiceReviewDialogState extends State<_InvoiceReviewDialog> {
                 const IosGap(height: 12),
                 Text(
                   PlatformAdminService.money(_quote!['total']),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w800,
-                    color: AdminTheme.accent,
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
                 Text(

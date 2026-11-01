@@ -110,8 +110,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
       final entered = await adminForm(
         context,
         title: 'Access business trade records',
-        explanation:
-            'Use these records only for authorised support, security or platform operations. Access is read-only and recorded in the admin audit history.',
+        explanation: 'Use these records only for authorised support, security or platform operations. Access is read-only and recorded in the admin audit history.',
         fields: const [
           AdminField(
             'reason',
@@ -200,8 +199,7 @@ class _AdminBusinessPageState extends State<AdminBusinessPage> {
       context,
       title: 'Edit business profile',
       initial: _business,
-      explanation:
-          'Updates the business directory profile. Existing invoice snapshots remain unchanged.',
+      explanation: 'Updates the business directory profile. Existing invoice snapshots remain unchanged.',
       fields: const [
         AdminField('legal_name', 'Legal business name', required: true),
         AdminField('trading_name', 'Trading name'),

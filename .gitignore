@@ -47,3 +47,5 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+/CutLink-Current-Project.zip
+/*.ipa

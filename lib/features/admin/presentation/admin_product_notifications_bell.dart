@@ -96,7 +96,7 @@ class _AdminProductNotificationsBellState
                           backgroundColor: CutLinkPalette.color(0xFFF5E9E9),
                           child: Icon(
                             Icons.notifications_outlined,
-                            color: CutLinkWorkspaceTheme.red,
+                            color: CutLinkPalette.actionRed,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -156,14 +156,14 @@ class _AdminProductNotificationsBellState
                     child: ColoredBox(
                       color: CutLinkWorkspaceTheme.canvas,
                       child: (data['notifications'] as List? ?? []).isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     Icons.notifications_none_rounded,
                                     size: 36,
-                                    color: CutLinkWorkspaceTheme.red,
+                                    color: CutLinkPalette.actionRed,
                                   ),
                                   IosGap(height: 10),
                                   Text(

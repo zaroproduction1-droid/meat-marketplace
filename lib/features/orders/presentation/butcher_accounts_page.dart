@@ -219,7 +219,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 18, color: valueColor ?? _darkRed),
+            Icon(icon, size: 18, color: valueColor ?? CutLinkPalette.actionRed),
             const IosGap(height: 8),
           ],
           Text(
@@ -279,9 +279,9 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                   color: CutLinkPalette.color(0xFFF4E5E5),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.storefront_outlined,
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                   size: 20,
                 ),
               ),
@@ -332,7 +332,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: _darkRed),
+              Icon(Icons.chevron_right, color: CutLinkPalette.actionRed),
             ],
           ),
         ),
@@ -407,7 +407,7 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: _darkRed),
+                  style: TextStyle(color: CutLinkPalette.actionRed),
                 ),
                 const IosGap(height: 16),
                 FilledButton(
@@ -427,15 +427,15 @@ class _ButcherAccountsPageState extends State<ButcherAccountsPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.account_balance_wallet_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               SizedBox(width: 10),
@@ -1140,9 +1140,9 @@ class _ButcherSupplierAccountPageState
                                 color: CutLinkPalette.color(0xFFF4E5E5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.payments_outlined,
-                                color: _darkRed,
+                                color: CutLinkPalette.actionRed,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1418,7 +1418,7 @@ class _ButcherSupplierAccountPageState
                               const SizedBox(width: 8),
                               FilledButton.icon(
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: _darkRed,
+                                  backgroundColor: CutLinkPalette.buttonRed,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 18,
                                     vertical: 14,
@@ -1544,9 +1544,8 @@ class _ButcherSupplierAccountPageState
     } on PostgrestException catch (error) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -1746,7 +1745,11 @@ class _ButcherSupplierAccountPageState
         mode: PhoneRowMode.wrap,
         desktop: Row(
           children: [
-            const Icon(Icons.checklist_rounded, color: _darkRed, size: 18),
+            Icon(
+              Icons.checklist_rounded,
+              color: CutLinkPalette.actionRed,
+              size: 18,
+            ),
             const SizedBox(width: 9),
             Expanded(
               child: Text(
@@ -1870,11 +1873,11 @@ class _ButcherSupplierAccountPageState
                           onTap: () => _openInvoice(invoice),
                           child: Text(
                             invoice['invoice_number']?.toString() ?? 'Invoice',
-                            style: const TextStyle(
-                              color: _darkRed,
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontWeight: FontWeight.w900,
                               decoration: TextDecoration.underline,
-                              decorationColor: _darkRed,
+                              decorationColor: CutLinkPalette.actionRed,
                             ),
                           ),
                         ),
@@ -2068,7 +2071,7 @@ class _ButcherSupplierAccountPageState
 
     return _ledgerBaseRow(
       icon: Icons.payments_outlined,
-      iconColor: _darkRed,
+      iconColor: CutLinkPalette.actionRed,
       title: data['reference']?.toString().trim().isNotEmpty == true
           ? data['reference'].toString()
           : 'Payment',
@@ -2253,15 +2256,15 @@ class _ButcherSupplierAccountPageState
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
           title: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.account_balance_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 22,
               ),
               const SizedBox(width: 10),
@@ -2294,7 +2297,7 @@ class _ButcherSupplierAccountPageState
             FilledButton.icon(
               onPressed: _loading ? null : _submitAccountPayment,
               style: FilledButton.styleFrom(
-                backgroundColor: _darkRed,
+                backgroundColor: CutLinkPalette.buttonRed,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 15,
@@ -2412,9 +2415,9 @@ class _ButcherSupplierAccountPageState
                         mode: PhoneRowMode.wrap,
                         desktop: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.calendar_month_outlined,
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -2493,8 +2496,6 @@ class ButcherInvoiceDetailPage extends StatefulWidget {
 }
 
 class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
-  static const Color _darkRed = Color(0xFF8B1E1E);
-
   late Map<String, dynamic> _invoice;
   bool _busy = false;
   bool _pdfBusy = false;
@@ -2752,7 +2753,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () {
                 final amount = double.tryParse(
                   controller.text.replaceAll(',', '').trim(),
@@ -2818,9 +2821,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
       await _reloadInvoice();
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -2974,11 +2976,15 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         ),
         child: Column(
           children: [
-            const IosPadding(
+            IosPadding(
               padding: EdgeInsets.fromLTRB(14, 11, 14, 9),
               child: Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 19, color: _darkRed),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 19,
+                    color: CutLinkPalette.actionRed,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Invoice Items',
@@ -3025,9 +3031,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                if (documentProductSpecifications(
-                                  item,
-                                ).isNotEmpty)
+                                if (documentProductSpecifications(item)
+                                    .isNotEmpty)
                                   Text(
                                     documentProductSpecifications(item),
                                     style: TextStyle(
@@ -3105,8 +3110,8 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             ],
             Text(
               widget.supplierName,
-              style: const TextStyle(
-                color: _darkRed,
+              style: TextStyle(
+                color: CutLinkPalette.actionRed,
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
@@ -3193,7 +3198,9 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
             const IosGap(height: 14),
             FilledButton.icon(
               onPressed: _canClaimPaid ? _markAsPaid : null,
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               icon: const Icon(Icons.check_circle_outline),
               label: Text(
                 _paymentSubmissionPending
@@ -3233,7 +3240,7 @@ class _ButcherInvoiceDetailPageState extends State<ButcherInvoiceDetailPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: Text(
             _invoice['invoice_number']?.toString() ?? 'Invoice',
             style: const TextStyle(fontWeight: FontWeight.w800),

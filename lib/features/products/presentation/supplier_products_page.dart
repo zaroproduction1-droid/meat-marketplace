@@ -31,8 +31,6 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
   @override
   bool get wantKeepAlive => true;
 
-  static const _darkRed = Color(0xFF741C1C);
-
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _cutScrollController = ScrollController();
   final ScrollController _subcategoryScrollController = ScrollController();
@@ -960,16 +958,14 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _savingSpecificationIds.remove(specificationId));
@@ -1159,9 +1155,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
     final rows = values.toList()
       ..sort(
-        (a, b) => _prettyChickenValue(
-          a,
-        ).toLowerCase().compareTo(_prettyChickenValue(b).toLowerCase()),
+        (a, b) =>
+            _prettyChickenValue(a)
+                .toLowerCase()
+                .compareTo(_prettyChickenValue(b).toLowerCase()),
       );
 
     return rows;
@@ -1282,9 +1279,10 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
     final rows = values.toList()
       ..sort(
-        (a, b) => _prettyGoatValue(
-          a,
-        ).toLowerCase().compareTo(_prettyGoatValue(b).toLowerCase()),
+        (a, b) =>
+            _prettyGoatValue(a)
+                .toLowerCase()
+                .compareTo(_prettyGoatValue(b).toLowerCase()),
       );
 
     return rows;
@@ -1472,7 +1470,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'My Stock',
             style: TextStyle(fontWeight: FontWeight.w800),
@@ -1483,7 +1481,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Add Product'),
               style: TextButton.styleFrom(
-                foregroundColor: _darkRed,
+                foregroundColor: CutLinkPalette.actionRed,
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -1528,7 +1526,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               const Text(
                 'My Stock could not be loaded',
@@ -1665,7 +1667,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
       Widget? trailing,
     }) {
       return Material(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: onTap,
@@ -1686,7 +1688,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                     color: CutLinkPalette.color(0xFFF5EAEA),
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Icon(icon, size: 18, color: _darkRed),
+                  child: Icon(icon, size: 18, color: CutLinkPalette.actionRed),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1719,7 +1721,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   const SizedBox(width: 8),
                   trailing,
                 ] else
-                  const Icon(Icons.chevron_right, size: 19, color: _darkRed),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 19,
+                    color: CutLinkPalette.actionRed,
+                  ),
               ],
             ),
           ),
@@ -1754,7 +1760,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   icon: const Icon(Icons.add),
                   label: const Text('Add Product'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
+                    backgroundColor: CutLinkPalette.buttonRed,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1824,7 +1830,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   icon: const Icon(Icons.add),
                   label: const Text('Add Product'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
+                    backgroundColor: CutLinkPalette.buttonRed,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1902,7 +1908,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                   icon: const Icon(Icons.add),
                   label: const Text('Add Product'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: _darkRed,
+                    backgroundColor: CutLinkPalette.buttonRed,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -2037,8 +2043,8 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                       ),
                       child: Text(
                         '$_stockTotal products',
-                        style: const TextStyle(
-                          color: _darkRed,
+                        style: TextStyle(
+                          color: CutLinkPalette.actionRed,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w900,
                         ),
@@ -2183,10 +2189,12 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         labelPadding: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
-        selectedColor: _darkRed,
+        selectedColor: CutLinkPalette.actionRed,
         backgroundColor: CutLinkPalette.surface,
         side: BorderSide(
-          color: selected ? _darkRed : CutLinkPalette.color(0xFFD9D9D5),
+          color: selected
+              ? CutLinkPalette.actionRed
+              : CutLinkPalette.color(0xFFD9D9D5),
         ),
         labelStyle: TextStyle(
           color: selected ? Colors.white : CutLinkPalette.color(0xFF444444),
@@ -2271,7 +2279,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
             ),
-            child: Icon(icon, size: 19, color: _darkRed),
+            child: Icon(icon, size: 19, color: CutLinkPalette.actionRed),
           ),
         ),
       ),
@@ -2377,11 +2385,11 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
               showCheckmark: false,
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              selectedColor: _darkRed,
+              selectedColor: CutLinkPalette.actionRed,
               backgroundColor: CutLinkPalette.surface,
               side: BorderSide(
                 color: _selectedGradeId == grade['id']?.toString()
-                    ? _darkRed
+                    ? CutLinkPalette.actionRed
                     : CutLinkPalette.color(0xFFD9D9D5),
               ),
               labelStyle: TextStyle(
@@ -2421,7 +2429,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(color: CutLinkPalette.color(0xFFE0E0DC)),
         borderRadius: BorderRadius.circular(14),
@@ -2485,7 +2493,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                               products,
                             ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: _darkRed,
+                        backgroundColor: CutLinkPalette.buttonRed,
                         foregroundColor: Colors.white,
                         visualDensity: VisualDensity.compact,
                       ),
@@ -2663,7 +2671,7 @@ class _SupplierProductsPageState extends State<SupplierProductsPage>
                 maxLines: chicken ? 3 : 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                   fontSize: chicken ? 12.5 : 17,
                   height: 1.25,
                   fontWeight: FontWeight.w900,

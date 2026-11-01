@@ -72,8 +72,8 @@ abstract final class CutLinkNotice {
                             height: 72,
                             decoration: BoxDecoration(
                               color: error
-                                  ? const Color(0xFFB3261E)
-                                  : const Color(0xFF741C1C),
+                                  ? CutLinkPalette.color(0xFFB3261E)
+                                  : CutLinkPalette.actionRed,
                               borderRadius: const BorderRadius.horizontal(
                                 left: Radius.circular(14),
                               ),
@@ -88,8 +88,8 @@ abstract final class CutLinkNotice {
                                   : Icons.check_circle_outline_rounded,
                               size: 20,
                               color: error
-                                  ? const Color(0xFFB3261E)
-                                  : const Color(0xFF741C1C),
+                                  ? CutLinkPalette.color(0xFFB3261E)
+                                  : CutLinkPalette.actionRed,
                             ),
                           ),
                           const SizedBox(width: 10),

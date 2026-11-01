@@ -28,7 +28,7 @@ abstract final class IosWorkspaceStyle {
       primary: base.brightness == Brightness.dark
           ? const Color(0xFFFF8EA3)
           : red,
-      onPrimary: Colors.white,
+      onPrimary: base.colorScheme.onPrimary,
       surface: CutLinkPalette.surface,
       onSurface: ink,
     ),
@@ -49,7 +49,7 @@ abstract final class IosWorkspaceStyle {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: canvas,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -303,9 +303,8 @@ class IosBottomBar extends StatelessWidget {
                                             ? Colors.white.withValues(
                                                 alpha: .075,
                                               )
-                                            : const Color(
-                                                0xFFEDE5E5,
-                                              ).withValues(alpha: .60))
+                                            : const Color(0xFFEDE5E5)
+                                                  .withValues(alpha: .60))
                                       : Colors.transparent,
                                   border: Border.all(
                                     color: index == i
@@ -329,12 +328,14 @@ class IosBottomBar extends StatelessWidget {
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
                                                   color: p.dark
-                                                      ? Colors.white.withValues(
-                                                          alpha: .06,
-                                                        )
-                                                      : Colors.white.withValues(
-                                                          alpha: .65,
-                                                        ),
+                                                      ? CutLinkPalette.surface
+                                                            .withValues(
+                                                              alpha: .06,
+                                                            )
+                                                      : CutLinkPalette.surface
+                                                            .withValues(
+                                                              alpha: .65,
+                                                            ),
                                                   border: Border.all(
                                                     color: Colors.white
                                                         .withValues(
@@ -616,7 +617,7 @@ class IosSearchEntry extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(30),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
               Icon(icon),

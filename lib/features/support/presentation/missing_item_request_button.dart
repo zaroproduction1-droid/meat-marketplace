@@ -7,8 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'support_center_page.dart';
 
-typedef MissingItemSubmit =
-    Future<String> Function(Map<String, dynamic> params);
+typedef MissingItemSubmit = Future<String> Function(
+  Map<String, dynamic> params,
+);
 
 /// Sends catalogue requests through the existing business-scoped support chat.
 class MissingItemRequestButton extends StatelessWidget {
@@ -59,7 +60,7 @@ class MissingItemRequestButton extends StatelessWidget {
       return IconButton(
         tooltip: 'Request a missing item',
         onPressed: enabled ? () => _open(context) : null,
-        icon: const Icon(Icons.playlist_add_rounded, color: Color(0xFF741C1C)),
+        icon: Icon(Icons.playlist_add_rounded, color: CutLinkPalette.actionRed),
       );
     }
     return IosPadding(
@@ -69,7 +70,7 @@ class MissingItemRequestButton extends StatelessWidget {
         icon: const Icon(Icons.playlist_add_rounded, size: 19),
         label: const Text('Request missing item'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF741C1C),
+          foregroundColor: CutLinkPalette.actionRed,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -193,9 +194,9 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.playlist_add_rounded,
-                      color: Color(0xFF741C1C),
+                      color: CutLinkPalette.actionRed,
                       size: 36,
                     ),
                     const IosGap(height: 12),
@@ -262,15 +263,14 @@ class _MissingItemRequestDialogState extends State<MissingItemRequestDialog> {
                       maxLines: 4,
                       decoration: const InputDecoration(
                         labelText: 'Extra details (optional)',
-                        hintText:
-                            'Describe the specification or option you expected.',
+                        hintText: 'Describe the specification or option you expected.',
                       ),
                     ),
                     if (_error != null) ...[
                       const IosGap(height: 8),
                       Text(
                         _error!,
-                        style: const TextStyle(color: Color(0xFF741C1C)),
+                        style: TextStyle(color: CutLinkPalette.actionRed),
                       ),
                     ],
                     const IosGap(height: 16),

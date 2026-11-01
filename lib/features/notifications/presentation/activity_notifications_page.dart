@@ -262,9 +262,8 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
           );
       }
       if (page != null && mounted) {
-        await Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => page!));
+        await Navigator.of(context)
+            .push(MaterialPageRoute<void>(builder: (_) => page!));
       }
       if (mounted) {
         await _load();
@@ -320,8 +319,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                         children: [
                           const CutLinkSectionHeading(
                             title: 'Your activity inbox',
-                            subtitle:
-                                'Orders, conversations, invoices and account updates — all in one place.',
+                            subtitle: 'Orders, conversations, invoices and account updates — all in one place.',
                             icon: Icons.notifications_active_outlined,
                           ),
                           Container(
@@ -338,10 +336,10 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.tune_rounded,
                                       size: 18,
-                                      color: CutLinkWorkspaceTheme.red,
+                                      color: CutLinkPalette.actionRed,
                                     ),
                                     const SizedBox(width: 8),
                                     const Expanded(
@@ -437,7 +435,7 @@ class _ActivityNotificationsPageState extends State<ActivityNotificationsPage> {
                             Icon(
                               Icons.done_all_rounded,
                               size: 38,
-                              color: CutLinkWorkspaceTheme.red,
+                              color: CutLinkPalette.actionRed,
                             ),
                             IosGap(height: 12),
                             Text(

@@ -322,9 +322,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       },
     );
     final data = Map<String, dynamic>.from(response as Map);
-    final documents = _maps(
-      data['rows'],
-    ).map(_UnifiedDocument.fromCredit).toList();
+    final documents = _maps(data['rows'])
+        .map(_UnifiedDocument.fromCredit)
+        .toList();
     if (!mounted || !_showCredits || version != _searchVersion) {
       return;
     }
@@ -677,9 +677,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
         }
     }
 
-    final editRequested = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => page));
+    final editRequested = await Navigator.of(context)
+        .push<bool>(MaterialPageRoute(builder: (_) => page));
     if (editRequested == true &&
         document.type == _UnifiedDocumentType.quote &&
         mounted) {
@@ -719,9 +718,9 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
                 color: CutLinkPalette.color(0xFFF5EAEA),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.receipt_long_outlined,
-                color: _darkRed,
+                color: CutLinkPalette.actionRed,
                 size: 20,
               ),
             ),
@@ -1347,7 +1346,7 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
 
   Widget _documentRow(_UnifiedDocument document) {
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () => _openDocument(document),
@@ -1555,8 +1554,8 @@ class _SupplierUnifiedOrdersPageState extends State<SupplierUnifiedOrdersPage> {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: _darkRed,
+        style: TextStyle(
+          color: CutLinkPalette.actionRed,
           fontSize: 9.5,
           fontWeight: FontWeight.w900,
         ),
@@ -1619,10 +1618,10 @@ class _SearchPrompt extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.manage_search_rounded,
               size: 54,
-              color: Color(0xFF741C1C),
+              color: CutLinkPalette.actionRed,
             ),
             const IosGap(height: 12),
             Text(

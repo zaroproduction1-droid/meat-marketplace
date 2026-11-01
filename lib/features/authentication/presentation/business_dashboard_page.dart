@@ -65,10 +65,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.dashboard_outlined,
                   size: 80,
-                  color: Color(0xFF741C1C),
+                  color: CutLinkPalette.actionRed,
                 ),
                 const IosGap(height: 24),
                 const Text(
@@ -136,7 +136,7 @@ class _DashboardCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 42, color: const Color(0xFF741C1C)),
+          Icon(icon, size: 42, color: CutLinkPalette.actionRed),
           const IosGap(height: 14),
           Text(
             title,

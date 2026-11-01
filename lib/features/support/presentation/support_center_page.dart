@@ -387,9 +387,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
 
       setState(() {
-        _messages = List<Map<String, dynamic>>.from(
-          response,
-        ).where((m) => m['structured_event'] != true).toList();
+        _messages = List<Map<String, dynamic>>.from(response)
+            .where((m) => m['structured_event'] != true)
+            .toList();
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -412,9 +412,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -449,7 +448,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -582,8 +581,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         maxLength: 8000,
                         decoration: InputDecoration(
                           labelText: 'Describe the issue',
-                          hintText:
-                              'Include what you were doing, what you expected and what happened.',
+                          hintText: 'Include what you were doing, what you expected and what happened.',
                           alignLabelWithHint: true,
                           border: OutlineInputBorder(),
                         ),
@@ -602,7 +600,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             const SizedBox(width: 8),
                             FilledButton.icon(
                               style: FilledButton.styleFrom(
-                                backgroundColor: _darkRed,
+                                backgroundColor: CutLinkPalette.buttonRed,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 18,
                                   vertical: 14,
@@ -613,15 +611,14 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                                 final description = descriptionController.text
                                     .trim();
                                 if (subject.length < 4 || description.isEmpty) {
-                                  ScaffoldMessenger.of(
-                                    dialogContext,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Enter a subject and describe the issue.',
-                                      ),
-                                    ),
-                                  );
+                                  ScaffoldMessenger.of(dialogContext)
+                                      .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Enter a subject and describe the issue.',
+                                          ),
+                                        ),
+                                      );
                                   return;
                                 }
                                 Navigator.of(dialogContext).pop({
@@ -679,9 +676,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -780,24 +776,21 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     } on PostgrestException catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } on StorageException catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
         final errorMessage = error.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -886,16 +879,14 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
     } on StorageException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
         final message = error.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -931,9 +922,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       await _loadTickets(showLoading: false);
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1032,8 +1022,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           await LocalDraftStore.clear(scope);
         }
       },
-      message:
-          'You have unsent support messages or attachments. Stay here to keep them, or discard them and their saved draft backups before leaving.',
+      message: 'You have unsent support messages or attachments. Stay here to keep them, or discard them and their saved draft backups before leaving.',
       child: AdminTheme(
         enabled: widget.adminMode,
         child: Scaffold(
@@ -1045,10 +1034,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             AppBar(
               leading: const WorkspaceBackButton(),
               backgroundColor: CutLinkPalette.surface,
-              surfaceTintColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
               title: Row(
                 children: [
-                  const Icon(Icons.support_agent, color: _darkRed),
+                  Icon(Icons.support_agent, color: CutLinkPalette.actionRed),
                   const SizedBox(width: 10),
                   Text(
                     widget.adminMode
@@ -1065,7 +1054,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     child: FilledButton.icon(
                       onPressed: _sending ? null : _createTicket,
-                      style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CutLinkPalette.buttonRed,
+                      ),
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('New Ticket'),
                     ),
@@ -1172,7 +1163,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   Widget _ticketList() {
     final tickets = _visibleTickets;
     return ColoredBox(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       child: Column(
         children: [
           IosPadding(
@@ -1272,12 +1263,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             children: [
               if (_productReport(ticket) != null ||
                   _supplierModerationCase(ticket) != null)
-                const IosPadding(
+                IosPadding(
                   padding: EdgeInsets.only(bottom: 6),
                   child: Text(
                     'PRODUCT / PHOTO REPORT',
                     style: TextStyle(
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1296,12 +1287,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   ),
                 ),
               if (ticket['reopen_decision'] == 'pending')
-                const IosPadding(
+                IosPadding(
                   padding: EdgeInsets.only(bottom: 6),
                   child: Text(
                     'REOPEN REQUEST',
                     style: TextStyle(
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1312,8 +1303,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   Expanded(
                     child: Text(
                       ticket['ticket_number']?.toString() ?? 'Support Ticket',
-                      style: const TextStyle(
-                        color: _darkRed,
+                      style: TextStyle(
+                        color: CutLinkPalette.actionRed,
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1323,8 +1314,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                     Container(
                       width: 9,
                       height: 9,
-                      decoration: const BoxDecoration(
-                        color: _darkRed,
+                      decoration: BoxDecoration(
+                        color: CutLinkPalette.actionRed,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -1554,8 +1545,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         children: [
                           Text(
                             ticket['ticket_number']?.toString() ?? 'Ticket',
-                            style: const TextStyle(
-                              color: _darkRed,
+                            style: TextStyle(
+                              color: CutLinkPalette.actionRed,
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
                             ),
@@ -1653,11 +1644,11 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   style: TextStyle(fontSize: 11),
                 ),
               if (ticket['reopen_decision'] == 'pending') ...[
-                const Text(
+                Text(
                   'Reopen request awaiting CutLink review',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                   ),
                 ),
                 if ((ticket['reopen_reason']?.toString() ?? '').isNotEmpty)
@@ -1767,7 +1758,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         IconButton.filled(
                           tooltip: 'Send message',
                           style: IconButton.styleFrom(
-                            backgroundColor: _darkRed,
+                            backgroundColor: CutLinkPalette.buttonRed,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.all(14),
                           ),
@@ -1912,7 +1903,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         foregroundColor: active ? Colors.white : _navy,
         backgroundColor: active ? _darkRed : Colors.white,
         side: BorderSide(
-          color: active ? _darkRed : CutLinkPalette.color(0xFFD6DADF),
+          color: active
+              ? CutLinkPalette.actionRed
+              : CutLinkPalette.color(0xFFD6DADF),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1932,10 +1925,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       onSelected: _sending ? null : (_) => onSelected(),
       selectedColor: CutLinkPalette.color(0xFFF3DDE0),
       side: BorderSide(
-        color: selected ? _darkRed : CutLinkPalette.color(0xFFD6DADF),
+        color: selected
+            ? CutLinkPalette.actionRed
+            : CutLinkPalette.color(0xFFD6DADF),
       ),
       labelStyle: TextStyle(
-        color: selected ? _darkRed : _navy,
+        color: selected ? CutLinkPalette.actionRed : _navy,
         fontSize: 10.5,
         fontWeight: FontWeight.w800,
       ),
@@ -2026,7 +2021,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         ? 'CutLink Support'
                         : message['sender_name']?.toString() ?? 'Customer',
                     style: TextStyle(
-                      color: mine ? Colors.white70 : _darkRed,
+                      color: mine ? Colors.white70 : CutLinkPalette.actionRed,
                       fontSize: 10.5,
                       fontWeight: FontWeight.w900,
                     ),
@@ -2088,7 +2083,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 Icon(
                   _attachmentIcon(fileName),
                   size: 22,
-                  color: mine ? Colors.white : _darkRed,
+                  color: mine ? Colors.white : CutLinkPalette.actionRed,
                 ),
                 const SizedBox(width: 9),
                 Expanded(
@@ -2163,7 +2158,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                     Icon(
                       _attachmentIcon(_pendingAttachments[index].name),
                       size: 18,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                     const SizedBox(width: 7),
                     Flexible(
@@ -2235,7 +2230,11 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.forum_outlined, size: 58, color: _darkRed),
+            Icon(
+              Icons.forum_outlined,
+              size: 58,
+              color: CutLinkPalette.actionRed,
+            ),
             const IosGap(height: 14),
             Text(
               widget.adminMode ? 'No matching tickets' : 'No support tickets',
@@ -2253,7 +2252,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               const IosGap(height: 16),
               FilledButton.icon(
                 onPressed: _createTicket,
-                style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CutLinkPalette.buttonRed,
+                ),
                 icon: const Icon(Icons.add),
                 label: const Text('Create Ticket'),
               ),
@@ -2269,7 +2270,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.support_agent, size: 72, color: Color(0xFF8B1E2D)),
+          Icon(Icons.support_agent, size: 72, color: CutLinkPalette.actionRed),
           IosGap(height: 16),
           Text(
             'Select a support ticket',

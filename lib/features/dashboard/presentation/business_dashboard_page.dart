@@ -101,6 +101,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   String? _businessName;
   String _iosAccountFirstName = '';
   Map<String, Map<String, dynamic>> _iosBuyAgainProducts = {};
+  List<Map<String, dynamic>> _iosFavouriteRows = [];
   String? _iosBuyAgainScope;
   DateTime? _iosBuyAgainLoadedAt;
   int _iosBuyAgainRevision = 0;
@@ -805,6 +806,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   void _openDashboard({String workspaceKey = 'dashboard'}) {
+    if (_businessType == 'butcher' && mounted && useIosWorkspace(context)) {
+      unawaited(_loadIosBuyAgainProducts(force: true));
+    }
     PageLocation.workspace({'page': workspaceKey});
     if (_workspacePage == null && _workspaceKey == workspaceKey) {
       return;
@@ -1120,18 +1124,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (detail != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => detail!));
+          Navigator.of(context)
+              .push(MaterialPageRoute<void>(builder: (_) => detail!));
         }
       });
     }
   }
 
   Future<void> _openButcherCart() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const DraftOrdersPage()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const DraftOrdersPage()));
 
     if (!mounted) {
       return;
@@ -1448,9 +1450,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   List<Map<String, dynamic>> get _topAccounts {
     final copy = [..._butcherAccounts];
     copy.sort(
-      (a, b) => _asDouble(
-        b['outstanding_balance'],
-      ).compareTo(_asDouble(a['outstanding_balance'])),
+      (a, b) =>
+          _asDouble(b['outstanding_balance'])
+              .compareTo(_asDouble(a['outstanding_balance'])),
     );
     return copy.take(4).toList();
   }
@@ -1544,7 +1546,11 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, size: 56, color: _darkRed),
+                  Icon(
+                    Icons.error_outline,
+                    size: 56,
+                    color: CutLinkPalette.actionRed,
+                  ),
                   const IosGap(height: 16),
                   Text(_errorMessage!, textAlign: TextAlign.center),
                   const IosGap(height: 18),
@@ -1587,6 +1593,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   }
 
   void _iosBack() {
+    if (_businessType == 'butcher' && _workspacePage is ButcherFavouritesPage) {
+      unawaited(_loadIosBuyAgainProducts(force: true));
+    }
     _iosGoingBack = true;
     if (_iosHistory.isEmpty) {
       if (_workspaceKey != 'dashboard') {
@@ -1940,25 +1949,43 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       return;
     }
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    final ids = <String>{};
-    for (final order in _butcherOrders) {
-      final items = order['order_items'];
-      if (items is! List) {
-        continue;
-      }
-      for (final item in items.whereType<Map>()) {
-        final id = item['product_id']?.toString() ?? '';
-        if (id.isNotEmpty) {
-          ids.add(id);
-        }
-        if (ids.length >= 2) {
-          break;
-        }
-      }
-      if (ids.length >= 2) {
-        break;
-      }
+    if (userId == null || _businessId == null) {
+      return;
     }
+    final revision = ++_iosBuyAgainRevision;
+    List<Map<String, dynamic>> favourites;
+    try {
+      favourites = await Supabase.instance.client
+          .from('butcher_favourite_products')
+          .select('id,product_id,product_name,supplier_name,dashboard_slot')
+          .eq('business_id', _businessId!)
+          .eq('user_id', userId)
+          .gte('dashboard_slot', 1)
+          .lte('dashboard_slot', 4)
+          .order('dashboard_slot')
+          .limit(4)
+          .timeout(const Duration(seconds: 12));
+    } catch (_) {
+      if (mounted && revision == _iosBuyAgainRevision) {
+        setState(() {
+          _iosFavouriteRows = [];
+          _iosBuyAgainProducts = {};
+        });
+      }
+      return;
+    }
+    if (!mounted ||
+        revision != _iosBuyAgainRevision ||
+        Supabase.instance.client.auth.currentUser?.id != userId) {
+      return;
+    }
+    final ids = favourites
+        .map((row) => row['product_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    setState(
+      () => _iosFavouriteRows = List<Map<String, dynamic>>.from(favourites),
+    );
     final scope = '$userId:${ids.join(',')}';
     if (!force &&
         scope == _iosBuyAgainScope &&
@@ -1967,10 +1994,6 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             const Duration(minutes: 2)) {
       return;
     }
-    if (userId == null) {
-      return;
-    }
-    final revision = ++_iosBuyAgainRevision;
     _iosBuyAgainScope = scope;
     _iosBuyAgainLoadedAt = DateTime.now();
     try {
@@ -1983,7 +2006,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                     params: {'p_product_ids': ids.toList()},
                   )
                   .select(
-                    'id, photo_path, active, availability_status, meat_animals(code), meat_sections(id,code,name), product_prices(*,price_lists(*))',
+                    'id, photo_path, active, availability_status, meat_animals(code), meat_sections(id,code,name), meat_specifications(name), businesses(trading_name,legal_name), product_prices(*,price_lists(*))',
                   )
                   .timeout(const Duration(seconds: 12)),
             );
@@ -1998,7 +2021,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         },
       );
     } catch (_) {
-      // Keep the explicitly labelled historical price; never invent a current one.
+      // Leave current prices absent if catalogue metadata is unavailable.
       if (mounted && revision == _iosBuyAgainRevision) {
         setState(() => _iosBuyAgainProducts = {});
       }
@@ -2099,7 +2122,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           ? const SupplierOrdersPage(embedded: true)
           : const SubmittedOrdersPage(),
     );
-    void saved() => _openPage(ButcherFavouritesPage(businessId: _businessId!));
+    void saved() => _openPage(
+      ButcherFavouritesPage(businessId: _businessId!, initialProducts: true),
+    );
     void inventory() => _openPage(const SupplierInventoryPage(embedded: true));
     final active = _butcherOrders
         .where(
@@ -2178,42 +2203,40 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       }
     }
     final again = <DashboardActionRow>[];
-    final seen = <String>{};
-    for (final order in _butcherOrders) {
-      final items = order['order_items'];
-      if (items is! List) {
-        continue;
-      }
-      for (final item in items.whereType<Map>()) {
-        final name = item['product_name_snapshot']?.toString().trim() ?? '';
-        final productId = item['product_id']?.toString() ?? '';
-        if (name.isEmpty ||
-            again.length >= 2 ||
-            !seen.add(
-              productId.isEmpty ? '${_supplierName(order)}:$name' : productId,
-            )) {
-          continue;
-        }
-        final price = _asDouble(item['unit_price']);
-        final product = _iosBuyAgainProducts[productId];
-        again.add(
-          DashboardActionRow(
-            name,
-            _supplierName(order),
-            Icons.replay_rounded,
-            () => _openIosBuyAgain(productId, name),
-            product: product,
-            historicalPrice: price > 0 ? _money(price) : null,
-            onOrder: () => _openIosBuyAgain(productId, name),
-          ),
-        );
-      }
-      if (again.length >= 2) {
-        break;
-      }
+    for (final row in _iosFavouriteRows) {
+      final id = row['product_id']?.toString() ?? '';
+      final product = _iosBuyAgainProducts[id];
+      final specification = product?['meat_specifications'];
+      final business = product?['businesses'];
+      final name =
+          (specification is Map ? specification['name'] : null)?.toString() ??
+          row['product_name']?.toString() ??
+          'Saved product';
+      final supplierName =
+          (business is Map
+                  ? business['trading_name'] ?? business['legal_name']
+                  : null)
+              ?.toString() ??
+          row['supplier_name']?.toString() ??
+          'Supplier';
+      again.add(
+        DashboardActionRow(
+          name,
+          supplierName,
+          Icons.favorite_border,
+          () => _openIosBuyAgain(id, name),
+          product: product,
+          onOrder:
+              product?['active'] == true &&
+                  product?['availability_status'] != 'out_of_stock'
+              ? () => _openIosBuyAgain(id, name)
+              : null,
+        ),
+      );
     }
     return IosDashboardHome(
       supplier: supplier,
+      favouritesMode: !supplier,
       sections: [
         for (final item in _dashboardPreferences.where(
           (item) => item.id.startsWith('ios_'),
@@ -2403,8 +2426,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                           _dashboardHeading(
                                             title:
                                                 '${_greeting()}, ${_businessName ?? 'Butcher'}',
-                                            subtitle:
-                                                'Here’s what’s happening with your purchasing today.',
+                                            subtitle: 'Here’s what’s happening with your purchasing today.',
                                           ),
                                           const IosGap(height: 18),
                                           _summaryGrid(),
@@ -2691,7 +2713,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   color: CutLinkPalette.color(0xFFF8EDEE),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.support_agent, color: _darkRed),
+                child: Icon(
+                  Icons.support_agent,
+                  color: CutLinkPalette.actionRed,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2810,10 +2835,10 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         decoration: _cardDecoration(),
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.dashboard_customize_outlined,
               size: 34,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
             ),
             const IosGap(height: 10),
             const Text(
@@ -2934,9 +2959,12 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             return phoneDialog(
               context,
               AlertDialog(
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.dashboard_customize_outlined, color: _darkRed),
+                    Icon(
+                      Icons.dashboard_customize_outlined,
+                      color: CutLinkPalette.actionRed,
+                    ),
                     SizedBox(width: 10),
                     Text('Customise dashboard'),
                   ],
@@ -3098,7 +3126,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   ),
                   FilledButton(
                     onPressed: () => Navigator.of(dialogContext).pop(local),
-                    style: FilledButton.styleFrom(backgroundColor: _darkRed),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CutLinkPalette.buttonRed,
+                    ),
                     child: const Text('Save Layout'),
                   ),
                 ],
@@ -3214,7 +3244,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
               color: CutLinkPalette.color(0xFFF8EDEE),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Icon(icon, color: _darkRed, size: 26),
+            child: Icon(icon, color: CutLinkPalette.actionRed, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -3281,7 +3311,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _AttentionItem(
           icon: Icons.receipt_long_outlined,
           tint: CutLinkPalette.color(0xFFF8EDEE),
-          iconColor: _darkRed,
+          iconColor: CutLinkPalette.actionRed,
           message: '${_money(_dueSoonTotal)} is due within the next 7 days',
           action: 'View Accounts',
           onTap: () => _openPage(const ButcherAccountsPage()),
@@ -3371,7 +3401,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           TextButton(
             onPressed: item.onTap,
             style: TextButton.styleFrom(
-              foregroundColor: _darkRed,
+              foregroundColor: CutLinkPalette.actionRed,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             ),
             child: Text(
@@ -3631,7 +3661,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         alignment: Alignment.centerLeft,
-        foregroundColor: _darkRed,
+        foregroundColor: CutLinkPalette.actionRed,
         side: BorderSide(color: CutLinkPalette.color(0xFFDDB7BC)),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -3680,7 +3710,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                   TextButton(
                     onPressed: onAction,
                     style: TextButton.styleFrom(
-                      foregroundColor: _darkRed,
+                      foregroundColor: CutLinkPalette.actionRed,
                       visualDensity: VisualDensity.compact,
                     ),
                     child: Text(
@@ -3706,7 +3736,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
       boxShadow: const [
@@ -3786,7 +3816,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: _darkRed,
+        color: CutLinkPalette.actionRed,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -4080,7 +4110,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Widget _mobileTopBar({required bool supplier}) {
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       child: SafeArea(
         bottom: false,
         child: IosPadding(
@@ -4352,7 +4382,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: _darkRed,
+                              color: CutLinkPalette.actionRed,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: CutLinkPalette.surface,
@@ -4679,9 +4709,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     final copy = [..._supplierAccounts];
 
     copy.sort(
-      (a, b) => _asDouble(
-        b['outstanding_balance'],
-      ).compareTo(_asDouble(a['outstanding_balance'])),
+      (a, b) =>
+          _asDouble(b['outstanding_balance'])
+              .compareTo(_asDouble(a['outstanding_balance'])),
     );
 
     return copy.take(5).toList();
@@ -4774,8 +4804,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                           _dashboardHeading(
                                             title:
                                                 '${_greeting()}, ${_businessName ?? 'Supplier'}',
-                                            subtitle:
-                                                'Here’s what’s happening across your sales and fulfilment today.',
+                                            subtitle: 'Here’s what’s happening across your sales and fulfilment today.',
                                           ),
                                           const IosGap(height: 18),
                                           _supplierSummaryGrid(),
@@ -4874,7 +4903,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         _AttentionItem(
           icon: Icons.shopping_cart_checkout_outlined,
           tint: CutLinkPalette.color(0xFFF8EDEE),
-          iconColor: _darkRed,
+          iconColor: CutLinkPalette.actionRed,
           message:
               '$marketplacePending marketplace order${marketplacePending == 1 ? '' : 's'} await review',
           action: 'Review Orders',
@@ -5269,7 +5298,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
             onPressed: () =>
                 _openPage(const SupplierInventoryPage(embedded: true)),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _darkRed,
+              foregroundColor: CutLinkPalette.actionRed,
               side: BorderSide(color: CutLinkPalette.color(0xFFDDB7BC)),
             ),
             icon: const Icon(Icons.inventory_outlined, size: 17),
@@ -5590,7 +5619,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: _darkRed,
+                            color: CutLinkPalette.actionRed,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: CutLinkPalette.surface,
@@ -5621,7 +5650,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
           FilledButton.icon(
             onPressed: () => _openPage(const SupplierSalesPage(embedded: true)),
             style: FilledButton.styleFrom(
-              backgroundColor: _darkRed,
+              backgroundColor: CutLinkPalette.buttonRed,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -5685,7 +5714,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: const Text(
             'Dashboard',
             style: TextStyle(fontWeight: FontWeight.w700),
@@ -5748,8 +5777,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.point_of_sale_outlined,
                         title: 'Sales',
-                        description:
-                            'Search stock, create sales orders and manage the sales workflow.',
+                        description: 'Search stock, create sales orders and manage the sales workflow.',
                         badgeCount: _newSupplierOrderCount,
                         onTap: () =>
                             _openPage(const SupplierSalesPage(embedded: true)),
@@ -5767,8 +5795,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.people_alt_outlined,
                         title: 'Customers & Accounts',
-                        description:
-                            'Manage members, external customers and account terms.',
+                        description: 'Manage members, external customers and account terms.',
                         onTap: () =>
                             _openPage(const SupplierCustomerRequestsPage()),
                       ),
@@ -5776,16 +5803,14 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.assignment_outlined,
                         title: 'Work Orders',
-                        description:
-                            'Manage warehouse picking, weighing and fulfilment.',
+                        description: 'Manage warehouse picking, weighing and fulfilment.',
                         onTap: () => _openSalesOrders('work_orders'),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
                         icon: Icons.request_quote_outlined,
                         title: 'Invoices',
-                        description:
-                            'View draft, issued, paid and outstanding invoices.',
+                        description: 'View draft, issued, paid and outstanding invoices.',
                         onTap: () => _openSalesOrders('invoices'),
                       ),
                       _LegacyDashboardCard(
@@ -5810,8 +5835,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.settings_outlined,
                         title: 'Settings',
-                        description:
-                            'Configure business, invoicing and banking settings.',
+                        description: 'Configure business, invoicing and banking settings.',
                         onTap: () => _openPage(
                           const SupplierSettingsPage(embedded: true),
                         ),
@@ -5942,7 +5966,7 @@ class _LegacyDashboardCard extends StatelessWidget {
                       ),
                       child: Icon(
                         icon,
-                        color: const Color(0xFF741C1C),
+                        color: CutLinkPalette.actionRed,
                         size: 28,
                       ),
                     ),

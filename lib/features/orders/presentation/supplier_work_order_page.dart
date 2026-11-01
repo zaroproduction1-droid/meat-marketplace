@@ -394,9 +394,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -534,9 +533,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatNumber(dynamic value) => CutLinkNumbers.quantity(value);
@@ -672,9 +670,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -720,8 +717,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                       maxLines: 5,
                       decoration: InputDecoration(
                         labelText: 'Cancellation reason',
-                        hintText:
-                            'Tell the butcher why this order cannot be fulfilled.',
+                        hintText: 'Tell the butcher why this order cannot be fulfilled.',
                         errorText: reasonMissing
                             ? 'A cancellation reason is required.'
                             : null,
@@ -778,9 +774,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       Navigator.of(context).pop(true);
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -1140,7 +1135,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               child: const Text('Go Back'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Create Anyway'),
             ),
@@ -1225,9 +1222,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -1306,9 +1302,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -1432,9 +1427,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   await _loadPage();
                 } on PostgrestException catch (error) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
+                    ScaffoldMessenger.of(dialogContext)
+                        .showSnackBar(SnackBar(content: Text(error.message)));
                     setDialogState(() => saving = false);
                   }
                 }
@@ -1466,7 +1460,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                                 catchWeight
                                     ? Icons.scale_outlined
                                     : Icons.inventory_2_outlined,
-                                color: _darkRed,
+                                color: CutLinkPalette.actionRed,
                                 size: 22,
                               ),
                             ),
@@ -1643,7 +1637,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                                     ? null
                                     : save,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: _darkRed,
+                                  backgroundColor: CutLinkPalette.buttonRed,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
                                   ),
@@ -2049,9 +2043,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
@@ -2076,13 +2069,17 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           titleSpacing: 20,
           title: Row(
             children: [
-              const Icon(Icons.assignment_outlined, color: _darkRed, size: 22),
+              Icon(
+                Icons.assignment_outlined,
+                color: CutLinkPalette.actionRed,
+                size: 22,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -2127,7 +2124,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             const SizedBox(width: 7),
             FilledButton.icon(
               onPressed: _isLoading || _isSaving ? null : _printPickSlip,
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               icon: const Icon(Icons.print_outlined, size: 17),
               label: const Text('Print'),
             ),
@@ -2159,7 +2158,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CutLinkPalette.surface,
         border: Border(
           top: BorderSide(color: CutLinkPalette.color(0xFFF0F1F2)),
         ),
@@ -2194,7 +2193,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9),
             side: BorderSide(
-              color: selected ? _darkRed : CutLinkPalette.color(0xFFE1E3E6),
+              color: selected
+                  ? CutLinkPalette.actionRed
+                  : CutLinkPalette.color(0xFFE1E3E6),
             ),
           ),
         ),
@@ -2393,7 +2394,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   color: CutLinkPalette.color(0xFFF5EAEA),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(event.icon, size: 16, color: _darkRed),
+                child: Icon(
+                  event.icon,
+                  size: 16,
+                  color: CutLinkPalette.actionRed,
+                ),
               ),
               if (!last)
                 Expanded(
@@ -2444,7 +2449,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: _darkRed),
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: CutLinkPalette.actionRed,
+              ),
               const IosGap(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const IosGap(height: 18),
@@ -2496,9 +2505,9 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.business_outlined,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                       size: 19,
                     ),
                     const SizedBox(width: 8),
@@ -2585,9 +2594,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.assignment_outlined, color: _darkRed, size: 19),
+                    Icon(
+                      Icons.assignment_outlined,
+                      color: CutLinkPalette.actionRed,
+                      size: 19,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Work Order Summary',
@@ -2733,8 +2746,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                         ),
                         child: Text(
                           _workOrderStatusLabel(status),
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
                           ),
@@ -2850,10 +2863,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.inventory_2_outlined,
                   size: 19,
-                  color: _darkRed,
+                  color: CutLinkPalette.actionRed,
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -2885,10 +2898,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               mode: PhoneRowMode.wrap,
               desktop: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calculate_outlined,
                     size: 18,
-                    color: _darkRed,
+                    color: CutLinkPalette.actionRed,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -2906,8 +2919,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   const SizedBox(width: 12),
                   Text(
                     _money(_finalInvoiceAmount),
-                    style: const TextStyle(
-                      color: _darkRed,
+                    style: TextStyle(
+                      color: CutLinkPalette.actionRed,
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
                     ),
@@ -2968,7 +2981,11 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.check_circle_outline, size: 17, color: _darkRed),
+              Icon(
+                Icons.check_circle_outline,
+                size: 17,
+                color: CutLinkPalette.actionRed,
+              ),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -3049,7 +3066,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
     Widget saveButton() => FilledButton.icon(
       onPressed: _isSaving ? null : _saveSelectedLineAction,
       style: FilledButton.styleFrom(
-        backgroundColor: _darkRed,
+        backgroundColor: CutLinkPalette.buttonRed,
         visualDensity: VisualDensity.compact,
       ),
       icon: _isSaving
@@ -3216,9 +3233,13 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.warehouse_outlined, size: 19, color: _darkRed),
+                Icon(
+                  Icons.warehouse_outlined,
+                  size: 19,
+                  color: CutLinkPalette.actionRed,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Warehouse',
@@ -3338,7 +3359,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
               FilledButton.icon(
                 onPressed: _isSaving ? null : _startPickingAndOpenPreview,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 icon: const Icon(Icons.play_arrow),
@@ -3350,7 +3371,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     ? null
                     : _createInvoiceFromFinishedWorkOrder,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 icon: const Icon(Icons.request_quote_outlined),
@@ -3374,7 +3395,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                         );
                       },
                 style: FilledButton.styleFrom(
-                  backgroundColor: _darkRed,
+                  backgroundColor: CutLinkPalette.buttonRed,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 icon: const Icon(Icons.receipt_long_outlined),
@@ -3462,7 +3483,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
           ? CutLinkPalette.color(0xFFF7EDED)
           : finalised
           ? CutLinkPalette.color(0xFFF7FBF7)
-          : Colors.white,
+          : CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: _isSaving ? null : () => _selectLine(item),
@@ -3575,8 +3596,8 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                         padding: const EdgeInsets.only(right: 6),
                         child: Text(
                           '-${_money(_lineDiscountAmount(item))}',
-                          style: const TextStyle(
-                            color: _darkRed,
+                          style: TextStyle(
+                            color: CutLinkPalette.actionRed,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                           ),
@@ -3585,7 +3606,7 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                     Icon(
                       selected ? Icons.check_circle : Icons.more_horiz,
                       size: 19,
-                      color: _darkRed,
+                      color: CutLinkPalette.actionRed,
                     ),
                   ],
                 ),
@@ -3604,10 +3625,10 @@ class _SupplierWorkOrderPageState extends State<SupplierWorkOrderPage> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.chat_bubble_outline,
                         size: 14,
-                        color: _darkRed,
+                        color: CutLinkPalette.actionRed,
                       ),
                       const SizedBox(width: 6),
                       Expanded(

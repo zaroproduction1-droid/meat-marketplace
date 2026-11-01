@@ -1,3 +1,5 @@
+import '../../../shared/widgets/ios_workspace.dart';
+import '../../../shared/widgets/compact_workspace_tile.dart';
 import '../../../shared/theme/cutlink_appearance.dart';
 import '../../../shared/widgets/ios_density.dart';
 import '../../../shared/widgets/customer_price_display.dart';
@@ -28,7 +30,6 @@ class ButcherFavouritesPage extends StatefulWidget {
 }
 
 class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
-  static const _brand = Color(0xFF741C1C);
   List<Map<String, dynamic>> _rows = [];
   bool _loading = true;
   String? _error;
@@ -36,7 +37,16 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
   String? _busyId;
   late final ButcherFavouritesStore _favourites;
   List<Map<String, dynamic>> _productRows = [];
-  String _kind = 'search';
+  String _kind = 'product';
+  final _filterRevision = ValueNotifier<int>(0);
+  void _changeFilters(VoidCallback change) {
+    if (!mounted) {
+      return;
+    }
+    setState(change);
+    _filterRevision.value++;
+  }
+
   String _animal = '';
   String _supplier = '';
   String _sort = 'recent';
@@ -55,13 +65,14 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
         ? 'dashboard'
         : widget.initialProducts
         ? 'product'
-        : 'search';
+        : 'product';
     _favourites = ButcherFavouritesStore(businessId: widget.businessId);
     _load();
   }
 
   @override
   void dispose() {
+    _filterRevision.dispose();
     _favourites.dispose();
     super.dispose();
   }
@@ -506,12 +517,67 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
         ],
         onChanged: (value) {
           if (value != null) {
-            setState(() => changed(value));
+            _changeFilters(() => changed(value));
           }
         },
       ),
     );
-    final header = Column(
+    Widget buildFilters() => Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        picker('Animal', _animal, {
+          '': 'All animals',
+          for (final animal in const [
+            'BEEF',
+            'VEAL',
+            'LAMB',
+            'MUTTON',
+            'GOAT',
+            'CHICKEN',
+          ])
+            animal: animal,
+        }, (value) => _animal = value),
+        picker('Supplier', _supplier, {
+          '': 'All suppliers',
+          for (final name in {
+            ...suppliers,
+            if (_supplier.isNotEmpty) _supplier,
+          })
+            name: name,
+        }, (value) => _supplier = value),
+        picker('Sort', _sort, {
+          'recent': 'Recently saved',
+          'name': 'Name A–Z',
+        }, (value) => _sort = value),
+        FilterChip(
+          label: Text(
+            _kind == 'search' ? 'Saved with Halal only' : 'Halal only',
+          ),
+          selected: _halal,
+          onSelected: (value) => _changeFilters(() => _halal = value),
+        ),
+        if (_kind != 'search')
+          FilterChip(
+            label: const Text('Available only'),
+            selected: _available,
+            onSelected: (value) => _changeFilters(() => _available = value),
+          ),
+        TextButton(
+          onPressed: () => _changeFilters(() {
+            _animal = '';
+            _supplier = '';
+            _halal = false;
+            _available = false;
+            _sort = 'recent';
+          }),
+          child: const Text('Clear filters'),
+        ),
+        Text('${rows.length} results'),
+      ],
+    );
+    final expandedHeader = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Wrap(
@@ -563,68 +629,204 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
           ),
         ),
         const IosGap(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            picker('Animal', _animal, {
-              '': 'All animals',
-              for (final animal in const [
-                'BEEF',
-                'VEAL',
-                'LAMB',
-                'MUTTON',
-                'GOAT',
-                'CHICKEN',
-              ])
-                animal: animal,
-            }, (value) => _animal = value),
-            picker('Supplier', _supplier, {
-              '': 'All suppliers',
-              for (final name in {
-                ...suppliers,
-                if (_supplier.isNotEmpty) _supplier,
-              })
-                name: name,
-            }, (value) => _supplier = value),
-            picker('Sort', _sort, {
-              'recent': 'Recently saved',
-              'name': 'Name A–Z',
-            }, (value) => _sort = value),
-            FilterChip(
-              label: Text(
-                _kind == 'search' ? 'Saved with Halal only' : 'Halal only',
-              ),
-              selected: _halal,
-              onSelected: (value) => setState(() => _halal = value),
-            ),
-            if (_kind != 'search')
-              FilterChip(
-                label: const Text('Available only'),
-                selected: _available,
-                onSelected: (value) => setState(() => _available = value),
-              ),
-            TextButton(
-              onPressed: () => setState(() {
-                _animal = '';
-                _supplier = '';
-                _halal = false;
-                _available = false;
-                _sort = 'recent';
-              }),
-              child: const Text('Clear filters'),
-            ),
-            Text('${rows.length} results'),
-          ],
-        ),
+        if (!useIosWorkspace(context)) buildFilters(),
       ],
     );
+    final ios = useIosWorkspace(context);
+    final filterCount =
+        (_animal.isNotEmpty ? 1 : 0) +
+        (_supplier.isNotEmpty ? 1 : 0) +
+        (_halal ? 1 : 0) +
+        (_available ? 1 : 0) +
+        (_sort != 'recent' ? 1 : 0);
+    final header = !ios
+        ? expandedHeader
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  for (final tab in [
+                    ('product', 'Products'),
+                    ('search', 'Searches'),
+                    ('dashboard', 'On Home'),
+                  ])
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 5),
+                        child: ChoiceChip(
+                          label: Text(
+                            tab.$2,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          showCheckmark: false,
+                          selected: _kind == tab.$1,
+                          onSelected: (_) => setState(() {
+                            _kind = tab.$1;
+                            _supplier = '';
+                          }),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) => setState(() => _query = value),
+                      decoration: const InputDecoration(
+                        hintText: 'Search saved items',
+                        prefixIcon: Icon(Icons.search),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Filter saved items',
+                    icon: Badge(
+                      isLabelVisible: filterCount > 0,
+                      label: Text('$filterCount'),
+                      child: const Icon(Icons.tune),
+                    ),
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      showDragHandle: true,
+                      builder: (sheet) => SafeArea(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: _filterRevision,
+                            builder: (_, _, _) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Filter saved items',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                buildFilters(),
+                                const SizedBox(height: 16),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(sheet),
+                                  child: const Text('Show saved items'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _kind == 'dashboard'
+                    ? 'Choose up to four products for Home'
+                    : '${rows.length} saved ${_kind == 'search' ? 'searches' : 'products'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          );
     Widget item(BuildContext context, int index) {
       final row = rows[index];
       final product = favouriteMap(row['product']);
       final isProduct = _kind != 'search';
       final available = product['active'] == true;
+      if (ios) {
+        final rawTitle = _title(row);
+        final parts = rawTitle.split(RegExp(r'\s*[•·]\s*'));
+        final title = !isProduct && parts.length > 2 ? parts[2] : rawTitle;
+        return CompactWorkspaceTile(
+          title: title,
+          subtitle: isProduct
+              ? _supplierFor(row)
+              : (parts.length > 2
+                    ? [parts[0], parts[1], ...parts.skip(3)].join(' · ')
+                    : ''),
+          leading: isProduct
+              ? CatalogueProductImage(
+                  product: product,
+                  thumbnail: true,
+                  imageWidth: 66,
+                  imageHeight: 72,
+                  allowGenericPreview: true,
+                  fit: BoxFit.cover,
+                )
+              : Icon(
+                  Icons.saved_search,
+                  size: 28,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          onTap: _busyId != null
+              ? null
+              : () => isProduct ? _openProduct(row) : _open(row),
+          detail: isProduct
+              ? (available
+                    ? CustomerPriceDisplay(product: product, fontSize: 13)
+                    : const Text('Unavailable', style: TextStyle(fontSize: 12)))
+              : null,
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Saved item options',
+            enabled: _busyId == null,
+            onSelected: (action) {
+              if (action == 'remove') {
+                isProduct ? _removeProduct(row) : _change(row, remove: true);
+              }
+              if (action == 'rename') {
+                _change(row);
+              }
+              if (action == 'home') {
+                _toggleDashboard(row);
+              }
+            },
+            itemBuilder: (_) => [
+              if (!isProduct)
+                const PopupMenuItem(value: 'rename', child: Text('Rename')),
+              if (isProduct)
+                PopupMenuItem(
+                  value: 'home',
+                  child: Text(
+                    row['dashboard_slot'] == null
+                        ? 'Show on Home'
+                        : 'Remove from Home',
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'remove',
+                child: Text('Remove from Saved'),
+              ),
+            ],
+          ),
+          footer: isProduct && _kind == 'dashboard'
+              ? Row(
+                  children: [
+                    Icon(
+                      row['dashboard_slot'] != null
+                          ? Icons.check_circle
+                          : Icons.add_circle_outline,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      row['dashboard_slot'] != null
+                          ? 'On Home'
+                          : 'Choose Show on Home in the menu',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ],
+                )
+              : null,
+        );
+      }
       return Card(
         elevation: 0,
         color: CutLinkPalette.surface,
@@ -764,7 +966,11 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.favorite_border, size: 40, color: _brand),
+                  Icon(
+                    Icons.favorite_border,
+                    size: 40,
+                    color: CutLinkPalette.actionRed,
+                  ),
                   const IosGap(height: 12),
                   Text(
                     source.isEmpty
@@ -797,7 +1003,7 @@ class _ButcherFavouritesPageState extends State<ButcherFavouritesPage> {
       appBar: phoneAppBar(
         context,
         AppBar(
-          title: const Text('Favourites'),
+          title: Text(ios ? 'Saved' : 'Favourites'),
           backgroundColor: CutLinkPalette.surface,
           actions: [
             IconButton(

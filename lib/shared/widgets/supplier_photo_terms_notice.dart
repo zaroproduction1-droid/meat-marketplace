@@ -78,9 +78,7 @@ class _SupplierTermsDialogState extends State<_SupplierTermsDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.accepted
-                      ? 'You have accepted these terms.'
-                      : 'Accept once for this supplier login account. You will not be asked for each photo.',
+                  widget.accepted ? 'You have accepted these terms.' : 'Accept once for this supplier login account. You will not be asked for each photo.',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),
@@ -188,12 +186,12 @@ class _SupplierPhotoTermsNoticeState extends State<SupplierPhotoTermsNotice> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 3),
             child: Icon(
               Icons.copyright_outlined,
               size: 19,
-              color: Color(0xFF741C1C),
+              color: CutLinkPalette.actionRed,
             ),
           ),
           const SizedBox(width: 9),
@@ -210,9 +208,12 @@ class _SupplierPhotoTermsNoticeState extends State<SupplierPhotoTermsNotice> {
                   style: TextStyle(fontSize: 12),
                 ),
                 if (_accepted == false)
-                  const Text(
+                  Text(
                     'Accept the supplier photo terms once to enable uploads.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF741C1C)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CutLinkPalette.actionRed,
+                    ),
                   ),
               ],
             ),

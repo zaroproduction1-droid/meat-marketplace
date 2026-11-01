@@ -1,3 +1,5 @@
+import '../theme/cutlink_appearance.dart';
+
 import 'package:flutter/material.dart';
 
 class WorkspaceRequestError extends StatelessWidget {
@@ -18,10 +20,10 @@ class WorkspaceRequestError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_outlined,
               size: 40,
-              color: Color(0xFF741C1C),
+              color: CutLinkPalette.actionRed,
             ),
             const SizedBox(height: 16),
             Text(

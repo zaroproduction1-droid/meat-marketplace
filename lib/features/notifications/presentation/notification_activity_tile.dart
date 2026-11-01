@@ -33,14 +33,13 @@ class NotificationActivityTile extends StatelessWidget {
     AppearanceScope.watch(context);
     final read = row['is_read'] == true;
     final category = row['category']?.toString() ?? 'activity';
-    final date = DateTime.tryParse(
-      row['created_at']?.toString() ?? '',
-    )?.toLocal();
+    final date = DateTime.tryParse(row['created_at']?.toString() ?? '')
+        ?.toLocal();
     final time = date == null
         ? ''
         : '${compact ? '' : '${date.day}/${date.month} • '}${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     return Material(
-      color: read ? Colors.white : CutLinkPalette.color(0xFFFCF7F7),
+      color: read ? CutLinkPalette.surface : CutLinkPalette.color(0xFFFCF7F7),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: CutLinkWorkspaceTheme.border),
@@ -62,7 +61,7 @@ class NotificationActivityTile extends StatelessWidget {
                 ),
                 child: Icon(
                   icon(category),
-                  color: CutLinkWorkspaceTheme.red,
+                  color: CutLinkPalette.actionRed,
                   size: compact ? 18 : 21,
                 ),
               ),
@@ -109,10 +108,10 @@ class NotificationActivityTile extends StatelessWidget {
                           ),
                         if (!read) ...[
                           const SizedBox(width: 7),
-                          const Icon(
+                          Icon(
                             Icons.circle,
                             size: 7,
-                            color: CutLinkWorkspaceTheme.red,
+                            color: CutLinkPalette.actionRed,
                           ),
                         ],
                       ],

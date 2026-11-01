@@ -649,9 +649,9 @@ class _EditProductPageState extends State<EditProductPage> {
           .eq('is_active', true)
           .order('display_order');
 
-      final gradeIds = List<Map<String, dynamic>>.from(
-        mappingResponse,
-      ).map((row) => row['grade_id'].toString()).toList();
+      final gradeIds = List<Map<String, dynamic>>.from(mappingResponse)
+          .map((row) => row['grade_id'].toString())
+          .toList();
 
       if (gradeIds.isNotEmpty) {
         final gradeResponse = await Supabase.instance.client
@@ -826,9 +826,9 @@ class _EditProductPageState extends State<EditProductPage> {
           .eq('is_active', true)
           .order('display_order');
 
-      final ids = List<Map<String, dynamic>>.from(
-        mappings,
-      ).map((row) => row['grade_id'].toString()).toList();
+      final ids = List<Map<String, dynamic>>.from(mappings)
+          .map((row) => row['grade_id'].toString())
+          .toList();
 
       List<Map<String, dynamic>> grades = [];
       if (ids.isNotEmpty) {
@@ -921,8 +921,7 @@ class _EditProductPageState extends State<EditProductPage> {
                     maxLines: 5,
                     decoration: InputDecoration(
                       labelText: 'Specification details (optional)',
-                      hintText:
-                          'Trim, preparation, trade code or other defining details',
+                      hintText: 'Trim, preparation, trade code or other defining details',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -1883,7 +1882,7 @@ class _EditProductPageState extends State<EditProductPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: const Color(0xFF741C1C)),
+              Icon(icon, color: CutLinkPalette.actionRed),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -1943,7 +1942,7 @@ class _EditProductPageState extends State<EditProductPage> {
             final details = Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: const Color(0xFF741C1C)),
+                Icon(icon, color: CutLinkPalette.actionRed),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -2209,9 +2208,9 @@ class _EditProductPageState extends State<EditProductPage> {
     }
 
     final customers = _approvedCustomers.where((c) {
-      if (!_approvedCustomerName(
-        c,
-      ).toLowerCase().contains(_vipSearch.toLowerCase())) {
+      if (!_approvedCustomerName(c)
+          .toLowerCase()
+          .contains(_vipSearch.toLowerCase())) {
         return false;
       }
       final list = _privatePriceListForCustomer('${c['butcher_business_id']}');
@@ -2316,7 +2315,7 @@ class _EditProductPageState extends State<EditProductPage> {
               children: [
                 CircleAvatar(
                   backgroundColor: CutLinkPalette.color(0xFFF4E5E5),
-                  foregroundColor: Color(0xFF741C1C),
+                  foregroundColor: CutLinkPalette.actionRed,
                   child: Icon(Icons.storefront_outlined),
                 ),
                 const SizedBox(width: 13),
@@ -2418,10 +2417,10 @@ class _EditProductPageState extends State<EditProductPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 56,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 16),
               Text(_pricingError!, textAlign: TextAlign.center),
@@ -2446,8 +2445,7 @@ class _EditProductPageState extends State<EditProductPage> {
             children: [
               const CutLinkSectionHeading(
                 title: 'Pricing workspace',
-                subtitle:
-                    'Set your everyday price, then add customer offers where needed.',
+                subtitle: 'Set your everyday price, then add customer offers where needed.',
                 icon: Icons.price_change_outlined,
               ),
               Card(
@@ -2502,8 +2500,7 @@ class _EditProductPageState extends State<EditProductPage> {
                     children: [
                       const CutLinkSectionHeading(
                         title: 'VIP customer prices',
-                        subtitle:
-                            'Search a customer and set their agreed price for this product. Removing it restores their applicable Trade or Standard price.',
+                        subtitle: 'Search a customer and set their agreed price for this product. Removing it restores their applicable Trade or Standard price.',
                         icon: Icons.star_outline,
                       ),
                       _buildCustomerSpecificPricingSection(),
@@ -2523,9 +2520,8 @@ class _EditProductPageState extends State<EditProductPage> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _emptyToNull(String value) {
@@ -2609,7 +2605,7 @@ class _EditProductPageState extends State<EditProductPage> {
               context,
               AppBar(
                 backgroundColor: CutLinkPalette.surface,
-                surfaceTintColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
                 title: const Text(
                   'Product workspace',
                   style: TextStyle(fontWeight: FontWeight.w800),
@@ -3114,9 +3110,10 @@ class _EditProductPageState extends State<EditProductPage> {
                                                                     1,
                                                                   );
                                                                 },
-                                                                child: const Text(
-                                                                  'Open Pricing',
-                                                                ),
+                                                                child:
+                                                                    const Text(
+                                                                      'Open Pricing',
+                                                                    ),
                                                               ),
                                                             ],
                                                           ),
@@ -3134,8 +3131,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 if (_usesGeneralSubcuts) ...[
                                                   _sectionTitle(
                                                     'Supplier specification',
-                                                    subtitle:
-                                                        'Choose the same standard options butchers use to filter products.',
+                                                    subtitle: 'Choose the same standard options butchers use to filter products.',
                                                   ),
                                                   const IosGap(height: 12),
                                                   SupplierSpecificationField(
@@ -3163,8 +3159,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                 ],
                                                 _sectionTitle(
                                                   'Product details',
-                                                  subtitle:
-                                                      'Keep the everyday information here. Pricing is managed separately in the Pricing tab.',
+                                                  subtitle: 'Keep the everyday information here. Pricing is managed separately in the Pricing tab.',
                                                 ),
 
                                                 const IosGap(height: 12),
@@ -3190,8 +3185,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                     readOnly:
                                                         _usesSpecGradeCatalogue,
                                                     decoration: InputDecoration(
-                                                      labelText:
-                                                          'Supplier product name',
+                                                      labelText: 'Supplier product name',
                                                       helperText:
                                                           _usesSpecGradeCatalogue
                                                           ? 'Automatically linked to the selected cut / specification.'
@@ -3432,14 +3426,13 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         TextFormField(
                                                           controller:
                                                               _commercialDescriptionController,
-                                                          decoration: InputDecoration(
-                                                            labelText:
-                                                                'Commercial description (optional)',
-                                                            hintText:
-                                                                'Example: Big & Lean',
-                                                            border:
-                                                                OutlineInputBorder(),
-                                                          ),
+                                                          decoration:
+                                                              InputDecoration(
+                                                                labelText: 'Commercial description (optional)',
+                                                                hintText: 'Example: Big & Lean',
+                                                                border:
+                                                                    OutlineInputBorder(),
+                                                              ),
                                                         ),
                                                         CutLinkPickerField<
                                                           String
@@ -3448,10 +3441,8 @@ class _EditProductPageState extends State<EditProductPage> {
                                                           value: _lambFatClass,
                                                           options: const [
                                                             CutLinkPickerOption(
-                                                              value:
-                                                                  'not_specified',
-                                                              label:
-                                                                  'Not specified',
+                                                              value: 'not_specified',
+                                                              label: 'Not specified',
                                                             ),
                                                             CutLinkPickerOption(
                                                               value: '1',
@@ -3497,12 +3488,12 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         TextFormField(
                                                           controller:
                                                               _lotBatchController,
-                                                          decoration: InputDecoration(
-                                                            labelText:
-                                                                'Lot / batch (optional)',
-                                                            border:
-                                                                OutlineInputBorder(),
-                                                          ),
+                                                          decoration:
+                                                              InputDecoration(
+                                                                labelText: 'Lot / batch (optional)',
+                                                                border:
+                                                                    OutlineInputBorder(),
+                                                              ),
                                                         ),
                                                       ),
                                                       if (_isWholeLamb) ...[
@@ -3518,8 +3509,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                               _slaughterDateController,
                                                             ),
                                                             decoration: InputDecoration(
-                                                              labelText:
-                                                                  'Slaughter date (optional)',
+                                                              labelText: 'Slaughter date (optional)',
                                                               suffixIcon: Icon(
                                                                 Icons
                                                                     .calendar_month_outlined,
@@ -3536,8 +3526,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                               _useByDateController,
                                                             ),
                                                             decoration: InputDecoration(
-                                                              labelText:
-                                                                  'Expiry / use-by (optional)',
+                                                              labelText: 'Expiry / use-by (optional)',
                                                               suffixIcon: Icon(
                                                                 Icons
                                                                     .calendar_month_outlined,
@@ -3586,8 +3575,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                           ? ProductAttributeField(
                                                               controller:
                                                                   _breedProgramController,
-                                                              label:
-                                                                  'Commercial Type / Program',
+                                                              label: 'Commercial Type / Program',
                                                               choices:
                                                                   productLambPrograms,
                                                               allowCustom:
@@ -3598,8 +3586,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                           : ProductAttributeField(
                                                               controller:
                                                                   _breedProgramController,
-                                                              label:
-                                                                  'Breed / program',
+                                                              label: 'Breed / program',
                                                               choices:
                                                                   _usesGeneralSubcuts
                                                                   ? const []
@@ -3652,20 +3639,19 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         ProductAttributeField(
                                                           controller:
                                                               _trimSpecificationController,
-                                                          label:
-                                                              'Trim / preparation',
+                                                          label: 'Trim / preparation',
                                                           choices:
                                                               productPreparationOptions,
                                                         ),
                                                         TextFormField(
                                                           controller:
                                                               _fatSpecificationController,
-                                                          decoration: InputDecoration(
-                                                            labelText:
-                                                                'Fat specification (optional)',
-                                                            border:
-                                                                OutlineInputBorder(),
-                                                          ),
+                                                          decoration:
+                                                              InputDecoration(
+                                                                labelText: 'Fat specification (optional)',
+                                                                border:
+                                                                    OutlineInputBorder(),
+                                                              ),
                                                         ),
                                                       ),
 
@@ -3688,8 +3674,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                             TextInputType
                                                                 .number,
                                                         decoration: InputDecoration(
-                                                          labelText:
-                                                              'Pieces per carton (optional)',
+                                                          labelText: 'Pieces per carton (optional)',
                                                           border:
                                                               OutlineInputBorder(),
                                                         ),
@@ -3713,8 +3698,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         controller:
                                                             _originStateController,
                                                         decoration: InputDecoration(
-                                                          labelText:
-                                                              'State of origin (optional)',
+                                                          labelText: 'State of origin (optional)',
                                                           hintText: 'NSW',
                                                           border:
                                                               OutlineInputBorder(),
@@ -3730,8 +3714,7 @@ class _EditProductPageState extends State<EditProductPage> {
                                                       minLines: 2,
                                                       maxLines: 4,
                                                       decoration: InputDecoration(
-                                                        labelText:
-                                                            'Description (optional)',
+                                                        labelText: 'Description (optional)',
                                                         border:
                                                             OutlineInputBorder(),
                                                       ),
@@ -3746,10 +3729,8 @@ class _EditProductPageState extends State<EditProductPage> {
                                                         minLines: 3,
                                                         maxLines: 6,
                                                         decoration: InputDecoration(
-                                                          labelText:
-                                                              'Supplier specification / notes (optional)',
-                                                          hintText:
-                                                              'Extra trade information that does not fit the structured fields above',
+                                                          labelText: 'Supplier specification / notes (optional)',
+                                                          hintText: 'Extra trade information that does not fit the structured fields above',
                                                           border:
                                                               OutlineInputBorder(),
                                                         ),

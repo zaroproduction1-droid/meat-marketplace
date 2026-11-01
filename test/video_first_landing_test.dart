@@ -4,6 +4,14 @@ import 'package:cutlink/features/authentication/presentation/registration_type_p
 import 'package:cutlink/features/landing/presentation/cutlink_landing_content.dart';
 import 'package:cutlink/features/landing/presentation/cutlink_explainer_video.dart';
 
+Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+  // Keep the target in the scroll viewport, below the fixed page header.
+  await Scrollable.ensureVisible(tester.element(finder), alignment: .35);
+  await tester.pumpAndSettle();
+  await tester.tap(finder.hitTestable());
+  await tester.pumpAndSettle();
+}
+
 void main() {
   for (final width in [320.0, 390.0, 768.0, 1440.0]) {
     testWidgets('Video-first landing and registration at width $width', (
@@ -30,19 +38,12 @@ void main() {
       await tester.tap(find.text('Sign in'));
       expect(signedIn, isTrue);
       final supplier = find.text('Join as a supplier').first;
-      await tester.ensureVisible(supplier);
-      await tester.pumpAndSettle();
-      await tester.tap(supplier);
+      await tapVisible(tester, supplier);
       expect(role, BusinessType.supplier);
       final butcher = find.text('Join as a butcher').first;
-      await tester.ensureVisible(butcher);
-      await tester.pumpAndSettle();
-      await tester.tap(butcher);
+      await tapVisible(tester, butcher);
       expect(role, BusinessType.butcher);
-      await tester.ensureVisible(find.text('For suppliers'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('For suppliers'));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text('For suppliers'));
       expect(
         find.byWidgetPredicate(
           (widget) =>
@@ -53,8 +54,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.tap(find.text('For butchers'));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text('For butchers'));
       expect(
         find.byWidgetPredicate(
           (widget) =>

@@ -239,9 +239,8 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                   isSaving = false;
                 });
 
-                ScaffoldMessenger.of(
-                  dialogContext,
-                ).showSnackBar(SnackBar(content: Text(error.message)));
+                ScaffoldMessenger.of(dialogContext)
+                    .showSnackBar(SnackBar(content: Text(error.message)));
               }
             }
 
@@ -388,7 +387,7 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
           context,
           AppBar(
             backgroundColor: CutLinkPalette.surface,
-            surfaceTintColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             title: Text(widget.priceListName),
             actions: [
               IconButton(
@@ -469,10 +468,10 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 60,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
               const IosGap(height: 18),
               Text(_errorMessage!, textAlign: TextAlign.center),
@@ -533,9 +532,9 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                 color: CutLinkPalette.color(0xFFF4E5E5),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.inventory_2_outlined,
-                color: Color(0xFF741C1C),
+                color: CutLinkPalette.actionRed,
               ),
             ),
             title: Text(
@@ -554,10 +553,10 @@ class _PriceListProductsPageState extends State<PriceListProductsPage> {
                 ? const Chip(label: Text('No price'))
                 : Text(
                     '\$$amount / ${_formatPriceBasis(priceBasis)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF741C1C),
+                      color: CutLinkPalette.actionRed,
                     ),
                   ),
             onTap: () {

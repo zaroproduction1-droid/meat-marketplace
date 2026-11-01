@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'shared/widgets/cutlink_launch_gate.dart';
 import 'shared/widgets/launch_page_ready.dart';
-import 'shared/theme/workspace_message_theme.dart';
+import 'shared/theme/cutlink_app_theme.dart';
 import 'shared/theme/cutlink_appearance.dart';
 
 import 'dart:convert';
@@ -56,11 +56,9 @@ Future<void> _initialiseCutLink() async {
   if (!supabasePublishableKey.startsWith('sb_publishable_')) {
     try {
       final segments = supabasePublishableKey.split('.');
-      final claims =
-          jsonDecode(
-                utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
-              )
-              as Map;
+      final claims = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
+      ) as Map;
       if (claims['role'] != 'anon') {
         throw const FormatException('Privileged key');
       }
@@ -91,33 +89,7 @@ class CutLinkApp extends StatelessWidget {
       listenable: CutLinkAppearance.instance,
       builder: (context, _) => MaterialApp(
         themeMode: CutLinkAppearance.instance.mode,
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          fontFamily: 'Arial',
-          snackBarTheme: workspaceMessageTheme(Brightness.dark),
-          scaffoldBackgroundColor: const Color(0xFF111113),
-          colorScheme:
-              ColorScheme.fromSeed(
-                seedColor: const Color(0xFF850E25),
-                brightness: Brightness.dark,
-              ).copyWith(
-                primary: const Color(0xFFFF8EA3),
-                onPrimary: const Color(0xFF430014),
-                surface: const Color(0xFF1C1C1E),
-                onSurface: const Color(0xFFF2F2F7),
-              ),
-          appBarTheme: const AppBarThemeData(
-            backgroundColor: Color(0xFF111113),
-            foregroundColor: Color(0xFFF2F2F7),
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-          ),
-          inputDecorationTheme: const InputDecorationTheme(
-            filled: true,
-            fillColor: Color(0xFF252528),
-          ),
-        ),
+        darkTheme: cutLinkAppTheme(Brightness.dark),
         title: 'CutLink',
         navigatorObservers: [PageLocation.instance],
         debugShowCheckedModeBanner: false,
@@ -129,16 +101,7 @@ class CutLinkApp extends StatelessWidget {
                 )
               : child!,
         ),
-        theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF7F7F5),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF7A1F1F),
-            brightness: Brightness.light,
-          ),
-          fontFamily: 'Arial',
-          snackBarTheme: workspaceMessageTheme(Brightness.light),
-        ),
+        theme: cutLinkAppTheme(Brightness.light),
         home: const LandingPage(),
       ),
     );
@@ -181,18 +144,16 @@ class _LandingPageState extends State<LandingPage> {
     }
     if (useIosWorkspace(context)) {
       return IosWelcomePage(
-        onSignIn: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
+        onSignIn: () => Navigator.of(context)
+            .push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
         onRegister: () => Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const RegistrationTypePage()),
         ),
       );
     }
     return CutLinkLandingContent(
-      onSignIn: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
+      onSignIn: () => Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const SignInPage())),
       onRegister: (role) => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => RegistrationTypePage(initialBusinessType: role),

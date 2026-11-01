@@ -108,14 +108,14 @@ class PhoneFilterPanel extends StatelessWidget {
     final media = MediaQuery.of(context);
     final available = media.size.height - media.viewInsets.bottom;
     return Material(
-      color: Colors.white,
+      color: CutLinkPalette.surface,
       borderRadius: BorderRadius.circular(12),
       child: ExpansionTile(
         title: Text(
           label,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
         ),
-        leading: const Icon(Icons.tune, color: Color(0xFF741C1C)),
+        leading: Icon(Icons.tune, color: CutLinkPalette.actionRed),
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(

@@ -927,10 +927,10 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.calendar_month_outlined,
               size: 18,
-              color: _darkRed,
+              color: CutLinkPalette.actionRed,
             ),
             const SizedBox(width: 8),
             Column(
@@ -1087,7 +1087,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
         context,
         AppBar(
           backgroundColor: CutLinkPalette.surface,
-          surfaceTintColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1123,7 +1123,9 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
               ),
             FilledButton.icon(
               onPressed: _loading || _error != null ? null : _downloadPdf,
-              style: FilledButton.styleFrom(backgroundColor: _darkRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: CutLinkPalette.buttonRed,
+              ),
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('Download Statement'),
             ),
@@ -1143,7 +1145,7 @@ class _AccountStatementPageState extends State<AccountStatementPage> {
                     Text(
                       _error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: _darkRed),
+                      style: TextStyle(color: CutLinkPalette.actionRed),
                     ),
                     const IosGap(height: 16),
                     FilledButton(

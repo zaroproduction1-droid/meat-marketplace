@@ -9,7 +9,7 @@ class CutLinkWorkspaceTheme extends StatelessWidget {
   const CutLinkWorkspaceTheme({super.key, required this.child});
   final Widget child;
   static Color get ink => CutLinkPalette.color(0xFF101D2B);
-  static const red = Color(0xFF741C1C);
+  static const red = Color(0xFFA51C34);
   static Color get canvas => CutLinkPalette.color(0xFFF7F8FA);
   static Color get border => CutLinkPalette.color(0xFFE3E5E8);
 
@@ -67,7 +67,7 @@ class CutLinkWorkspaceTheme extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: red, width: 1.5),
+            borderSide: BorderSide(color: CutLinkPalette.actionRed, width: 1.5),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -132,7 +132,7 @@ class CutLinkSectionHeading extends StatelessWidget {
               color: CutLinkPalette.color(0xFFF4E5E5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: CutLinkWorkspaceTheme.red, size: 22),
+            child: Icon(icon, color: CutLinkPalette.actionRed, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -188,7 +188,7 @@ class CutLinkMetricTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: CutLinkWorkspaceTheme.red),
+              Icon(icon, size: 18, color: CutLinkPalette.actionRed),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
