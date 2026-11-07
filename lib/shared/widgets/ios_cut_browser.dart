@@ -63,132 +63,261 @@ Future<void> showIosCutBrowser({
   required ValueChanged<Map<String, dynamic>> onSpecification,
   required VoidCallback onAllCuts,
   required VoidCallback onGuide,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
-  backgroundColor: CutLinkPalette.surface,
-  showDragHandle: true,
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-  ),
-  builder: (sheetContext) => StatefulBuilder(
-    builder: (context, update) {
-      void choose(VoidCallback action) {
-        action();
-        update(() {});
-      }
+  bool initialSubcuts = false,
+  Listenable? catalogueChanges,
+  bool Function()? isLoading,
+  String? Function()? error,
+}) {
+  var subcuts = initialSubcuts;
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, update) => ListenableBuilder(
+        listenable: catalogueChanges ?? const AlwaysStoppedAnimation(0),
+        builder: (context, _) {
+          final cs = Theme.of(context).colorScheme;
+          final chosen = sections()
+              .where((s) => s['id']?.toString() == sectionId())
+              .firstOrNull;
+          void back() => update(() => subcuts = false);
+          void chooseCut(Map<String, dynamic> section) {
+            onSection(section);
+            update(() => subcuts = true);
+          }
 
-      Widget heading(String title) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 10),
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-      );
-      Widget option(String title, bool selected, VoidCallback action) =>
-          ListTile(
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            selected: selected,
-            selectedTileColor: CutLinkPalette.color(0xFFF7ECEF),
-            leading: selected ? const Icon(Icons.check_circle, size: 20) : null,
-            title: Text(title),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () => choose(action),
-          );
-      return SizedBox(
-        height: MediaQuery.sizeOf(context).height * .82,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(sheetContext),
-                  icon: const Icon(Icons.close),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Browse cuts',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => choose(onAllCuts),
-                  child: const Text('Reset'),
-                ),
-              ],
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+          void showProducts() => Navigator.pop(sheetContext);
+          return PopScope(
+            canPop: !subcuts,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop) back();
+            },
+            child: SizedBox(
+              height: MediaQuery.sizeOf(context).height * .84,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  heading('Animal'),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      for (final name in const [
-                        'Beef',
-                        'Veal',
-                        'Lamb',
-                        'Mutton',
-                        'Goat',
-                        'Chicken',
-                      ])
-                        ChoiceChip(
-                          label: Text(name),
-                          selected:
-                              animal().toUpperCase() == name.toUpperCase(),
-                          onSelected: (_) =>
-                              choose(() => onAnimal(name.toUpperCase())),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: subcuts ? 'Back to main cuts' : 'Close',
+                          onPressed: subcuts ? back : showProducts,
+                          icon: Icon(
+                            subcuts ? Icons.arrow_back_ios_new : Icons.close,
+                          ),
                         ),
-                    ],
-                  ),
-                  heading('Main cut'),
-                  option('All cuts', sectionId() == null, onAllCuts),
-                  for (final section in sections())
-                    option(
-                      section['name']?.toString() ?? 'Cut',
-                      sectionId() == section['id']?.toString(),
-                      () => onSection(section),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                subcuts
+                                    ? (chosen?['name']?.toString() ??
+                                          'Sub-cuts')
+                                    : 'Browse cuts',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                subcuts
+                                    ? '${animal()} · Choose a sub-cut'
+                                    : 'Choose an animal, then a main cut',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (subcuts)
+                          IconButton(
+                            tooltip: 'Close catalogue',
+                            onPressed: showProducts,
+                            icon: const Icon(Icons.close),
+                          ),
+                      ],
                     ),
-                  if (sectionId() != null) ...[
-                    heading('Sub-cut'),
-                    for (final specification in specifications())
-                      option(
-                        specification['name']?.toString() ?? 'Sub-cut',
-                        specificationId() == specification['id']?.toString(),
-                        () => onSpecification(specification),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween(
+                            begin: const Offset(.08, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
                       ),
-                    if (specifications().isEmpty)
-                      const Text('No sub-cuts available for this cut.'),
-                  ],
+                      child: subcuts
+                          ? ListView(
+                              key: ValueKey('subcuts-${sectionId()}'),
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () {
+                                    if (chosen != null) onSection(chosen);
+                                    showProducts();
+                                  },
+                                  icon: const Icon(Icons.grid_view),
+                                  label: const Text(
+                                    'View all products in this cut',
+                                  ),
+                                ),
+                                if (isLoading?.call() == true)
+                                  const LinearProgressIndicator(),
+                                if (error?.call() != null)
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(error!.call()!),
+                                  ),
+                                if (specifications().isEmpty &&
+                                    isLoading?.call() != true &&
+                                    error?.call() == null)
+                                  const Padding(
+                                    padding: EdgeInsets.all(24),
+                                    child: Text(
+                                      'No sub-cuts available. View all products in this cut.',
+                                    ),
+                                  ),
+                                for (final spec
+                                    in isLoading?.call() == true
+                                        ? <Map<String, dynamic>>[]
+                                        : specifications())
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Material(
+                                      color: cs.surfaceContainerHigh,
+                                      borderRadius: BorderRadius.circular(14),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ListTile(
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 5,
+                                            ),
+                                        title: Text(
+                                          spec['name']?.toString() ?? 'Sub-cut',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        trailing: Icon(
+                                          specificationId() ==
+                                                  spec['id']?.toString()
+                                              ? Icons.check_circle
+                                              : Icons.chevron_right,
+                                          color: cs.primary,
+                                        ),
+                                        onTap: () {
+                                          onSpecification(spec);
+                                          showProducts();
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            )
+                          : ListView(
+                              key: const ValueKey('main-cuts'),
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    for (final name in const [
+                                      'Beef',
+                                      'Veal',
+                                      'Lamb',
+                                      'Mutton',
+                                      'Goat',
+                                      'Chicken',
+                                    ])
+                                      ChoiceChip(
+                                        label: Text(name),
+                                        selected:
+                                            animal().toUpperCase() ==
+                                            name.toUpperCase(),
+                                        onSelected: (_) {
+                                          onAnimal(name.toUpperCase());
+                                          update(() {});
+                                        },
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                const Text(
+                                  'Main cuts',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                for (final section in sections())
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Material(
+                                      color: cs.surfaceContainerHigh,
+                                      borderRadius: BorderRadius.circular(14),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ListTile(
+                                        title: Text(
+                                          section['name']?.toString() ?? 'Cut',
+                                        ),
+                                        subtitle: const Text(
+                                          'Choose sub-cut',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        trailing: const Icon(
+                                          Icons.chevron_right,
+                                        ),
+                                        onTap: () => chooseCut(section),
+                                      ),
+                                    ),
+                                  ),
+                                TextButton(
+                                  onPressed: () {
+                                    onAllCuts();
+                                    showProducts();
+                                  },
+                                  child: const Text('All cuts'),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  if (!subcuts)
+                    SafeArea(
+                      top: false,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          onGuide();
+                        },
+                        icon: const Icon(Icons.menu_book_outlined),
+                        label: const Text('Explore the animal diagram'),
+                      ),
+                    ),
                 ],
               ),
             ),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                onGuide();
-              },
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('View animal catalogue'),
-            ),
-            SafeArea(
-              top: false,
-              minimum: const EdgeInsets.all(16),
-              child: FilledButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text('Show products'),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  ),
-);
+          );
+        },
+      ),
+    ),
+  );
+}

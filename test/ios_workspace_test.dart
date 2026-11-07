@@ -114,11 +114,13 @@ void main() {
       await tester.tap(find.text('Lamb leg'));
       await tester.pumpAndSettle();
       expect(section, 'one');
-      await tester.tap(find.text('Reset'));
+      expect(find.text('BEEF · Choose a sub-cut'), findsNothing);
+      expect(find.text('LAMB · Choose a sub-cut'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back to main cuts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('All cuts'));
       await tester.pumpAndSettle();
       expect(section, isNull);
-      await tester.tap(find.text('Show products'));
-      await tester.pumpAndSettle();
       expect(find.text('Browse cuts'), findsNothing);
     },
   );

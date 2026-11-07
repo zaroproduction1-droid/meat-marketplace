@@ -32,14 +32,14 @@ class BusinessAnalyticsPage extends StatefulWidget {
 }
 
 class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
-  static const Color _darkRed = Color(0xFF8B1E2D);
-  static const Color _deepNavy = Color(0xFF081625);
-  static final Color _canvas = Color(0xFFF7F8FA);
+  static Color get _darkRed => CutLinkPalette.color(0xFF8B1E2D);
+  static Color get _deepNavy => CutLinkPalette.color(0xFF081625);
+  static Color get _canvas => CutLinkPalette.canvas;
   static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
   static Color get _muted => CutLinkPalette.color(0xFF6A6E75);
-  static const Color _positive = Color(0xFF2E7D32);
-  static const Color _warning = Color(0xFF9A5B00);
-  static const Color _danger = Color(0xFFB3261E);
+  static Color get _positive => CutLinkPalette.color(0xFF2E7D32);
+  static Color get _warning => CutLinkPalette.color(0xFF9A5B00);
+  static Color get _danger => CutLinkPalette.color(0xFFB3261E);
 
   bool _layoutLoaded = false;
   bool _savingLayout = false;
@@ -798,7 +798,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
           ),
           backgroundColor: _customStartDate != null && _customEndDate != null
               ? CutLinkPalette.color(0xFFF5EAEA)
-              : Colors.white,
+              : CutLinkPalette.surface,
           labelStyle: TextStyle(
             color: _customStartDate != null && _customEndDate != null
                 ? CutLinkPalette.actionRed
@@ -939,7 +939,8 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
     );
     return _sectionCard(
       title: 'Credits, refunds & returns',
-      subtitle: 'Selected period • refunds are part of credits, not an additional deduction.',
+      subtitle:
+          'Selected period • refunds are part of credits, not an additional deduction.',
       child: IosPadding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
@@ -996,7 +997,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                   _isSupplier
                       ? 'Customers with the most returns'
                       : 'Suppliers with the most returns',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     color: _deepNavy,
                     fontWeight: FontWeight.w800,
@@ -1058,7 +1059,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                       const SizedBox(width: 10),
                       Text(
                         _moneyFull(leaders[i]['value']),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           color: _deepNavy,
                         ),
@@ -1207,7 +1208,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _deepNavy,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
@@ -1323,9 +1324,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                                   backgroundColor: CutLinkPalette.color(
                                     0xFFF0F1F2,
                                   ),
-                                  valueColor: const AlwaysStoppedAnimation(
-                                    _darkRed,
-                                  ),
+                                  valueColor: AlwaysStoppedAnimation(_darkRed),
                                 ),
                               ),
                             ],
@@ -1619,7 +1618,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                 minHeight: 9,
                 value: (inStockPct / 100).clamp(0, 1),
                 backgroundColor: CutLinkPalette.color(0xFFF0F1F2),
-                valueColor: const AlwaysStoppedAnimation(_positive),
+                valueColor: AlwaysStoppedAnimation(_positive),
               ),
             ),
             const IosGap(height: 14),
@@ -1844,10 +1843,11 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
 
     if (result.isEmpty) {
       result.add(
-        const _Insight(
+        _Insight(
           icon: Icons.check_circle_outline_rounded,
           title: 'No major exceptions detected',
-          body: 'The selected period does not show any obvious performance warning from the metrics available in CutLink.',
+          body:
+              'The selected period does not show any obvious performance warning from the metrics available in CutLink.',
           colour: _positive,
         ),
       );
@@ -2011,7 +2011,7 @@ class _BusinessAnalyticsPageState extends State<BusinessAnalyticsPage> {
                             children: [
                               Text(
                                 widget.businessName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _deepNavy,
                                   fontSize: 23,
                                   fontWeight: FontWeight.w900,
@@ -2114,7 +2114,7 @@ class BusinessAnalyticsOverviewPanel extends StatefulWidget {
 
 class _BusinessAnalyticsOverviewPanelState
     extends State<BusinessAnalyticsOverviewPanel> {
-  static const Color _darkRed = Color(0xFF8B1E2D);
+  static Color get _darkRed => CutLinkPalette.color(0xFF8B1E2D);
   static Color get _border => CutLinkPalette.color(0xFFE3E5E8);
   static Color get _muted => CutLinkPalette.color(0xFF6A6E75);
 

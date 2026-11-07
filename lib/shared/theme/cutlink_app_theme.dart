@@ -42,12 +42,19 @@ ThemeData cutLinkAppTheme(Brightness brightness) {
     cardColor: surface,
     dividerColor: border,
     disabledColor: muted.withValues(alpha: .55),
-    textTheme: ThemeData(brightness: brightness).textTheme
-        .apply(bodyColor: ink, displayColor: ink),
+    textTheme: ThemeData(
+      brightness: brightness,
+    ).textTheme.apply(fontFamily: 'Arial', bodyColor: ink, displayColor: ink),
     iconTheme: IconThemeData(color: muted),
     appBarTheme: AppBarThemeData(
       backgroundColor: surface,
       foregroundColor: ink,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Arial',
+        color: ink,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -102,8 +109,8 @@ ThemeData cutLinkAppTheme(Brightness brightness) {
     chipTheme: ChipThemeData(
       backgroundColor: raised,
       selectedColor: dark ? const Color(0xFF482430) : const Color(0xFFF6DFE4),
-      labelStyle: TextStyle(color: ink),
-      secondaryLabelStyle: TextStyle(color: ink),
+      labelStyle: TextStyle(color: ink, fontFamily: 'Arial'),
+      secondaryLabelStyle: TextStyle(color: ink, fontFamily: 'Arial'),
       side: BorderSide(color: border),
       checkmarkColor: accent,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -113,7 +120,10 @@ ThemeData cutLinkAppTheme(Brightness brightness) {
         backgroundColor: const Color(0xFFA51C34),
         foregroundColor: Colors.white,
         minimumSize: const Size(44, 44),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+          fontFamily: 'Arial',
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(

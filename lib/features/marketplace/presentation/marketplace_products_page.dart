@@ -1246,8 +1246,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       _chickenAttributeFilters,
       _goatAttributeFilters,
       _supplierAttributeFilters,
-      _searchController.text.trim(),
-      _supplierSearchController.text.trim(),
+      normaliseCatalogueSearch(_searchController.text),
+      normaliseCatalogueSearch(_supplierSearchController.text),
       _sortMode,
       offset,
     ]);
@@ -1364,14 +1364,16 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
       };
       final raw = await Supabase.instance.client
           .rpc(
-            'marketplace_stock_page_v2',
+            'marketplace_stock_page_v3',
             params: {
               'p_animal_id': animalId,
               'p_section_id': sectionId,
               'p_variant_keys': keys,
               'p_filters': filters,
-              'p_search': _searchController.text.trim(),
-              'p_supplier_search': _supplierSearchController.text.trim(),
+              'p_search': normaliseCatalogueSearch(_searchController.text),
+              'p_supplier_search': normaliseCatalogueSearch(
+                _supplierSearchController.text,
+              ),
               'p_sort': _sortMode,
               'p_offset': offset,
               'p_limit': _stockPageSize,
@@ -2127,7 +2129,9 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
 
   void _onSearchChanged() {
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+    ++_stockLoadVersion;
+    _stockScope = null;
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
       if (mounted) {
         _applySearch();
       }
@@ -3510,8 +3514,8 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
     _applySearch();
   }
 
-  Future<void> _openAnimalCatalogue() async {
-    if (useIosWorkspace(context)) {
+  Future<void> _openAnimalCatalogue({bool showSubcuts = false}) async {
+    if (useIosWorkspace(context) || MediaQuery.sizeOf(context).width < 700) {
       await showIosCutBrowser(
         context: context,
         animal: () => _selectedAnimalCode,
@@ -3536,6 +3540,7 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
           _applySearch();
         },
         onGuide: _openAnimalCutGuide,
+        initialSubcuts: showSubcuts,
       );
       return;
     }
@@ -3559,7 +3564,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             },
             onRegionSelected: (region) {
               _selectAnimalRegion(region);
-              update(() {});
+              if (MediaQuery.sizeOf(context).width < 700) {
+                Navigator.pop(dialogContext);
+                _openAnimalCatalogue(showSubcuts: true);
+              } else {
+                update(() {});
+              }
             },
           );
           Widget choices() => Column(
@@ -3580,7 +3590,12 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
                       selected: _selectedSectionId == section['id']?.toString(),
                       onSelected: (_) {
                         _selectSection(section);
-                        update(() {});
+                        if (MediaQuery.sizeOf(context).width < 700) {
+                          Navigator.pop(dialogContext);
+                          _openAnimalCatalogue(showSubcuts: true);
+                        } else {
+                          update(() {});
+                        }
                       },
                     ),
                 ],
@@ -3926,6 +3941,11 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             ? const EdgeInsets.fromLTRB(12, 8, 12, 10)
             : const EdgeInsets.fromLTRB(11, 0, 11, 10),
         child: TextField(
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) {
+            _searchDebounce?.cancel();
+            _applySearch();
+          },
           controller: _searchController,
           style: useIosWorkspace(context)
               ? const TextStyle(fontSize: 15)
@@ -3934,23 +3954,14 @@ class _MarketplaceProductsPageState extends State<MarketplaceProductsPage>
             contentPadding: useIosWorkspace(context)
                 ? const EdgeInsets.symmetric(horizontal: 12, vertical: 14)
                 : null,
-            hintText: useIosWorkspace(context)
-                ? 'Search products'
-                : exactSelection
-                ? 'Search matching products...'
-                : !cutSelected
-                ? 'Search all products — e.g. Scotch Fillet, Brisket...'
-                : !subcategorySelected
-                ? 'Search subcategories within ${_selectedSectionName ?? 'this cut'}...'
-                : !finalSpecificationSelected
-                ? (_usesGradeStage
-                      ? 'Search grades for this subcategory...'
-                      : 'Search specifications for this sub-cut...')
-                : 'Search this selected stock...',
+            hintText: 'Search cuts, brands, suppliers…',
+            helperText: 'Add words to refine: beef scotch fillet angus',
+            helperMaxLines: 2,
             prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: _searchController.text.isEmpty
                 ? null
                 : IconButton(
+                    tooltip: 'Clear search',
                     onPressed: _searchController.clear,
                     icon: const Icon(Icons.close, size: 18),
                   ),

@@ -10,6 +10,7 @@ import '../../authentication/presentation/registration_type_page.dart';
 import 'cutlink_explainer_video.dart';
 import 'featured_businesses_section.dart';
 import 'public_page_palette.dart';
+import '../../../shared/widgets/appearance_toggle.dart';
 
 class CutLinkLandingContent extends StatefulWidget {
   const CutLinkLandingContent({
@@ -51,10 +52,10 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   Widget _join(BusinessType role) {
     final supplier = role == BusinessType.supplier;
     final style = OutlinedButton.styleFrom(
-      foregroundColor: PublicPagePalette.primary,
+      foregroundColor: PublicPagePalette.accent,
       minimumSize: const Size(0, 48),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      side: const BorderSide(color: PublicPagePalette.primary),
+      side: BorderSide(color: PublicPagePalette.accent),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       textStyle: const TextStyle(fontWeight: FontWeight.w700),
     );
@@ -140,14 +141,15 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
             ),
             const SizedBox(width: 16),
           ],
-          TextButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const CutLinkPricingPage(),
+          if (MediaQuery.sizeOf(context).width >= 390)
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CutLinkPricingPage(),
+                ),
               ),
+              child: const Text('Pricing'),
             ),
-            child: const Text('Pricing'),
-          ),
           OutlinedButton(
             onPressed: widget.onSignIn,
             style: OutlinedButton.styleFrom(
@@ -159,6 +161,8 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
             ),
             child: const Text('Sign in'),
           ),
+          const SizedBox(width: 4),
+          const AppearanceToggle(),
         ],
       ),
       vertical: 16,
@@ -168,13 +172,13 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   Widget _intro(bool compact) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
+      Text(
         'SUPPLIERS + BUTCHERS',
         style: TextStyle(
           fontSize: 11,
           letterSpacing: 1.5,
           fontWeight: FontWeight.w800,
-          color: PublicPagePalette.primary,
+          color: PublicPagePalette.accent,
         ),
       ),
       const IosGap(height: 18),
@@ -230,7 +234,7 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
           Icon(
             Icons.play_circle_outline_rounded,
             size: 18,
-            color: PublicPagePalette.primary,
+            color: PublicPagePalette.accent,
           ),
           Text(
             'Watch CutLink · 80 seconds',
@@ -310,14 +314,14 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
                   selected: !_supplier,
                   onSelected: (_) => setState(() => _supplier = false),
                   selectedColor: CutLinkPalette.color(0xFFF1E5E7),
-                  labelStyle: const TextStyle(color: PublicPagePalette.primary),
+                  labelStyle: TextStyle(color: PublicPagePalette.accent),
                 ),
                 ChoiceChip(
                   label: const Text('For suppliers'),
                   selected: _supplier,
                   onSelected: (_) => setState(() => _supplier = true),
                   selectedColor: CutLinkPalette.color(0xFFF1E5E7),
-                  labelStyle: const TextStyle(color: PublicPagePalette.primary),
+                  labelStyle: TextStyle(color: PublicPagePalette.accent),
                 ),
               ],
             ),
@@ -360,13 +364,10 @@ class _CutLinkLandingContentState extends State<CutLinkLandingContent> {
   Widget build(BuildContext context) {
     AppearanceScope.watch(context);
     return Theme(
-      data: ThemeData(
-        brightness: Theme.of(context).brightness,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: PublicPagePalette.primary,
-          brightness: Theme.of(context).brightness,
-          surface: PublicPagePalette.background,
-        ).copyWith(primary: PublicPagePalette.primary),
+      data: Theme.of(context).copyWith(
+        colorScheme: Theme.of(
+          context,
+        ).colorScheme.copyWith(primary: PublicPagePalette.accent),
         dividerColor: PublicPagePalette.border,
       ),
       child: Scaffold(

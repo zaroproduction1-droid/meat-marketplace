@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supplier_customer_account_page.dart';
+import 'customer_directory.dart';
 import 'supplier_customer_profile_dialog.dart';
 import '../services/customer_account_service.dart';
 import 'supplier_vip_applications_page.dart';
@@ -20,7 +21,7 @@ class SupplierCustomerRequestsPage extends StatefulWidget {
 
 class _SupplierCustomerRequestsPageState
     extends State<SupplierCustomerRequestsPage> {
-  static const _darkRed = Color(0xFF741C1C);
+  static Color get _darkRed => CutLinkPalette.actionRed;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -31,10 +32,6 @@ class _SupplierCustomerRequestsPageState
   List<Map<String, dynamic>> _accountSummaries = [];
   int _pendingVipApplicationCount = 0;
 
-  final TextEditingController _customerSearchController =
-      TextEditingController();
-  String _appliedCustomerSearch = '';
-
   @override
   void initState() {
     super.initState();
@@ -43,13 +40,12 @@ class _SupplierCustomerRequestsPageState
 
   @override
   void dispose() {
-    _customerSearchController.dispose();
     super.dispose();
   }
 
   Future<void> _loadPage() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = _relationships.isEmpty && _manualAccounts.isEmpty;
       _errorMessage = null;
     });
 
@@ -297,13 +293,13 @@ class _SupplierCustomerRequestsPageState
   Color _accountStatusColor(String? status) {
     switch (status) {
       case 'overdue':
-        return const Color(0xFFB3261E);
+        return CutLinkPalette.color(0xFFB3261E);
       case 'due_soon':
-        return const Color(0xFF9A5B00);
+        return CutLinkPalette.color(0xFF9A5B00);
       case 'credit_available':
-        return const Color(0xFF315A8C);
+        return CutLinkPalette.color(0xFF315A8C);
       case 'clear':
-        return const Color(0xFF2E7D32);
+        return CutLinkPalette.color(0xFF2E7D32);
       default:
         return CutLinkPalette.color(0xFF666666);
     }
@@ -369,14 +365,16 @@ class _SupplierCustomerRequestsPageState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -396,14 +394,16 @@ class _SupplierCustomerRequestsPageState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -446,8 +446,9 @@ class _SupplierCustomerRequestsPageState
         _ => 'Customer relationship updated.',
       };
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
 
       await _loadPage();
     } on PostgrestException catch (error) {
@@ -455,15 +456,17 @@ class _SupplierCustomerRequestsPageState
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -568,8 +571,9 @@ class _SupplierCustomerRequestsPageState
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -656,46 +660,6 @@ class _SupplierCustomerRequestsPageState
     };
   }
 
-  void _applyCustomerSearch(String value) {
-    final query = value.trim();
-
-    setState(() {
-      _appliedCustomerSearch = query;
-    });
-  }
-
-  void _clearCustomerSearch() {
-    _customerSearchController.clear();
-
-    setState(() {
-      _appliedCustomerSearch = '';
-    });
-  }
-
-  bool _matchesCustomerSearch(String value) {
-    final query = _appliedCustomerSearch.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      return true;
-    }
-
-    return value.toLowerCase().contains(query);
-  }
-
-  List<Map<String, dynamic>> get _filteredRelationships {
-    return _relationships
-        .where(
-          (relationship) => _matchesCustomerSearch(_businessName(relationship)),
-        )
-        .toList();
-  }
-
-  List<Map<String, dynamic>> get _filteredManualAccounts {
-    return _manualAccounts
-        .where((account) => _matchesCustomerSearch(_accountName(account)))
-        .toList();
-  }
-
   List<Map<String, dynamic>> get _manualAccounts {
     return _customerAccounts
         .where((account) => account['account_source']?.toString() == 'manual')
@@ -713,189 +677,6 @@ class _SupplierCustomerRequestsPageState
       return;
     }
     await _loadPage();
-  }
-
-  Widget _vipApplicationsPanel() {
-    final hasPending = _pendingVipApplicationCount > 0;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: hasPending
-            ? CutLinkPalette.color(0xFFFFF8EB)
-            : CutLinkPalette.color(0xFFF8F8F6),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasPending
-              ? const Color(0xFFE6C98A)
-              : CutLinkPalette.color(0xFFE0E0DD),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: CutLinkPalette.actionRed.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.workspace_premium_outlined,
-              color: CutLinkPalette.actionRed,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Flexible(
-                      child: Text(
-                        'VIP Applications',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    if (hasPending) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF9A6500),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$_pendingVipApplicationCount pending',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const IosGap(height: 5),
-                Text(
-                  hasPending
-                      ? 'You have VIP or credit applications waiting for review.'
-                      : 'Review VIP pricing and credit applications from CutLink butchers.',
-                  style: TextStyle(
-                    color: CutLinkPalette.color(0xFF666666),
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: _openVipApplications,
-            style: FilledButton.styleFrom(
-              backgroundColor: CutLinkPalette.buttonRed,
-            ),
-            icon: const Icon(Icons.open_in_new),
-            label: Text(hasPending ? 'Review Now' : 'Open'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomerSearchBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: CutLinkPalette.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x07000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: CutLinkPalette.color(0xFFF4E5E5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.search,
-              color: CutLinkPalette.actionRed,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: _customerSearchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: _applyCustomerSearch,
-              decoration: InputDecoration(
-                hintText: 'Search CutLink members or external customers, then press Enter',
-                filled: true,
-                fillColor: CutLinkPalette.color(0xFFFAFAFB),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                  borderSide: BorderSide(
-                    color: CutLinkPalette.color(0xFFDADAD6),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                  borderSide: BorderSide(
-                    color: CutLinkPalette.color(0xFFDADAD6),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                  borderSide: BorderSide(
-                    color: CutLinkPalette.actionRed,
-                    width: 1.2,
-                  ),
-                ),
-                suffixIcon: _appliedCustomerSearch.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: _clearCustomerSearch,
-                        icon: const Icon(Icons.close),
-                      ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton.icon(
-            onPressed: () =>
-                _applyCustomerSearch(_customerSearchController.text),
-            style: FilledButton.styleFrom(
-              backgroundColor: CutLinkPalette.buttonRed,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            ),
-            icon: const Icon(Icons.search, size: 18),
-            label: const Text('Search'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -919,35 +700,22 @@ class _SupplierCustomerRequestsPageState
                 size: 22,
               ),
               SizedBox(width: 10),
-              Text(
-                'Customers & Accounts',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19),
+              Expanded(
+                child: Text(
+                  MediaQuery.sizeOf(context).width < 600
+                      ? 'Customers'
+                      : 'Customers & Accounts',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 19,
+                  ),
+                ),
               ),
             ],
           ),
           actions: [
-            IosPadding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: FilledButton.icon(
-                onPressed: _isLoading ? null : _openAddExternalCustomerDialog,
-                style: FilledButton.styleFrom(
-                  backgroundColor: CutLinkPalette.buttonRed,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 11,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: const Icon(Icons.person_add_alt_1, size: 18),
-                label: const Text(
-                  'Add External Customer',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
             IconButton(
               onPressed: _loadPage,
               tooltip: 'Refresh customers and accounts',
@@ -995,240 +763,40 @@ class _SupplierCustomerRequestsPageState
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final desktop = constraints.maxWidth >= 920;
-
-        Widget cutLinkList() {
-          final rows = _filteredRelationships;
-
-          if (rows.isEmpty) {
-            return _emptyCard(
-              icon: Icons.people_outline,
-              title: _appliedCustomerSearch.isEmpty
-                  ? 'No CutLink members'
-                  : 'No matching CutLink members',
-              description: _appliedCustomerSearch.isEmpty
-                  ? 'Registered CutLink butcher members will appear here.'
-                  : 'Try another member name.',
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            itemCount: rows.length,
-            separatorBuilder: (_, _) => const IosGap(height: 8),
-            itemBuilder: (_, index) => _buildRelationshipCard(rows[index]),
-          );
-        }
-
-        Widget externalList() {
-          final rows = _filteredManualAccounts;
-
-          if (rows.isEmpty) {
-            return _emptyCard(
-              icon: Icons.person_add_alt_1_outlined,
-              title: _appliedCustomerSearch.isEmpty
-                  ? 'No external customers'
-                  : 'No matching external customers',
-              description: _appliedCustomerSearch.isEmpty
-                  ? 'Add customers here for phone, email or sales-rep orders.'
-                  : 'Try another customer name.',
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            itemCount: rows.length,
-            separatorBuilder: (_, _) => const IosGap(height: 8),
-            itemBuilder: (_, index) => _buildAccountCard(rows[index]),
-          );
-        }
-
-        Widget panel({
-          required String title,
-          required String subtitle,
-          required Widget child,
-          Widget? action,
-        }) {
-          return Container(
-            decoration: BoxDecoration(
-              color: CutLinkPalette.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: CutLinkPalette.color(0xFFE3E5E8)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x07000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                IosPadding(
-                  padding: const EdgeInsets.fromLTRB(14, 11, 12, 9),
-                  child: PhoneRow(
-                    mode: PhoneRowMode.wrap,
-                    desktop: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const IosGap(height: 2),
-                              Text(
-                                subtitle,
-                                style: TextStyle(
-                                  color: CutLinkPalette.color(0xFF666666),
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ?action,
-                      ],
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(child: child),
-              ],
-            ),
-          );
-        }
-
-        final vip = _vipApplicationsPanel();
-
-        if (!desktop) {
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-            children: [
-              vip,
-              const IosGap(height: 12),
-              _buildCustomerSearchBar(),
-              const IosGap(height: 12),
-              SizedBox(
-                height: 420,
-                child: panel(
-                  title: 'CutLink Members',
-                  subtitle:
-                      'Registered CutLink butcher members and account terms.',
-                  child: cutLinkList(),
-                ),
-              ),
-              const IosGap(height: 12),
-              SizedBox(
-                height: 420,
-                child: panel(
-                  title: 'External Customers',
-                  subtitle:
-                      'Supplier-private phone, email and manual customers.',
-                  action: FilledButton.icon(
-                    onPressed: _openAddExternalCustomerDialog,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: CutLinkPalette.buttonRed,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.add, size: 17),
-                    label: const Text('Add'),
-                  ),
-                  child: externalList(),
-                ),
-              ),
-            ],
-          );
-        }
-
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1320),
-            child: IosPadding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-              child: Column(
-                children: [
-                  vip,
-                  const IosGap(height: 12),
-                  _buildCustomerSearchBar(),
-                  const IosGap(height: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: panel(
-                            title: 'CutLink Members',
-                            subtitle: 'Registered CutLink butcher members and commercial account settings.',
-                            child: cutLinkList(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: panel(
-                            title: 'External Customers',
-                            subtitle:
-                                'Supplier-private customers for direct sales.',
-                            action: FilledButton.icon(
-                              onPressed: _openAddExternalCustomerDialog,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: CutLinkPalette.buttonRed,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              icon: const Icon(Icons.add, size: 17),
-                              label: const Text('Add External'),
-                            ),
-                            child: externalList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    return CustomerDirectory(
+      onAdd: _openAddExternalCustomerDialog,
+      onVip: _openVipApplications,
+      pendingVip: _pendingVipApplicationCount,
+      onRefresh: _loadPage,
+      entries: [
+        for (final relationship in _relationships)
+          _directoryEntry(relationship, false),
+        for (final account in _manualAccounts) _directoryEntry(account, true),
+      ],
     );
   }
 
-  Widget _emptyCard({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: CutLinkPalette.color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: IosPadding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Icon(icon, size: 54, color: CutLinkPalette.actionRed),
-            const IosGap(height: 14),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-            ),
-            const IosGap(height: 7),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: CutLinkPalette.color(0xFF666666)),
-            ),
-          ],
-        ),
-      ),
+  CustomerDirectoryEntry _directoryEntry(
+    Map<String, dynamic> row,
+    bool external,
+  ) {
+    final account = external ? row : _accountForRelationship(row);
+    final summary = account == null ? null : _summaryForAccount(account);
+    return CustomerDirectoryEntry(
+      id: '${external ? 'external' : 'member'}-${row['id']}',
+      name: external ? _accountName(row) : _businessName(row),
+      external: external,
+      terms: account == null ? 'No credit account' : _paymentText(account),
+      status: external
+          ? (row['active'] == true ? 'Active' : 'Inactive')
+          : _formatStatus(row['status']?.toString()),
+      active: external ? row['active'] == true : row['status'] == 'approved',
+      outstanding: summary == null
+          ? null
+          : _asDouble(summary['outstanding_balance']),
+      overdue: summary == null ? null : _asDouble(summary['overdue_amount']),
+      details: (_) =>
+          external ? _buildAccountCard(row) : _buildRelationshipCard(row),
     );
   }
 
@@ -1391,7 +959,7 @@ class _SupplierCustomerRequestsPageState
                         child: _financialCompact(
                           'Overdue',
                           _money(overdue),
-                          overdue > 0 ? const Color(0xFFB3261E) : null,
+                          overdue > 0 ? CutLinkPalette.color(0xFFB3261E) : null,
                         ),
                       ),
                       Expanded(
@@ -1411,8 +979,9 @@ class _SupplierCustomerRequestsPageState
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: _accountStatusColor(accountStatus)
-                                .withValues(alpha: 0.08),
+                            color: _accountStatusColor(
+                              accountStatus,
+                            ).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1555,7 +1124,7 @@ class _SupplierCustomerRequestsPageState
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: active
-                              ? const Color(0xFF2E7D32)
+                              ? CutLinkPalette.color(0xFF2E7D32)
                               : CutLinkPalette.color(0xFF777777),
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
@@ -1610,7 +1179,7 @@ class _SupplierCustomerRequestsPageState
                         child: _financialCompact(
                           'Overdue',
                           _money(overdue),
-                          overdue > 0 ? const Color(0xFFB3261E) : null,
+                          overdue > 0 ? CutLinkPalette.color(0xFFB3261E) : null,
                         ),
                       ),
                       Expanded(
@@ -1628,8 +1197,9 @@ class _SupplierCustomerRequestsPageState
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: _accountStatusColor(accountStatus)
-                              .withValues(alpha: 0.08),
+                          color: _accountStatusColor(
+                            accountStatus,
+                          ).withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(

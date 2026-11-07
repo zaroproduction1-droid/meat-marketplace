@@ -1,3 +1,4 @@
+import '../../../shared/widgets/ios_cut_browser.dart';
 import '../../../shared/widgets/ios_workspace.dart';
 import '../../../shared/widgets/compact_workspace_tile.dart';
 import '../../../shared/formatters/cutlink_numbers.dart';
@@ -203,7 +204,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       }
       setState(() {
         _facetScope = null;
-        _facetError = 'Filter options could not load. Your stock search is still available.';
+        _facetError =
+            'Filter options could not load. Your stock search is still available.';
       });
     } finally {
       if (mounted && request == _facetRequest) {
@@ -586,9 +588,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
 
       final order = Map<String, dynamic>.from(raw);
       final account = _nestedMap(order['supplier_customer_accounts']);
-      final existingItems = _nestedList(order['order_items'])
-          .where((item) => item['invoice_excluded'] != true)
-          .toList();
+      final existingItems = _nestedList(
+        order['order_items'],
+      ).where((item) => item['invoice_excluded'] != true).toList();
       if (account == null) {
         throw Exception('The work order customer could not be loaded.');
       }
@@ -658,8 +660,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       );
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -975,15 +978,17 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -1801,9 +1806,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               '${_activeSaleLines.length == 1 ? '' : 's'} • Currently open',
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () =>
-                                Navigator.of(sheetContext)
-                                    .pop({'type': 'active'}),
+                            onTap: () => Navigator.of(
+                              sheetContext,
+                            ).pop({'type': 'active'}),
                           ),
                         for (var i = 0; i < _parkedSales.length; i++)
                           ListTile(
@@ -1821,9 +1826,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               '${_parkedSaleLineCount(_parkedSales[i]) == 1 ? '' : 's'} • Open sale',
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () =>
-                                Navigator.of(sheetContext)
-                                    .pop({'type': 'parked', 'index': i}),
+                            onTap: () => Navigator.of(
+                              sheetContext,
+                            ).pop({'type': 'parked', 'index': i}),
                           ),
                         const Divider(),
                         ListTile(
@@ -2333,8 +2338,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -2539,8 +2545,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
       return proceed == true;
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
       return false;
     }
@@ -2725,8 +2732,9 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -3975,7 +3983,43 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
     );
   }
 
-  Future<void> _openSalesCatalogue() async {
+  Future<void> _openSalesCatalogue({bool showSubcuts = false}) async {
+    if (MediaQuery.sizeOf(context).width < 700) {
+      await showIosCutBrowser(
+        context: context,
+        animal: () => _selectedAnimalCode,
+        sectionId: () => _selectedAnimalRegionKey,
+        specificationId: () => _selectedSpecificationId,
+        sections: () {
+          final catalogue = AnimalCatalogueRegistry.forCode(
+            _selectedAnimalCode,
+          );
+          return [
+            for (final key in catalogue?.regionKeys ?? <String>[])
+              {'id': key, 'name': catalogue!.regionLabel(key)},
+          ];
+        },
+        specifications: () => _availableSpecifications,
+        onAnimal: _selectAnimal,
+        onSection: (section) => _selectAnimalRegion(section['id'].toString()),
+        onSpecification: (specification) => _changeStockFilters(() {
+          _resetStockFilters();
+          _selectedSpecificationId = specification['id']?.toString();
+          _selectedGradeId = null;
+        }),
+        onAllCuts: _clearAnimalRegion,
+        onGuide: _openSalesCatalogueDiagram,
+        initialSubcuts: showSubcuts,
+        catalogueChanges: _facetRevision,
+        isLoading: () => _facetsLoading,
+        error: () => _facetError,
+      );
+      return;
+    }
+    await _openSalesCatalogueDiagram();
+  }
+
+  Future<void> _openSalesCatalogueDiagram() async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => ValueListenableBuilder<int>(
@@ -4023,7 +4067,12 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                           },
                           onRegionSelected: (region) {
                             _selectAnimalRegion(region);
-                            updateDialog(() {});
+                            if (MediaQuery.sizeOf(context).width < 700) {
+                              Navigator.pop(dialogContext);
+                              _openSalesCatalogue(showSubcuts: true);
+                            } else {
+                              updateDialog(() {});
+                            }
                           },
                           maxWidth: 850,
                         );
@@ -4073,7 +4122,8 @@ class _SupplierSalesPageState extends State<SupplierSalesPage> {
                               Text(
                                 _facetsLoading
                                     ? 'Loading sub-cuts…'
-                                    : _facetError ?? 'No sub-cuts available in this section.',
+                                    : _facetError ??
+                                          'No sub-cuts available in this section.',
                               ),
                           ],
                         );

@@ -89,6 +89,11 @@ abstract final class CutLinkPalette {
     return Color((alpha << 24) | (dark & 0xFFFFFF));
   }
 
+  static bool get isDark => CutLinkAppearance.instance.isDark;
+
+  static Color get canvas =>
+      isDark ? const Color(0xFF111113) : const Color(0xFFF7F8FA);
+
   static Color get surface => color(0xFFFFFFFF);
 
   /// Brighter red for readable actions, without changing photographs or logos.

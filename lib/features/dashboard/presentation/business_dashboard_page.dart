@@ -72,7 +72,7 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   static const Duration _sidebarAnimationDuration = Duration(milliseconds: 170);
   static const Color _darkRed = Color(0xFF8B1E2D);
   static const Color _deepNavy = Color(0xFF081625);
-  static final Color _canvas = Color(0xFFF7F8FA);
+  static Color get _canvas => CutLinkPalette.canvas;
 
   bool _restoredLocation = false;
   bool _isLoading = true;
@@ -1124,16 +1124,18 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     if (detail != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(context)
-              .push(MaterialPageRoute<void>(builder: (_) => detail!));
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => detail!));
         }
       });
     }
   }
 
   Future<void> _openButcherCart() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const DraftOrdersPage()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const DraftOrdersPage()));
 
     if (!mounted) {
       return;
@@ -1450,9 +1452,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
   List<Map<String, dynamic>> get _topAccounts {
     final copy = [..._butcherAccounts];
     copy.sort(
-      (a, b) =>
-          _asDouble(b['outstanding_balance'])
-              .compareTo(_asDouble(a['outstanding_balance'])),
+      (a, b) => _asDouble(
+        b['outstanding_balance'],
+      ).compareTo(_asDouble(a['outstanding_balance'])),
     );
     return copy.take(4).toList();
   }
@@ -2426,7 +2428,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                           _dashboardHeading(
                                             title:
                                                 '${_greeting()}, ${_businessName ?? 'Butcher'}',
-                                            subtitle: 'Here’s what’s happening with your purchasing today.',
+                                            subtitle:
+                                                'Here’s what’s happening with your purchasing today.',
                                           ),
                                           const IosGap(height: 18),
                                           _summaryGrid(),
@@ -4709,9 +4712,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     final copy = [..._supplierAccounts];
 
     copy.sort(
-      (a, b) =>
-          _asDouble(b['outstanding_balance'])
-              .compareTo(_asDouble(a['outstanding_balance'])),
+      (a, b) => _asDouble(
+        b['outstanding_balance'],
+      ).compareTo(_asDouble(a['outstanding_balance'])),
     );
 
     return copy.take(5).toList();
@@ -4752,8 +4755,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
 
   Color _supplierOrderSourceColor(Map<String, dynamic> order) {
     return order['order_source']?.toString() == 'marketplace'
-        ? _darkRed
-        : const Color(0xFF315A8C);
+        ? CutLinkPalette.actionRed
+        : CutLinkPalette.color(0xFF315A8C);
   }
 
   Widget _buildSupplierDashboard() {
@@ -4804,7 +4807,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                                           _dashboardHeading(
                                             title:
                                                 '${_greeting()}, ${_businessName ?? 'Supplier'}',
-                                            subtitle: 'Here’s what’s happening across your sales and fulfilment today.',
+                                            subtitle:
+                                                'Here’s what’s happening across your sales and fulfilment today.',
                                           ),
                                           const IosGap(height: 18),
                                           _supplierSummaryGrid(),
@@ -5315,7 +5319,9 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
     String value, {
     bool warning = false,
   }) {
-    final color = warning ? const Color(0xFFB85C00) : _darkRed;
+    final color = warning
+        ? CutLinkPalette.color(0xFFB85C00)
+        : CutLinkPalette.actionRed;
 
     return Container(
       padding: const EdgeInsets.all(11),
@@ -5777,7 +5783,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.point_of_sale_outlined,
                         title: 'Sales',
-                        description: 'Search stock, create sales orders and manage the sales workflow.',
+                        description:
+                            'Search stock, create sales orders and manage the sales workflow.',
                         badgeCount: _newSupplierOrderCount,
                         onTap: () =>
                             _openPage(const SupplierSalesPage(embedded: true)),
@@ -5795,7 +5802,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.people_alt_outlined,
                         title: 'Customers & Accounts',
-                        description: 'Manage members, external customers and account terms.',
+                        description:
+                            'Manage members, external customers and account terms.',
                         onTap: () =>
                             _openPage(const SupplierCustomerRequestsPage()),
                       ),
@@ -5803,14 +5811,16 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.assignment_outlined,
                         title: 'Work Orders',
-                        description: 'Manage warehouse picking, weighing and fulfilment.',
+                        description:
+                            'Manage warehouse picking, weighing and fulfilment.',
                         onTap: () => _openSalesOrders('work_orders'),
                       ),
                       _LegacyDashboardCard(
                         width: cardWidth,
                         icon: Icons.request_quote_outlined,
                         title: 'Invoices',
-                        description: 'View draft, issued, paid and outstanding invoices.',
+                        description:
+                            'View draft, issued, paid and outstanding invoices.',
                         onTap: () => _openSalesOrders('invoices'),
                       ),
                       _LegacyDashboardCard(
@@ -5835,7 +5845,8 @@ class _BusinessDashboardPageState extends State<BusinessDashboardPage> {
                         width: cardWidth,
                         icon: Icons.settings_outlined,
                         title: 'Settings',
-                        description: 'Configure business, invoicing and banking settings.',
+                        description:
+                            'Configure business, invoicing and banking settings.',
                         onTap: () => _openPage(
                           const SupplierSettingsPage(embedded: true),
                         ),

@@ -156,7 +156,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
   Widget _details() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
+      Text(
         'FROM CUT TO ORDER',
         style: TextStyle(
           color: PublicPagePalette.accent,
@@ -203,7 +203,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
           children: [
             Text(
               step.$1,
-              style: const TextStyle(
+              style: TextStyle(
                 color: PublicPagePalette.accent,
                 fontWeight: FontWeight.w800,
               ),
@@ -335,7 +335,7 @@ class _LandingCatalogueSectionState extends State<LandingCatalogueSection> {
               icon: const Icon(Icons.open_in_full, size: 16),
               label: const Text('Full screen'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: PublicPagePalette.primary,
+                foregroundColor: PublicPagePalette.accent,
                 side: BorderSide(color: PublicPagePalette.border),
               ),
             ),

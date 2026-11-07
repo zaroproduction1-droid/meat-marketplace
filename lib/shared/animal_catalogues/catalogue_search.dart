@@ -1,13 +1,29 @@
-/// Matches words across catalogue names, aliases and product attributes.
-/// Callers retain the selected animal/cut and customer visibility rules.
+/// Keep this vocabulary in sync with cutlink_search_normalize in the migration.
+/// Normalize punctuation and common compound spellings on both sides of search.
+String normaliseCatalogueSearch(String value) {
+  var text = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+  for (final entry in const {
+    r'\brib\s+eye\b': 'ribeye',
+    r'\bstrip\s+loin\b': 'striploin',
+    r'\btender\s+loin\b': 'tenderloin',
+    r'\bscotchfillet\b': 'scotch fillet',
+    r'\bgrainfed\b': 'grain fed',
+    r'\bgrassfed\b': 'grass fed',
+    r'\bbone\s+less\b': 'boneless',
+  }.entries) {
+    text = text.replaceAll(RegExp(entry.key), entry.value);
+  }
+  return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+/// Every keyword must match, in any order, across names, aliases, attributes
+/// and supplier information. Short grade codes match complete words.
 bool matchesCatalogueSearch(
   String query,
   Iterable<Object?> values, {
   String? halalStatus,
 }) {
-  String normalise(String value) =>
-      value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
-  var words = normalise(query);
+  var words = normaliseCatalogueSearch(query);
   if (words.isEmpty) return true;
   if (halalStatus != null) {
     final nonHalal = RegExp(r'\b(?:not|non) halal\b');
@@ -19,9 +35,14 @@ bool matchesCatalogueSearch(
       words = words.replaceAll(RegExp(r'\bhalal\b'), '').trim();
     }
   }
-  final text = normalise(values.whereType<Object>().join(' '));
+  final text = normaliseCatalogueSearch(values.whereType<Object>().join(' '));
+  final tokens = text.split(' ').toSet();
   return words
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .every(text.contains);
+      .split(' ')
+      .where((w) => w.isNotEmpty)
+      .every(
+        (w) => w.length <= 2
+            ? tokens.contains(w)
+            : tokens.any((t) => t.startsWith(w)),
+      );
 }

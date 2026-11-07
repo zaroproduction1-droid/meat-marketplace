@@ -39,7 +39,7 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             .toList();
         return Column(
           children: [
-            const Text(
+            Text(
               'THE CUTLINK COMMUNITY',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -63,8 +63,8 @@ class _FeaturedBusinessesSectionState extends State<FeaturedBusinessesSection> {
             ),
             const IosGap(height: 32),
             if (snapshot.connectionState == ConnectionState.waiting)
-              const IosPadding(
-                padding: EdgeInsets.all(24),
+              IosPadding(
+                padding: const EdgeInsets.all(24),
                 child: CircularProgressIndicator(
                   color: PublicPagePalette.accent,
                 ),

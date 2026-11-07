@@ -5,7 +5,6 @@ import '../../../shared/widgets/local_draft_recovery.dart';
 import '../../../shared/drafts/local_draft_store.dart';
 import '../../../shared/widgets/workspace_request_error.dart';
 import '../../../shared/widgets/unsaved_changes_guard.dart';
-import '../../../shared/widgets/supplier_product_review_submission.dart';
 import 'supplier_product_moderation_panel.dart';
 import 'product_report_context_panel.dart';
 import '../../../shared/widgets/product_report_dialog.dart';
@@ -30,24 +29,29 @@ class SupportCenterPage extends StatefulWidget {
     required this.businessId,
     required this.adminMode,
     this.initialTicketId,
+    this.client,
+    this.listenForUpdates = true,
   });
 
   final String businessId;
   final bool adminMode;
   final String? initialTicketId;
+  final SupabaseClient? client;
+  final bool listenForUpdates;
 
   @override
   State<SupportCenterPage> createState() => _SupportCenterPageState();
 }
 
 class _SupportCenterPageState extends State<SupportCenterPage> {
-  static const _darkRed = Color(0xFF8B1E2D);
   static const _navy = Color(0xFF081625);
 
   String? _faqBusinessType;
   String? _faqError;
   bool _showFaq = false;
   bool _loading = true;
+  bool _loadingMessages = false;
+  String? _messageError;
   bool _initialTicketOpened = false;
   bool _sending = false;
   String? _error;
@@ -65,7 +69,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
   final _messageController = TextEditingController();
   var _supportDraftKey = GlobalKey<LocalDraftRecoveryState>();
-  final _draftUser = Supabase.instance.client.auth.currentUser?.id ?? '';
+  SupabaseClient get _client => widget.client ?? Supabase.instance.client;
+  String get _draftUser => _client.auth.currentUser?.id ?? '';
   final Set<String> _supportDraftScopes = {};
   String _supportDraftScope(Map<String, dynamic> ticket) =>
       LocalDraftStore.scope(
@@ -87,7 +92,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     super.initState();
     _loadTickets();
     _loadFaqRole();
-    _subscribeToTickets();
+    if (widget.listenForUpdates) _subscribeToTickets();
   }
 
   Future<void> _loadFaqRole() async {
@@ -95,7 +100,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       return;
     }
     try {
-      final row = await Supabase.instance.client
+      final row = await _client
           .from('businesses')
           .select('business_type')
           .eq('id', widget.businessId)
@@ -128,17 +133,17 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     _messagesScrollController.dispose();
     final ticketsChannel = _ticketsChannel;
     if (ticketsChannel != null) {
-      Supabase.instance.client.removeChannel(ticketsChannel);
+      _client.removeChannel(ticketsChannel);
     }
     final messagesChannel = _messagesChannel;
     if (messagesChannel != null) {
-      Supabase.instance.client.removeChannel(messagesChannel);
+      _client.removeChannel(messagesChannel);
     }
     super.dispose();
   }
 
   void _subscribeToTickets() {
-    final client = Supabase.instance.client;
+    final client = _client;
     var channel = client.channel(
       'support-tickets-${widget.adminMode ? 'admin' : widget.businessId}',
     );
@@ -169,10 +174,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   Future<void> _subscribeToMessages(String ticketId) async {
     final previous = _messagesChannel;
     if (previous != null) {
-      await Supabase.instance.client.removeChannel(previous);
+      await _client.removeChannel(previous);
     }
 
-    _messagesChannel = Supabase.instance.client
+    _messagesChannel = _client
         .channel('support-messages-$ticketId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -203,7 +208,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
 
     try {
-      var query = Supabase.instance.client.from('support_tickets').select('''
+      var query = _client.from('support_tickets').select('''
         id,
         ticket_number,
         business_id,
@@ -303,6 +308,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       _selectedTicket = ticket;
       _supportDraftKey = GlobalKey<LocalDraftRecoveryState>();
       _messages = [];
+      _loadingMessages = true;
+      _messageError = null;
       _pendingAttachments
         ..clear()
         ..addAll(_ticketAttachmentDrafts[ticketId] ?? const <PlatformFile>[]);
@@ -310,7 +317,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       _activeAdminAction = null;
     });
 
-    await _subscribeToMessages(ticketId);
+    if (widget.listenForUpdates) await _subscribeToMessages(ticketId);
     await _loadMessages(ticketId, markRead: true, scrollToBottom: false);
   }
 
@@ -351,8 +358,14 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     required bool markRead,
     bool scrollToBottom = true,
   }) async {
+    if (mounted) {
+      setState(() {
+        _loadingMessages = true;
+        _messageError = null;
+      });
+    }
     try {
-      final response = await Supabase.instance.client
+      final response = await _client
           .from('support_ticket_messages')
           .select('''
             id,
@@ -376,7 +389,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           .order('created_at', ascending: true);
 
       if (markRead) {
-        await Supabase.instance.client.rpc(
+        await _client.rpc(
           'mark_support_ticket_read',
           params: {'p_ticket_id': ticketId},
         );
@@ -387,9 +400,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
 
       setState(() {
-        _messages = List<Map<String, dynamic>>.from(response)
-            .where((m) => m['structured_event'] != true)
-            .toList();
+        _messages = List<Map<String, dynamic>>.from(
+          response,
+        ).where((m) => m['structured_event'] != true).toList();
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -408,12 +421,14 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           curve: Curves.easeOut,
         );
       });
-    } on PostgrestException catch (error) {
-      if (!mounted) {
-        return;
+    } catch (_) {
+      if (mounted && _selectedTicket?['id']?.toString() == ticketId) {
+        setState(() => _messageError = 'Could not load the conversation.');
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted && _selectedTicket?['id']?.toString() == ticketId) {
+        setState(() => _loadingMessages = false);
+      }
     }
   }
 
@@ -581,7 +596,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                         maxLength: 8000,
                         decoration: InputDecoration(
                           labelText: 'Describe the issue',
-                          hintText: 'Include what you were doing, what you expected and what happened.',
+                          hintText:
+                              'Include what you were doing, what you expected and what happened.',
                           alignLabelWithHint: true,
                           border: OutlineInputBorder(),
                         ),
@@ -611,14 +627,15 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                                 final description = descriptionController.text
                                     .trim();
                                 if (subject.length < 4 || description.isEmpty) {
-                                  ScaffoldMessenger.of(dialogContext)
-                                      .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Enter a subject and describe the issue.',
-                                          ),
-                                        ),
-                                      );
+                                  ScaffoldMessenger.of(
+                                    dialogContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Enter a subject and describe the issue.',
+                                      ),
+                                    ),
+                                  );
                                   return;
                                 }
                                 Navigator.of(dialogContext).pop({
@@ -652,7 +669,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
     setState(() => _sending = true);
     try {
-      final response = await Supabase.instance.client.rpc(
+      final response = await _client.rpc(
         'create_support_ticket',
         params: {
           'p_business_id': widget.businessId,
@@ -676,8 +693,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -689,7 +707,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   Future<void> _sendMessage() async {
     final ticket = _selectedTicket;
     final ticketId = ticket?['id']?.toString();
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final userId = _client.auth.currentUser?.id;
     final message = _messageController.text.trim();
     final pendingFiles = List<PlatformFile>.from(_pendingAttachments);
     if (ticketId == null ||
@@ -724,7 +742,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           maxBytes: 15 * 1024 * 1024,
         );
 
-        await Supabase.instance.client.storage
+        await _client.storage
             .from('support-attachments')
             .uploadBinary(
               storagePath,
@@ -740,7 +758,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         });
       }
 
-      await Supabase.instance.client.rpc(
+      await _client.rpc(
         'send_support_ticket_message_with_attachments',
         params: {
           'p_ticket_id': ticketId,
@@ -776,21 +794,24 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     } on PostgrestException catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } on StorageException catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       await _removeUnsentUploads(uploadedPaths);
       if (mounted) {
         final errorMessage = error.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -852,9 +873,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       return;
     }
     try {
-      await Supabase.instance.client.storage
-          .from('support-attachments')
-          .remove(storagePaths);
+      await _client.storage.from('support-attachments').remove(storagePaths);
     } catch (_) {
       // Unlinked objects remain private and inaccessible to other businesses.
     }
@@ -867,7 +886,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
 
     try {
-      final signedUrl = await Supabase.instance.client.storage
+      final signedUrl = await _client.storage
           .from('support-attachments')
           .createSignedUrl(storagePath, 300);
       final opened = await launchUrl(
@@ -879,14 +898,16 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       }
     } on StorageException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
         final message = error.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -904,7 +925,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
 
     setState(() => _sending = true);
     try {
-      final response = await Supabase.instance.client.rpc(
+      final response = await _client.rpc(
         'update_support_ticket_admin',
         params: {
           'p_ticket_id': ticketId,
@@ -922,8 +943,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       await _loadTickets(showLoading: false);
     } on PostgrestException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -962,6 +984,10 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         'active' =>
           ticket['reopen_decision'] == 'pending' ||
               (status != 'resolved' && status != 'closed'),
+        'waiting' => [
+          'awaiting_support',
+          'waiting_on_customer',
+        ].contains(status),
         'reports' =>
           _productReport(ticket) != null ||
               _supplierModerationCase(ticket) != null ||
@@ -1022,7 +1048,8 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           await LocalDraftStore.clear(scope);
         }
       },
-      message: 'You have unsent support messages or attachments. Stay here to keep them, or discard them and their saved draft backups before leaving.',
+      message:
+          'You have unsent support messages or attachments. Stay here to keep them, or discard them and their saved draft backups before leaving.',
       child: AdminTheme(
         enabled: widget.adminMode,
         child: Scaffold(
@@ -1039,17 +1066,30 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 children: [
                   Icon(Icons.support_agent, color: CutLinkPalette.actionRed),
                   const SizedBox(width: 10),
-                  Text(
-                    widget.adminMode
-                        ? 'Support Administration'
-                        : 'CutLink Support',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  Expanded(
+                    child: Text(
+                      MediaQuery.sizeOf(context).width < 600
+                          ? 'Support'
+                          : widget.adminMode
+                          ? 'Support Administration'
+                          : 'CutLink Support',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
               actions: [
                 if (widget.adminMode) const AdminProductNotificationsBell(),
-                if (!widget.adminMode)
+                if (!widget.adminMode && MediaQuery.sizeOf(context).width < 600)
+                  IconButton(
+                    tooltip: 'New ticket',
+                    onPressed: _sending ? null : _createTicket,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                if (!widget.adminMode &&
+                    MediaQuery.sizeOf(context).width >= 600)
                   IosPadding(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     child: FilledButton.icon(
@@ -1145,16 +1185,22 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
           return _ticketList();
         }
 
-        return Row(
-          children: [
-            SizedBox(width: 390, child: _ticketList()),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: _selectedTicket == null
-                  ? _emptySelection()
-                  : _ticketDetail(showBack: false),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Row(
+              children: [
+                SizedBox(width: 350, child: _ticketList()),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: _selectedTicket == null
+                      ? _emptySelection()
+                      : _ticketDetail(showBack: false),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -1166,6 +1212,25 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       color: CutLinkPalette.surface,
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 2),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Support inbox',
+                    style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '${tickets.length}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
           IosPadding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: TextField(
@@ -1197,31 +1262,73 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
               ),
             ),
           ),
-          IosPadding(
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Wrap(
-              runSpacing: 6,
+            child: Row(
               children: [
-                for (final entry in const {
-                  'active': 'Active',
-                  'all': 'All',
-                  'reports': 'Product reports',
-                  'reopen': 'Reopen requests',
-                  'resolved': 'Resolved',
-                  'closed': 'Closed',
-                }.entries)
-                  IosPadding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(entry.value, softWrap: false),
-                      selected: _statusFilter == entry.key,
-                      onSelected: (_) =>
-                          setState(() => _statusFilter = entry.key),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final entry in const {
+                          'active': 'Active',
+                          'waiting': 'Waiting',
+                          'resolved': 'Resolved',
+                        }.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ChoiceChip(
+                              showCheckmark: false,
+                              label: Text(entry.value),
+                              selected: _statusFilter == entry.key,
+                              onSelected: (_) =>
+                                  setState(() => _statusFilter = entry.key),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'More ticket filters',
+                  initialValue: _statusFilter,
+                  onSelected: (v) => setState(() => _statusFilter = v),
+                  icon: const Icon(Icons.tune),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'all', child: Text('All tickets')),
+                    PopupMenuItem(
+                      value: 'reports',
+                      child: Text('Product reports'),
+                    ),
+                    PopupMenuItem(
+                      value: 'reopen',
+                      child: Text('Reopen requests'),
+                    ),
+                    PopupMenuItem(value: 'closed', child: Text('Closed')),
+                  ],
+                ),
               ],
             ),
           ),
+          if (!['active', 'waiting', 'resolved'].contains(_statusFilter))
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 14),
+                child: InputChip(
+                  label: Text(
+                    {
+                      'all': 'All tickets',
+                      'reports': 'Product reports',
+                      'reopen': 'Reopen requests',
+                      'closed': 'Closed',
+                    }[_statusFilter]!,
+                  ),
+                  onDeleted: () => setState(() => _statusFilter = 'active'),
+                ),
+              ),
+            ),
           const IosGap(height: 10),
           const Divider(height: 1),
           Expanded(
@@ -1240,123 +1347,89 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   Widget _ticketCard(Map<String, dynamic> ticket) {
+    final cs = Theme.of(context).colorScheme;
     final selected = _selectedTicket?['id'] == ticket['id'];
     final unread = _isUnread(ticket);
+    final report =
+        _productReport(ticket) != null ||
+        _supplierModerationCase(ticket) != null;
     return Material(
-      color: selected
-          ? CutLinkPalette.color(0xFFF9EEEE)
-          : CutLinkPalette.color(0xFFFDFDFC),
-      borderRadius: BorderRadius.circular(12),
+      color: selected ? cs.primary.withValues(alpha: .08) : cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: selected ? cs.primary : cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _openTicket(ticket),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? _darkRed : CutLinkPalette.color(0xFFE3E5E8),
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_productReport(ticket) != null ||
-                  _supplierModerationCase(ticket) != null)
-                IosPadding(
-                  padding: EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    'PRODUCT / PHOTO REPORT',
-                    style: TextStyle(
-                      color: CutLinkPalette.actionRed,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              if (_supplierModerationCase(ticket) != null)
-                IosPadding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    supplierCorrectionStatus(_supplierModerationCase(ticket)!),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF846326),
-                    ),
-                  ),
-                ),
-              if (ticket['reopen_decision'] == 'pending')
-                IosPadding(
-                  padding: EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    'REOPEN REQUEST',
-                    style: TextStyle(
-                      color: CutLinkPalette.actionRed,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
               Row(
                 children: [
+                  Icon(
+                    report
+                        ? Icons.fact_check_outlined
+                        : Icons.chat_bubble_outline,
+                    size: 18,
+                    color: cs.primary,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      ticket['ticket_number']?.toString() ?? 'Support Ticket',
+                      ticket['ticket_number']?.toString() ?? 'Support ticket',
                       style: TextStyle(
-                        color: CutLinkPalette.actionRed,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   if (unread)
-                    Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: CutLinkPalette.actionRed,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                    CircleAvatar(radius: 4, backgroundColor: cs.primary),
                   const SizedBox(width: 8),
-                  _statusChip(ticket['status']?.toString() ?? 'open'),
+                  Text(
+                    _relativeDate(ticket['updated_at']),
+                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                  ),
                 ],
               ),
-              const IosGap(height: 8),
+              const SizedBox(height: 10),
               Text(
                 ticket['subject']?.toString() ?? 'Support request',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: unread ? FontWeight.w900 : FontWeight.w800,
+                  fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
+                  height: 1.35,
                 ),
               ),
               if (widget.adminMode) ...[
-                const IosGap(height: 5),
+                const SizedBox(height: 5),
                 Text(
-                  '${ticket['business_name'] ?? 'Business'} • ${ticket['requester_name'] ?? 'User'}',
+                  ticket['business_name']?.toString() ?? 'Business',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: CutLinkPalette.color(0xFF666A70),
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
               ],
-              const IosGap(height: 9),
-              Row(
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  _priorityChip(ticket['priority']?.toString() ?? 'normal'),
-                  const Spacer(),
-                  Text(
-                    _relativeDate(ticket['updated_at']),
-                    style: TextStyle(
-                      color: CutLinkPalette.color(0xFF777B82),
-                      fontSize: 10.5,
+                  _statusChip(ticket['status']?.toString() ?? 'open'),
+                  if (['high', 'urgent'].contains(ticket['priority']))
+                    _priorityChip(ticket['priority'].toString()),
+                  if (ticket['reopen_decision'] == 'pending')
+                    Text(
+                      'Reopen requested',
+                      style: TextStyle(color: cs.primary, fontSize: 11),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1416,7 +1489,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
     setState(() => _sending = true);
     try {
-      await Supabase.instance.client.rpc(
+      await _client.rpc(
         widget.adminMode
             ? 'reopen_support_ticket'
             : 'request_support_ticket_reopen',
@@ -1485,7 +1558,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
     setState(() => _sending = true);
     try {
-      await Supabase.instance.client.rpc(
+      await _client.rpc(
         'review_support_ticket_reopen',
         params: {'p_ticket_id': id, 'p_approve': approve, 'p_note': note},
       );
@@ -1502,6 +1575,26 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         setState(() => _sending = false);
       }
     }
+  }
+
+  Widget _caseContext(Widget child) {
+    if (MediaQuery.sizeOf(context).width >= 900) return child;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ExpansionTile(
+        leading: const Icon(Icons.fact_check_outlined),
+        title: const Text(
+          'Case details',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: const Text(
+          'Product, report and review actions',
+          style: TextStyle(fontSize: 12),
+        ),
+        maintainState: true,
+        children: [child],
+      ),
+    );
   }
 
   Widget _ticketDetail({required bool showBack}) {
@@ -1582,8 +1675,19 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: _messages.isEmpty && !hasContext
+          child: _loadingMessages && _messages.isEmpty && !hasContext
               ? const Center(child: CircularProgressIndicator())
+              : _messageError != null
+              ? Center(
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        _loadMessages(ticket['id'].toString(), markRead: true),
+                    icon: const Icon(Icons.refresh),
+                    label: Text('$_messageError Retry'),
+                  ),
+                )
+              : _messages.isEmpty && !hasContext
+              ? const Center(child: Text('No messages yet.'))
               : ListView.builder(
                   controller: _messagesScrollController,
                   reverse: false,
@@ -1592,26 +1696,30 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   itemBuilder: (_, index) {
                     if (hasContext && index == 0) {
                       if (hasSupplierCase) {
-                        return SupplierProductModerationPanel(
-                          key: ValueKey(
-                            'supplier-${ticket['id']}-${ticket['status']}-${_supplierModerationCase(ticket)?['change_revision']}-${_supplierModerationCase(ticket)?['submitted_revision']}',
+                        return _caseContext(
+                          SupplierProductModerationPanel(
+                            key: ValueKey(
+                              'supplier-${ticket['id']}-${ticket['status']}-${_supplierModerationCase(ticket)?['change_revision']}-${_supplierModerationCase(ticket)?['submitted_revision']}',
+                            ),
+                            ticketId: ticket['id'].toString(),
+                            adminMode: widget.adminMode,
                           ),
-                          ticketId: ticket['id'].toString(),
-                          adminMode: widget.adminMode,
                         );
                       }
-                      return ProductReportContextPanel(
-                        key: ValueKey('${ticket['id']}-${ticket['status']}'),
-                        ticketId: ticket['id'].toString(),
-                        adminMode: widget.adminMode,
-                        onResolved: () async {
-                          await _loadMessages(
-                            ticket['id'].toString(),
-                            markRead: true,
-                            scrollToBottom: false,
-                          );
-                          await _loadTickets(showLoading: false);
-                        },
+                      return _caseContext(
+                        ProductReportContextPanel(
+                          key: ValueKey('${ticket['id']}-${ticket['status']}'),
+                          ticketId: ticket['id'].toString(),
+                          adminMode: widget.adminMode,
+                          onResolved: () async {
+                            await _loadMessages(
+                              ticket['id'].toString(),
+                              markRead: true,
+                              scrollToBottom: false,
+                            );
+                            await _loadTickets(showLoading: false);
+                          },
+                        ),
                       );
                     }
                     return _messageBubble(
@@ -1620,61 +1728,84 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                   },
                 ),
         ),
-        Container(
-          width: double.infinity,
-          color: CutLinkPalette.color(0xFFF2F4F7),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                'Messages and files are removed 30 days after resolution. Reopen requests pause removal while CutLink reviews them. Only CutLink support can reopen a ticket.',
-                style: TextStyle(fontSize: 11),
-              ),
-              if (ticket['messages_delete_after'] != null)
-                Text(
-                  'Scheduled deletion: ${DateTime.tryParse(ticket['messages_delete_after'].toString())?.toLocal().toString().split(' ').first ?? ''}',
-                  style: const TextStyle(fontSize: 11),
-                ),
-              if (ticket['messages_purged_at'] != null)
-                const Text(
-                  'Earlier resolved conversation was deleted. The ticket summary is retained.',
-                  style: TextStyle(fontSize: 11),
-                ),
-              if (ticket['reopen_decision'] == 'pending') ...[
-                Text(
-                  'Reopen request awaiting CutLink review',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: CutLinkPalette.actionRed,
-                  ),
-                ),
-                if ((ticket['reopen_reason']?.toString() ?? '').isNotEmpty)
-                  Text(ticket['reopen_reason'].toString()),
-                if (widget.adminMode) ...[
-                  FilledButton.icon(
-                    onPressed: _sending ? null : () => _reviewReopen(true),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Approve & reopen'),
-                  ),
-                  OutlinedButton(
-                    onPressed: _sending ? null : () => _reviewReopen(false),
-                    child: const Text('Decline request'),
-                  ),
-                ],
-              ] else if (['resolved', 'closed'].contains(ticket['status']))
-                TextButton(
-                  onPressed: _sending ? null : _reopenTicket,
-                  child: Text(
-                    widget.adminMode ? 'Reopen ticket' : 'Request reopening',
-                  ),
-                ),
-            ],
+        ExpansionTile(
+          dense: true,
+          title: const Text(
+            'Conversation information',
+            style: TextStyle(fontSize: 12),
           ),
+          children: [
+            Container(
+              width: double.infinity,
+              color: CutLinkPalette.color(0xFFF2F4F7),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    'Messages and files are removed 30 days after resolution. Reopen requests pause removal while CutLink reviews them. Only CutLink support can reopen a ticket.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  if (ticket['messages_delete_after'] != null)
+                    Text(
+                      'Scheduled deletion: ${DateTime.tryParse(ticket['messages_delete_after'].toString())?.toLocal().toString().split(' ').first ?? ''}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  if (ticket['messages_purged_at'] != null)
+                    const Text(
+                      'Earlier resolved conversation was deleted. The ticket summary is retained.',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  if (ticket['reopen_decision'] == 'pending') ...[
+                    Text(
+                      'Reopen request awaiting CutLink review',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: CutLinkPalette.actionRed,
+                      ),
+                    ),
+                    if ((ticket['reopen_reason']?.toString() ?? '').isNotEmpty)
+                      Text(ticket['reopen_reason'].toString()),
+                    if (widget.adminMode) ...[
+                      FilledButton.icon(
+                        onPressed: _sending ? null : () => _reviewReopen(true),
+                        icon: const Icon(Icons.check_rounded),
+                        label: const Text('Approve & reopen'),
+                      ),
+                      OutlinedButton(
+                        onPressed: _sending ? null : () => _reviewReopen(false),
+                        child: const Text('Decline request'),
+                      ),
+                    ],
+                  ] else if (['resolved', 'closed'].contains(ticket['status']))
+                    TextButton(
+                      onPressed: _sending ? null : _reopenTicket,
+                      child: Text(
+                        widget.adminMode
+                            ? 'Reopen ticket'
+                            : 'Request reopening',
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
-        if (widget.adminMode) _adminActionBar(ticket),
+        if (widget.adminMode)
+          if (MediaQuery.sizeOf(context).width < 900)
+            ExpansionTile(
+              dense: true,
+              title: const Text(
+                'Case actions',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              children: [_adminActionBar(ticket)],
+            )
+          else
+            _adminActionBar(ticket),
+
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           decoration: BoxDecoration(
@@ -1693,10 +1824,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                       color: CutLinkPalette.color(0xFF666A70),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      widget.adminMode
-                          ? 'Reopen this ticket before replying.'
-                          : 'Request reopening to continue this conversation.',
+                    Expanded(
+                      child: Text(
+                        widget.adminMode
+                            ? 'Reopen this ticket before replying.'
+                            : 'Request reopening to continue this conversation.',
+                      ),
                     ),
                   ],
                 )
@@ -1727,8 +1860,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                             isBusy: () => _sending,
                             isCurrentUser: () =>
                                 _draftUser.isNotEmpty &&
-                                Supabase.instance.client.auth.currentUser?.id ==
-                                    _draftUser &&
+                                _client.auth.currentUser?.id == _draftUser &&
                                 _selectedTicket?['id'] == ticket['id'],
                             child: TextField(
                               controller: _messageController,
@@ -1900,8 +2032,12 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     return OutlinedButton.icon(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: active ? Colors.white : _navy,
-        backgroundColor: active ? _darkRed : Colors.white,
+        foregroundColor: active
+            ? Colors.white
+            : Theme.of(context).colorScheme.onSurface,
+        backgroundColor: active
+            ? CutLinkPalette.buttonRed
+            : CutLinkPalette.surface,
         side: BorderSide(
           color: active
               ? CutLinkPalette.actionRed
@@ -1930,7 +2066,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
             : CutLinkPalette.color(0xFFD6DADF),
       ),
       labelStyle: TextStyle(
-        color: selected ? CutLinkPalette.actionRed : _navy,
+        color: selected
+            ? CutLinkPalette.actionRed
+            : Theme.of(context).colorScheme.onSurface,
         fontSize: 10.5,
         fontWeight: FontWeight.w800,
       ),
@@ -1990,7 +2128,9 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
         decoration: BoxDecoration(
-          color: mine ? _navy : CutLinkPalette.surface,
+          color: mine
+              ? (CutLinkPalette.isDark ? const Color(0xFF303847) : _navy)
+              : CutLinkPalette.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(14),
             topRight: const Radius.circular(14),
@@ -2266,33 +2406,110 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 
   Widget _emptySelection() {
+    final cs = Theme.of(context).colorScheme;
+    final active = _tickets
+        .where((t) => !['resolved', 'closed'].contains(t['status']))
+        .length;
+    final waiting = _tickets
+        .where(
+          (t) =>
+              t['status'] ==
+              (widget.adminMode ? 'awaiting_support' : 'waiting_on_customer'),
+        )
+        .length;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.support_agent, size: 72, color: CutLinkPalette.actionRed),
-          IosGap(height: 16),
-          Text(
-            'Select a support ticket',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 34,
+                backgroundColor: cs.primary.withValues(alpha: .08),
+                child: Icon(Icons.support_agent, size: 34, color: cs.primary),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                widget.adminMode ? 'Your support overview' : 'How can we help?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Open a ticket to continue the conversation, or find an answer in Help & FAQ.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  Chip(
+                    avatar: Icon(
+                      Icons.chat_bubble_outline,
+                      size: 18,
+                      color: cs.primary,
+                    ),
+                    label: Text('$active active tickets'),
+                  ),
+                  Chip(
+                    avatar: Icon(Icons.reply, size: 18, color: cs.primary),
+                    label: Text('$waiting awaiting your reply'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (!widget.adminMode)
+                    FilledButton.icon(
+                      onPressed: _createTicket,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('New ticket'),
+                    ),
+                  if (widget.adminMode && _visibleTickets.isNotEmpty)
+                    FilledButton.icon(
+                      onPressed: () => _openTicket(_visibleTickets.first),
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('Review next ticket'),
+                    ),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _showFaq = true),
+                    icon: const Icon(Icons.help_outline, size: 18),
+                    label: const Text('Help & FAQ'),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IosGap(height: 6),
-          Text(
-            'The full conversation and ticket controls will appear here.',
-            style: TextStyle(color: CutLinkPalette.color(0xFF666A70)),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _statusChip(String status) {
     final (label, colour) = switch (status) {
-      'awaiting_support' => ('Waiting on CutLink', const Color(0xFF9A5B00)),
-      'waiting_on_customer' => ('Waiting on You', const Color(0xFF315A8C)),
-      'resolved' => ('Resolved', const Color(0xFF2E7D32)),
+      'awaiting_support' => (
+        'Waiting on CutLink',
+        CutLinkPalette.color(0xFF9A5B00),
+      ),
+      'waiting_on_customer' => (
+        'Waiting on You',
+        CutLinkPalette.color(0xFF315A8C),
+      ),
+      'resolved' => ('Resolved', CutLinkPalette.color(0xFF2E7D32)),
       'closed' => ('Closed', CutLinkPalette.color(0xFF666A70)),
-      _ => ('Open', _darkRed),
+      _ => ('Open', CutLinkPalette.actionRed),
     };
 
     final displayLabel = widget.adminMode && status == 'waiting_on_customer'

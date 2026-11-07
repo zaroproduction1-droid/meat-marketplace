@@ -8,9 +8,9 @@ import 'ios_workspace.dart';
 class CutLinkWorkspaceTheme extends StatelessWidget {
   const CutLinkWorkspaceTheme({super.key, required this.child});
   final Widget child;
-  static Color get ink => CutLinkPalette.color(0xFF101D2B);
+  static Color get ink => CutLinkPalette.color(0xFF202124);
   static const red = Color(0xFFA51C34);
-  static Color get canvas => CutLinkPalette.color(0xFFF7F8FA);
+  static Color get canvas => CutLinkPalette.canvas;
   static Color get border => CutLinkPalette.color(0xFFE3E5E8);
 
   @override
